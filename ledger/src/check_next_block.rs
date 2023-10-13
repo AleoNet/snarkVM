@@ -30,8 +30,8 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         }
 
         // Ensure the solutions do not already exist.
-        if let Some(coinbase) = block.coinbase() {
-            for puzzle_commitment in coinbase.puzzle_commitments() {
+        if let Some(solutions) = block.solutions() {
+            for puzzle_commitment in solutions.puzzle_commitments() {
                 if self.contains_puzzle_commitment(puzzle_commitment)? {
                     bail!("Puzzle commitment {puzzle_commitment} already exists in the ledger");
                 }
@@ -108,10 +108,9 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             })
             .collect::<Result<Vec<_>>>()?;
 
-        // TODO (howardwu): Handle the aborted transactions and finalize operations.
         // Speculate over the unconfirmed transactions.
         let (confirmed_transactions, aborted_transactions, ratified_finalize_operations) =
-            self.vm.speculate(state, block.ratifications(), block.coinbase(), unconfirmed_transactions.iter())?;
+            self.vm.speculate(state, block.ratifications(), block.solutions(), unconfirmed_transactions.iter())?;
 
         // Ensure the transactions after speculation match.
         if block.transactions() != &confirmed_transactions {
@@ -126,6 +125,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             self.coinbase_puzzle(),
             &self.latest_epoch_challenge()?,
             OffsetDateTime::now_utc().unix_timestamp(),
+            aborted_transactions,
             ratified_finalize_operations,
         )?;
 

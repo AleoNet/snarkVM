@@ -434,6 +434,7 @@ mod tests {
         // Construct the new block header.
         let (transactions, aborted_transactions, ratified_finalize_operations) =
             vm.speculate(sample_finalize_state(1), &[], None, [deployment_transaction].iter()).unwrap();
+        assert!(aborted_transactions.is_empty());
 
         // Construct the metadata associated with the block.
         let deployment_metadata = Metadata::new(
@@ -462,9 +463,17 @@ mod tests {
         .unwrap();
 
         // Construct a new block for the deploy transaction.
-        let deployment_block =
-            Block::new_beacon(&caller_private_key, genesis.hash(), deployment_header, vec![], None, transactions, rng)
-                .unwrap();
+        let deployment_block = Block::new_beacon(
+            &caller_private_key,
+            genesis.hash(),
+            deployment_header,
+            vec![],
+            None,
+            transactions,
+            aborted_transactions,
+            rng,
+        )
+        .unwrap();
 
         // Add the deployment block.
         vm.add_next_block(&deployment_block).unwrap();

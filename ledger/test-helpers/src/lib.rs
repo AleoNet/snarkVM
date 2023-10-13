@@ -400,7 +400,8 @@ fn sample_genesis_block_and_components_raw(
     let previous_hash = <CurrentNetwork as Network>::BlockHash::default();
 
     // Construct the block.
-    let block = Block::new_beacon(&private_key, previous_hash, header, vec![], None, transactions, rng).unwrap();
+    let block =
+        Block::new_beacon(&private_key, previous_hash, header, vec![], None, transactions, vec![], rng).unwrap();
     assert!(block.header().is_genesis(), "Failed to initialize a genesis block");
     // Return the block, transaction, and private key.
     (block, transaction, private_key)

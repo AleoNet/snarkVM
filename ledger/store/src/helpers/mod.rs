@@ -94,7 +94,7 @@ macro_rules! atomic_finalize {
             // If this is a failed real run, abort the atomic batch.
             (FinalizeMode::RealRun, Err(error_msg)) => {
                 $self.abort_atomic();
-                Err(anyhow!("Failed to finalize transactions: {error_msg}"))
+                Err(anyhow!("Failed to finalize transactions - {error_msg}"))
             }
             // If this is a successful dry run, abort the atomic batch.
             (FinalizeMode::DryRun, Ok(result)) => {
@@ -104,7 +104,7 @@ macro_rules! atomic_finalize {
             // If this is a failed dry run, abort the atomic batch.
             (FinalizeMode::DryRun, Err(error_msg)) => {
                 $self.abort_atomic();
-                Err(anyhow!("Failed to finalize transactions: {error_msg}"))
+                Err(anyhow!("Failed to speculate on transactions - {error_msg}"))
             }
         }
     }};

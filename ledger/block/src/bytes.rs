@@ -35,27 +35,41 @@ impl<N: Network> FromBytes for Block<N> {
         // Write the authority.
         let authority = FromBytes::read_le(&mut reader)?;
 
-        // Read the transactions.
-        let transactions = FromBytes::read_le(&mut reader)?;
-
+        // Read the number of ratifications.
+        let num_ratifications = u16::read_le(&mut reader)?;
         // Read the ratifications.
-        let num_ratifications = u32::read_le(&mut reader)?;
         let mut ratifications = Vec::with_capacity(num_ratifications as usize);
         for _ in 0..num_ratifications {
             ratifications.push(FromBytes::read_le(&mut reader)?);
         }
 
-        // Read the coinbase.
-        let coinbase_variant = u8::read_le(&mut reader)?;
-        let coinbase = match coinbase_variant {
+        // Read the solutions.
+        let solutions_variant = u8::read_le(&mut reader)?;
+        let solutions = match solutions_variant {
             0 => None,
             1 => Some(FromBytes::read_le(&mut reader)?),
-            _ => return Err(error("Invalid coinbase variant")),
+            _ => return Err(error("Invalid solutions variant in the block")),
         };
 
+        // Read the transactions.
+        let transactions = FromBytes::read_le(&mut reader)?;
+
+        // Read the number of aborted transactions.
+        let num_aborted = u32::read_le(&mut reader)?;
+        // Ensure the number of aborted transactions is within bounds (this is an early safety check).
+        if num_aborted as usize > Transactions::<N>::MAX_TRANSACTIONS {
+            return Err(error("Invalid number of aborted transactions in the block"));
+        }
+        // Read the aborted transactions.
+        let mut aborted_transactions = Vec::with_capacity(num_aborted as usize);
+        for _ in 0..num_aborted {
+            aborted_transactions.push(FromBytes::read_le(&mut reader)?);
+        }
+
         // Construct the block.
-        let block = Self::from(previous_hash, header, authority, transactions, ratifications, coinbase)
-            .map_err(|e| error(e.to_string()))?;
+        let block =
+            Self::from(previous_hash, header, authority, ratifications, solutions, transactions, aborted_transactions)
+                .map_err(error)?;
 
         // Ensure the block hash matches.
         match block_hash == block.hash() {
@@ -82,24 +96,25 @@ impl<N: Network> ToBytes for Block<N> {
         // Write the authority.
         self.authority.write_le(&mut writer)?;
 
-        // Write the transactions.
-        self.transactions.write_le(&mut writer)?;
-
         // Write the ratifications.
-        (u32::try_from(self.ratifications.len()).map_err(|e| error(e.to_string())))?.write_le(&mut writer)?;
-        for ratification in &self.ratifications {
-            ratification.write_le(&mut writer)?;
-        }
+        (u16::try_from(self.ratifications.len()).map_err(error))?.write_le(&mut writer)?;
+        self.ratifications.write_le(&mut writer)?;
 
         // Write the solutions.
-        match self.coinbase {
+        match self.solutions {
             None => 0u8.write_le(&mut writer)?,
             Some(ref solutions) => {
                 1u8.write_le(&mut writer)?;
                 solutions.write_le(&mut writer)?;
             }
         }
-        Ok(())
+
+        // Write the transactions.
+        self.transactions.write_le(&mut writer)?;
+
+        // Write the ratifications.
+        (u32::try_from(self.aborted_transactions.len()).map_err(error))?.write_le(&mut writer)?;
+        self.aborted_transactions.write_le(&mut writer)
     }
 }
 

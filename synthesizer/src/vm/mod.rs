@@ -28,7 +28,19 @@ use console::{
     program::{Identifier, Literal, Locator, Plaintext, ProgramID, ProgramOwner, Record, Value},
     types::{Field, U64},
 };
-use ledger_block::{Block, Deployment, Execution, Fee, Header, Ratify, Transaction};
+use ledger_block::{
+    Block,
+    ConfirmedTransaction,
+    Deployment,
+    Execution,
+    Fee,
+    Header,
+    Ratify,
+    Rejected,
+    Transaction,
+    Transactions,
+};
+use ledger_coinbase::CoinbaseSolution;
 use ledger_committee::Committee;
 use ledger_query::Query;
 use ledger_store::{
@@ -43,7 +55,7 @@ use ledger_store::{
     TransitionStore,
 };
 use synthesizer_process::{Authorization, Process, Trace};
-use synthesizer_program::{FinalizeGlobalState, FinalizeStoreTrait, Program};
+use synthesizer_program::{FinalizeGlobalState, FinalizeOperation, FinalizeStoreTrait, Program};
 
 use aleo_std::prelude::{finish, lap, timer};
 use indexmap::IndexMap;
@@ -239,7 +251,16 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         let previous_hash = N::BlockHash::default();
 
         // Construct the block.
-        let block = Block::new_beacon(private_key, previous_hash, header, ratifications, solutions, transactions, rng)?;
+        let block = Block::new_beacon(
+            private_key,
+            previous_hash,
+            header,
+            ratifications,
+            solutions,
+            transactions,
+            aborted_transactions,
+            rng,
+        )?;
         // Ensure the block is valid genesis block.
         match block.is_genesis() {
             true => Ok(block),
@@ -265,8 +286,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         // First, insert the block.
         self.block_store().insert(block)?;
         // Next, finalize the transactions.
-        match self.finalize(state, block.ratifications(), block.coinbase(), block.transactions()) {
-            Ok(ratified_finalize_operations) => {
+        match self.finalize(state, block.ratifications(), block.solutions(), block.transactions()) {
+            Ok(_ratified_finalize_operations) => {
                 // TODO (howardwu): Check the accepted, rejected, and finalize operations match the block.
                 Ok(())
             }
@@ -573,6 +594,8 @@ function compute:
         // Construct the new block header.
         let (transactions, aborted_transactions, ratified_finalize_operations) =
             vm.speculate(sample_finalize_state(1), &[], None, transactions.iter())?;
+        assert!(aborted_transactions.is_empty());
+
         // Construct the metadata associated with the block.
         let metadata = Metadata::new(
             Testnet3::ID,
@@ -598,7 +621,16 @@ function compute:
         )?;
 
         // Construct the new block.
-        Block::new_beacon(private_key, previous_block.hash(), header, vec![], None, transactions, rng)
+        Block::new_beacon(
+            private_key,
+            previous_block.hash(),
+            header,
+            vec![],
+            None,
+            transactions,
+            aborted_transactions,
+            rng,
+        )
     }
 
     #[test]

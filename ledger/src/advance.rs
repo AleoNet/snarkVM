@@ -29,11 +29,19 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         // Currently, we do not support ratifications from the memory pool.
         ensure!(ratifications.is_empty(), "Ratifications are currently unsupported from the memory pool");
         // Construct the block template.
-        let (header, ratifications, solutions, transactions) =
+        let (header, ratifications, solutions, transactions, aborted_transactions) =
             self.construct_block_template(&previous_block, Some(&subdag), ratifications, solutions, transactions)?;
 
         // Construct the new quorum block.
-        Block::new_quorum(previous_block.hash(), header, subdag, ratifications, solutions, transactions)
+        Block::new_quorum(
+            previous_block.hash(),
+            header,
+            subdag,
+            ratifications,
+            solutions,
+            transactions,
+            aborted_transactions,
+        )
     }
 
     /// Returns a candidate for the next block in the ledger.
@@ -52,7 +60,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         let previous_block = self.latest_block();
 
         // Construct the block template.
-        let (header, ratifications, solutions, transactions) = self.construct_block_template(
+        let (header, ratifications, solutions, transactions, aborted_transactions) = self.construct_block_template(
             &previous_block,
             None,
             candidate_ratifications,
@@ -61,7 +69,16 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         )?;
 
         // Construct the new beacon block.
-        Block::new_beacon(private_key, previous_block.hash(), header, ratifications, solutions, transactions, rng)
+        Block::new_beacon(
+            private_key,
+            previous_block.hash(),
+            header,
+            ratifications,
+            solutions,
+            transactions,
+            aborted_transactions,
+            rng,
+        )
     }
 
     /// Adds the given block as the next block in the ledger.
@@ -100,7 +117,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         candidate_ratifications: Vec<Ratify<N>>,
         candidate_solutions: Vec<ProverSolution<N>>,
         candidate_transactions: Vec<Transaction<N>>,
-    ) -> Result<(Header<N>, Vec<Ratify<N>>, Option<CoinbaseSolution<N>>, Transactions<N>)> {
+    ) -> Result<(Header<N>, Vec<Ratify<N>>, Option<CoinbaseSolution<N>>, Transactions<N>, Vec<N::TransactionID>)> {
         // Construct the solutions.
         let (solutions, solutions_root, combined_proof_target) = match candidate_solutions.is_empty() {
             true => (None, Field::<N>::zero(), 0u128),
@@ -244,6 +261,8 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             subdag_root,
             metadata,
         )?;
-        Ok((header, ratifications, solutions, transactions))
+
+        // Return the block template.
+        Ok((header, ratifications, solutions, transactions, aborted_transactions))
     }
 }

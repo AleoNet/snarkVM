@@ -88,10 +88,20 @@ fn run_test(test: &ProgramTest) -> serde_yaml::Mapping {
                     return output;
                 }
             };
+
         let (transactions, aborted_transactions, ratified_finalize_operations) =
             vm.speculate(construct_finalize_global_state(&vm), &[], None, [transaction].iter()).unwrap();
-        let block =
-            construct_next_block(&vm, &genesis_private_key, transactions, ratified_finalize_operations, rng).unwrap();
+        assert!(aborted_transactions.is_empty());
+
+        let block = construct_next_block(
+            &vm,
+            &genesis_private_key,
+            transactions,
+            aborted_transactions,
+            ratified_finalize_operations,
+            rng,
+        )
+        .unwrap();
         vm.add_next_block(&block).unwrap();
     }
 
@@ -251,9 +261,18 @@ fn run_test(test: &ProgramTest) -> serde_yaml::Mapping {
                         return (serde_yaml::Value::Mapping(result), serde_yaml::Value::Mapping(Default::default()));
                     }
                 };
+            assert!(aborted_transactions.is_empty());
+
             // Construct the next block.
-            let block =
-                construct_next_block(&vm, &private_key, transactions, ratified_finalize_operations, rng).unwrap();
+            let block = construct_next_block(
+                &vm,
+                &private_key,
+                transactions,
+                aborted_transactions,
+                ratified_finalize_operations,
+                rng,
+            )
+            .unwrap();
             // Add the next block.
             result.insert(
                 serde_yaml::Value::String("add_next_block".to_string()),
@@ -348,10 +367,21 @@ fn construct_fee_records<C: ConsensusStorage<CurrentNetwork>, R: Rng + CryptoRng
                 fee_records.push((fee_record, balance));
             }
         }
-        // Create a block for the fee transactions and add them to the VM.
+
         let (transactions, aborted_transactions, ratified_finalize_operations) =
             vm.speculate(construct_finalize_global_state(vm), &[], None, transactions.iter()).unwrap();
-        let block = construct_next_block(vm, private_key, transactions, ratified_finalize_operations, rng).unwrap();
+        assert!(aborted_transactions.is_empty());
+
+        // Create a block for the fee transactions and add them to the VM.
+        let block = construct_next_block(
+            vm,
+            private_key,
+            transactions,
+            aborted_transactions,
+            ratified_finalize_operations,
+            rng,
+        )
+        .unwrap();
         vm.add_next_block(&block).unwrap();
     }
 
@@ -365,6 +395,7 @@ fn construct_next_block<C: ConsensusStorage<CurrentNetwork>, R: Rng + CryptoRng>
     vm: &VM<CurrentNetwork, C>,
     private_key: &PrivateKey<CurrentNetwork>,
     transactions: Transactions<CurrentNetwork>,
+    aborted_transactions: Vec<<CurrentNetwork as Network>::TransactionID>,
     ratified_finalize_operations: Vec<FinalizeOperation<CurrentNetwork>>,
     rng: &mut R,
 ) -> Result<Block<CurrentNetwork>> {
@@ -398,7 +429,7 @@ fn construct_next_block<C: ConsensusStorage<CurrentNetwork>, R: Rng + CryptoRng>
     )?;
 
     // Construct the new block.
-    Block::new_beacon(private_key, previous_block.hash(), header, vec![], None, transactions, rng)
+    Block::new_beacon(private_key, previous_block.hash(), header, vec![], None, transactions, aborted_transactions, rng)
 }
 
 // A helper function to invoke `credits.aleo/split`.
