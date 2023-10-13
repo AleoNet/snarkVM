@@ -1538,7 +1538,7 @@ mod sanity_checks {
         assert_eq!(15, assignment.num_public());
         assert_eq!(49675, assignment.num_private());
         assert_eq!(49730, assignment.num_constraints());
-        assert_eq!((82866, 122557, 76015), assignment.num_nonzeros());
+        assert_eq!((82610, 122551, 76009), assignment.num_nonzeros());
     }
 
     #[test]
@@ -1566,7 +1566,7 @@ mod sanity_checks {
         assert_eq!(10, assignment.num_public());
         assert_eq!(12047, assignment.num_private());
         assert_eq!(12062, assignment.num_constraints());
-        assert_eq!((25767, 37818, 16411), assignment.num_nonzeros());
+        assert_eq!((25765, 37816, 16409), assignment.num_nonzeros());
     }
 
     #[test]
@@ -1599,7 +1599,7 @@ mod sanity_checks {
         assert_eq!(13, assignment.num_public());
         assert_eq!(36223, assignment.num_private());
         assert_eq!(36269, assignment.num_constraints());
-        assert_eq!((58797, 84785, 54749), assignment.num_nonzeros());
+        assert_eq!((58543, 84781, 54745), assignment.num_nonzeros());
     }
 
     #[test]
@@ -1626,6 +1626,6 @@ mod sanity_checks {
         assert_eq!(10, assignment.num_public());
         assert_eq!(12038, assignment.num_private());
         assert_eq!(12057, assignment.num_constraints());
-        assert_eq!((25637, 37302, 16399), assignment.num_nonzeros());
+        assert_eq!((25635, 37300, 16397), assignment.num_nonzeros());
     }
 }
