@@ -150,8 +150,8 @@ mod tests {
     fn test_even_square_root() {
         let mut rng = TestRng::default();
 
-        check_even_square_root("Constant", &mut rng, Mode::Constant, 2, 0, 0, 0);
-        check_even_square_root("Public", &mut rng, Mode::Public, 1, 0, 758, 761);
-        check_even_square_root("Private", &mut rng, Mode::Private, 1, 0, 758, 761);
+        check_even_square_root("Constant", &mut rng, Mode::Constant, 254, 0, 0, 0);
+        check_even_square_root("Public", &mut rng, Mode::Public, 0, 0, 506, 509);
+        check_even_square_root("Private", &mut rng, Mode::Private, 0, 0, 506, 509);
     }
 }
