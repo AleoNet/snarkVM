@@ -306,8 +306,8 @@ impl<N: Network> CallTrait<N> for Call<N> {
             let tcm = circuit::Field::new(circuit::Mode::Public, *request.tcm());
             // Compute the transition commitment as `Hash(tvk)`.
             let candidate_tcm = A::hash_psd2(&[tvk.clone()]);
-            // Ensure the transition commitment is computed as expected
-            A::assert(tcm.is_equal(&candidate_tcm));
+            // Ensure the transition commitment matches the computed transition commitment.
+            A::assert_eq(&tcm, &candidate_tcm);
             // Inject the input IDs (from the request) as `Mode::Public`.
             let input_ids = request
                 .input_ids()
@@ -331,7 +331,7 @@ impl<N: Network> CallTrait<N> for Call<N> {
             );
             A::assert(check_input_ids);
 
-            // Inject the outputs as `Mode::Private` (with the output IDs and tcm as `Mode::Public`).
+            // Inject the outputs as `Mode::Private` (with the 'tcm' and output IDs as `Mode::Public`).
             let outputs = circuit::Response::process_outputs_from_callback(
                 &network_id,
                 &program_id,
