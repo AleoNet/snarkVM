@@ -58,15 +58,18 @@ impl<E: Environment, I: IntegerType> MulWrapped<Self> for Integer<E, I> {
 }
 
 impl<E: Environment, I: IntegerType> Metrics<dyn MulWrapped<Integer<E, I>, Output = Integer<E, I>>> for Integer<E, I> {
-    type Case = (Mode, Mode);
+    type Case = (Mode, Mode, bool, bool);
 
     fn count(case: &Self::Case) -> Count {
-        match (case.0, case.1) {
-            (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
-            (Mode::Constant, _) | (_, Mode::Constant) => {
+        match (case.0, case.1, case.2, case.3) {
+            (Mode::Constant, Mode::Constant, _, _) => Count::is(I::BITS, 0, 0, 0),
+            (Mode::Constant, _, true, _) | (_, Mode::Constant, _, true) => {
+                Count::is(I::BITS + (I::BITS / 2) + 1, 0, 0, 0)
+            }
+            (Mode::Constant, _, false, _) | (_, Mode::Constant, _, false) => {
                 Count::is(0, 0, I::BITS + (I::BITS / 2) + 1, I::BITS + (I::BITS / 2) + 2)
             }
-            (_, _) => Count::is(0, 0, I::BITS + (I::BITS / 2) + 4, I::BITS + (I::BITS / 2) + 5),
+            (_, _, _, _) => Count::is(0, 0, I::BITS + (I::BITS / 2) + 4, I::BITS + (I::BITS / 2) + 5),
         }
     }
 }
@@ -74,12 +77,13 @@ impl<E: Environment, I: IntegerType> Metrics<dyn MulWrapped<Integer<E, I>, Outpu
 impl<E: Environment, I: IntegerType> OutputMode<dyn MulWrapped<Integer<E, I>, Output = Integer<E, I>>>
     for Integer<E, I>
 {
-    type Case = (Mode, Mode);
+    type Case = (Mode, Mode, bool, bool);
 
     fn output_mode(case: &Self::Case) -> Mode {
-        match (case.0, case.1) {
-            (Mode::Constant, Mode::Constant) => Mode::Constant,
-            (_, _) => Mode::Private,
+        match (case.0, case.1, case.2, case.3) {
+            (Mode::Constant, _, true, _) | (_, Mode::Constant, _, true) => Mode::Constant,
+            (Mode::Constant, Mode::Constant, _, _) => Mode::Constant,
+            (_, _, _, _) => Mode::Private,
         }
     }
 }
@@ -102,13 +106,15 @@ mod tests {
     ) {
         let a = Integer::<Circuit, I>::new(mode_a, first);
         let b = Integer::<Circuit, I>::new(mode_b, second);
+        let a_is_zero = a.is_zero().eject_value();
+        let b_is_zero = b.is_zero().eject_value();
         let expected = first.wrapping_mul(&second);
         Circuit::scope(name, || {
             let candidate = a.mul_wrapped(&b);
             assert_eq!(expected, *candidate.eject_value());
             assert_eq!(console::Integer::new(expected), candidate.eject_value());
-            assert_count!(MulWrapped(Integer<I>, Integer<I>) => Integer<I>, &(mode_a, mode_b));
-            assert_output_mode!(MulWrapped(Integer<I>, Integer<I>) => Integer<I>, &(mode_a, mode_b), candidate);
+            assert_count!(MulWrapped(Integer<I>, Integer<I>) => Integer<I>, &(mode_a, mode_b, a_is_zero, b_is_zero));
+            assert_output_mode!(MulWrapped(Integer<I>, Integer<I>) => Integer<I>, &(mode_a, mode_b, a_is_zero, b_is_zero), candidate);
         });
         Circuit::reset();
     }

@@ -35,20 +35,22 @@ use rayon::prelude::*;
 
 // This function converts a matrix output by Zexe's constraint infrastructure
 // to the one used in this crate.
-pub(crate) fn to_matrix_helper<F: Field>(matrix: &[Vec<(F, VarIndex)>], num_input_variables: usize) -> Matrix<F> {
+pub(crate) fn to_matrix_helper<F: Field>(
+    matrix: &[Vec<(F, VarIndex)>],
+    num_input_variables: usize,
+) -> Result<Matrix<F>> {
     cfg_iter!(matrix)
         .map(|row| {
             let mut row_map = BTreeMap::new();
-            row.iter().for_each(|(val, column)| {
-                if !val.is_zero() {
-                    let column = match column {
-                        VarIndex::Public(i) => *i,
-                        VarIndex::Private(i) => num_input_variables + i,
-                    };
-                    *row_map.entry(column).or_insert_with(F::zero) += *val;
-                }
-            });
-            row_map.into_iter().map(|(column, val)| (val, column)).collect()
+            for (val, column) in row.iter() {
+                ensure!(*val != F::zero(), "matrix entries should be non-zero");
+                let column = match column {
+                    VarIndex::Public(i) => *i,
+                    VarIndex::Private(i) => num_input_variables + i,
+                };
+                *row_map.entry(column).or_insert_with(F::zero) += *val;
+            }
+            Ok(row_map.into_iter().map(|(column, coeff)| (coeff, column)).collect())
         })
         .collect()
 }
