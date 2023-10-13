@@ -182,7 +182,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
     /// The mapping of `block hash` to `[transaction ID]`.
     type TransactionsMap: for<'a> Map<'a, N::BlockHash, Vec<N::TransactionID>>;
     /// The mapping of `block hash` to `[aborted transaction ID]`.
-    type AbortedTransactionsMap: for<'a> Map<'a, N::BlockHash, Vec<N::TransactionID>>;
+    type AbortedTransactionIDsMap: for<'a> Map<'a, N::BlockHash, Vec<N::TransactionID>>;
     /// The mapping of `transaction ID` to `(block hash, confirmed tx type, confirmed blob)`.
     type ConfirmedTransactionsMap: for<'a> Map<'a, N::TransactionID, (N::BlockHash, ConfirmedTxType, Vec<u8>)>;
     /// The transaction storage.
@@ -215,8 +215,8 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
     fn puzzle_commitments_map(&self) -> &Self::PuzzleCommitmentsMap;
     /// Returns the accepted transactions map.
     fn transactions_map(&self) -> &Self::TransactionsMap;
-    /// Returns the aborted transactions map.
-    fn aborted_transactions_map(&self) -> &Self::AbortedTransactionsMap;
+    /// Returns the aborted transaction IDs map.
+    fn aborted_transaction_ids_map(&self) -> &Self::AbortedTransactionIDsMap;
     /// Returns the confirmed transactions map.
     fn confirmed_transactions_map(&self) -> &Self::ConfirmedTransactionsMap;
     /// Returns the transaction store.
@@ -245,7 +245,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         self.solutions_map().start_atomic();
         self.puzzle_commitments_map().start_atomic();
         self.transactions_map().start_atomic();
-        self.aborted_transactions_map().start_atomic();
+        self.aborted_transaction_ids_map().start_atomic();
         self.confirmed_transactions_map().start_atomic();
         self.transaction_store().start_atomic();
     }
@@ -263,7 +263,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
             || self.solutions_map().is_atomic_in_progress()
             || self.puzzle_commitments_map().is_atomic_in_progress()
             || self.transactions_map().is_atomic_in_progress()
-            || self.aborted_transactions_map().is_atomic_in_progress()
+            || self.aborted_transaction_ids_map().is_atomic_in_progress()
             || self.confirmed_transactions_map().is_atomic_in_progress()
             || self.transaction_store().is_atomic_in_progress()
     }
@@ -281,7 +281,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         self.solutions_map().atomic_checkpoint();
         self.puzzle_commitments_map().atomic_checkpoint();
         self.transactions_map().atomic_checkpoint();
-        self.aborted_transactions_map().atomic_checkpoint();
+        self.aborted_transaction_ids_map().atomic_checkpoint();
         self.confirmed_transactions_map().atomic_checkpoint();
         self.transaction_store().atomic_checkpoint();
     }
@@ -299,7 +299,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         self.solutions_map().clear_latest_checkpoint();
         self.puzzle_commitments_map().clear_latest_checkpoint();
         self.transactions_map().clear_latest_checkpoint();
-        self.aborted_transactions_map().clear_latest_checkpoint();
+        self.aborted_transaction_ids_map().clear_latest_checkpoint();
         self.confirmed_transactions_map().clear_latest_checkpoint();
         self.transaction_store().clear_latest_checkpoint();
     }
@@ -317,7 +317,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         self.solutions_map().atomic_rewind();
         self.puzzle_commitments_map().atomic_rewind();
         self.transactions_map().atomic_rewind();
-        self.aborted_transactions_map().atomic_rewind();
+        self.aborted_transaction_ids_map().atomic_rewind();
         self.confirmed_transactions_map().atomic_rewind();
         self.transaction_store().atomic_rewind();
     }
@@ -335,7 +335,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         self.solutions_map().abort_atomic();
         self.puzzle_commitments_map().abort_atomic();
         self.transactions_map().abort_atomic();
-        self.aborted_transactions_map().abort_atomic();
+        self.aborted_transaction_ids_map().abort_atomic();
         self.confirmed_transactions_map().abort_atomic();
         self.transaction_store().abort_atomic();
     }
@@ -353,7 +353,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         self.solutions_map().finish_atomic()?;
         self.puzzle_commitments_map().finish_atomic()?;
         self.transactions_map().finish_atomic()?;
-        self.aborted_transactions_map().finish_atomic()?;
+        self.aborted_transaction_ids_map().finish_atomic()?;
         self.confirmed_transactions_map().finish_atomic()?;
         self.transaction_store().finish_atomic()
     }
@@ -415,7 +415,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
             self.transactions_map().insert(block.hash(), block.transaction_ids().copied().collect())?;
 
             // Store the aborted transaction IDs.
-            self.aborted_transactions_map().insert(block.hash(), block.aborted_transactions().clone())?;
+            self.aborted_transaction_ids_map().insert(block.hash(), block.aborted_transaction_ids().clone())?;
 
             // Store the confirmed transactions.
             for (confirmed_type, transaction, blob) in confirmed {
@@ -503,7 +503,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
             self.transactions_map().remove(block_hash)?;
 
             // Remove the aborted transaction IDs.
-            self.aborted_transactions_map().remove(block_hash)?;
+            self.aborted_transaction_ids_map().remove(block_hash)?;
 
             // Remove the block transactions.
             for transaction_id in transaction_ids.iter() {
@@ -770,10 +770,10 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
             .collect::<Result<Option<Transactions<_>>>>()
     }
 
-    /// Returns the block aborted transactions for the given `block hash`.
-    fn get_block_aborted_transactions(&self, block_hash: &N::BlockHash) -> Result<Option<Vec<N::TransactionID>>> {
-        match self.aborted_transactions_map().get_confirmed(block_hash)? {
-            Some(aborted_transactions) => Ok(Some(cow_to_cloned!(aborted_transactions))),
+    /// Returns the block aborted transaction IDs for the given `block hash`.
+    fn get_block_aborted_transaction_ids(&self, block_hash: &N::BlockHash) -> Result<Option<Vec<N::TransactionID>>> {
+        match self.aborted_transaction_ids_map().get_confirmed(block_hash)? {
+            Some(aborted_transaction_ids) => Ok(Some(cow_to_cloned!(aborted_transaction_ids))),
             None => Ok(None),
         }
     }
@@ -829,9 +829,9 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         let Some(transactions) = self.get_block_transactions(block_hash)? else {
             bail!("Missing transactions for block {height} ('{block_hash}')");
         };
-        // Retrieve the block aborted transactions.
-        let Some(aborted_transactions) = self.get_block_aborted_transactions(block_hash)? else {
-            bail!("Missing aborted transactions for block {height} ('{block_hash}')");
+        // Retrieve the block aborted transaction IDs.
+        let Some(aborted_transaction_ids) = self.get_block_aborted_transaction_ids(block_hash)? else {
+            bail!("Missing aborted transaction IDs for block {height} ('{block_hash}')");
         };
 
         // Return the block.
@@ -842,7 +842,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
             ratifications,
             solutions,
             transactions,
-            aborted_transactions,
+            aborted_transaction_ids,
         )?))
     }
 }
@@ -1082,6 +1082,14 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
     /// Returns the block transactions for the given `block hash`.
     pub fn get_block_transactions(&self, block_hash: &N::BlockHash) -> Result<Option<Transactions<N>>> {
         self.storage.get_block_transactions(block_hash)
+    }
+
+    /// Returns the block aborted transaction IDs for the given `block hash`.
+    pub fn get_block_aborted_transaction_ids(
+        &self,
+        block_hash: &N::BlockHash,
+    ) -> Result<Option<Vec<N::TransactionID>>> {
+        self.storage.get_block_aborted_transaction_ids(block_hash)
     }
 
     /// Returns the confirmed transaction for the given `transaction ID`.

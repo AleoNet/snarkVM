@@ -432,9 +432,9 @@ mod tests {
         let deployment_transaction = vm.deploy(&caller_private_key, &program, Some(credits), 10, None, rng).unwrap();
 
         // Construct the new block header.
-        let (transactions, aborted_transactions, ratified_finalize_operations) =
+        let (transactions, aborted_transaction_ids, ratified_finalize_operations) =
             vm.speculate(sample_finalize_state(1), &[], None, [deployment_transaction].iter()).unwrap();
-        assert!(aborted_transactions.is_empty());
+        assert!(aborted_transaction_ids.is_empty());
 
         // Construct the metadata associated with the block.
         let deployment_metadata = Metadata::new(
@@ -470,7 +470,7 @@ mod tests {
             vec![],
             None,
             transactions,
-            aborted_transactions,
+            aborted_transaction_ids,
             rng,
         )
         .unwrap();

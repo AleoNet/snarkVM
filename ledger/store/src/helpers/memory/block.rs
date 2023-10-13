@@ -49,8 +49,8 @@ pub struct BlockMemory<N: Network> {
     puzzle_commitments_map: MemoryMap<PuzzleCommitment<N>, u32>,
     /// The transactions map.
     transactions_map: MemoryMap<N::BlockHash, Vec<N::TransactionID>>,
-    /// The aborted transactions map.
-    aborted_transactions_map: MemoryMap<N::BlockHash, Vec<N::TransactionID>>,
+    /// The aborted transaction IDs map.
+    aborted_transaction_ids_map: MemoryMap<N::BlockHash, Vec<N::TransactionID>>,
     /// The confirmed transactions map.
     confirmed_transactions_map: MemoryMap<N::TransactionID, (N::BlockHash, ConfirmedTxType, Vec<u8>)>,
     /// The transaction store.
@@ -70,7 +70,7 @@ impl<N: Network> BlockStorage<N> for BlockMemory<N> {
     type SolutionsMap = MemoryMap<N::BlockHash, Option<CoinbaseSolution<N>>>;
     type PuzzleCommitmentsMap = MemoryMap<PuzzleCommitment<N>, u32>;
     type TransactionsMap = MemoryMap<N::BlockHash, Vec<N::TransactionID>>;
-    type AbortedTransactionsMap = MemoryMap<N::BlockHash, Vec<N::TransactionID>>;
+    type AbortedTransactionIDsMap = MemoryMap<N::BlockHash, Vec<N::TransactionID>>;
     type ConfirmedTransactionsMap = MemoryMap<N::TransactionID, (N::BlockHash, ConfirmedTxType, Vec<u8>)>;
     type TransactionStorage = TransactionMemory<N>;
     type TransitionStorage = TransitionMemory<N>;
@@ -94,7 +94,7 @@ impl<N: Network> BlockStorage<N> for BlockMemory<N> {
             solutions_map: MemoryMap::default(),
             puzzle_commitments_map: MemoryMap::default(),
             transactions_map: MemoryMap::default(),
-            aborted_transactions_map: MemoryMap::default(),
+            aborted_transaction_ids_map: MemoryMap::default(),
             confirmed_transactions_map: MemoryMap::default(),
             transaction_store,
         })
@@ -155,9 +155,9 @@ impl<N: Network> BlockStorage<N> for BlockMemory<N> {
         &self.transactions_map
     }
 
-    /// Returns the aborted transactions map.
-    fn aborted_transactions_map(&self) -> &Self::AbortedTransactionsMap {
-        &self.aborted_transactions_map
+    /// Returns the aborted transaction IDs map.
+    fn aborted_transaction_ids_map(&self) -> &Self::AbortedTransactionIDsMap {
+        &self.aborted_transaction_ids_map
     }
 
     /// Returns the confirmed transactions map.

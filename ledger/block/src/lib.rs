@@ -70,12 +70,12 @@ pub struct Block<N: Network> {
     /// The transactions in this block.
     transactions: Transactions<N>,
     /// The aborted transaction IDs in this block.
-    aborted_transactions: Vec<N::TransactionID>,
+    aborted_transaction_ids: Vec<N::TransactionID>,
 }
 
 impl<N: Network> Block<N> {
     /// Initializes a new beacon block from the given previous block hash, block header,
-    /// ratifications, solutions, transactions, and aborted transactions.
+    /// ratifications, solutions, transactions, and aborted transaction IDs.
     pub fn new_beacon<R: Rng + CryptoRng>(
         private_key: &PrivateKey<N>,
         previous_hash: N::BlockHash,
@@ -83,7 +83,7 @@ impl<N: Network> Block<N> {
         ratifications: Vec<Ratify<N>>,
         solutions: Option<CoinbaseSolution<N>>,
         transactions: Transactions<N>,
-        aborted_transactions: Vec<N::TransactionID>,
+        aborted_transaction_ids: Vec<N::TransactionID>,
         rng: &mut R,
     ) -> Result<Self> {
         // Compute the block hash.
@@ -91,11 +91,11 @@ impl<N: Network> Block<N> {
         // Construct the beacon authority.
         let authority = Authority::new_beacon(private_key, block_hash, rng)?;
         // Construct the block.
-        Self::from(previous_hash, header, authority, ratifications, solutions, transactions, aborted_transactions)
+        Self::from(previous_hash, header, authority, ratifications, solutions, transactions, aborted_transaction_ids)
     }
 
     /// Initializes a new quorum block from the given previous block hash, block header,
-    /// subdag, ratifications, solutions, transactions, and aborted transactions.
+    /// subdag, ratifications, solutions, transactions, and aborted transaction IDs.
     pub fn new_quorum(
         previous_hash: N::BlockHash,
         header: Header<N>,
@@ -103,16 +103,16 @@ impl<N: Network> Block<N> {
         ratifications: Vec<Ratify<N>>,
         solutions: Option<CoinbaseSolution<N>>,
         transactions: Transactions<N>,
-        aborted_transactions: Vec<N::TransactionID>,
+        aborted_transaction_ids: Vec<N::TransactionID>,
     ) -> Result<Self> {
         // Construct the beacon authority.
         let authority = Authority::new_quorum(subdag);
         // Construct the block.
-        Self::from(previous_hash, header, authority, ratifications, solutions, transactions, aborted_transactions)
+        Self::from(previous_hash, header, authority, ratifications, solutions, transactions, aborted_transaction_ids)
     }
 
     /// Initializes a new block from the given previous block hash, block header,
-    /// authority, ratifications, solutions, transactions, and aborted transactions.
+    /// authority, ratifications, solutions, transactions, and aborted transaction IDs.
     pub fn from(
         previous_hash: N::BlockHash,
         header: Header<N>,
@@ -120,13 +120,13 @@ impl<N: Network> Block<N> {
         ratifications: Vec<Ratify<N>>,
         solutions: Option<CoinbaseSolution<N>>,
         transactions: Transactions<N>,
-        aborted_transactions: Vec<N::TransactionID>,
+        aborted_transaction_ids: Vec<N::TransactionID>,
     ) -> Result<Self> {
         // Ensure the block contains transactions.
         ensure!(!transactions.is_empty(), "Cannot create a block with zero transactions");
 
         // Ensure the number of transactions is within the allowed range.
-        if transactions.len() + aborted_transactions.len() > Transactions::<N>::MAX_TRANSACTIONS {
+        if transactions.len() + aborted_transaction_ids.len() > Transactions::<N>::MAX_TRANSACTIONS {
             bail!("Cannot initialize a block with {} transactions (w/ aborted)", Transactions::<N>::MAX_TRANSACTIONS);
         }
 
@@ -143,7 +143,7 @@ impl<N: Network> Block<N> {
             }
             Authority::Quorum(subdag) => {
                 // Ensure the transmission IDs from the subdag correspond to the block.
-                Self::check_subdag_transmissions(subdag, &solutions, &transactions, &aborted_transactions)?;
+                Self::check_subdag_transmissions(subdag, &solutions, &transactions, &aborted_transaction_ids)?;
             }
         }
 
@@ -174,12 +174,12 @@ impl<N: Network> Block<N> {
             transactions,
             ratifications,
             solutions,
-            aborted_transactions,
+            aborted_transaction_ids,
         )
     }
 
     /// Initializes a new block from the given block hash, previous block hash, block header,
-    /// authority, ratifications, solutions, transactions, and aborted transactions.
+    /// authority, ratifications, solutions, transactions, and aborted transaction IDs.
     pub fn from_unchecked(
         block_hash: N::BlockHash,
         previous_hash: N::BlockHash,
@@ -188,7 +188,7 @@ impl<N: Network> Block<N> {
         transactions: Transactions<N>,
         ratifications: Vec<Ratify<N>>,
         solutions: Option<CoinbaseSolution<N>>,
-        aborted_transactions: Vec<N::TransactionID>,
+        aborted_transaction_ids: Vec<N::TransactionID>,
     ) -> Result<Self> {
         // Return the block.
         Ok(Self {
@@ -199,7 +199,7 @@ impl<N: Network> Block<N> {
             transactions,
             ratifications,
             solutions,
-            aborted_transactions,
+            aborted_transaction_ids,
         })
     }
 }
@@ -235,9 +235,9 @@ impl<N: Network> Block<N> {
         &self.transactions
     }
 
-    /// Returns the aborted transactions in this block.
-    pub const fn aborted_transactions(&self) -> &Vec<N::TransactionID> {
-        &self.aborted_transactions
+    /// Returns the aborted transaction IDs in this block.
+    pub const fn aborted_transaction_ids(&self) -> &Vec<N::TransactionID> {
+        &self.aborted_transaction_ids
     }
 }
 

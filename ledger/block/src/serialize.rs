@@ -31,7 +31,7 @@ impl<N: Network> Serialize for Block<N> {
                 }
 
                 block.serialize_field("transactions", &self.transactions)?;
-                block.serialize_field("aborted_transactions", &self.aborted_transactions)?;
+                block.serialize_field("aborted_transaction_ids", &self.aborted_transaction_ids)?;
                 block.end()
             }
             false => ToBytesSerializer::serialize_with_size_encoding(self, serializer),
@@ -58,7 +58,7 @@ impl<'de, N: Network> Deserialize<'de> for Block<N> {
                     DeserializeExt::take_from_value::<D>(&mut block, "ratifications")?,
                     serde_json::from_value(solutions).map_err(de::Error::custom)?,
                     DeserializeExt::take_from_value::<D>(&mut block, "transactions")?,
-                    DeserializeExt::take_from_value::<D>(&mut block, "aborted_transactions")?,
+                    DeserializeExt::take_from_value::<D>(&mut block, "aborted_transaction_ids")?,
                 )
                 .map_err(de::Error::custom)?;
 

@@ -29,7 +29,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         // Currently, we do not support ratifications from the memory pool.
         ensure!(ratifications.is_empty(), "Ratifications are currently unsupported from the memory pool");
         // Construct the block template.
-        let (header, ratifications, solutions, transactions, aborted_transactions) =
+        let (header, ratifications, solutions, transactions, aborted_transaction_ids) =
             self.construct_block_template(&previous_block, Some(&subdag), ratifications, solutions, transactions)?;
 
         // Construct the new quorum block.
@@ -40,7 +40,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             ratifications,
             solutions,
             transactions,
-            aborted_transactions,
+            aborted_transaction_ids,
         )
     }
 
@@ -60,7 +60,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         let previous_block = self.latest_block();
 
         // Construct the block template.
-        let (header, ratifications, solutions, transactions, aborted_transactions) = self.construct_block_template(
+        let (header, ratifications, solutions, transactions, aborted_transaction_ids) = self.construct_block_template(
             &previous_block,
             None,
             candidate_ratifications,
@@ -76,7 +76,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             ratifications,
             solutions,
             transactions,
-            aborted_transactions,
+            aborted_transaction_ids,
             rng,
         )
     }
@@ -234,7 +234,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             previous_block.hash(),
         )?;
         // Select the transactions from the memory pool.
-        let (transactions, aborted_transactions, ratified_finalize_operations) =
+        let (transactions, aborted_transaction_ids, ratified_finalize_operations) =
             self.vm.speculate(state, &ratifications, solutions.as_ref(), candidate_transactions.iter())?;
 
         // Construct the metadata.
@@ -263,6 +263,6 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         )?;
 
         // Return the block template.
-        Ok((header, ratifications, solutions, transactions, aborted_transactions))
+        Ok((header, ratifications, solutions, transactions, aborted_transaction_ids))
     }
 }

@@ -55,8 +55,8 @@ pub struct BlockDB<N: Network> {
     puzzle_commitments_map: DataMap<PuzzleCommitment<N>, u32>,
     /// The transactions map.
     transactions_map: DataMap<N::BlockHash, Vec<N::TransactionID>>,
-    /// The aborted transactions map.
-    aborted_transactions_map: DataMap<N::BlockHash, Vec<N::TransactionID>>,
+    /// The aborted transaction IDs map.
+    aborted_transaction_ids_map: DataMap<N::BlockHash, Vec<N::TransactionID>>,
     /// The confirmed transactions map.
     confirmed_transactions_map: DataMap<N::TransactionID, (N::BlockHash, ConfirmedTxType, Vec<u8>)>,
     /// The transaction store.
@@ -76,7 +76,7 @@ impl<N: Network> BlockStorage<N> for BlockDB<N> {
     type SolutionsMap = DataMap<N::BlockHash, Option<CoinbaseSolution<N>>>;
     type PuzzleCommitmentsMap = DataMap<PuzzleCommitment<N>, u32>;
     type TransactionsMap = DataMap<N::BlockHash, Vec<N::TransactionID>>;
-    type AbortedTransactionsMap = DataMap<N::BlockHash, Vec<N::TransactionID>>;
+    type AbortedTransactionIDsMap = DataMap<N::BlockHash, Vec<N::TransactionID>>;
     type ConfirmedTransactionsMap = DataMap<N::TransactionID, (N::BlockHash, ConfirmedTxType, Vec<u8>)>;
     type TransactionStorage = TransactionDB<N>;
     type TransitionStorage = TransitionDB<N>;
@@ -100,7 +100,7 @@ impl<N: Network> BlockStorage<N> for BlockDB<N> {
             solutions_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::Solutions))?,
             puzzle_commitments_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::PuzzleCommitments))?,
             transactions_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::Transactions))?,
-            aborted_transactions_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::AbortedTransactions))?,
+            aborted_transaction_ids_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::AbortedTransactionIDs))?,
             confirmed_transactions_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::ConfirmedTransactions))?,
             transaction_store,
         })
@@ -161,9 +161,9 @@ impl<N: Network> BlockStorage<N> for BlockDB<N> {
         &self.transactions_map
     }
 
-    /// Returns the aborted transactions map.
-    fn aborted_transactions_map(&self) -> &Self::AbortedTransactionsMap {
-        &self.aborted_transactions_map
+    /// Returns the aborted transaction IDs map.
+    fn aborted_transaction_ids_map(&self) -> &Self::AbortedTransactionIDsMap {
+        &self.aborted_transaction_ids_map
     }
 
     /// Returns the confirmed transactions map.

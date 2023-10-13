@@ -86,7 +86,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             .collect::<Result<Vec<_>>>()?;
 
         // Speculate over the unconfirmed transactions.
-        let (confirmed_transactions, aborted_transactions, ratified_finalize_operations) =
+        let (confirmed_transactions, aborted_transaction_ids, ratified_finalize_operations) =
             self.vm.speculate(state, block.ratifications(), block.solutions(), unconfirmed_transactions.iter())?;
 
         // Ensure the transactions after speculation match.
@@ -102,7 +102,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             self.coinbase_puzzle(),
             &self.latest_epoch_challenge()?,
             OffsetDateTime::now_utc().unix_timestamp(),
-            aborted_transactions,
+            aborted_transaction_ids,
             ratified_finalize_operations,
         )?;
 

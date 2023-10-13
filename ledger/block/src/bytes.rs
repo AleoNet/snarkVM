@@ -54,22 +54,29 @@ impl<N: Network> FromBytes for Block<N> {
         // Read the transactions.
         let transactions = FromBytes::read_le(&mut reader)?;
 
-        // Read the number of aborted transactions.
+        // Read the number of aborted transaction IDs.
         let num_aborted = u32::read_le(&mut reader)?;
-        // Ensure the number of aborted transactions is within bounds (this is an early safety check).
+        // Ensure the number of aborted transaction IDs is within bounds (this is an early safety check).
         if num_aborted as usize > Transactions::<N>::MAX_TRANSACTIONS {
-            return Err(error("Invalid number of aborted transactions in the block"));
+            return Err(error("Invalid number of aborted transaction IDs in the block"));
         }
-        // Read the aborted transactions.
-        let mut aborted_transactions = Vec::with_capacity(num_aborted as usize);
+        // Read the aborted transaction IDs.
+        let mut aborted_transaction_ids = Vec::with_capacity(num_aborted as usize);
         for _ in 0..num_aborted {
-            aborted_transactions.push(FromBytes::read_le(&mut reader)?);
+            aborted_transaction_ids.push(FromBytes::read_le(&mut reader)?);
         }
 
         // Construct the block.
-        let block =
-            Self::from(previous_hash, header, authority, ratifications, solutions, transactions, aborted_transactions)
-                .map_err(error)?;
+        let block = Self::from(
+            previous_hash,
+            header,
+            authority,
+            ratifications,
+            solutions,
+            transactions,
+            aborted_transaction_ids,
+        )
+        .map_err(error)?;
 
         // Ensure the block hash matches.
         match block_hash == block.hash() {
@@ -112,9 +119,9 @@ impl<N: Network> ToBytes for Block<N> {
         // Write the transactions.
         self.transactions.write_le(&mut writer)?;
 
-        // Write the ratifications.
-        (u32::try_from(self.aborted_transactions.len()).map_err(error))?.write_le(&mut writer)?;
-        self.aborted_transactions.write_le(&mut writer)
+        // Write the aborted transaction IDs.
+        (u32::try_from(self.aborted_transaction_ids.len()).map_err(error))?.write_le(&mut writer)?;
+        self.aborted_transaction_ids.write_le(&mut writer)
     }
 }
 

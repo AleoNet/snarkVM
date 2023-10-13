@@ -67,7 +67,7 @@ pub enum BlockMap {
     Solutions = DataID::BlockSolutionsMap as u16,
     PuzzleCommitments = DataID::BlockPuzzleCommitmentsMap as u16,
     Transactions = DataID::BlockTransactionsMap as u16,
-    AbortedTransactions = DataID::BlockAbortedTransactionsMap as u16,
+    AbortedTransactionIDs = DataID::BlockAbortedTransactionIDsMap as u16,
     ConfirmedTransactions = DataID::BlockConfirmedTransactionsMap as u16,
 }
 
@@ -215,7 +215,7 @@ enum DataID {
     BlockSolutionsMap,
     BlockPuzzleCommitmentsMap,
     BlockTransactionsMap,
-    BlockAbortedTransactionsMap,
+    BlockAbortedTransactionIDsMap,
     BlockConfirmedTransactionsMap,
     // Committee
     CurrentRoundMap,

@@ -36,6 +36,8 @@ impl<N: Network> Block<N> {
             && self.transactions.num_rejected() == 0
             // Ensure there is the correct number of finalize operations in the genesis block.
             && self.transactions.num_finalize() == 2 * Self::NUM_GENESIS_TRANSACTIONS
+            // Ensure there are no aborted transaction IDs in the genesis block.
+            && self.aborted_transaction_ids.is_empty()
     }
 }
 

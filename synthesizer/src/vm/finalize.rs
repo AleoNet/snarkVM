@@ -17,7 +17,7 @@ use super::*;
 impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// Speculates on the given list of transactions in the VM.
     ///
-    /// Returns the confirmed transactions, aborted transactions,
+    /// Returns the confirmed transactions, aborted transaction IDs,
     /// and finalize operations from pre-ratify and post-ratify.
     #[inline]
     pub fn speculate<'a>(
@@ -30,11 +30,11 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         let timer = timer!("VM::speculate");
 
         // Performs a **dry-run** over the list of ratifications, solutions, and transactions.
-        let (confirmed_transactions, aborted_transactions, ratified_finalize_operations) =
+        let (confirmed_transactions, aborted_transaction_ids, ratified_finalize_operations) =
             self.atomic_speculate(state, ratifications, solutions, transactions)?;
 
         // Convert the aborted transactions into aborted transaction IDs.
-        let aborted_transactions = aborted_transactions
+        let aborted_transaction_ids = aborted_transaction_ids
             .into_iter()
             .map(|(tx, error)| {
                 warn!("Aborted a transaction (after speculation) - {error} ({})", tx.id());
@@ -45,7 +45,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         finish!(timer, "Finished dry-run of the transactions");
 
         // Return the transactions.
-        Ok((confirmed_transactions.into_iter().collect(), aborted_transactions, ratified_finalize_operations))
+        Ok((confirmed_transactions.into_iter().collect(), aborted_transaction_ids, ratified_finalize_operations))
     }
 
     /// Finalizes the given transactions into the VM.
@@ -785,9 +785,9 @@ finalize transfer_public:
         rng: &mut R,
     ) -> Result<Block<CurrentNetwork>> {
         // Speculate on the transactions.
-        let (transactions, aborted_transactions, ratified_finalize_operations) =
+        let (transactions, aborted_transaction_ids, ratified_finalize_operations) =
             vm.speculate(sample_finalize_state(1), &[], None, transactions.iter())?;
-        assert!(aborted_transactions.is_empty());
+        assert!(aborted_transaction_ids.is_empty());
 
         // Construct the metadata associated with the block.
         let metadata = Metadata::new(
@@ -821,7 +821,7 @@ finalize transfer_public:
             vec![],
             None,
             transactions,
-            aborted_transactions,
+            aborted_transaction_ids,
             rng,
         )?;
 
@@ -970,10 +970,10 @@ finalize transfer_public:
         let program_id = ProgramID::from_str("testing.aleo").unwrap();
 
         // Prepare the confirmed transactions.
-        let (confirmed_transactions, aborted_transactions, _) =
+        let (confirmed_transactions, aborted_transaction_ids, _) =
             vm.speculate(sample_finalize_state(1), &[], None, [deployment_transaction.clone()].iter()).unwrap();
         assert_eq!(confirmed_transactions.len(), 1);
-        assert!(aborted_transactions.is_empty());
+        assert!(aborted_transaction_ids.is_empty());
 
         // Ensure the VM does not contain this program.
         assert!(!vm.contains_program(&program_id));
@@ -991,11 +991,11 @@ finalize transfer_public:
         assert!(vm.contains_program(&program_id));
 
         // Ensure the dry run of the redeployment will cause a reject transaction to be created.
-        let (candidate_transactions, aborted_transactions, _) =
+        let (candidate_transactions, aborted_transaction_ids, _) =
             vm.atomic_speculate(sample_finalize_state(1), &[], None, [deployment_transaction].iter()).unwrap();
         assert_eq!(candidate_transactions.len(), 1);
         assert!(matches!(candidate_transactions[0], ConfirmedTransaction::RejectedDeploy(..)));
-        assert!(aborted_transactions.is_empty());
+        assert!(aborted_transaction_ids.is_empty());
 
         // Check that the unconfirmed transaction id of the rejected deployment is correct.
         assert_eq!(candidate_transactions[0].to_unconfirmed_transaction_id().unwrap(), deployment_transaction_id);
@@ -1093,13 +1093,13 @@ finalize transfer_public:
         // Transfer_20 -> Balance = 20 - 20 = 0
         {
             let transactions = [mint_10.clone(), transfer_10.clone(), transfer_20.clone()];
-            let (confirmed_transactions, aborted_transactions, _) =
+            let (confirmed_transactions, aborted_transaction_ids, _) =
                 vm.atomic_speculate(sample_finalize_state(1), &[], None, transactions.iter()).unwrap();
 
             // Assert that all the transactions are accepted.
             assert_eq!(confirmed_transactions.len(), 3);
             confirmed_transactions.iter().for_each(|confirmed_tx| assert!(confirmed_tx.is_accepted()));
-            assert!(aborted_transactions.is_empty());
+            assert!(aborted_transaction_ids.is_empty());
 
             assert_eq!(confirmed_transactions[0].transaction(), &mint_10);
             assert_eq!(confirmed_transactions[1].transaction(), &transfer_10);
@@ -1113,13 +1113,13 @@ finalize transfer_public:
         // Transfer_30 -> Balance = 30 - 30 = 0
         {
             let transactions = [transfer_20.clone(), mint_10.clone(), mint_20.clone(), transfer_30.clone()];
-            let (confirmed_transactions, aborted_transactions, _) =
+            let (confirmed_transactions, aborted_transaction_ids, _) =
                 vm.atomic_speculate(sample_finalize_state(1), &[], None, transactions.iter()).unwrap();
 
             // Assert that all the transactions are accepted.
             assert_eq!(confirmed_transactions.len(), 4);
             confirmed_transactions.iter().for_each(|confirmed_tx| assert!(confirmed_tx.is_accepted()));
-            assert!(aborted_transactions.is_empty());
+            assert!(aborted_transaction_ids.is_empty());
 
             // Ensure that the transactions are in the correct order.
             assert_eq!(confirmed_transactions[0].transaction(), &transfer_20);
@@ -1133,12 +1133,12 @@ finalize transfer_public:
         // Transfer_10 -> Balance = 0 - 10 = -10 (should be rejected)
         {
             let transactions = [transfer_20.clone(), transfer_10.clone()];
-            let (confirmed_transactions, aborted_transactions, _) =
+            let (confirmed_transactions, aborted_transaction_ids, _) =
                 vm.atomic_speculate(sample_finalize_state(1), &[], None, transactions.iter()).unwrap();
 
             // Assert that the accepted and rejected transactions are correct.
             assert_eq!(confirmed_transactions.len(), 2);
-            assert!(aborted_transactions.is_empty());
+            assert!(aborted_transaction_ids.is_empty());
 
             assert!(confirmed_transactions[0].is_accepted());
             assert!(confirmed_transactions[1].is_rejected());
@@ -1157,12 +1157,12 @@ finalize transfer_public:
         // Transfer_10 -> Balance = 10 - 10 = 0
         {
             let transactions = [mint_20.clone(), transfer_30.clone(), transfer_20.clone(), transfer_10.clone()];
-            let (confirmed_transactions, aborted_transactions, _) =
+            let (confirmed_transactions, aborted_transaction_ids, _) =
                 vm.atomic_speculate(sample_finalize_state(1), &[], None, transactions.iter()).unwrap();
 
             // Assert that the accepted and rejected transactions are correct.
             assert_eq!(confirmed_transactions.len(), 4);
-            assert!(aborted_transactions.is_empty());
+            assert!(aborted_transaction_ids.is_empty());
 
             assert!(confirmed_transactions[0].is_accepted());
             assert!(confirmed_transactions[1].is_accepted());
@@ -1256,9 +1256,9 @@ function ped_hash:
                 create_execution(&vm, caller_private_key, program_id, "ped_hash", inputs, &mut unspent_records, rng);
 
             // Speculatively execute the transaction. Ensure that this call does not panic and returns a rejected transaction.
-            let (confirmed_transactions, aborted_transactions, _) =
+            let (confirmed_transactions, aborted_transaction_ids, _) =
                 vm.speculate(sample_finalize_state(1), &[], None, [transaction.clone()].iter()).unwrap();
-            assert!(aborted_transactions.is_empty());
+            assert!(aborted_transaction_ids.is_empty());
 
             // Ensure that the transaction is rejected.
             assert_eq!(confirmed_transactions.len(), 1);
