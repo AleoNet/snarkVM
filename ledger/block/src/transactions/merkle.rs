@@ -20,6 +20,7 @@ impl<N: Network> Transactions<N> {
         // Prepare the leaves.
         let leaves = self.finalize_operations().chain(&ratified_finalize_operations).map(ToBits::to_bits_le);
         // Compute the finalize tree.
+        // Note: This call will check the number of finalize operations is within the size of the Merkle tree.
         let tree = N::merkle_tree_bhp::<FINALIZE_OPERATIONS_DEPTH>(&leaves.collect::<Vec<_>>())?;
         // Return the finalize root.
         Ok(*tree.root())
