@@ -44,7 +44,7 @@ impl<N: Network> ToBytes for Ratifications<N> {
         // Write the version.
         1u8.write_le(&mut writer)?;
         // Write the number of ratifications.
-        u32::try_from(self.ratifications.len()).map_err(|e| error(e.to_string()))?.write_le(&mut writer)?;
+        u32::try_from(self.ratifications.len()).map_err(error)?.write_le(&mut writer)?;
         // Write the ratifications.
         self.ratifications.values().try_for_each(|ratification| ratification.write_le(&mut writer))
     }

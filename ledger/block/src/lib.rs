@@ -67,7 +67,7 @@ pub struct Block<N: Network> {
     /// The authority for this block.
     authority: Authority<N>,
     /// The ratifications in this block.
-    ratifications: Vec<Ratify<N>>,
+    ratifications: Ratifications<N>,
     /// The solutions in the block.
     solutions: Option<CoinbaseSolution<N>>,
     /// The transactions in this block.
@@ -83,7 +83,7 @@ impl<N: Network> Block<N> {
         private_key: &PrivateKey<N>,
         previous_hash: N::BlockHash,
         header: Header<N>,
-        ratifications: Vec<Ratify<N>>,
+        ratifications: Ratifications<N>,
         solutions: Option<CoinbaseSolution<N>>,
         transactions: Transactions<N>,
         aborted_transaction_ids: Vec<N::TransactionID>,
@@ -103,7 +103,7 @@ impl<N: Network> Block<N> {
         previous_hash: N::BlockHash,
         header: Header<N>,
         subdag: Subdag<N>,
-        ratifications: Vec<Ratify<N>>,
+        ratifications: Ratifications<N>,
         solutions: Option<CoinbaseSolution<N>>,
         transactions: Transactions<N>,
         aborted_transaction_ids: Vec<N::TransactionID>,
@@ -120,7 +120,7 @@ impl<N: Network> Block<N> {
         previous_hash: N::BlockHash,
         header: Header<N>,
         authority: Authority<N>,
-        ratifications: Vec<Ratify<N>>,
+        ratifications: Ratifications<N>,
         solutions: Option<CoinbaseSolution<N>>,
         transactions: Transactions<N>,
         aborted_transaction_ids: Vec<N::TransactionID>,
@@ -189,7 +189,7 @@ impl<N: Network> Block<N> {
         header: Header<N>,
         authority: Authority<N>,
         transactions: Transactions<N>,
-        ratifications: Vec<Ratify<N>>,
+        ratifications: Ratifications<N>,
         solutions: Option<CoinbaseSolution<N>>,
         aborted_transaction_ids: Vec<N::TransactionID>,
     ) -> Result<Self> {
@@ -224,7 +224,7 @@ impl<N: Network> Block<N> {
     }
 
     /// Returns the ratifications in this block.
-    pub const fn ratifications(&self) -> &Vec<Ratify<N>> {
+    pub const fn ratifications(&self) -> &Ratifications<N> {
         &self.ratifications
     }
 
@@ -627,14 +627,18 @@ pub mod test_helpers {
         // Prepare the transactions.
         let transactions = Transactions::from_iter([confirmed].into_iter());
 
+        // Construct the ratifications.
+        let ratifications = Ratifications::try_from(vec![]).unwrap();
+
         // Prepare the block header.
-        let header = Header::genesis(&transactions, vec![]).unwrap();
+        let header = Header::genesis(&ratifications, &transactions, vec![]).unwrap();
         // Prepare the previous block hash.
         let previous_hash = <CurrentNetwork as Network>::BlockHash::default();
 
         // Construct the block.
         let block =
-            Block::new_beacon(&private_key, previous_hash, header, vec![], None, transactions, vec![], rng).unwrap();
+            Block::new_beacon(&private_key, previous_hash, header, ratifications, None, transactions, vec![], rng)
+                .unwrap();
         assert!(block.header().is_genesis(), "Failed to initialize a genesis block");
         // Return the block, transaction, and private key.
         (block, transaction, private_key)

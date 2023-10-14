@@ -28,7 +28,16 @@ use console::{
     types::Field,
 };
 use ledger_authority::Authority;
-use ledger_block::{Block, ConfirmedTransaction, Header, NumFinalizeSize, Ratify, Rejected, Transaction, Transactions};
+use ledger_block::{
+    Block,
+    ConfirmedTransaction,
+    Header,
+    NumFinalizeSize,
+    Ratifications,
+    Rejected,
+    Transaction,
+    Transactions,
+};
 use ledger_coinbase::{CoinbaseSolution, ProverSolution, PuzzleCommitment};
 use ledger_narwhal_batch_certificate::BatchCertificate;
 use synthesizer_program::Program;
@@ -174,7 +183,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
     /// The mapping of `certificate ID` to (`block height`, `round height`).
     type CertificateMap: for<'a> Map<'a, Field<N>, (u32, u64)>;
     /// The mapping of `block hash` to `block ratifications`.
-    type RatificationsMap: for<'a> Map<'a, N::BlockHash, Vec<Ratify<N>>>;
+    type RatificationsMap: for<'a> Map<'a, N::BlockHash, Ratifications<N>>;
     /// The mapping of `block hash` to `block solutions`.
     type SolutionsMap: for<'a> Map<'a, N::BlockHash, Option<CoinbaseSolution<N>>>;
     /// The mapping of `puzzle commitment` to `block height`.
@@ -714,7 +723,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
     }
 
     /// Returns the block ratifications for the given `block hash`.
-    fn get_block_ratifications(&self, block_hash: &N::BlockHash) -> Result<Option<Vec<Ratify<N>>>> {
+    fn get_block_ratifications(&self, block_hash: &N::BlockHash) -> Result<Option<Ratifications<N>>> {
         match self.ratifications_map().get_confirmed(block_hash)? {
             Some(ratifications) => Ok(Some(cow_to_cloned!(ratifications))),
             None => Ok(None),
@@ -1065,7 +1074,7 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
     }
 
     /// Returns the block ratifications for the given `block hash`.
-    pub fn get_block_ratifications(&self, block_hash: &N::BlockHash) -> Result<Option<Vec<Ratify<N>>>> {
+    pub fn get_block_ratifications(&self, block_hash: &N::BlockHash) -> Result<Option<Ratifications<N>>> {
         self.storage.get_block_ratifications(block_hash)
     }
 

@@ -35,6 +35,7 @@ use ledger_block::{
     Execution,
     Fee,
     Header,
+    Ratifications,
     Ratify,
     Rejected,
     Transaction,
@@ -240,8 +241,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
         // Construct the finalize state.
         let state = FinalizeGlobalState::new_genesis::<N>()?;
-        // Speculate the transactions.
-        let (transactions, aborted_transaction_ids, ratified_finalize_operations) =
+        // Speculate on the ratifications, solutions, and transactions.
+        let (ratifications, transactions, aborted_transaction_ids, ratified_finalize_operations) =
             self.speculate(state, &ratifications, solutions.as_ref(), transactions.iter())?;
         ensure!(
             aborted_transaction_ids.is_empty(),
@@ -249,7 +250,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         );
 
         // Prepare the block header.
-        let header = Header::genesis(&transactions, ratified_finalize_operations)?;
+        let header = Header::genesis(&ratifications, &transactions, ratified_finalize_operations)?;
         // Prepare the previous block hash.
         let previous_hash = N::BlockHash::default();
 
@@ -307,7 +308,7 @@ pub(crate) mod test_helpers {
     use console::{
         account::{Address, ViewKey},
         network::Testnet3,
-        program::{Value, RATIFICATIONS_DEPTH},
+        program::Value,
         types::Field,
     };
     use ledger_block::{Block, Header, Metadata, Transition};
@@ -323,10 +324,6 @@ pub(crate) mod test_helpers {
     /// Samples a new finalize state.
     pub(crate) fn sample_finalize_state(block_height: u32) -> FinalizeGlobalState {
         FinalizeGlobalState::from(block_height as u64, block_height, [0u8; 32])
-    }
-
-    pub(crate) fn sample_ratifications_root() -> Field<CurrentNetwork> {
-        *<CurrentNetwork as Network>::merkle_tree_bhp::<RATIFICATIONS_DEPTH>(&[]).unwrap().root()
     }
 
     pub(crate) fn sample_vm() -> VM<CurrentNetwork, ConsensusMemory<CurrentNetwork>> {
@@ -592,7 +589,7 @@ function compute:
         let previous_block = vm.block_store().get_block(&block_hash).unwrap().unwrap();
 
         // Construct the new block header.
-        let (transactions, aborted_transaction_ids, ratified_finalize_operations) =
+        let (ratifications, transactions, aborted_transaction_ids, ratified_finalize_operations) =
             vm.speculate(sample_finalize_state(1), &[], None, transactions.iter())?;
         assert!(aborted_transaction_ids.is_empty());
 
@@ -614,7 +611,7 @@ function compute:
             vm.block_store().current_state_root(),
             transactions.to_transactions_root().unwrap(),
             transactions.to_finalize_root(ratified_finalize_operations).unwrap(),
-            crate::vm::test_helpers::sample_ratifications_root(),
+            ratifications.to_ratifications_root().unwrap(),
             Field::zero(),
             Field::zero(),
             metadata,
@@ -625,7 +622,7 @@ function compute:
             private_key,
             previous_block.hash(),
             header,
-            vec![],
+            ratifications,
             None,
             transactions,
             aborted_transaction_ids,

@@ -17,10 +17,19 @@ mod utilities;
 use console::{
     account::{PrivateKey, ViewKey},
     network::prelude::*,
-    program::{Entry, Identifier, Literal, Plaintext, ProgramID, Record, Value, RATIFICATIONS_DEPTH, U64},
+    program::{Entry, Identifier, Literal, Plaintext, ProgramID, Record, Value, U64},
     types::{Boolean, Field},
 };
-use ledger_block::{Block, ConfirmedTransaction, Header, Metadata, Transaction, Transactions, Transition};
+use ledger_block::{
+    Block,
+    ConfirmedTransaction,
+    Header,
+    Metadata,
+    Ratifications,
+    Transaction,
+    Transactions,
+    Transition,
+};
 use ledger_store::{helpers::memory::ConsensusMemory, ConsensusStorage, ConsensusStore};
 use snarkvm_synthesizer::{program::FinalizeOperation, VM};
 use synthesizer_program::FinalizeGlobalState;
@@ -89,13 +98,14 @@ fn run_test(test: &ProgramTest) -> serde_yaml::Mapping {
                 }
             };
 
-        let (transactions, aborted_transaction_ids, ratified_finalize_operations) =
+        let (ratifications, transactions, aborted_transaction_ids, ratified_finalize_operations) =
             vm.speculate(construct_finalize_global_state(&vm), &[], None, [transaction].iter()).unwrap();
         assert!(aborted_transaction_ids.is_empty());
 
         let block = construct_next_block(
             &vm,
             &genesis_private_key,
+            ratifications,
             transactions,
             aborted_transaction_ids,
             ratified_finalize_operations,
@@ -232,41 +242,41 @@ fn run_test(test: &ProgramTest) -> serde_yaml::Mapping {
                 serde_yaml::Value::Mapping(child_outputs),
             );
 
-            // Speculate on the transaction.
-            let (transactions, aborted_transaction_ids, ratified_finalize_operations) =
-                match vm.speculate(construct_finalize_global_state(&vm), &[], None, [transaction].iter()) {
-                    Ok((transactions, aborted_transaction_ids, ratified_finalize_operations)) => {
-                        result.insert(
-                            serde_yaml::Value::String("speculate".to_string()),
-                            serde_yaml::Value::String(match transactions.iter().next().unwrap() {
-                                ConfirmedTransaction::AcceptedExecute(_, _, _) => {
-                                    "the execution was accepted".to_string()
-                                }
-                                ConfirmedTransaction::RejectedExecute(_, _, _, _) => {
-                                    "the execution was rejected".to_string()
-                                }
-                                ConfirmedTransaction::AcceptedDeploy(_, _, _)
-                                | ConfirmedTransaction::RejectedDeploy(_, _, _, _) => {
-                                    unreachable!("unexpected deployment transaction")
-                                }
-                            }),
-                        );
-                        (transactions, aborted_transaction_ids, ratified_finalize_operations)
-                    }
-                    Err(err) => {
-                        result.insert(
-                            serde_yaml::Value::String("speculate".to_string()),
-                            serde_yaml::Value::String(err.to_string()),
-                        );
-                        return (serde_yaml::Value::Mapping(result), serde_yaml::Value::Mapping(Default::default()));
-                    }
-                };
+            // Speculate on the ratifications, solutions, and transaction.
+            let (ratifications, transactions, aborted_transaction_ids, ratified_finalize_operations) = match vm
+                .speculate(construct_finalize_global_state(&vm), &[], None, [transaction].iter())
+            {
+                Ok((ratifications, transactions, aborted_transaction_ids, ratified_finalize_operations)) => {
+                    result.insert(
+                        serde_yaml::Value::String("speculate".to_string()),
+                        serde_yaml::Value::String(match transactions.iter().next().unwrap() {
+                            ConfirmedTransaction::AcceptedExecute(_, _, _) => "the execution was accepted".to_string(),
+                            ConfirmedTransaction::RejectedExecute(_, _, _, _) => {
+                                "the execution was rejected".to_string()
+                            }
+                            ConfirmedTransaction::AcceptedDeploy(_, _, _)
+                            | ConfirmedTransaction::RejectedDeploy(_, _, _, _) => {
+                                unreachable!("unexpected deployment transaction")
+                            }
+                        }),
+                    );
+                    (ratifications, transactions, aborted_transaction_ids, ratified_finalize_operations)
+                }
+                Err(err) => {
+                    result.insert(
+                        serde_yaml::Value::String("speculate".to_string()),
+                        serde_yaml::Value::String(err.to_string()),
+                    );
+                    return (serde_yaml::Value::Mapping(result), serde_yaml::Value::Mapping(Default::default()));
+                }
+            };
             assert!(aborted_transaction_ids.is_empty());
 
             // Construct the next block.
             let block = construct_next_block(
                 &vm,
                 &private_key,
+                ratifications,
                 transactions,
                 aborted_transaction_ids,
                 ratified_finalize_operations,
@@ -368,7 +378,7 @@ fn construct_fee_records<C: ConsensusStorage<CurrentNetwork>, R: Rng + CryptoRng
             }
         }
 
-        let (transactions, aborted_transaction_ids, ratified_finalize_operations) =
+        let (ratifications, transactions, aborted_transaction_ids, ratified_finalize_operations) =
             vm.speculate(construct_finalize_global_state(vm), &[], None, transactions.iter()).unwrap();
         assert!(aborted_transaction_ids.is_empty());
 
@@ -376,6 +386,7 @@ fn construct_fee_records<C: ConsensusStorage<CurrentNetwork>, R: Rng + CryptoRng
         let block = construct_next_block(
             vm,
             private_key,
+            ratifications,
             transactions,
             aborted_transaction_ids,
             ratified_finalize_operations,
@@ -394,6 +405,7 @@ fn construct_fee_records<C: ConsensusStorage<CurrentNetwork>, R: Rng + CryptoRng
 fn construct_next_block<C: ConsensusStorage<CurrentNetwork>, R: Rng + CryptoRng>(
     vm: &VM<CurrentNetwork, C>,
     private_key: &PrivateKey<CurrentNetwork>,
+    ratifications: Ratifications<CurrentNetwork>,
     transactions: Transactions<CurrentNetwork>,
     aborted_transaction_ids: Vec<<CurrentNetwork as Network>::TransactionID>,
     ratified_finalize_operations: Vec<FinalizeOperation<CurrentNetwork>>,
@@ -422,7 +434,7 @@ fn construct_next_block<C: ConsensusStorage<CurrentNetwork>, R: Rng + CryptoRng>
         vm.block_store().current_state_root(),
         transactions.to_transactions_root().unwrap(),
         transactions.to_finalize_root(ratified_finalize_operations).unwrap(),
-        *<CurrentNetwork as Network>::merkle_tree_bhp::<{ RATIFICATIONS_DEPTH }>(&[]).unwrap().root(),
+        ratifications.to_ratifications_root().unwrap(),
         Field::zero(),
         Field::zero(),
         metadata,
@@ -433,7 +445,7 @@ fn construct_next_block<C: ConsensusStorage<CurrentNetwork>, R: Rng + CryptoRng>
         private_key,
         previous_block.hash(),
         header,
-        vec![],
+        ratifications,
         None,
         transactions,
         aborted_transaction_ids,

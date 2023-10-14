@@ -22,10 +22,10 @@ mod serialize;
 mod string;
 mod verify;
 
-use crate::Transactions;
+use crate::{Ratifications, Transactions};
 use console::{
     network::prelude::*,
-    program::{HeaderLeaf, HeaderPath, HeaderTree, HEADER_DEPTH, RATIFICATIONS_DEPTH},
+    program::{HeaderLeaf, HeaderPath, HeaderTree, HEADER_DEPTH},
     types::Field,
 };
 use synthesizer_program::FinalizeOperation;

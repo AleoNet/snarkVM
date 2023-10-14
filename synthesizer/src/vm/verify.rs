@@ -432,7 +432,7 @@ mod tests {
         let deployment_transaction = vm.deploy(&caller_private_key, &program, Some(credits), 10, None, rng).unwrap();
 
         // Construct the new block header.
-        let (transactions, aborted_transaction_ids, ratified_finalize_operations) =
+        let (ratifications, transactions, aborted_transaction_ids, ratified_finalize_operations) =
             vm.speculate(sample_finalize_state(1), &[], None, [deployment_transaction].iter()).unwrap();
         assert!(aborted_transaction_ids.is_empty());
 
@@ -455,7 +455,7 @@ mod tests {
             vm.block_store().current_state_root(),
             transactions.to_transactions_root().unwrap(),
             transactions.to_finalize_root(ratified_finalize_operations).unwrap(),
-            crate::vm::test_helpers::sample_ratifications_root(),
+            ratifications.to_ratifications_root().unwrap(),
             Field::zero(),
             Field::zero(),
             deployment_metadata,
@@ -467,7 +467,7 @@ mod tests {
             &caller_private_key,
             genesis.hash(),
             deployment_header,
-            vec![],
+            ratifications,
             None,
             transactions,
             aborted_transaction_ids,

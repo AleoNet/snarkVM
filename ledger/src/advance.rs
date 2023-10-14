@@ -117,7 +117,8 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         candidate_ratifications: Vec<Ratify<N>>,
         candidate_solutions: Vec<ProverSolution<N>>,
         candidate_transactions: Vec<Transaction<N>>,
-    ) -> Result<(Header<N>, Vec<Ratify<N>>, Option<CoinbaseSolution<N>>, Transactions<N>, Vec<N::TransactionID>)> {
+    ) -> Result<(Header<N>, Ratifications<N>, Option<CoinbaseSolution<N>>, Transactions<N>, Vec<N::TransactionID>)>
+    {
         // Construct the solutions.
         let (solutions, solutions_root, combined_proof_target) = match candidate_solutions.is_empty() {
             true => (None, Field::<N>::zero(), 0u128),
@@ -205,19 +206,10 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         //  We must ensure Ratify::Genesis is only present in the genesis block.
         // Construct the ratifications.
         // Attention: Do not change the order of the ratifications.
-        let mut ratifications = vec![Ratify::BlockReward(block_reward), Ratify::PuzzleReward(puzzle_reward)];
-        // Lastly, we must append the candidate ratifications.
-        ratifications.extend_from_slice(&candidate_ratifications);
-
-        // Compute the ratifications root.
-        let ratifications_root = *N::merkle_tree_bhp::<RATIFICATIONS_DEPTH>(
-            // TODO (howardwu): Formalize the Merklization of each Ratify enum.
-            &ratifications
-                .iter()
-                .map(|r| Ok::<_, Error>(r.to_bytes_le()?.to_bits_le()))
-                .collect::<Result<Vec<_>, _>>()?,
-        )?
-        .root();
+        let candidate_ratifications = [Ratify::BlockReward(block_reward), Ratify::PuzzleReward(puzzle_reward)]
+                .into_iter()
+                // Lastly, we must append the candidate ratifications.
+                .chain(candidate_ratifications.into_iter()).collect::<Vec<_>>();
 
         // Construct the subdag root.
         let subdag_root = match subdag {
@@ -233,9 +225,12 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             next_cumulative_proof_target,
             previous_block.hash(),
         )?;
-        // Select the transactions from the memory pool.
-        let (transactions, aborted_transaction_ids, ratified_finalize_operations) =
-            self.vm.speculate(state, &ratifications, solutions.as_ref(), candidate_transactions.iter())?;
+        // Speculate over the ratifications, solutions, and transactions.
+        let (ratifications, transactions, aborted_transaction_ids, ratified_finalize_operations) =
+            self.vm.speculate(state, &candidate_ratifications, solutions.as_ref(), candidate_transactions.iter())?;
+
+        // Compute the ratifications root.
+        let ratifications_root = ratifications.to_ratifications_root()?;
 
         // Construct the metadata.
         let metadata = Metadata::new(

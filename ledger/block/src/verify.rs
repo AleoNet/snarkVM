@@ -16,7 +16,6 @@
 #![allow(clippy::type_complexity)]
 
 use super::*;
-use console::program::RATIFICATIONS_DEPTH;
 use ledger_coinbase::{CoinbasePuzzle, EpochChallenge};
 use synthesizer_program::FinalizeOperation;
 
@@ -225,14 +224,17 @@ impl<N: Network> Block<N> {
         // Ensure there are sufficient ratifications.
         ensure!(!self.ratifications.len() >= 2, "Block {height} must contain at least 2 ratifications");
 
+        // Initialize a ratifications iterator.
+        let mut ratifications_iter = self.ratifications.iter();
+
         // Retrieve the block reward from the first block ratification.
-        let block_reward = match self.ratifications[0] {
-            Ratify::BlockReward(block_reward) => block_reward,
+        let block_reward = match ratifications_iter.next() {
+            Some(Ratify::BlockReward(block_reward)) => *block_reward,
             _ => bail!("Block {height} is invalid - the first ratification must be a block reward"),
         };
         // Retrieve the puzzle reward from the second block ratification.
-        let puzzle_reward = match self.ratifications[1] {
-            Ratify::PuzzleReward(puzzle_reward) => puzzle_reward,
+        let puzzle_reward = match ratifications_iter.next() {
+            Some(Ratify::PuzzleReward(puzzle_reward)) => *puzzle_reward,
             _ => bail!("Block {height} is invalid - the second ratification must be a puzzle reward"),
         };
 
@@ -466,11 +468,8 @@ impl<N: Network> Block<N> {
 
     /// Computes the ratifications root for the block.
     fn compute_ratifications_root(&self) -> Result<Field<N>> {
-        let leaves =
-            self.ratifications.iter().map(|r| Ok(r.to_bytes_le()?.to_bits_le())).collect::<Result<Vec<_>, Error>>()?;
-
-        match N::merkle_tree_bhp::<RATIFICATIONS_DEPTH>(&leaves) {
-            Ok(ratifications_tree) => Ok(*ratifications_tree.root()),
+        match self.ratifications.to_ratifications_root() {
+            Ok(ratifications_root) => Ok(ratifications_root),
             Err(error) => bail!("Failed to compute the ratifications root for block {} - {error}", self.height()),
         }
     }

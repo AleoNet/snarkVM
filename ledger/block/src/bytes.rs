@@ -36,12 +36,7 @@ impl<N: Network> FromBytes for Block<N> {
         let authority = FromBytes::read_le(&mut reader)?;
 
         // Read the number of ratifications.
-        let num_ratifications = u16::read_le(&mut reader)?;
-        // Read the ratifications.
-        let mut ratifications = Vec::with_capacity(num_ratifications as usize);
-        for _ in 0..num_ratifications {
-            ratifications.push(FromBytes::read_le(&mut reader)?);
-        }
+        let ratifications = Ratifications::read_le(&mut reader)?;
 
         // Read the solutions.
         let solutions_variant = u8::read_le(&mut reader)?;
@@ -104,7 +99,6 @@ impl<N: Network> ToBytes for Block<N> {
         self.authority.write_le(&mut writer)?;
 
         // Write the ratifications.
-        (u16::try_from(self.ratifications.len()).map_err(error))?.write_le(&mut writer)?;
         self.ratifications.write_le(&mut writer)?;
 
         // Write the solutions.

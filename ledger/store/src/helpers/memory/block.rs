@@ -21,7 +21,7 @@ use crate::{
 };
 use console::{prelude::*, types::Field};
 use ledger_authority::Authority;
-use ledger_block::{Header, Ratify};
+use ledger_block::{Header, Ratifications};
 use ledger_coinbase::{CoinbaseSolution, PuzzleCommitment};
 
 /// An in-memory block storage.
@@ -42,7 +42,7 @@ pub struct BlockMemory<N: Network> {
     /// The certificate map.
     certificate_map: MemoryMap<Field<N>, (u32, u64)>,
     /// The ratifications map.
-    ratifications_map: MemoryMap<N::BlockHash, Vec<Ratify<N>>>,
+    ratifications_map: MemoryMap<N::BlockHash, Ratifications<N>>,
     /// The solutions map.
     solutions_map: MemoryMap<N::BlockHash, Option<CoinbaseSolution<N>>>,
     /// The puzzle commitments map.
@@ -66,7 +66,7 @@ impl<N: Network> BlockStorage<N> for BlockMemory<N> {
     type HeaderMap = MemoryMap<N::BlockHash, Header<N>>;
     type AuthorityMap = MemoryMap<N::BlockHash, Authority<N>>;
     type CertificateMap = MemoryMap<Field<N>, (u32, u64)>;
-    type RatificationsMap = MemoryMap<N::BlockHash, Vec<Ratify<N>>>;
+    type RatificationsMap = MemoryMap<N::BlockHash, Ratifications<N>>;
     type SolutionsMap = MemoryMap<N::BlockHash, Option<CoinbaseSolution<N>>>;
     type PuzzleCommitmentsMap = MemoryMap<PuzzleCommitment<N>, u32>;
     type TransactionsMap = MemoryMap<N::BlockHash, Vec<N::TransactionID>>;

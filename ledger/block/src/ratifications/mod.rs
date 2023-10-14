@@ -36,7 +36,7 @@ pub struct Ratifications<N: Network> {
 
 impl<N: Network> Ratifications<N> {
     /// Initializes from an iterator of ratifications.
-    fn try_from_iter<T: IntoIterator<Item = Ratify<N>>>(iter: T) -> Result<Self> {
+    pub fn try_from_iter<T: IntoIterator<Item = Ratify<N>>>(iter: T) -> Result<Self> {
         Ok(Self {
             ratifications: iter
                 .into_iter()

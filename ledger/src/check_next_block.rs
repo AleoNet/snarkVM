@@ -78,6 +78,9 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             block.previous_hash(),
         )?;
 
+        // Reconstruct the candidate ratifications to verify the speculation.
+        let candidate_ratifications = block.ratifications().iter().cloned().collect::<Vec<_>>();
+
         // Reconstruct the unconfirmed transactions to verify the speculation.
         let unconfirmed_transactions = block
             .transactions()
@@ -86,9 +89,13 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             .collect::<Result<Vec<_>>>()?;
 
         // Speculate over the unconfirmed transactions.
-        let (confirmed_transactions, aborted_transaction_ids, ratified_finalize_operations) =
-            self.vm.speculate(state, block.ratifications(), block.solutions(), unconfirmed_transactions.iter())?;
+        let (ratifications, confirmed_transactions, aborted_transaction_ids, ratified_finalize_operations) =
+            self.vm.speculate(state, &candidate_ratifications, block.solutions(), unconfirmed_transactions.iter())?;
 
+        // Ensure the ratifications after speculation match.
+        if block.ratifications() != &ratifications {
+            bail!("The ratifications after speculation do not match the ratifications in the block");
+        }
         // Ensure the transactions after speculation match.
         if block.transactions() != &confirmed_transactions {
             bail!("The transactions after speculation do not match the transactions in the block");

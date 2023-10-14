@@ -44,7 +44,7 @@ impl<N: Network> ToBytes for Transactions<N> {
         // Write the version.
         1u8.write_le(&mut writer)?;
         // Write the number of transactions.
-        u32::try_from(self.transactions.len()).map_err(|e| error(e.to_string()))?.write_le(&mut writer)?;
+        u32::try_from(self.transactions.len()).map_err(error)?.write_le(&mut writer)?;
         // Write the transactions.
         self.transactions.values().try_for_each(|transaction| transaction.write_le(&mut writer))
     }

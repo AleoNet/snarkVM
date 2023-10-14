@@ -26,7 +26,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         ratifications: &[Ratify<N>],
         solutions: Option<&CoinbaseSolution<N>>,
         transactions: impl ExactSizeIterator<Item = &'a Transaction<N>>,
-    ) -> Result<(Transactions<N>, Vec<N::TransactionID>, Vec<FinalizeOperation<N>>)> {
+    ) -> Result<(Ratifications<N>, Transactions<N>, Vec<N::TransactionID>, Vec<FinalizeOperation<N>>)> {
         let timer = timer!("VM::speculate");
 
         // Performs a **dry-run** over the list of ratifications, solutions, and transactions.
@@ -45,7 +45,12 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         finish!(timer, "Finished dry-run of the transactions");
 
         // Return the transactions.
-        Ok((confirmed_transactions.into_iter().collect(), aborted_transaction_ids, ratified_finalize_operations))
+        Ok((
+            Ratifications::try_from(ratifications)?,
+            confirmed_transactions.into_iter().collect(),
+            aborted_transaction_ids,
+            ratified_finalize_operations,
+        ))
     }
 
     /// Finalizes the given transactions into the VM.
@@ -55,7 +60,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     pub fn finalize(
         &self,
         state: FinalizeGlobalState,
-        ratifications: &[Ratify<N>],
+        ratifications: &Ratifications<N>,
         solutions: Option<&CoinbaseSolution<N>>,
         transactions: &Transactions<N>,
     ) -> Result<Vec<FinalizeOperation<N>>> {
@@ -268,7 +273,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     fn atomic_finalize(
         &self,
         state: FinalizeGlobalState,
-        ratifications: &[Ratify<N>],
+        ratifications: &Ratifications<N>,
         solutions: Option<&CoinbaseSolution<N>>,
         transactions: &Transactions<N>,
     ) -> Result<Vec<FinalizeOperation<N>>> {
@@ -784,8 +789,8 @@ finalize transfer_public:
         unspent_records: &mut Vec<Record<CurrentNetwork, Ciphertext<CurrentNetwork>>>,
         rng: &mut R,
     ) -> Result<Block<CurrentNetwork>> {
-        // Speculate on the transactions.
-        let (transactions, aborted_transaction_ids, ratified_finalize_operations) =
+        // Speculate on the candidate ratifications, solutions, and transactions.
+        let (ratifications, transactions, aborted_transaction_ids, ratified_finalize_operations) =
             vm.speculate(sample_finalize_state(1), &[], None, transactions.iter())?;
         assert!(aborted_transaction_ids.is_empty());
 
@@ -808,7 +813,7 @@ finalize transfer_public:
             vm.block_store().current_state_root(),
             transactions.to_transactions_root().unwrap(),
             transactions.to_finalize_root(ratified_finalize_operations).unwrap(),
-            crate::vm::test_helpers::sample_ratifications_root(),
+            ratifications.to_ratifications_root().unwrap(),
             Field::zero(),
             Field::zero(),
             metadata,
@@ -818,7 +823,7 @@ finalize transfer_public:
             private_key,
             previous_block.hash(),
             header,
-            vec![],
+            ratifications,
             None,
             transactions,
             aborted_transaction_ids,
@@ -970,7 +975,7 @@ finalize transfer_public:
         let program_id = ProgramID::from_str("testing.aleo").unwrap();
 
         // Prepare the confirmed transactions.
-        let (confirmed_transactions, aborted_transaction_ids, _) =
+        let (ratifications, confirmed_transactions, aborted_transaction_ids, _) =
             vm.speculate(sample_finalize_state(1), &[], None, [deployment_transaction.clone()].iter()).unwrap();
         assert_eq!(confirmed_transactions.len(), 1);
         assert!(aborted_transaction_ids.is_empty());
@@ -979,13 +984,13 @@ finalize transfer_public:
         assert!(!vm.contains_program(&program_id));
 
         // Finalize the transaction.
-        assert!(vm.finalize(sample_finalize_state(1), &[], None, &confirmed_transactions).is_ok());
+        assert!(vm.finalize(sample_finalize_state(1), &ratifications, None, &confirmed_transactions).is_ok());
 
         // Ensure the VM contains this program.
         assert!(vm.contains_program(&program_id));
 
         // Ensure the VM can't redeploy the same transaction.
-        assert!(vm.finalize(sample_finalize_state(1), &[], None, &confirmed_transactions).is_err());
+        assert!(vm.finalize(sample_finalize_state(1), &ratifications, None, &confirmed_transactions).is_err());
 
         // Ensure the VM contains this program.
         assert!(vm.contains_program(&program_id));
@@ -1256,7 +1261,7 @@ function ped_hash:
                 create_execution(&vm, caller_private_key, program_id, "ped_hash", inputs, &mut unspent_records, rng);
 
             // Speculatively execute the transaction. Ensure that this call does not panic and returns a rejected transaction.
-            let (confirmed_transactions, aborted_transaction_ids, _) =
+            let (_, confirmed_transactions, aborted_transaction_ids, _) =
                 vm.speculate(sample_finalize_state(1), &[], None, [transaction.clone()].iter()).unwrap();
             assert!(aborted_transaction_ids.is_empty());
 

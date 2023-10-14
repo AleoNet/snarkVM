@@ -27,7 +27,7 @@ use crate::{
 };
 use console::{prelude::*, types::Field};
 use ledger_authority::Authority;
-use ledger_block::{Header, Ratify};
+use ledger_block::{Header, Ratifications};
 use ledger_coinbase::{CoinbaseSolution, PuzzleCommitment};
 
 /// A RocksDB block storage.
@@ -48,7 +48,7 @@ pub struct BlockDB<N: Network> {
     /// The certificate map.
     certificate_map: DataMap<Field<N>, (u32, u64)>,
     /// The ratifications map.
-    ratifications_map: DataMap<N::BlockHash, Vec<Ratify<N>>>,
+    ratifications_map: DataMap<N::BlockHash, Ratifications<N>>,
     /// The solutions map.
     solutions_map: DataMap<N::BlockHash, Option<CoinbaseSolution<N>>>,
     /// The puzzle commitments map.
@@ -72,7 +72,7 @@ impl<N: Network> BlockStorage<N> for BlockDB<N> {
     type HeaderMap = DataMap<N::BlockHash, Header<N>>;
     type AuthorityMap = DataMap<N::BlockHash, Authority<N>>;
     type CertificateMap = DataMap<Field<N>, (u32, u64)>;
-    type RatificationsMap = DataMap<N::BlockHash, Vec<Ratify<N>>>;
+    type RatificationsMap = DataMap<N::BlockHash, Ratifications<N>>;
     type SolutionsMap = DataMap<N::BlockHash, Option<CoinbaseSolution<N>>>;
     type PuzzleCommitmentsMap = DataMap<PuzzleCommitment<N>, u32>;
     type TransactionsMap = DataMap<N::BlockHash, Vec<N::TransactionID>>;
