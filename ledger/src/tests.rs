@@ -20,6 +20,7 @@ use console::{
     account::{Address, PrivateKey},
     network::prelude::*,
     program::{Entry, Identifier, Literal, Plaintext, Value},
+    types::Address,
 };
 use ledger_block::{ConfirmedTransaction, Rejected, Transaction};
 use ledger_store::{helpers::memory::ConsensusMemory, ConsensusStore};
@@ -289,6 +290,100 @@ finalize foo:
     assert!(ledger.vm.verify_transaction(&transaction, None));
     // Ensure that the ledger deems the transaction valid.
     assert!(ledger.check_transaction_basic(&transaction, None).is_ok());
+
+    // Construct the next block.
+    let block = ledger.prepare_advance_to_next_block(&private_key, vec![transaction], None, rng).unwrap();
+    // Advance to the next block.
+    ledger.advance_to_next_block(&block).unwrap();
+    assert_eq!(ledger.latest_height(), 2);
+    assert_eq!(ledger.latest_hash(), block.hash());
+}
+
+#[test]
+fn test_insufficient_fees_for_credits() {
+    let rng = &mut TestRng::default();
+
+    // Sample the genesis private key.
+    let private_key = test_helpers::sample_genesis_private_key(rng);
+    let view_key = ViewKey::try_from(&private_key).unwrap();
+    // Initialize the store.
+    let store = ConsensusStore::<_, ConsensusMemory<_>>::open(None).unwrap();
+    // Create a genesis block.
+    let genesis = VM::from(store).unwrap().genesis(&private_key, rng).unwrap();
+    // Initialize the ledger with the genesis block.
+    let ledger = CurrentLedger::load(genesis, None).unwrap();
+
+    // A helper function to find records.
+    let find_records = || {
+        let microcredits = Identifier::from_str("microcredits").unwrap();
+        ledger
+            .find_records(&view_key, RecordsFilter::SlowUnspent(private_key))
+            .unwrap()
+            .filter(|(_, record)| match record.data().get(&microcredits) {
+                Some(Entry::Private(Plaintext::Literal(Literal::U64(amount), _))) => !amount.is_zero(),
+                _ => false,
+            })
+            .collect::<indexmap::IndexMap<_, _>>()
+    };
+
+    // Execute the test program, without providing enough fees for finalize, and ensure that the ledger deems the transaction invalid.
+    // Fetch the unspent records.
+    let records = find_records();
+
+    // Select a record to spend.
+    let fee_record = records.values().nth(1).unwrap().clone();
+
+    // Retrieve the VM.
+    let vm = ledger.vm();
+
+    // Prepare the inputs.
+    let inputs = [
+        Value::Plaintext(Plaintext::from(Literal::Address(Address::try_from(private_key).unwrap()))),
+        Value::from_str("0u64").unwrap(),
+    ]
+    .into_iter();
+
+    // Execute.
+    let transaction = vm
+        .execute(
+            &private_key,
+            ("credits.aleo", "transfer_public"),
+            inputs.clone(),
+            Some((fee_record.clone(), 1)),
+            None,
+            rng,
+        )
+        .unwrap();
+    // Verify.
+    assert!(vm.verify_transaction(&transaction, None));
+
+    // Ensure that the ledger deems the transaction invalid.
+    assert!(ledger.check_transaction_basic(&transaction, None).is_err());
+
+    // Execute with enough fees.
+    let transaction = vm
+        .execute(
+            &private_key,
+            ("credits.aleo", "transfer_public"),
+            inputs,
+            Some((fee_record, 2_000_000_000)),
+            None,
+            rng,
+        )
+        .unwrap();
+    // Verify.
+    assert!(vm.verify_transaction(&transaction, None));
+
+    // Ensure that the ledger deems the transaction valid.
+    let result = ledger.check_transaction_basic(&transaction, None);
+    assert!(result.is_ok());
+
+    // Construct the next block.
+    let block = ledger.prepare_advance_to_next_block(&private_key, vec![transaction], None, rng).unwrap();
+    // Advance to the next block.
+    ledger.advance_to_next_block(&block).unwrap();
+    assert_eq!(ledger.latest_height(), 1);
+    assert_eq!(ledger.latest_hash(), block.hash());
 }
 
 #[test]
