@@ -63,11 +63,12 @@ pub enum BlockMap {
     Header = DataID::BlockHeaderMap as u16,
     Authority = DataID::BlockAuthorityMap as u16,
     Certificate = DataID::BlockCertificateMap as u16,
-    Transactions = DataID::BlockTransactionsMap as u16,
-    ConfirmedTransactions = DataID::BlockConfirmedTransactionsMap as u16,
     Ratifications = DataID::BlockRatificationsMap as u16,
-    CoinbaseSolution = DataID::BlockCoinbaseSolutionMap as u16,
-    CoinbasePuzzleCommitment = DataID::BlockCoinbasePuzzleCommitmentMap as u16,
+    Solutions = DataID::BlockSolutionsMap as u16,
+    PuzzleCommitments = DataID::BlockPuzzleCommitmentsMap as u16,
+    Transactions = DataID::BlockTransactionsMap as u16,
+    AbortedTransactionIDs = DataID::BlockAbortedTransactionIDsMap as u16,
+    ConfirmedTransactions = DataID::BlockConfirmedTransactionsMap as u16,
 }
 
 /// The RocksDB map prefix for committee-related entries.
@@ -210,11 +211,12 @@ enum DataID {
     BlockHeaderMap,
     BlockAuthorityMap,
     BlockCertificateMap,
-    BlockTransactionsMap,
-    BlockConfirmedTransactionsMap,
     BlockRatificationsMap,
-    BlockCoinbaseSolutionMap,
-    BlockCoinbasePuzzleCommitmentMap,
+    BlockSolutionsMap,
+    BlockPuzzleCommitmentsMap,
+    BlockTransactionsMap,
+    BlockAbortedTransactionIDsMap,
+    BlockConfirmedTransactionsMap,
     // Committee
     CurrentRoundMap,
     RoundToHeightMap,

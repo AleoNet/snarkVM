@@ -35,14 +35,21 @@ pub enum Ratify<N: Network> {
     PuzzleReward(u64),
 }
 
+impl<N: Network> Ratify<N> {
+    /// Returns the ratification ID.
+    pub fn to_id(&self) -> Result<N::RatificationID> {
+        Ok(N::hash_bhp1024(&self.to_bytes_le()?.to_bits_le())?.into())
+    }
+}
+
 #[cfg(test)]
-mod test_helpers {
+pub(crate) mod test_helpers {
     use super::*;
     use console::network::Testnet3;
 
     type CurrentNetwork = Testnet3;
 
-    pub(crate) fn sample_ratify_objects(rng: &mut TestRng) -> Vec<Ratify<CurrentNetwork>> {
+    pub(crate) fn sample_ratifications(rng: &mut TestRng) -> Vec<Ratify<CurrentNetwork>> {
         let committee = ledger_committee::test_helpers::sample_committee(rng);
         let mut public_balances = PublicBalances::new();
         for (address, _) in committee.members().iter() {
