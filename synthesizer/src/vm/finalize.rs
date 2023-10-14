@@ -537,6 +537,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     // Ensure genesis has not been ratified yet.
                     ensure!(!is_genesis_ratified, "Ratify::Genesis(..) has already been ratified");
 
+                    // TODO (howardwu): Consider whether to initialize the mappings here.
+                    //  Currently, this is breaking for test cases that use VM but do not insert the genesis block.
                     // // Initialize the store for 'credits.aleo'.
                     // let credits = Program::<N>::credits()?;
                     // for mapping in credits.mappings().values() {
