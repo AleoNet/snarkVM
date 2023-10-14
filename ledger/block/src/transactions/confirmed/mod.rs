@@ -42,51 +42,50 @@ impl<N: Network> ConfirmedTransaction<N> {
         transaction: Transaction<N>,
         finalize_operations: Vec<FinalizeOperation<N>>,
     ) -> Result<Self> {
-        // Retrieve the program from the deployment, and ensure the transaction is a deploy transaction.
-        let program = match &transaction {
-            Transaction::Deploy(_, _, deployment, _) => deployment.program(),
+        // Retrieve the program and fee from the deployment transaction, and ensure the transaction is a deploy transaction.
+        let (program, fee) = match &transaction {
+            Transaction::Deploy(_, _, deployment, fee) => (deployment.program(), fee),
             Transaction::Execute(..) | Transaction::Fee(..) => {
                 bail!("Transaction '{}' is not a deploy transaction", transaction.id())
             }
         };
 
-        // Determine the number of finalize operations for the fee transition.
-        let num_fee_finalize_operations = match transaction
-            .fee_transition()
-            .ok_or_else(|| anyhow!("Missing fee for deploy transaction"))?
-            .is_fee_public()
-        {
-            true => 1,
-            false => 0,
-        };
-
-        // Count the number of initialize mapping and update key-value operations.
-        let (initialize_mapping_count, update_key_value_count) =
+        // Count the number of `InitializeMapping` and `UpdateKeyValue` finalize operations.
+        let (num_initialize_mappings, num_update_key_values) =
             finalize_operations.iter().try_fold((0, 0), |(init, update), operation| match operation {
                 FinalizeOperation::InitializeMapping(..) => Ok((init + 1, update)),
                 FinalizeOperation::UpdateKeyValue(..) => Ok((init, update + 1)),
-                _ => bail!("Transaction '{}' (deploy) contains an invalid finalize operation type", transaction.id()),
+                op => {
+                    bail!("Transaction '{}' (deploy) contains an invalid finalize operation ({op})", transaction.id())
+                }
             })?;
 
-        // Ensure the number of program mappings matches the number of initialize mapping operations.
-        if program.mappings().len() != initialize_mapping_count {
-            bail!(
-                "The number of program mappings  ({}) does not match the number of InitializeMapping finalize operations ({})",
-                program.mappings().len(),
-                initialize_mapping_count
-            )
-        }
-
-        // Ensure the number of finalize operations matches the number of initialize mapping and update key-value operations.
-        if update_key_value_count != num_fee_finalize_operations
-            || initialize_mapping_count + update_key_value_count != finalize_operations.len()
+        // Perform safety checks on the finalize operations.
         {
-            bail!(
-                "Transaction '{}' (deploy) should contain exactly {} UpdateKeyValue operations and {} InitializeMapping operations",
-                transaction.id(),
-                num_fee_finalize_operations,
-                program.mappings().len()
-            );
+            // Ensure the number of finalize operations matches the number of 'InitializeMapping' and 'UpdateKeyValue' finalize operations.
+            if num_initialize_mappings + num_update_key_values != finalize_operations.len() {
+                bail!(
+                    "Transaction '{}' (deploy) must contain '{}' operations",
+                    transaction.id(),
+                    finalize_operations.len()
+                );
+            }
+            // Ensure the number of program mappings matches the number of 'InitializeMapping' finalize operations.
+            if num_initialize_mappings != program.mappings().len() {
+                bail!(
+                    "Transaction '{}' (deploy) must contain '{}' 'InitializeMapping' operations (found '{num_initialize_mappings}')",
+                    transaction.id(),
+                    program.mappings().len(),
+                )
+            }
+            // Ensure the number of finalize operations matches the number of 'UpdateKeyValue' finalize operations.
+            if num_update_key_values != fee.num_finalize_operations() {
+                bail!(
+                    "Transaction '{}' (deploy) must contain {} 'UpdateKeyValue' operations (found '{num_update_key_values}')",
+                    transaction.id(),
+                    fee.num_finalize_operations()
+                );
+            }
         }
 
         // Return the accepted deploy transaction.
