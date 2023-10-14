@@ -135,17 +135,11 @@ pub trait NestedMapRead<
     /// or return from the map, otherwise.
     ///
     fn get_value_speculative(&'a self, map: &M, key: &K) -> Result<Option<Cow<'a, V>>> {
-        // Return early in case of errors in order to not conceal them.
-        let map_value = self.get_value_confirmed(map, key)?;
-
-        // Retrieve the atomic batch value, if it exists.
-        let atomic_batch_value = self.get_value_pending(map, key);
-
         // Return the atomic batch value, if it exists, or the map value, otherwise.
-        match atomic_batch_value {
+        match self.get_value_pending(map, key) {
             Some(Some(value)) => Ok(Some(Cow::Owned(value))),
             Some(None) => Ok(None),
-            None => Ok(map_value),
+            None => Ok(self.get_value_confirmed(map, key)?),
         }
     }
 

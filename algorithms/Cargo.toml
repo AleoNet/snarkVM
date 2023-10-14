@@ -43,6 +43,7 @@ bench = false
 name = "varuna"
 path = "benches/snark/varuna.rs"
 harness = false
+required-features = [ "test" ]
 
 [dependencies.snarkvm-curves]
 path = "../curves"
@@ -200,6 +201,7 @@ profiler = [ "aleo-std/profiler" ]
 crypto_hash = [ ]
 fft = [ ]
 msm = [ ]
+test = [ ]
 polycommit = [ "crypto_hash", "fft", "msm", "rand_core" ]
 polycommit_wasm = [ "polycommit", "snarkvm-parameters/wasm" ]
 polycommit_full = [ "polycommit", "snarkvm-parameters/default" ]
