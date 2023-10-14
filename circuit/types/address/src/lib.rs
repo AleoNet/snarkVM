@@ -39,6 +39,14 @@ pub struct Address<E: Environment>(Group<E>);
 
 impl<E: Environment> AddressTrait for Address<E> {}
 
+impl<E: Environment> Address<E> {
+    /// Initializes the zero address.
+    #[inline]
+    pub fn zero() -> Self {
+        Self(Group::zero())
+    }
+}
+
 #[cfg(console)]
 impl<E: Environment> Inject for Address<E> {
     type Primitive = console::Address<E::Network>;

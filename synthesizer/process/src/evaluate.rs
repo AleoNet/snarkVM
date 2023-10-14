@@ -20,15 +20,16 @@ impl<N: Network> Process<N> {
     pub fn evaluate<A: circuit::Aleo<Network = N>>(&self, authorization: Authorization<N>) -> Result<Response<N>> {
         let timer = timer!("Process::evaluate");
 
-        // Retrieve the main request (without popping it).
+        // Retrieve the top-level request (without popping it).
         let request = authorization.peek_next()?;
 
         #[cfg(feature = "aleo-cli")]
         println!("{}", format!(" • Evaluating '{}/{}'...", request.program_id(), request.function_name()).dimmed());
 
+        // Retrieve the stack.
+        let stack = self.get_stack(request.program_id())?;
         // Evaluate the function.
-        let response =
-            self.get_stack(request.program_id())?.evaluate_function::<A>(CallStack::evaluate(authorization)?);
+        let response = stack.evaluate_function::<A>(CallStack::evaluate(authorization)?, None);
         lap!(timer, "Evaluate the function");
 
         finish!(timer);

@@ -1,6 +1,19 @@
-// Disclosure: This program is experimental and not intended for production use.
-// This program is provided "as is" without warranties of any kind.
-// The author disclaims liability for damages of any kind arising from the use of this program.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
+// This file is part of the snarkVM library.
+
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
+
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+/**********************************************************************************************************************/
+
 program credits.aleo;
 
 /**********************************************************************************************************************/
@@ -8,9 +21,9 @@ program credits.aleo;
 /// The `committee` mapping contains the active validator set and their corresponding stake.
 mapping committee:
     // The key represents the address of the validator.
-    key validator as address.public;
+    key as address.public;
     // The value represents the committee state of the validator.
-    value committee_state as committee_state.public;
+    value as committee_state.public;
 
 // The `committee_state` struct tracks the total stake of the validator, and whether they are open to stakers.
 struct committee_state:
@@ -24,9 +37,9 @@ struct committee_state:
 // The `bonded` mapping represents the amount of microcredits that are currently bonded.
 mapping bonded:
     // The key represents the address of the staker, which includes the validators and their delegators.
-    key staker as address.public;
+    key as address.public;
     // The value represents the bond state.
-    value bond_state as bond_state.public;
+    value as bond_state.public;
 
 // The `bond_state` struct tracks the amount of microcredits that are currently bonded to the specified validator.
 struct bond_state:
@@ -40,9 +53,9 @@ struct bond_state:
 // The `unbonding` mapping contains a set of stakers with their unbonding microcredits and unlock height.
 mapping unbonding:
     // The key represents the address of the staker, which includes the validators and their delegators.
-    key staker as address.public;
+    key as address.public;
     // The value represents the unbond state.
-    value unbond_state as unbond_state.public;
+    value as unbond_state.public;
 
 // The `unbond_state` struct tracks the microcredits that are currently unbonding, along with the unlock height.
 struct unbond_state:
@@ -56,9 +69,11 @@ struct unbond_state:
 // The `account` mapping is used to store credits publicly.
 mapping account:
     // The key represents the address of the owner.
-    key owner as address.public;
+    key as address.public;
     // The value represents the amount of public microcredits that belong to the specified owner.
-    value microcredits as u64.public;
+    value as u64.public;
+
+/**********************************************************************************************************************/
 
 // The `credits` record is used to store credits privately.
 record credits:
@@ -66,53 +81,6 @@ record credits:
     owner as address.private;
     // The amount of private microcredits that belong to the specified owner.
     microcredits as u64.private;
-
-/**********************************************************************************************************************/
-
-// fn bond
-// - if the bond is now 33% or more, close the validator. (determine how hard to impl this)
-
-// fn unbond
-//  - can only be triggered after the validator has unbonded all of their delegators.
-
-// Open Questions:
-// - Should the 720 be more?
-
-/**********************************************************************************************************************/
-
-// This function allows any staker to bond their microcredits to a validator.
-//
-// For private staking, set the address randomizer in input 'r2' to a unique random scalar.
-// By using private staking, your staking address will be randomized when viewed by everyone on the network.
-// To 'unbond_private' and 'claim_unbond_private', you must use the same address randomizer as what was provided here.
-//
-// Disclaimer: It is **strongly** advised and recommended that you use the proper services provided by Aleo to call this function.
-// This is to ensure that a best effort is made to deterministically retrieve your address randomizer using your view key,
-// so that it is possible for you to monitor and recover your own staking address in the future. Users who call this function
-// without using proper services provided by Aleo will be responsible and liable for their own actions and consequences.
-//function bond_private:
-//    // Input the validator's address.
-//    input r0 as address.private;
-//    // Input the amount of microcredits to bond.
-//    input r1 as u64.public;
-//    // Input the address randomizer.
-//    // Attention: By using this feature, you agree to and abide by the documentation and disclaimer above.
-//    input r2 as scalar.private;
-//
-//    // Determine if the amount is at least one credit.
-//    gte r1 1_000_000u64 into r3;
-//    // Enforce the amount is at least one credit.
-//    assert.eq r3 true;
-//
-//    // Cast the address to a group type.
-//    cast self.caller into r4 as group;
-//    // Compute the staker's address.
-//    mul r4 r2 into r5;
-//    // Cast the group to an address type.
-//    cast r5 into r6 as address;
-//
-//    // Bond the specified amount of microcredits to the specified validator.
-//    finalize r6 r0 r1;
 
 /**********************************************************************************************************************/
 
@@ -130,7 +98,9 @@ function bond_public:
     assert.eq r2 true;
 
     // Bond the specified amount of microcredits to the specified validator.
-    finalize self.caller r0 r1;
+    async bond_public self.caller r0 r1 into r3;
+    // Output the finalize future.
+    output r3 as credits.aleo/bond_public.future;
 
 finalize bond_public:
     // Input the staker's address.
@@ -152,7 +122,7 @@ finalize bond_public:
     // Starts the `bond_validator` logic.
     position bond_validator;
 
-    /* Start Committee */
+    /* Committee */
 
     // Construct the initial committee state.
     // Note: We set the initial 'is_open' state to 'true'.
@@ -164,33 +134,29 @@ finalize bond_public:
 
     // Increment the stake for the specified validator.
     add r5.microcredits r2 into r6;
-    // Determine if the amount is at least one million credits.
-    gte r6 1_000_000_000_000u64 into r7;
-    // Enforce the amount is at least one million credits.
-    assert.eq r7 true;
-
     // Construct the updated committee state.
-    cast r6 r5.is_open into r8 as committee_state;
+    cast r6 r5.is_open into r7 as committee_state;
 
-    /* End Committee */
-
-    /* Start Bonded */
+    /* Bonded */
 
     // Construct the initial bond state.
-    cast r1 0u64 into r9 as bond_state;
+    cast r1 0u64 into r8 as bond_state;
     // Get the bond state for the caller, or default to the initial bond state.
-    get.or_use bonded[r0] r9 into r10;
+    get.or_use bonded[r0] r8 into r9;
     // Enforce the validator matches in the bond state.
-    assert.eq r10.validator r1;
+    assert.eq r9.validator r1;
 
     // Increment the microcredits in the bond state.
-    add r10.microcredits r2 into r11;
+    add r9.microcredits r2 into r10;
+    // Determine if the amount is at least one million credits.
+    gte r10 1_000_000_000_000u64 into r11;
+    // Enforce the amount is at least one million credits.
+    assert.eq r11 true;
+
     // Construct the updated bond state.
-    cast r1 r11 into r12 as bond_state;
+    cast r1 r10 into r12 as bond_state;
 
-    /* End Bonded */
-
-    /* Start Account */
+    /* Account */
 
     // Get the balance of the caller.
     // If the account does not exist, this finalize scope will fail.
@@ -198,18 +164,14 @@ finalize bond_public:
     // Decrement the balance of the caller.
     sub r13 r2 into r14;
 
-    /* End Account */
-
-    /* Start Writes */
+    /* Writes */
 
     // Update the committee state of the specified validator.
-    set r8 into committee[r0];
+    set r7 into committee[r0];
     // Update the bond state for the caller.
     set r12 into bonded[r0];
     // Update the balance of the caller.
     set r14 into account[r0];
-
-    /* End Writes */
 
     // Ends the `bond_validator` logic.
     branch.eq true true to end;
@@ -219,7 +181,7 @@ finalize bond_public:
     // Starts the `bond_delegator` logic.
     position bond_delegator;
 
-    /* Start Committee */
+    /* Committee */
 
     // Check if the caller is a validator.
     contains committee[r0] into r15;
@@ -237,9 +199,7 @@ finalize bond_public:
     // Construct the updated committee state.
     cast r17 r16.is_open into r18 as committee_state;
 
-    /* End Committee */
-
-    /* Start Bonded */
+    /* Bonded */
 
     // Construct the initial bond state.
     cast r1 0u64 into r19 as bond_state;
@@ -250,63 +210,33 @@ finalize bond_public:
 
     // Increment the microcredits in the bond state.
     add r20.microcredits r2 into r21;
+    // Determine if the amount is at least 10 credits.
+    gte r21 10_000_000u64 into r22;
+    // Enforce the amount is at least 10 credits.
+    assert.eq r22 true;
+
     // Construct the updated bond state.
-    cast r1 r21 into r22 as bond_state;
+    cast r1 r21 into r23 as bond_state;
 
-    /* End Bonded */
-
-    /* Start Account */
+    /* Account */
 
     // Get the balance of the caller.
     // If the account does not exist, this finalize scope will fail.
-    get account[r0] into r23;
+    get account[r0] into r24;
     // Decrement the balance of the caller.
-    sub r23 r2 into r24;
+    sub r24 r2 into r25;
 
-    /* End Account */
-
-    /* Start Writes */
+    /* Writes */
 
     // Update the committee state for the specified validator.
     set r18 into committee[r1];
     // Update the bond state for the caller.
-    set r22 into bonded[r0];
+    set r23 into bonded[r0];
     // Update the balance of the caller.
-    set r24 into account[r0];
-
-    /* End Writes */
+    set r25 into account[r0];
 
     // The terminus.
     position end;
-
-/**********************************************************************************************************************/
-
-// This function allows any staker to unbond their microcredits from a validator.
-//
-// For private staking, set the address randomizer in input 'r1' to a unique random scalar.
-// By using private staking, your staking address will be randomized when viewed by everyone on the network.
-// To 'claim_unbond_private', you must use the same address randomizer as what was provided here.
-//
-// Disclaimer: It is **strongly** advised and recommended that you use the proper services provided by Aleo to call this function.
-// This is to ensure that a best effort is made to deterministically retrieve your address randomizer using your view key,
-// so that it is possible for you to monitor and recover your own staking address in the future. Users who call this function
-// without using proper services provided by Aleo will be responsible and liable for their own actions and consequences.
-//function unbond_private:
-//    // Input the amount of microcredits to unbond.
-//    input r0 as u64.public;
-//    // Input the address randomizer.
-//    // Attention: By using this feature, you agree to and abide by the documentation and disclaimer above.
-//    input r1 as scalar.private;
-//
-//    // Cast the address to a group type.
-//    cast self.caller into r2 as group;
-//    // Compute the staker's address.
-//    mul r2 r1 into r3;
-//    // Cast the group to an address type.
-//    cast r3 into r4 as address;
-//
-//    // Unbond the specified amount of microcredits to the caller.
-//    finalize r4 r0;
 
 /**********************************************************************************************************************/
 
@@ -317,7 +247,9 @@ function unbond_public:
     input r0 as u64.public;
 
     // Unbond the specified amount of microcredits to the caller.
-    finalize self.caller r0;
+    async unbond_public self.caller r0 into r1;
+    // Output the finalize future.
+    output r1 as credits.aleo/unbond_public.future;
 
 finalize unbond_public:
     // Input the staker's address.
@@ -332,7 +264,7 @@ finalize unbond_public:
 
     // Compute the height at which the unbonding will be complete, starting from the current block.
     // Note: Calling unbond across multiple blocks before the unbonding is complete will reset the height each time.
-    add block.height 720u32 into r4;
+    add block.height 360u32 into r4;
 
     // Determine if the caller is a validator or delegator.
     contains committee[r0] into r5;
@@ -526,12 +458,15 @@ finalize unbond_public:
 
 /**********************************************************************************************************************/
 
+// This function allows a validator to unbond any delegator that is bonded to them.
 function unbond_delegator_as_validator:
     // Input the delegator's address.
     input r0 as address.public;
 
     // Unbond the delegator as the validator.
-    finalize self.caller r0;
+    async unbond_delegator_as_validator self.caller r0 into r1;
+    // Output the finalize future.
+    output r1 as credits.aleo/unbond_delegator_as_validator.future;
 
 finalize unbond_delegator_as_validator:
     // Input the validator's address.
@@ -583,7 +518,7 @@ finalize unbond_delegator_as_validator:
     add r8.microcredits r4.microcredits into r9;
     // Compute the height at which the unbonding will be complete, starting from the current block.
     // Note: Calling unbond across multiple blocks before the unbonding is complete will reset the height each time.
-    add block.height 720u32 into r10;
+    add block.height 360u32 into r10;
 
     // Construct the updated unbond state.
     cast r9 r10 into r11 as unbond_state;
@@ -604,24 +539,11 @@ finalize unbond_delegator_as_validator:
 /**********************************************************************************************************************/
 
 // This function allows any staker to claim their microcredits after the unbonding period.
-//
-// For private staking, set the address randomizer in input 'r0' to a unique random scalar.
-// By using private staking, your staking address will be randomized when viewed by everyone on the network.
-//
-// Disclaimer: It is **strongly** advised and recommended that you use the proper services provided by Aleo to call this function.
-// This is to ensure that a best effort is made to deterministically retrieve your address randomizer using your view key,
-// so that it is possible for you to monitor and recover your own staking address in the future. Users who call this function
-// without using proper services provided by Aleo will be responsible and liable for their own actions and consequences.
-//function claim_unbond_private:
-//    // Claim the unbonded microcredits.
-//    finalize self.caller;
-
-/**********************************************************************************************************************/
-
-// This function allows any staker to claim their microcredits after the unbonding period.
 function claim_unbond_public:
     // Claim the unbonded microcredits.
-    finalize self.caller;
+    async claim_unbond_public self.caller into r0;
+    // Output the finalize future.
+    output r0 as credits.aleo/claim_unbond_public.future;
 
 finalize claim_unbond_public:
     // Input the staker's address.
@@ -629,7 +551,7 @@ finalize claim_unbond_public:
 
     // Get the unbond state for the caller, or fail if it does not exist.
     get unbonding[r0] into r1;
-    // Determine if unbonding is complete
+    // Determine if unbonding is complete.
     gte block.height r1.height into r2;
     // Enforce the unbonding is complete.
     assert.eq r2 true;
@@ -658,7 +580,9 @@ function set_validator_state:
     // Input the 'is_open' state.
     input r0 as boolean.public;
     // Set the validator to be either open or closed to stakers.
-    finalize self.caller r0;
+    async set_validator_state self.caller r0 into r1;
+    // Output the finalize future.
+    output r1 as credits.aleo/set_validator_state.future;
 
 finalize set_validator_state:
     // Input the validator's address.
@@ -677,28 +601,6 @@ finalize set_validator_state:
 
 /**********************************************************************************************************************/
 
-// The `mint` function generates the specified amount
-// into a record for the specified receiver.
-// Note: Additional rules are enforced in consensus.
-function mint:
-    // Input the receiver.
-    input r0 as address.public;
-    // Input the amount.
-    input r1 as u64.public;
-    // Ensure the receiver is the caller.
-    assert.eq r0 self.caller;
-    // Check that the amount is less than the specified limit.
-    // TODO: Reduce this to 256 credits.
-    lt r1 400_000_000_000_000u64 into r2;
-    // Ensure the amount is less than the specified limit.
-    assert.eq r2 true;
-    // Construct the receiver's record.
-    cast r0 r1 into r3 as credits.record;
-    // Output the receiver's record.
-    output r3 as credits.record;
-
-/**********************************************************************************************************************/
-
 // The `transfer_public` function sends the specified amount
 // from the sender's `account` to the receiver's `account`.
 function transfer_public:
@@ -707,7 +609,9 @@ function transfer_public:
     // Input the amount.
     input r1 as u64.public;
     // Transfer the credits publicly.
-    finalize self.caller r0 r1;
+    async transfer_public self.caller r0 r1 into r2;
+    // Output the finalize future.
+    output r2 as credits.aleo/transfer_public.future;
 
 finalize transfer_public:
     // Input the sender.
@@ -717,9 +621,8 @@ finalize transfer_public:
     // Input the amount.
     input r2 as u64.public;
     // Decrements `account[r0]` by `r2`.
-    // If `account[r0]` does not exist, 0u64 is used.
     // If `account[r0] - r2` underflows, `transfer_public` is reverted.
-    get.or_use account[r0] 0u64 into r3;
+    get account[r0] into r3;
     sub r3 r2 into r4;
     set r4 into account[r0];
     // Increments `account[r1]` by `r2`.
@@ -775,17 +678,19 @@ function transfer_private_to_public:
     sub r0.microcredits r2 into r3;
     // Construct a record with the change amount for the sender.
     cast r0.owner r3 into r4 as credits.record;
+    // Increment the amount publicly for the receiver.
+    async transfer_private_to_public r1 r2 into r5;
     // Output the sender's change record.
     output r4 as credits.record;
-    // Increment the amount publicly for the receiver.
-    finalize r1 r2;
+    // Output the finalize future.
+    output r5 as credits.aleo/transfer_private_to_public.future;
 
 finalize transfer_private_to_public:
     // Input the receiver.
     input r0 as address.public;
     // Input the amount.
     input r1 as u64.public;
-    // Retrieve the balance of the sender.
+    // Retrieve the balance of the receiver.
     // If `account[r0]` does not exist, 0u64 is used.
     get.or_use account[r0] 0u64 into r2;
     // Increments `account[r0]` by `r1`.
@@ -799,19 +704,21 @@ finalize transfer_private_to_public:
 // The `transfer_public_to_private` function turns a specified amount
 // from the mapping `account` into a record for the specified receiver.
 //
-// This function preserves privacy for the receiver's record, however
-// it publicly reveals the sender and the specified amount.
+// This function publicly reveals the sender, the receiver, and the specified amount.
+// However, subsequent methods using the receiver's record can preserve the receiver's privacy.
 function transfer_public_to_private:
     // Input the receiver.
-    input r0 as address.public;
+    input r0 as address.private;
     // Input the amount.
     input r1 as u64.public;
     // Construct a record for the receiver.
     cast r0 r1 into r2 as credits.record;
+    // Decrement the balance of the sender publicly.
+    async transfer_public_to_private self.caller r1 into r3;
     // Output the record of the receiver.
     output r2 as credits.record;
-    // Decrement the balance of the sender publicly.
-    finalize self.caller r1;
+    // Output the finalize future.
+    output r3 as credits.aleo/transfer_public_to_private.future;
 
 finalize transfer_public_to_private:
     // Input the sender.
@@ -819,8 +726,7 @@ finalize transfer_public_to_private:
     // Input the amount.
     input r1 as u64.public;
     // Retrieve the balance of the sender.
-    // If `account[r0]` does not exist, 0u64 is used.
-    get.or_use account[r0] 0u64 into r2;
+    get account[r0] into r2;
     // Decrements `account[r0]` by `r1`.
     // If `r2 - r1` underflows, `transfer_public_to_private` is reverted.
     sub r2 r1 into r3;
@@ -846,7 +752,11 @@ function join:
 
 /**********************************************************************************************************************/
 
-// The `split` function splits a record into two records.
+// The `split` function splits a record into two records. The given input amount will be stored in the first record,
+// and the remaining amount will be stored in the second record, with the fee deducted from the remaining amount.
+// If the caller executes a transaction that contains only a call to this function, then the transaction does not
+// require a fee, unless the caller wishes to provide an additional fee. Transactions that contain multiple transitions
+// (that include one or more calls to this function) will require a fee as per standard consensus rules.
 function split:
     // Input the record.
     input r0 as credits.record;
@@ -856,19 +766,23 @@ function split:
     // This `sub` operation is safe, and the proof will fail
     // if an underflow occurs.
     sub r0.microcredits r1 into r2;
+    // Checks the given record has a sufficient fee to remove.
+    // This `sub` operation is safe, and the proof will fail
+    // if an underflow occurs.
+    sub r2 10_000u64 into r3;
     // Construct the first record.
-    cast r0.owner r1 into r3 as credits.record;
+    cast r0.owner r1 into r4 as credits.record;
     // Construct the second record.
-    cast r0.owner r2 into r4 as credits.record;
+    cast r0.owner r3 into r5 as credits.record;
     // Output the first record.
-    output r3 as credits.record;
-    // Output the second record.
     output r4 as credits.record;
+    // Output the second record.
+    output r5 as credits.record;
 
 /**********************************************************************************************************************/
 
-// The `fee` function charges the specified amount from the sender's record.
-function fee:
+// The `fee_private` function charges the specified amount from the sender's record.
+function fee_private:
     // Input the sender's record.
     input r0 as credits.record;
     // Input the amount.
@@ -877,6 +791,8 @@ function fee:
     input r2 as field.public;
     // Ensure the amount is nonzero.
     assert.neq r1 0u64;
+    // Ensure the deployment or execution root is nonzero.
+    assert.neq r2 0field;
     // Checks the given record has a sufficient amount.
     // This `sub` operation is safe, and the proof will fail
     // if an underflow occurs. The destination register `r3` holds
@@ -886,5 +802,42 @@ function fee:
     cast r0.owner r3 into r4 as credits.record;
     // Output the sender's change record.
     output r4 as credits.record;
+
+/**********************************************************************************************************************/
+
+// The `fee_public` function charges the specified amount from the sender's account.
+function fee_public:
+    // Input the amount.
+    input r0 as u64.public;
+    // Input the deployment or execution root.
+    input r1 as field.public;
+    // Ensure the amount is nonzero.
+    assert.neq r0 0u64;
+    // Ensure the deployment or execution root is nonzero.
+    assert.neq r1 0field;
+    // Decrement the balance of the sender publicly.
+    async fee_public self.caller r0 into r2;
+    // Output the finalize future.
+    output r2 as credits.aleo/fee_public.future;
+
+finalize fee_public:
+    // Input the sender's address.
+    input r0 as address.public;
+    // Input the amount.
+    input r1 as u64.public;
+    // Retrieve the balance of the sender.
+    // If `account[r0]` does not exist, `fee_public` is reverted.
+    get account[r0] into r2;
+    // Decrements `account[r0]` by `r1`.
+    // If `r2 - r1` underflows, `fee_public` is reverted.
+    sub r2 r1 into r3;
+    // Updates the balance of the sender.
+    set r3 into account[r0];
+
+/**********************************************************************************************************************/
+
+// Open Questions:
+// fn bond
+// - if the bond is now 33% or more, close the validator. (determine how hard to impl this)
 
 /**********************************************************************************************************************/

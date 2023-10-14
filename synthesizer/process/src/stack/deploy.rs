@@ -119,21 +119,19 @@ impl<N: Network> Stack<N> {
         cfg_iter!(call_stacks).zip_eq(deployment.verifying_keys()).try_for_each(
             |((function_name, call_stack, assignments), (_, (verifying_key, certificate)))| {
                 // Synthesize the circuit.
-                let _response = self.execute_function::<A>(call_stack.clone()).unwrap();
-
+                if let Err(err) = self.execute_function::<A>(call_stack.clone(), None) {
+                    bail!("Failed to synthesize the circuit for '{function_name}': {err}")
+                }
                 // Check the certificate.
                 match assignments.read().last() {
-                    None => {
-                        bail!("The assignment for function '{}' is missing in '{program_id}'", function_name)
-                    }
+                    None => bail!("The assignment for function '{function_name}' is missing in '{program_id}'"),
                     Some((assignment, _metrics)) => {
                         // Ensure the certificate is valid.
                         if !certificate.verify(&function_name.to_string(), assignment, verifying_key) {
-                            bail!("The certificate for function '{}' is invalid in '{program_id}'", function_name)
+                            bail!("The certificate for function '{function_name}' is invalid in '{program_id}'")
                         }
                     }
                 };
-
                 Ok(())
             },
         )?;

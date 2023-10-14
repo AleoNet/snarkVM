@@ -1,7 +1,8 @@
 program backwards_branch.aleo;
 
 function compute:
-    finalize;
+    async compute into r0;
+    output r0 as backwards_branch.aleo/compute.future;
 
 finalize compute:
     position foo;

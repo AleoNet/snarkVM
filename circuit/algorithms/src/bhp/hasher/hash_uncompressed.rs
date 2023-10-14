@@ -60,8 +60,8 @@ impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> HashUncompres
             let lambda: Field<E> = witness!(|this_x, this_y, that_x, that_y| (that_y - this_y) / (that_x - this_x));
 
             // Ensure `lambda` is correct by enforcing:
-            // `lambda * (that_x - this_x) == (that_y - this_y)`
-            E::enforce(|| (&lambda, that_x - this_x, that_y - this_y));
+            // `(that_x - this_x) * lambda == (that_y - this_y)`
+            E::enforce(|| (that_x - this_x, &lambda, that_y - this_y));
 
             // Construct `sum_x` as a witness defined as:
             // `sum_x := (B * lambda^2) - A - this_x - that_x`
@@ -78,8 +78,8 @@ impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> HashUncompres
             let sum_y: Field<E> = witness!(|lambda, sum_x, this_x, this_y| -(this_y + (lambda * (sum_x - this_x))));
 
             // Ensure `sum_y` is correct by enforcing:
-            // `(lambda * (this_x - sum_x)) == (this_y + sum_y)`
-            E::enforce(|| (&lambda, this_x - &sum_x, this_y + &sum_y));
+            // `(this_x - sum_x) * lambda == (this_y + sum_y)`
+            E::enforce(|| (this_x - &sum_x, &lambda, this_y + &sum_y));
 
             (sum_x, sum_y)
         };
@@ -124,7 +124,7 @@ impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> HashUncompres
                         // Determine the correct sign of the y-coordinate, as a witness.
                         //
                         // Instead of using `Field::ternary`, we create a witness & custom constraint to reduce
-                        // the number of nonzero entries in the circuit, improving setup & proving time for Marlin.
+                        // the number of nonzero entries in the circuit, improving setup & proving time for Varuna.
                         let montgomery_y: Field<E> = witness!(|chunk_bits, y| if chunk_bits[2] { -y } else { y });
 
                         // Ensure the conditional negation of `witness_y` is correct as follows (1 constraint):
@@ -132,7 +132,7 @@ impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> HashUncompres
                         // which is equivalent to:
                         //     if `bit_2 == 0`, then `montgomery_y = -1/2 * -2 * y = y`
                         //     if `bit_2 == 1`, then `montgomery_y = 1/2 * -2 * y = -y`
-                        E::enforce(|| (bit_2 - &one_half, -y.double(), &montgomery_y)); // 1 constraint
+                        E::enforce(|| (-y.double(), bit_2 - &one_half, &montgomery_y)); // 1 constraint
 
                         montgomery_y
                     };

@@ -37,7 +37,8 @@ impl<N: Network> Literal<N> {
             12 => Literal::U64(U64::from_bits_le(literal)?),
             13 => Literal::U128(U128::from_bits_le(literal)?),
             14 => Literal::Scalar(Scalar::from_bits_le(literal)?),
-            15 => {
+            15 => Literal::Signature(Box::new(Signature::from_bits_le(literal)?)),
+            16 => {
                 let buffer = Vec::<u8>::from_bits_le(literal)?;
                 match buffer.len() <= N::MAX_STRING_BYTES as usize {
                     true => {
@@ -47,7 +48,7 @@ impl<N: Network> Literal<N> {
                     false => bail!("String literal exceeds maximum length of {} bytes.", N::MAX_STRING_BYTES),
                 }
             }
-            16.. => bail!("Failed to initialize literal variant {} from bits (LE)", variant),
+            17.. => bail!("Failed to initialize literal variant {} from bits (LE)", variant),
         };
         Ok(literal)
     }
@@ -74,7 +75,8 @@ impl<N: Network> Literal<N> {
             12 => Literal::U64(U64::from_bits_be(literal)?),
             13 => Literal::U128(U128::from_bits_be(literal)?),
             14 => Literal::Scalar(Scalar::from_bits_be(literal)?),
-            15 => {
+            15 => Literal::Signature(Box::new(Signature::from_bits_be(literal)?)),
+            16 => {
                 let buffer = Vec::<u8>::from_bits_be(literal)?;
                 match buffer.len() <= N::MAX_STRING_BYTES as usize {
                     true => {
@@ -84,7 +86,7 @@ impl<N: Network> Literal<N> {
                     false => bail!("String literal exceeds maximum length of {} bytes.", N::MAX_STRING_BYTES),
                 }
             }
-            16.. => bail!("Failed to initialize literal variant {} from bits (BE)", variant),
+            17.. => bail!("Failed to initialize literal variant {} from bits (BE)", variant),
         };
         Ok(literal)
     }
@@ -143,6 +145,8 @@ mod tests {
             check_serialization(Literal::<CurrentNetwork>::U128(U128::new(Uniform::rand(rng))))?;
             // Scalar
             check_serialization(Literal::<CurrentNetwork>::Scalar(Uniform::rand(rng)))?;
+            // Signature
+            check_serialization(Literal::sample(LiteralType::Signature, rng))?;
             // String
             // Sample a random string. Take 1/4th to ensure we fit for all code points.
             let string = rng.next_string(CurrentNetwork::MAX_STRING_BYTES / 4, false);

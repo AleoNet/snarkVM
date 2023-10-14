@@ -26,38 +26,24 @@ impl<N: Network> Stack<N> {
     ) -> Result<Authorization<N>> {
         let timer = timer!("Stack::authorize");
 
-        // Ensure the program contains functions.
-        ensure!(!self.program.functions().is_empty(), "Program '{}' has no functions", self.program.id());
-
+        // Get the program ID.
+        let program_id = *self.program.id();
         // Prepare the function name.
         let function_name = function_name.try_into().map_err(|_| anyhow!("Invalid function name"))?;
-        // Retrieve the function.
-        let function = self.get_function(&function_name)?;
         // Retrieve the input types.
-        let input_types = function.input_types();
-        // Ensure the number of inputs matches the number of input types.
-        if inputs.len() != input_types.len() {
-            bail!(
-                "Function '{function_name}' in program '{}' expects {} inputs, but {} inputs were found.",
-                self.program.id(),
-                input_types.len(),
-                inputs.len()
-            )
-        }
-        lap!(timer, "Verify the number of inputs");
+        let input_types = self.get_function(&function_name)?.input_types();
+        lap!(timer, "Retrieve the input types");
 
         // Compute the request.
-        let request = Request::sign(private_key, *self.program.id(), function_name, inputs, &input_types, rng)?;
+        let request = Request::sign(private_key, program_id, function_name, inputs, &input_types, rng)?;
         lap!(timer, "Compute the request");
         // Initialize the authorization.
-        let authorization = Authorization::new(&[request.clone()]);
+        let authorization = Authorization::new(request.clone());
         // Construct the call stack.
         let call_stack = CallStack::Authorize(vec![request], *private_key, authorization.clone());
         // Construct the authorization from the function.
-        let _response = self.execute_function::<A>(call_stack)?;
-        lap!(timer, "Construct the authorization from the function");
-
-        finish!(timer);
+        let _response = self.execute_function::<A>(call_stack, None)?;
+        finish!(timer, "Construct the authorization from the function");
 
         // Return the authorization.
         Ok(authorization)

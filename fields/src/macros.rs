@@ -140,45 +140,47 @@ macro_rules! sqrt_impl {
                     s
                 };
 
-                let calc_kappa = |i: usize, j: usize, l_s: &[u64]| -> u64 {
+                let calculate_kappa = |i: usize, j: usize, l_s: &[u64]| -> u64 {
                     l_s.iter().take(j).sum::<u64>() + 1 + l_s.iter().skip(i + 1).sum::<u64>()
                 };
 
-                let calc_gamma = |i: usize, q_s: &[Vec<bool>], last: bool| -> $Self {
+                let calculate_gamma = |i: usize, q_s: &[u64], last: bool| -> $Self {
                     let mut gamma = $Self::one();
                     if i != 0 {
-                        q_s.iter().zip(l_s.iter()).enumerate().for_each(|(j, (q_bits, l))| {
-                            let mut kappa = calc_kappa(i, j, &l_s);
+                        q_s.iter().zip(l_s.iter()).enumerate().for_each(|(j, (q, l))| {
+                            let mut kappa = calculate_kappa(i, j, &l_s);
                             if last {
                                 kappa -= 1;
                             }
-                            q_bits.iter().enumerate().take(*l as usize).for_each(|(k, bit)| {
-                                if *bit {
+                            let mut value = *q;
+                            (0..*l as usize).for_each(|k| {
+                                let bit = value & 1 == 1;
+                                if bit {
                                     gamma *= $Self($P::POWERS_OF_ROOTS_OF_UNITY[(kappa as usize) + k], PhantomData);
                                 }
+                                value = value.wrapping_shr(1u32);
                             });
                         });
                     }
                     gamma
                 };
 
-                let mut q_s = Vec::<Vec<bool>>::with_capacity(k as usize);
+                let mut q_s = Vec::<u64>::with_capacity(k as usize);
                 let two_to_n_minus_l = 2u64.pow((n - l) as u32);
                 let two_to_n_minus_l_minus_one = 2u64.pow((n - l_minus_one) as u32);
                 x_s.enumerate().for_each(|(i, x)| {
                     // Calculate g^t.
                     // This algorithm deviates from the standard description in the paper, and is
                     // explained in detail in page 6, in section 2.1.
-                    let gamma = calc_gamma(i, &q_s, false);
+                    let gamma = calculate_gamma(i, &q_s, false);
                     let alpha = x * gamma;
                     q_s.push(
-                        (eval(alpha) / if i < k_1 as usize { two_to_n_minus_l_minus_one } else { two_to_n_minus_l })
-                            .to_bits_le(),
+                        eval(alpha) / if i < k_1 as usize { two_to_n_minus_l_minus_one } else { two_to_n_minus_l },
                     );
                 });
 
                 // Calculate g^{t/2}.
-                let gamma = calc_gamma(k as usize, &q_s, true);
+                let gamma = calculate_gamma(k as usize, &q_s, true);
                 Some(*$self * v * gamma)
             }
         }

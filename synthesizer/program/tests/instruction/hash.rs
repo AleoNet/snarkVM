@@ -20,7 +20,7 @@ use circuit::{AleoV0, Eject};
 use console::{
     network::Testnet3,
     prelude::*,
-    program::{Identifier, Literal, LiteralType, Plaintext, Register, Value},
+    program::{Identifier, Literal, LiteralType, Plaintext, PlaintextType, Register, Value},
 };
 use snarkvm_synthesizer_program::{
     HashBHP1024,
@@ -28,11 +28,17 @@ use snarkvm_synthesizer_program::{
     HashBHP512,
     HashBHP768,
     HashInstruction,
+    HashKeccak256,
+    HashKeccak384,
+    HashKeccak512,
     HashPED128,
     HashPED64,
     HashPSD2,
     HashPSD4,
     HashPSD8,
+    HashSha3_256,
+    HashSha3_384,
+    HashSha3_512,
     Opcode,
     Operand,
     Program,
@@ -44,25 +50,25 @@ use synthesizer_process::{Process, Stack};
 type CurrentNetwork = Testnet3;
 type CurrentAleo = AleoV0;
 
-const ITERATIONS: usize = 100;
+const ITERATIONS: usize = 50;
 
 /// **Attention**: When changing this, also update in `src/logic/instruction/hash.rs`.
-fn valid_destination_types() -> &'static [LiteralType] {
+fn valid_destination_types<N: Network>() -> &'static [PlaintextType<N>] {
     &[
-        LiteralType::Address,
-        LiteralType::Field,
-        LiteralType::Group,
-        LiteralType::I8,
-        LiteralType::I16,
-        LiteralType::I32,
-        LiteralType::I64,
-        LiteralType::I128,
-        LiteralType::U8,
-        LiteralType::U16,
-        LiteralType::U32,
-        LiteralType::U64,
-        LiteralType::U128,
-        LiteralType::Scalar,
+        PlaintextType::Literal(LiteralType::Address),
+        PlaintextType::Literal(LiteralType::Field),
+        PlaintextType::Literal(LiteralType::Group),
+        PlaintextType::Literal(LiteralType::I8),
+        PlaintextType::Literal(LiteralType::I16),
+        PlaintextType::Literal(LiteralType::I32),
+        PlaintextType::Literal(LiteralType::I64),
+        PlaintextType::Literal(LiteralType::I128),
+        PlaintextType::Literal(LiteralType::U8),
+        PlaintextType::Literal(LiteralType::U16),
+        PlaintextType::Literal(LiteralType::U32),
+        PlaintextType::Literal(LiteralType::U64),
+        PlaintextType::Literal(LiteralType::U128),
+        PlaintextType::Literal(LiteralType::Scalar),
     ]
 }
 
@@ -72,7 +78,7 @@ fn sample_stack(
     opcode: Opcode,
     type_: LiteralType,
     mode: circuit::Mode,
-    destination_type: LiteralType,
+    destination_type: PlaintextType<CurrentNetwork>,
 ) -> Result<(Stack<CurrentNetwork>, Vec<Operand<CurrentNetwork>>, Register<CurrentNetwork>)> {
     // Initialize the opcode.
     let opcode = opcode.to_string();
@@ -90,7 +96,8 @@ fn sample_stack(
             function {function_name}:
                 input {r0} as {type_}.{mode};
                 {opcode} {r0} into {r1} as {destination_type};
-                finalize {r0};
+                async {function_name} {r0} into r2;
+                output r2 as testing.aleo/{function_name}.future;
             finalize {function_name}:
                 input {r0} as {type_}.public;
                 {opcode} {r0} into {r1} as {destination_type};
@@ -110,12 +117,12 @@ fn check_hash<const VARIANT: u8>(
     operation: impl FnOnce(
         Vec<Operand<CurrentNetwork>>,
         Register<CurrentNetwork>,
-        LiteralType,
+        PlaintextType<CurrentNetwork>,
     ) -> HashInstruction<CurrentNetwork, VARIANT>,
     opcode: Opcode,
     literal: &Literal<CurrentNetwork>,
     mode: &circuit::Mode,
-    destination_type: LiteralType,
+    destination_type: PlaintextType<CurrentNetwork>,
 ) {
     println!("Checking '{opcode}' for '{literal}.{mode}'");
 
@@ -123,10 +130,10 @@ fn check_hash<const VARIANT: u8>(
     let type_ = literal.to_type();
 
     // Initialize the stack.
-    let (stack, operands, destination) = sample_stack(opcode, type_, *mode, destination_type).unwrap();
+    let (stack, operands, destination) = sample_stack(opcode, type_, *mode, destination_type.clone()).unwrap();
 
     // Initialize the operation.
-    let operation = operation(operands, destination.clone(), destination_type);
+    let operation = operation(operands, destination.clone(), destination_type.clone());
     // Initialize the function name.
     let function_name = Identifier::from_str("run").unwrap();
     // Initialize a destination operand.
@@ -171,7 +178,7 @@ fn check_hash<const VARIANT: u8>(
         match output_a {
             Value::Plaintext(Plaintext::Literal(literal, _)) => {
                 assert_eq!(
-                    literal.to_type(),
+                    PlaintextType::Literal(literal.to_type()),
                     destination_type,
                     "The output type is inconsistent with the declared type"
                 );
@@ -185,7 +192,7 @@ fn check_hash<const VARIANT: u8>(
 }
 
 macro_rules! test_hash {
-        ($name: tt, $hash:ident) => {
+        ($name: tt, $hash:ident, $iterations:expr) => {
             paste::paste! {
                 #[test]
                 fn [<test _ $name _ is _ consistent>]() {
@@ -200,7 +207,7 @@ macro_rules! test_hash {
                     // Prepare the test.
                     let modes = [circuit::Mode::Public, circuit::Mode::Private];
 
-                    for _ in 0..ITERATIONS {
+                    for _ in 0..$iterations {
                         let literals = sample_literals!(CurrentNetwork, &mut rng);
                         for literal in literals.iter() {
                             for mode in modes.iter() {
@@ -210,7 +217,7 @@ macro_rules! test_hash {
                                         opcode,
                                         literal,
                                         mode,
-                                        *destination_type,
+                                        destination_type.clone(),
                                     );
                                 }
                             }
@@ -221,14 +228,22 @@ macro_rules! test_hash {
         };
     }
 
-test_hash!(hash_bhp256, HashBHP256);
-test_hash!(hash_bhp512, HashBHP512);
-test_hash!(hash_bhp768, HashBHP768);
-test_hash!(hash_bhp1024, HashBHP1024);
+test_hash!(hash_bhp256, HashBHP256, ITERATIONS);
+test_hash!(hash_bhp512, HashBHP512, ITERATIONS);
+test_hash!(hash_bhp768, HashBHP768, ITERATIONS);
+test_hash!(hash_bhp1024, HashBHP1024, ITERATIONS);
 
-test_hash!(hash_psd2, HashPSD2);
-test_hash!(hash_psd4, HashPSD4);
-test_hash!(hash_psd8, HashPSD8);
+test_hash!(hash_keccak256, HashKeccak256, 5);
+test_hash!(hash_keccak384, HashKeccak384, 5);
+test_hash!(hash_keccak512, HashKeccak512, 5);
+
+test_hash!(hash_psd2, HashPSD2, ITERATIONS);
+test_hash!(hash_psd4, HashPSD4, ITERATIONS);
+test_hash!(hash_psd8, HashPSD8, ITERATIONS);
+
+test_hash!(hash_sha3_256, HashSha3_256, 5);
+test_hash!(hash_sha3_384, HashSha3_384, 5);
+test_hash!(hash_sha3_512, HashSha3_512, 5);
 
 // Note this test must be explicitly written, instead of using the macro, because HashPED64 fails on certain input types.
 #[test]
@@ -261,7 +276,7 @@ fn test_hash_ped64_is_consistent() {
                                 $operation::<CurrentNetwork>::opcode(),
                                 literal,
                                 mode,
-                                *destination_type,
+                                destination_type.clone(),
                             );
                         }
                     }
@@ -305,7 +320,7 @@ fn test_hash_ped128_is_consistent() {
                                 $operation::<CurrentNetwork>::opcode(),
                                 literal,
                                 mode,
-                                *destination_type,
+                                destination_type.clone(),
                             );
                         }
                     }

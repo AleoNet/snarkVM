@@ -19,19 +19,21 @@ impl<A: Aleo> ToBits for Value<A> {
 
     /// Returns the circuit value as a list of **little-endian** bits.
     #[inline]
-    fn to_bits_le(&self) -> Vec<Boolean<A>> {
+    fn write_bits_le(&self, vec: &mut Vec<Boolean<A>>) {
         match self {
-            Self::Plaintext(plaintext) => plaintext.to_bits_le(),
-            Self::Record(record) => record.to_bits_le(),
-        }
+            Self::Plaintext(plaintext) => plaintext.write_bits_le(vec),
+            Self::Record(record) => record.write_bits_le(vec),
+            Self::Future(future) => future.write_bits_le(vec),
+        };
     }
 
     /// Returns the circuit value as a list of **big-endian** bits.
     #[inline]
-    fn to_bits_be(&self) -> Vec<Boolean<A>> {
+    fn write_bits_be(&self, vec: &mut Vec<Boolean<A>>) {
         match self {
-            Self::Plaintext(plaintext) => plaintext.to_bits_be(),
-            Self::Record(record) => record.to_bits_be(),
-        }
+            Self::Plaintext(plaintext) => plaintext.write_bits_be(vec),
+            Self::Record(record) => record.write_bits_be(vec),
+            Self::Future(future) => future.write_bits_be(vec),
+        };
     }
 }

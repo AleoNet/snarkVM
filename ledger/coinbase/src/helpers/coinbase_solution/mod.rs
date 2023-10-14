@@ -18,64 +18,66 @@ mod string;
 
 use super::*;
 
-/// The coinbase puzzle solution constructed by accumulating the individual prover solutions.
-#[derive(Clone, Eq, PartialEq, Hash)]
+use indexmap::IndexMap;
+
+/// The coinbase puzzle solution is composed of individual prover solutions.
+#[derive(Clone, Eq, PartialEq)]
 pub struct CoinbaseSolution<N: Network> {
-    /// The partial solutions of the coinbase puzzle, which are aggregated into a single solution.
-    partial_solutions: Vec<PartialSolution<N>>,
-    /// The KZG proof of the solutions.
-    proof: PuzzleProof<N>,
+    /// The prover solutions for the coinbase puzzle.
+    solutions: IndexMap<PuzzleCommitment<N>, ProverSolution<N>>,
 }
 
 impl<N: Network> CoinbaseSolution<N> {
     /// Initializes a new instance of the solutions.
-    pub const fn new(partial_solutions: Vec<PartialSolution<N>>, proof: PuzzleProof<N>) -> Self {
-        Self { partial_solutions, proof }
-    }
-
-    /// Returns the partial solutions.
-    pub fn partial_solutions(&self) -> &[PartialSolution<N>] {
-        &self.partial_solutions
+    pub fn new(solutions: Vec<ProverSolution<N>>) -> Self {
+        Self { solutions: solutions.into_iter().map(|solution| (solution.commitment(), solution)).collect() }
     }
 
     /// Returns the puzzle commitments.
-    pub fn puzzle_commitments(&self) -> impl '_ + Iterator<Item = PuzzleCommitment<N>> {
-        self.partial_solutions.iter().map(|s| s.commitment())
+    pub fn puzzle_commitments(&self) -> impl '_ + Iterator<Item = &PuzzleCommitment<N>> {
+        self.solutions.keys()
     }
 
-    /// Returns the KZG proof.
-    pub const fn proof(&self) -> &PuzzleProof<N> {
-        &self.proof
-    }
-
-    /// Returns the number of partial solutions.
+    /// Returns the number of solutions.
     pub fn len(&self) -> usize {
-        self.partial_solutions.len()
+        self.solutions.len()
     }
 
-    /// Returns `true` if there are no partial solutions.
+    /// Returns `true` if there are no solutions.
     pub fn is_empty(&self) -> bool {
-        self.partial_solutions.is_empty()
+        self.solutions.is_empty()
+    }
+
+    /// Returns the prover solution for the puzzle commitment.
+    pub fn get_solution(&self, puzzle_commitment: &PuzzleCommitment<N>) -> Option<&ProverSolution<N>> {
+        self.solutions.get(puzzle_commitment)
     }
 
     /// Returns the combined sum of the prover solutions.
     pub fn to_combined_proof_target(&self) -> Result<u128> {
         // Compute the combined proof target as a u128.
-        self.partial_solutions.iter().try_fold(0u128, |combined, solution| {
+        self.solutions.values().try_fold(0u128, |combined, solution| {
             combined.checked_add(solution.to_target()? as u128).ok_or_else(|| anyhow!("Combined target overflowed"))
         })
     }
 
     /// Returns the accumulator challenge point.
     pub fn to_accumulator_point(&self) -> Result<Field<N>> {
-        let mut challenge_points =
-            hash_commitments(self.partial_solutions.iter().map(|solution| *solution.commitment()))?;
-        ensure!(challenge_points.len() == self.partial_solutions.len() + 1, "Invalid number of challenge points");
+        let mut challenge_points = hash_commitments(self.solutions.keys().map(|pcm| **pcm))?;
+        ensure!(challenge_points.len() == self.solutions.len() + 1, "Invalid number of challenge points");
 
         // Pop the last challenge point as the accumulator challenge point.
         match challenge_points.pop() {
             Some(point) => Ok(Field::new(point)),
             None => bail!("Missing the accumulator challenge point"),
         }
+    }
+}
+
+impl<N: Network> Deref for CoinbaseSolution<N> {
+    type Target = IndexMap<PuzzleCommitment<N>, ProverSolution<N>>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.solutions
     }
 }

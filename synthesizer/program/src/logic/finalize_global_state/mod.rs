@@ -25,6 +25,25 @@ pub struct FinalizeGlobalState {
 }
 
 impl FinalizeGlobalState {
+    /// Initializes a new genesis global state.
+    #[inline]
+    pub fn new_genesis<N: Network>() -> Result<Self> {
+        // Initialize the parameters.
+        let block_round = 0;
+        let block_height = 0;
+        let block_cumulative_weight = 0;
+        let block_cumulative_proof_target = 0;
+        let previous_block_hash = N::BlockHash::default();
+        // Return the new global state.
+        Self::new::<N>(
+            block_round,
+            block_height,
+            block_cumulative_weight,
+            block_cumulative_proof_target,
+            previous_block_hash,
+        )
+    }
+
     /// Initializes a new global state from the given inputs.
     #[inline]
     pub fn new<N: Network>(
@@ -35,12 +54,13 @@ impl FinalizeGlobalState {
         previous_block_hash: N::BlockHash,
     ) -> Result<Self> {
         // Initialize the preimage.
-        let mut preimage = Vec::with_capacity(605);
-        preimage.extend_from_slice(&block_round.to_bits_le());
-        preimage.extend_from_slice(&block_height.to_bits_le());
-        preimage.extend_from_slice(&block_cumulative_weight.to_bits_le());
-        preimage.extend_from_slice(&block_cumulative_proof_target.to_bits_le());
-        preimage.extend_from_slice(&(*previous_block_hash).to_bits_le());
+        let preimage = to_bits_le![
+            block_round,
+            block_height,
+            block_cumulative_weight,
+            block_cumulative_proof_target,
+            (*previous_block_hash); 605
+        ];
 
         // Hash the preimage to get the random seed.
         let seed = N::hash_bhp768(&preimage)?.to_bytes_le()?;

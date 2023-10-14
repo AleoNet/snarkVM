@@ -14,6 +14,9 @@ Please follow the instructions below when filing a pull request:
 
 snarkVM is a big project, so (non-)adherence to best practices related to performance can have a considerable impact; below are the rules we try to follow at all times in order to ensure high quality of the code:
 
+### Error handling
+- prefer the use of `checked_div` when dividing polynomials.
+
 ### Memory handling
 - if the final size is known, pre-allocate the collections (`Vec`, `HashMap` etc.) using `with_capacity` or `reserve` - this ensures that there are both fewer allocations (which involve system calls) and that the final allocated capacity is as close to the required size as possible
 - create the collections right before they are populated/used, as opposed to e.g. creating a few big ones at the beginning of a function and only using them later on; this reduces the amount of time they occupy memory

@@ -158,7 +158,7 @@ impl<N: Network> Committee<N> {
         // Hash the round seed.
         let hash = Literal::Field(N::hash_to_group_psd4(&seed)?.to_x_coordinate());
         // Compute the stake index from the hash output.
-        let stake_index = match hash.downcast_lossy(LiteralType::U64)? {
+        let stake_index = match hash.cast_lossy(LiteralType::U64)? {
             Literal::U64(output) => (*output) % total_stake,
             _ => bail!("BFT failed to downcast the hash output to a U64 literal"),
         };
@@ -255,6 +255,22 @@ pub mod test_helpers {
         }
         // Return the committee.
         Committee::<CurrentNetwork>::new(round, members).unwrap()
+    }
+
+    /// Samples a random committee for a given round and members.
+    pub fn sample_committee_for_round_and_members(
+        round: u64,
+        members: Vec<Address<CurrentNetwork>>,
+        rng: &mut TestRng,
+    ) -> Committee<CurrentNetwork> {
+        // Sample the members.
+        let mut committee_members = IndexMap::new();
+        for member in members {
+            let is_open = rng.gen();
+            committee_members.insert(member, (2 * MIN_VALIDATOR_STAKE, is_open));
+        }
+        // Return the committee.
+        Committee::<CurrentNetwork>::new(round, committee_members).unwrap()
     }
 
     /// Samples a random committee.

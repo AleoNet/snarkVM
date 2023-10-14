@@ -20,7 +20,7 @@ impl<N: Network> FromBytes for Certificate<N> {
         // Read the version.
         let version = u8::read_le(&mut reader)?;
         // Ensure the version is valid.
-        if version != 0 {
+        if version != 1 {
             return Err(error("Invalid certificate version"));
         }
         // Read the certificate.
@@ -34,7 +34,7 @@ impl<N: Network> ToBytes for Certificate<N> {
     /// Writes the certificate to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Write the version.
-        0u8.write_le(&mut writer)?;
+        1u8.write_le(&mut writer)?;
         // Write the bytes.
         self.certificate.write_le(&mut writer)
     }

@@ -62,11 +62,13 @@ pub enum BlockMap {
     ReverseID = DataID::BlockReverseIDMap as u16,
     Header = DataID::BlockHeaderMap as u16,
     Authority = DataID::BlockAuthorityMap as u16,
-    Transactions = DataID::BlockTransactionsMap as u16,
-    ConfirmedTransactions = DataID::BlockConfirmedTransactionsMap as u16,
+    Certificate = DataID::BlockCertificateMap as u16,
     Ratifications = DataID::BlockRatificationsMap as u16,
-    CoinbaseSolution = DataID::BlockCoinbaseSolutionMap as u16,
-    CoinbasePuzzleCommitment = DataID::BlockCoinbasePuzzleCommitmentMap as u16,
+    Solutions = DataID::BlockSolutionsMap as u16,
+    PuzzleCommitments = DataID::BlockPuzzleCommitmentsMap as u16,
+    Transactions = DataID::BlockTransactionsMap as u16,
+    AbortedTransactionIDs = DataID::BlockAbortedTransactionIDsMap as u16,
+    ConfirmedTransactions = DataID::BlockConfirmedTransactionsMap as u16,
 }
 
 /// The RocksDB map prefix for committee-related entries.
@@ -146,6 +148,7 @@ pub enum TransitionOutputMap {
     Record = DataID::OutputRecordMap as u16,
     RecordNonce = DataID::OutputRecordNonceMap as u16,
     ExternalRecord = DataID::OutputExternalRecordMap as u16,
+    Future = DataID::OutputFutureMap as u16,
 }
 
 /// The RocksDB map prefix for transaction-related entries.
@@ -164,7 +167,6 @@ pub enum TransactionMap {
 #[repr(u16)]
 pub enum TransitionMap {
     Locator = DataID::TransitionLocatorMap as u16,
-    Finalize = DataID::TransitionFinalizeMap as u16,
     TPK = DataID::TransitionTPKMap as u16,
     ReverseTPK = DataID::TransitionReverseTPKMap as u16,
     TCM = DataID::TransitionTCMMap as u16,
@@ -178,10 +180,7 @@ pub enum TransitionMap {
 #[repr(u16)]
 pub enum ProgramMap {
     ProgramID = DataID::ProgramIDMap as u16,
-    MappingID = DataID::MappingIDMap as u16,
-    KeyValueID = DataID::KeyValueIDMap as u16,
-    Key = DataID::KeyMap as u16,
-    Value = DataID::ValueMap as u16,
+    KeyValueID = DataID::KeyValueMap as u16,
 }
 
 /// The RocksDB map prefix for test-related entries.
@@ -211,11 +210,13 @@ enum DataID {
     BlockReverseIDMap,
     BlockHeaderMap,
     BlockAuthorityMap,
-    BlockTransactionsMap,
-    BlockConfirmedTransactionsMap,
+    BlockCertificateMap,
     BlockRatificationsMap,
-    BlockCoinbaseSolutionMap,
-    BlockCoinbasePuzzleCommitmentMap,
+    BlockSolutionsMap,
+    BlockPuzzleCommitmentsMap,
+    BlockTransactionsMap,
+    BlockAbortedTransactionIDsMap,
+    BlockConfirmedTransactionsMap,
     // Committee
     CurrentRoundMap,
     RoundToHeightMap,
@@ -253,21 +254,18 @@ enum DataID {
     OutputRecordMap,
     OutputRecordNonceMap,
     OutputExternalRecordMap,
+    OutputFutureMap,
     // Transaction
     TransactionIDMap,
     // Transition
     TransitionLocatorMap,
-    TransitionFinalizeMap,
     TransitionTPKMap,
     TransitionReverseTPKMap,
     TransitionTCMMap,
     TransitionReverseTCMMap,
     // Program
     ProgramIDMap,
-    MappingIDMap,
-    KeyValueIDMap,
-    KeyMap,
-    ValueMap,
+    KeyValueMap,
 
     // Testing
     #[cfg(test)]

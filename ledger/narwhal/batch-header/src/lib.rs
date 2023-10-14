@@ -67,7 +67,7 @@ impl<N: Network> BatchHeader<N> {
         // Compute the batch ID.
         let batch_id = Self::compute_batch_id(author, round, timestamp, &transmission_ids, &previous_certificate_ids)?;
         // Sign the preimage.
-        let signature = private_key.sign(&[batch_id, Field::from_u64(timestamp as u64)], rng)?;
+        let signature = private_key.sign(&[batch_id], rng)?;
         // Return the batch header.
         Ok(Self { author, batch_id, round, timestamp, transmission_ids, previous_certificate_ids, signature })
     }
@@ -90,7 +90,7 @@ impl<N: Network> BatchHeader<N> {
         // Compute the batch ID.
         let batch_id = Self::compute_batch_id(author, round, timestamp, &transmission_ids, &previous_certificate_ids)?;
         // Verify the signature.
-        if !signature.verify(&author, &[batch_id, Field::from_u64(timestamp as u64)]) {
+        if !signature.verify(&author, &[batch_id]) {
             bail!("Invalid signature for the batch header");
         }
         // Return the batch header.

@@ -13,11 +13,18 @@
 // limitations under the License.
 
 #![forbid(unsafe_code)]
+#![allow(clippy::too_many_arguments)]
 // #![warn(clippy::cast_possible_truncation)]
 #![cfg_attr(test, allow(clippy::single_element_loop))]
 
 pub mod header;
 pub use header::*;
+
+mod helpers;
+pub use helpers::*;
+
+pub mod ratifications;
+pub use ratifications::*;
 
 pub mod ratify;
 pub use ratify::*;
@@ -35,6 +42,7 @@ mod bytes;
 mod genesis;
 mod serialize;
 mod string;
+mod verify;
 
 use console::{
     account::PrivateKey,
@@ -43,8 +51,10 @@ use console::{
     types::{Field, Group, U64},
 };
 use ledger_authority::Authority;
-use ledger_coinbase::{CoinbaseSolution, PuzzleCommitment};
+use ledger_coinbase::{CoinbaseSolution, ProverSolution, PuzzleCommitment};
+use ledger_committee::Committee;
 use ledger_narwhal_subdag::Subdag;
+use ledger_narwhal_transmission_id::TransmissionID;
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct Block<N: Network> {
@@ -56,65 +66,75 @@ pub struct Block<N: Network> {
     header: Header<N>,
     /// The authority for this block.
     authority: Authority<N>,
+    /// The ratifications in this block.
+    ratifications: Ratifications<N>,
+    /// The solutions in the block.
+    solutions: Option<CoinbaseSolution<N>>,
     /// The transactions in this block.
     transactions: Transactions<N>,
-    /// The ratifications in this block.
-    ratifications: Vec<Ratify<N>>,
-    /// The solutions in the block.
-    coinbase: Option<CoinbaseSolution<N>>,
+    /// The aborted transaction IDs in this block.
+    aborted_transaction_ids: Vec<N::TransactionID>,
 }
 
 impl<N: Network> Block<N> {
-    /// Initializes a new beacon block from the given previous block hash,
-    /// block header, ratifications, solutions, and transactions.
+    /// Initializes a new beacon block from the given previous block hash, block header,
+    /// ratifications, solutions, transactions, and aborted transaction IDs.
     pub fn new_beacon<R: Rng + CryptoRng>(
         private_key: &PrivateKey<N>,
         previous_hash: N::BlockHash,
         header: Header<N>,
-        ratifications: Vec<Ratify<N>>,
+        ratifications: Ratifications<N>,
         solutions: Option<CoinbaseSolution<N>>,
         transactions: Transactions<N>,
+        aborted_transaction_ids: Vec<N::TransactionID>,
         rng: &mut R,
     ) -> Result<Self> {
         // Compute the block hash.
-        let block_hash = N::hash_bhp1024(&[previous_hash.to_bits_le(), header.to_root()?.to_bits_le()].concat())?;
+        let block_hash = N::hash_bhp1024(&to_bits_le![previous_hash, header.to_root()?])?;
         // Construct the beacon authority.
         let authority = Authority::new_beacon(private_key, block_hash, rng)?;
         // Construct the block.
-        Self::from(previous_hash, header, authority, transactions, ratifications, solutions)
+        Self::from(previous_hash, header, authority, ratifications, solutions, transactions, aborted_transaction_ids)
     }
 
-    /// Initializes a new quorum block from the given previous block hash,
-    /// block header, subdag, ratifications, solutions, and transactions.
+    /// Initializes a new quorum block from the given previous block hash, block header,
+    /// subdag, ratifications, solutions, transactions, and aborted transaction IDs.
     pub fn new_quorum(
         previous_hash: N::BlockHash,
         header: Header<N>,
         subdag: Subdag<N>,
-        ratifications: Vec<Ratify<N>>,
+        ratifications: Ratifications<N>,
         solutions: Option<CoinbaseSolution<N>>,
         transactions: Transactions<N>,
+        aborted_transaction_ids: Vec<N::TransactionID>,
     ) -> Result<Self> {
         // Construct the beacon authority.
         let authority = Authority::new_quorum(subdag);
         // Construct the block.
-        Self::from(previous_hash, header, authority, transactions, ratifications, solutions)
+        Self::from(previous_hash, header, authority, ratifications, solutions, transactions, aborted_transaction_ids)
     }
 
-    /// Initializes a new block from the given previous block hash,
-    /// block header, transactions, ratifications, coinbase, and authority.
+    /// Initializes a new block from the given previous block hash, block header,
+    /// authority, ratifications, solutions, transactions, and aborted transaction IDs.
     pub fn from(
         previous_hash: N::BlockHash,
         header: Header<N>,
         authority: Authority<N>,
+        ratifications: Ratifications<N>,
+        solutions: Option<CoinbaseSolution<N>>,
         transactions: Transactions<N>,
-        ratifications: Vec<Ratify<N>>,
-        coinbase: Option<CoinbaseSolution<N>>,
+        aborted_transaction_ids: Vec<N::TransactionID>,
     ) -> Result<Self> {
         // Ensure the block contains transactions.
         ensure!(!transactions.is_empty(), "Cannot create a block with zero transactions");
 
+        // Ensure the number of transactions is within the allowed range.
+        if transactions.len() + aborted_transaction_ids.len() > Transactions::<N>::MAX_TRANSACTIONS {
+            bail!("Cannot initialize a block with {} transactions (w/ aborted)", Transactions::<N>::MAX_TRANSACTIONS);
+        }
+
         // Compute the block hash.
-        let block_hash = N::hash_bhp1024(&[previous_hash.to_bits_le(), header.to_root()?.to_bits_le()].concat())?;
+        let block_hash = N::hash_bhp1024(&to_bits_le![previous_hash, header.to_root()?])?;
 
         // Verify the authority.
         match &authority {
@@ -124,28 +144,65 @@ impl<N: Network> Block<N> {
                 // Ensure the signature is valid.
                 ensure!(signature.verify(&address, &[block_hash]), "Invalid signature for block {}", header.height());
             }
-            // TODO (howardwu): Verify the subdag.
-            Authority::Quorum(_subdag) => (),
+            Authority::Quorum(subdag) => {
+                // Ensure the transmission IDs from the subdag correspond to the block.
+                Self::check_subdag_transmissions(subdag, &solutions, &transactions, &aborted_transaction_ids)?;
+            }
         }
 
         // Ensure that coinbase accumulator matches the solutions.
-        let expected_accumulator_point = match &coinbase {
+        let solutions_root = match &solutions {
             Some(coinbase_solution) => coinbase_solution.to_accumulator_point()?,
             None => Field::<N>::zero(),
         };
-        if header.coinbase_accumulator_point() != expected_accumulator_point {
-            bail!("The coinbase accumulator point in the block does not correspond to the solutions");
+        if header.solutions_root() != solutions_root {
+            bail!("The solutions root in the block does not correspond to the solutions");
         }
 
-        // Construct the block.
+        // Ensure that the subdag root matches the authority.
+        let subdag_root = match &authority {
+            Authority::Beacon(_) => Field::<N>::zero(),
+            Authority::Quorum(subdag) => subdag.to_subdag_root()?,
+        };
+        if header.subdag_root() != subdag_root {
+            bail!("The subdag root in the block does not correspond to the authority");
+        }
+
+        // Return the block.
+        Self::from_unchecked(
+            block_hash.into(),
+            previous_hash,
+            header,
+            authority,
+            ratifications,
+            solutions,
+            transactions,
+            aborted_transaction_ids,
+        )
+    }
+
+    /// Initializes a new block from the given block hash, previous block hash, block header,
+    /// authority, ratifications, solutions, transactions, and aborted transaction IDs.
+    pub fn from_unchecked(
+        block_hash: N::BlockHash,
+        previous_hash: N::BlockHash,
+        header: Header<N>,
+        authority: Authority<N>,
+        ratifications: Ratifications<N>,
+        solutions: Option<CoinbaseSolution<N>>,
+        transactions: Transactions<N>,
+        aborted_transaction_ids: Vec<N::TransactionID>,
+    ) -> Result<Self> {
+        // Return the block.
         Ok(Self {
-            block_hash: block_hash.into(),
+            block_hash,
             previous_hash,
             header,
             authority,
             transactions,
             ratifications,
-            coinbase,
+            solutions,
+            aborted_transaction_ids,
         })
     }
 }
@@ -167,13 +224,23 @@ impl<N: Network> Block<N> {
     }
 
     /// Returns the ratifications in this block.
-    pub const fn ratifications(&self) -> &Vec<Ratify<N>> {
+    pub const fn ratifications(&self) -> &Ratifications<N> {
         &self.ratifications
     }
 
     /// Returns the solutions in the block.
-    pub const fn coinbase(&self) -> Option<&CoinbaseSolution<N>> {
-        self.coinbase.as_ref()
+    pub const fn solutions(&self) -> Option<&CoinbaseSolution<N>> {
+        self.solutions.as_ref()
+    }
+
+    /// Returns the transactions in this block.
+    pub const fn transactions(&self) -> &Transactions<N> {
+        &self.transactions
+    }
+
+    /// Returns the aborted transaction IDs in this block.
+    pub const fn aborted_transaction_ids(&self) -> &Vec<N::TransactionID> {
+        &self.aborted_transaction_ids
     }
 }
 
@@ -184,7 +251,7 @@ impl<N: Network> Block<N> {
     }
 
     /// Returns the previous state root from the block header.
-    pub const fn previous_state_root(&self) -> Field<N> {
+    pub const fn previous_state_root(&self) -> N::StateRoot {
         self.header.previous_state_root()
     }
 
@@ -203,9 +270,9 @@ impl<N: Network> Block<N> {
         self.header.ratifications_root()
     }
 
-    /// Returns the coinbase accumulator point in the block header.
-    pub const fn coinbase_accumulator_point(&self) -> Field<N> {
-        self.header.coinbase_accumulator_point()
+    /// Returns the solutions root in the block header.
+    pub const fn solutions_root(&self) -> Field<N> {
+        self.header.solutions_root()
     }
 
     /// Returns the metadata in the block header.
@@ -233,11 +300,6 @@ impl<N: Network> Block<N> {
         self.height() / N::NUM_BLOCKS_PER_EPOCH
     }
 
-    /// Returns the total supply of microcredits at this block.
-    pub const fn total_supply_in_microcredits(&self) -> u64 {
-        self.header.total_supply_in_microcredits()
-    }
-
     /// Returns the cumulative weight for this block.
     pub const fn cumulative_weight(&self) -> u128 {
         self.header.cumulative_weight()
@@ -263,9 +325,9 @@ impl<N: Network> Block<N> {
         self.header.last_coinbase_target()
     }
 
-    /// Returns the block height of the last coinbase.
-    pub const fn last_coinbase_height(&self) -> u32 {
-        self.header.last_coinbase_height()
+    /// Returns the block timestamp of the last coinbase.
+    pub const fn last_coinbase_timestamp(&self) -> i64 {
+        self.header.last_coinbase_timestamp()
     }
 
     /// Returns the Unix timestamp (UTC) for this block.
@@ -288,6 +350,23 @@ impl<N: Network> Block<N> {
     /// Returns `true` if the block contains the given commitment.
     pub fn contains_commitment(&self, commitment: &Field<N>) -> bool {
         self.transactions.contains_commitment(commitment)
+    }
+}
+
+impl<N: Network> Block<N> {
+    /// Returns the solution with the given solution ID, if it exists.
+    pub fn get_solution(&self, puzzle_commitment: &PuzzleCommitment<N>) -> Option<&ProverSolution<N>> {
+        self.solutions.as_ref().and_then(|solution| solution.get_solution(puzzle_commitment))
+    }
+
+    /// Returns the transaction with the given transaction ID, if it exists.
+    pub fn get_transaction(&self, transaction_id: &N::TransactionID) -> Option<&Transaction<N>> {
+        self.transactions.get(transaction_id).map(|t| t.deref())
+    }
+
+    /// Returns the confirmed transaction with the given transaction ID, if it exists.
+    pub fn get_confirmed_transaction(&self, transaction_id: &N::TransactionID) -> Option<&ConfirmedTransaction<N>> {
+        self.transactions.get(transaction_id)
     }
 }
 
@@ -330,13 +409,8 @@ impl<N: Network> Block<N> {
 
 impl<N: Network> Block<N> {
     /// Returns the puzzle commitments in this block.
-    pub fn puzzle_commitments(&self) -> Option<impl '_ + Iterator<Item = PuzzleCommitment<N>>> {
-        self.coinbase.as_ref().map(|solution| solution.puzzle_commitments())
-    }
-
-    /// Returns the transactions in this block.
-    pub const fn transactions(&self) -> &Transactions<N> {
-        &self.transactions
+    pub fn puzzle_commitments(&self) -> Option<impl '_ + Iterator<Item = &PuzzleCommitment<N>>> {
+        self.solutions.as_ref().map(|solution| solution.puzzle_commitments())
     }
 
     /// Returns an iterator over the transaction IDs, for all transactions in `self`.
@@ -409,9 +483,9 @@ impl<N: Network> Block<N> {
         self.transactions.nonces()
     }
 
-    /// Returns an iterator over the transaction fees, for all transactions.
-    pub fn transaction_fees(&self) -> impl '_ + Iterator<Item = Result<U64<N>>> {
-        self.transactions.transaction_fees()
+    /// Returns an iterator over the transaction fee amounts, for all transactions.
+    pub fn transaction_fee_amounts(&self) -> impl '_ + Iterator<Item = Result<U64<N>>> {
+        self.transactions.transaction_fee_amounts()
     }
 }
 
@@ -521,18 +595,18 @@ pub mod test_helpers {
         let address = Address::<CurrentNetwork>::try_from(private_key).unwrap();
 
         // Prepare the locator.
-        let locator = ("credits.aleo", "mint");
-        // Prepare the amount for each call to the mint function.
+        let locator = ("credits.aleo", "transfer_public_to_private");
+        // Prepare the amount for each call to the function.
         let amount = 100_000_000u64;
         // Prepare the function inputs.
         let inputs = [address.to_string(), format!("{amount}_u64")];
 
         // Initialize the process.
         let process = Process::load().unwrap();
-        // Authorize the mint function.
+        // Authorize the function.
         let authorization =
             process.authorize::<CurrentAleo, _>(&private_key, locator.0, locator.1, inputs.iter(), rng).unwrap();
-        // Execute the mint function.
+        // Execute the function.
         let (_, mut trace) = process.execute::<CurrentAleo>(authorization).unwrap();
 
         // Initialize a new block store.
@@ -553,13 +627,18 @@ pub mod test_helpers {
         // Prepare the transactions.
         let transactions = Transactions::from_iter([confirmed].into_iter());
 
+        // Construct the ratifications.
+        let ratifications = Ratifications::try_from(vec![]).unwrap();
+
         // Prepare the block header.
-        let header = Header::genesis(&transactions).unwrap();
+        let header = Header::genesis(&ratifications, &transactions, vec![]).unwrap();
         // Prepare the previous block hash.
         let previous_hash = <CurrentNetwork as Network>::BlockHash::default();
 
         // Construct the block.
-        let block = Block::new_beacon(&private_key, previous_hash, header, vec![], None, transactions, rng).unwrap();
+        let block =
+            Block::new_beacon(&private_key, previous_hash, header, ratifications, None, transactions, vec![], rng)
+                .unwrap();
         assert!(block.header().is_genesis(), "Failed to initialize a genesis block");
         // Return the block, transaction, and private key.
         (block, transaction, private_key)

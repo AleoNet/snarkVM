@@ -28,7 +28,10 @@ fn test_program_parse() {
     tests.par_iter().for_each(|test| {
         // Run the parser on the test string.
         let test_string = test.test_string();
-        let output = convert_result(Program::<CurrentNetwork>::parse(test_string), test_string);
+        let output = match Program::<CurrentNetwork>::from_str(test_string) {
+            Ok(_) => "Program was successfully parsed.".to_string(),
+            Err(e) => e.to_string(),
+        };
         // Check against the expected output.
         test.check(&output).unwrap();
         // Save the output.

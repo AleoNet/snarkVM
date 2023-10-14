@@ -15,9 +15,6 @@
 #![forbid(unsafe_code)]
 #![warn(clippy::cast_possible_truncation)]
 
-mod helpers;
-pub use helpers::*;
-
 mod bytes;
 mod serialize;
 mod string;
@@ -25,6 +22,7 @@ mod string;
 use console::prelude::*;
 use ledger_block::Transaction;
 use ledger_coinbase::ProverSolution;
+use ledger_narwhal_data::Data;
 
 #[derive(Clone, PartialEq, Eq)]
 pub enum Transmission<N: Network> {

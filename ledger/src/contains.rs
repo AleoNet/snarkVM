@@ -30,6 +30,11 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         self.vm.block_store().contains_block_hash(block_hash)
     }
 
+    /// Returns `true` if the given batch certificate ID exists.
+    pub fn contains_certificate(&self, certificate_id: &Field<N>) -> Result<bool> {
+        self.vm.block_store().contains_certificate(certificate_id)
+    }
+
     /// Returns `true` if the given program ID exists.
     pub fn contains_program_id(&self, program_id: &ProgramID<N>) -> Result<bool> {
         self.vm.transaction_store().contains_program_id(program_id)
@@ -48,6 +53,8 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
     pub fn contains_puzzle_commitment(&self, puzzle_commitment: &PuzzleCommitment<N>) -> Result<bool> {
         self.vm.block_store().contains_puzzle_commitment(puzzle_commitment)
     }
+
+    /* Transaction */
 
     /// Returns `true` if the given transaction ID exists.
     pub fn contains_transaction_id(&self, transaction_id: &N::TransactionID) -> Result<bool> {

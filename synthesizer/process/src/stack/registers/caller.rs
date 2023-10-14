@@ -14,7 +14,19 @@
 
 use super::*;
 
-impl<N: Network, A: circuit::Aleo<Network = N>> RegistersCaller<N> for Registers<N, A> {
+impl<N: Network, A: circuit::Aleo<Network = N>> RegistersSigner<N> for Registers<N, A> {
+    /// Returns the transition signer.
+    #[inline]
+    fn signer(&self) -> Result<Address<N>> {
+        self.signer.ok_or_else(|| anyhow!("Signer address (console) is not set in the registers."))
+    }
+
+    /// Sets the transition signer.
+    #[inline]
+    fn set_signer(&mut self, signer: Address<N>) {
+        self.signer = Some(signer);
+    }
+
     /// Returns the transition caller.
     #[inline]
     fn caller(&self) -> Result<Address<N>> {
@@ -40,7 +52,19 @@ impl<N: Network, A: circuit::Aleo<Network = N>> RegistersCaller<N> for Registers
     }
 }
 
-impl<N: Network, A: circuit::Aleo<Network = N>> RegistersCallerCircuit<N, A> for Registers<N, A> {
+impl<N: Network, A: circuit::Aleo<Network = N>> RegistersSignerCircuit<N, A> for Registers<N, A> {
+    /// Returns the transition signer, as a circuit.
+    #[inline]
+    fn signer_circuit(&self) -> Result<circuit::Address<A>> {
+        self.signer_circuit.clone().ok_or_else(|| anyhow!("Signer address (circuit) is not set in the registers."))
+    }
+
+    /// Sets the transition signer, as a circuit.
+    #[inline]
+    fn set_signer_circuit(&mut self, signer_circuit: circuit::Address<A>) {
+        self.signer_circuit = Some(signer_circuit);
+    }
+
     /// Returns the transition caller, as a circuit.
     #[inline]
     fn caller_circuit(&self) -> Result<circuit::Address<A>> {

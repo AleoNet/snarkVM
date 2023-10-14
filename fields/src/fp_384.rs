@@ -43,10 +43,11 @@ use std::{
     ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign},
     str::FromStr,
 };
+use zeroize::Zeroize;
 
 pub trait Fp384Parameters: FieldParameters<BigInteger = BigInteger> {}
 
-#[derive(Derivative)]
+#[derive(Derivative, Zeroize)]
 #[derivative(
     Default(bound = "P: Fp384Parameters"),
     Hash(bound = "P: Fp384Parameters"),
@@ -600,16 +601,16 @@ impl_add_sub_from_field_ref!(Fp384, Fp384Parameters);
 impl_mul_div_from_field_ref!(Fp384, Fp384Parameters);
 
 impl<P: Fp384Parameters> ToBits for Fp384<P> {
-    fn to_bits_le(&self) -> Vec<bool> {
-        let mut bits_vec = self.to_bigint().to_bits_le();
-        bits_vec.truncate(P::MODULUS_BITS as usize);
-        bits_vec
+    fn write_bits_le(&self, vec: &mut Vec<bool>) {
+        let initial_len = vec.len();
+        self.to_bigint().write_bits_le(vec);
+        vec.truncate(initial_len + P::MODULUS_BITS as usize);
     }
 
-    fn to_bits_be(&self) -> Vec<bool> {
-        let mut bits_vec = self.to_bits_le();
-        bits_vec.reverse();
-        bits_vec
+    fn write_bits_be(&self, vec: &mut Vec<bool>) {
+        let initial_len = vec.len();
+        self.write_bits_le(vec);
+        vec[initial_len..].reverse();
     }
 }
 

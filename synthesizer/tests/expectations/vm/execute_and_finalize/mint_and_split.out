@@ -1,13 +1,18 @@
-- execute:
+errors: []
+outputs:
+- verified: true
+  execute:
     mint_and_split.aleo/mint:
       outputs:
-      - '{"type":"record","id":"6482523004432282267001480552004085169976607650723592229694810766982278228656field","checksum":"1720528411122745563061330978605383716710410496483426419164643062364127056007field","value":"record1qyqsq8vmp64ckrz03humsqqy5n49dajfjvmu73s8zf4lfvz06xgyafcwqyxx66trwfhkxun9v35hguerqqpqzqxt2qscl9ryt2mu3n579p5un5ph0atyywtlcz0k8endfzge6y5gp8vujfsrnrv2sydg9pe24szat4vs24hnzcqj6kfcx7j3g45hd9qpqlh45vm"}'
-      finalize: []
-    credits.aleo/fee:
-      outputs:
-      - '{"type":"record","id":"505775963132072409659670572505572977307379748787793932628321396952908197363field","checksum":"7932225040505032293482463604075458814059628452427587606230891843420373514270field","value":"record1qyqsqyezsxy6m9zxhqqkvpwqwpjdzmaq20024ulfavjuk6n5wpwgsjc0qyxx66trwfhkxun9v35hguerqqpqzq8d9xm3l3smlc5ylq9ullywdanj8xh06xr634kc7w7g0aytret4pysku04mg89x668e685uzhwl4p5ylyk7hets22mdfk45l56s3mpqzce9vv0"}'
-      finalize: []
+      - '{"type":"record","id":"7636508513753843688255477046613755926717864376364314808857555307422986366583field","checksum":"2724303349197854838397688958932042996013299317300510410551052639216931686578field","value":"record1qyqspznunw4usdtcqwznvpm3f73dlfxcmg07emews5rxsvfp8jelaqs3qyxx66trwfhkxun9v35hguerqqpqzqqjmj4kl3w0fh0dhqy67c47xgw7ftfdkhplztykwwr7mgnn8cm3q50aufvdjh84e3325vgsq98uzgdxyscfrymgz6j5p6txj0u06ngskkug8kd"}'
   speculate: the execution was accepted
   add_next_block: succeeded.
 - execute: Commitment '1266307482263846358970326041806201638141701138269282465033372005968041137990field' does not exist
 - execute: Input record for 'mint_and_split.aleo' must belong to the signer
+additional:
+- child_outputs:
+    credits.aleo/fee_private:
+      outputs:
+      - '{"type":"record","id":"977920694811706159078899471653604411927128233329160083211705477372454474590field","checksum":"7462991908860745682036789185707450168363705488128851420842490220945105871913field","value":"record1qyqsq50ffm6tzf7q3z553quhrp773gjvntv3htpc3s7zfkdpndaqx3cxqyxx66trwfhkxun9v35hguerqqpqzq9qwkcz7d6ka5ngvfsz3m8dzypc7h984709ffwcj2f452zwhc3wq3gz2rjx9tgewnzxeyaurzdrunjpevr505mk8suj2p7y0dp6xxuqu6uy0rq"}'
+- {}
+- {}

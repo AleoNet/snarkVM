@@ -242,14 +242,14 @@ impl<N: Network> Transactions<N> {
         self.iter().flat_map(|tx| tx.nonces())
     }
 
-    /// Returns an iterator over the transaction fees, for all transactions.
-    pub fn transaction_fees(&self) -> impl '_ + Iterator<Item = Result<U64<N>>> {
-        self.iter().map(|tx| tx.fee())
+    /// Returns an iterator over the transaction fee amounts, for all transactions.
+    pub fn transaction_fee_amounts(&self) -> impl '_ + Iterator<Item = Result<U64<N>>> {
+        self.iter().map(|tx| tx.fee_amount())
     }
 
     /// Returns an iterator over the finalize operations, for all transactions.
     pub fn finalize_operations(&self) -> impl '_ + Iterator<Item = &FinalizeOperation<N>> {
-        self.iter().flat_map(|tx| tx.finalize_operations()).flatten()
+        self.iter().flat_map(|tx| tx.finalize_operations())
     }
 }
 

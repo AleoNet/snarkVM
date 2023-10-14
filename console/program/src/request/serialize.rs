@@ -22,7 +22,7 @@ impl<N: Network> Serialize for Request<N> {
         match serializer.is_human_readable() {
             true => {
                 let mut transition = serializer.serialize_struct("Request", 9)?;
-                transition.serialize_field("caller", &self.caller)?;
+                transition.serialize_field("signer", &self.signer)?;
                 transition.serialize_field("network", &self.network_id)?;
                 transition.serialize_field("program", &self.program_id)?;
                 transition.serialize_field("function", &self.function_name)?;
@@ -31,7 +31,6 @@ impl<N: Network> Serialize for Request<N> {
                 transition.serialize_field("signature", &self.signature)?;
                 transition.serialize_field("sk_tag", &self.sk_tag)?;
                 transition.serialize_field("tvk", &self.tvk)?;
-                transition.serialize_field("tsk", &self.tsk)?;
                 transition.serialize_field("tcm", &self.tcm)?;
                 transition.end()
             }
@@ -49,8 +48,8 @@ impl<'de, N: Network> Deserialize<'de> for Request<N> {
                 let mut request = serde_json::Value::deserialize(deserializer)?;
                 // Recover the request.
                 Ok(Self::from((
-                    // Retrieve the caller.
-                    DeserializeExt::take_from_value::<D>(&mut request, "caller")?,
+                    // Retrieve the signer.
+                    DeserializeExt::take_from_value::<D>(&mut request, "signer")?,
                     // Retrieve the network ID.
                     DeserializeExt::take_from_value::<D>(&mut request, "network")?,
                     // Retrieve the program ID.
@@ -67,8 +66,6 @@ impl<'de, N: Network> Deserialize<'de> for Request<N> {
                     DeserializeExt::take_from_value::<D>(&mut request, "sk_tag")?,
                     // Retrieve the `tvk`.
                     DeserializeExt::take_from_value::<D>(&mut request, "tvk")?,
-                    // Retrieve the `tsk`.
-                    DeserializeExt::take_from_value::<D>(&mut request, "tsk")?,
                     // Retrieve the `tcm`.
                     DeserializeExt::take_from_value::<D>(&mut request, "tcm")?,
                 )))

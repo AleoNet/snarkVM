@@ -41,7 +41,7 @@ use synthesizer_process::{Process, Stack};
 type CurrentNetwork = Testnet3;
 type CurrentAleo = AleoV0;
 
-const ITERATIONS: usize = 100;
+const ITERATIONS: usize = 50;
 
 /// **Attention**: When changing this, also update in `src/logic/instruction/commit.rs`.
 fn valid_destination_types() -> &'static [LiteralType] {
@@ -76,7 +76,8 @@ fn sample_stack(
                 input {r0} as {type_a}.{mode_a};
                 input {r1} as {type_b}.{mode_b};
                 {opcode} {r0} {r1} into {r2} as {destination_type};
-                finalize {r0} {r1};
+                async {function_name} {r0} {r1} into r3;
+                output r3 as testing.aleo/{function_name}.future;
 
             finalize {function_name}:
                 input {r0} as {type_a}.public;

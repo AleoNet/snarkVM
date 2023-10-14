@@ -15,27 +15,16 @@
 mod bytes;
 mod parse;
 
-use console::{
-    network::prelude::*,
-    program::{Identifier, PlaintextType},
-};
+use console::{network::prelude::*, program::PlaintextType};
 
-/// An value statement is of the form `value {name} as {plaintext_type}.public;`.
-#[derive(Clone, PartialEq, Eq, Hash)]
+/// An value statement is of the form `value as {plaintext_type}.public;`.
+#[derive(Clone, PartialEq, Eq)]
 pub struct MapValue<N: Network> {
-    /// The value name.
-    name: Identifier<N>,
     /// The value plaintext type.
     plaintext_type: PlaintextType<N>,
 }
 
 impl<N: Network> MapValue<N> {
-    /// Returns the value name.
-    #[inline]
-    pub const fn name(&self) -> &Identifier<N> {
-        &self.name
-    }
-
     /// Returns the value plaintext type.
     #[inline]
     pub const fn plaintext_type(&self) -> &PlaintextType<N> {

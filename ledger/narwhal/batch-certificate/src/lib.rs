@@ -152,13 +152,13 @@ impl<N: Network> BatchCertificate<N> {
     pub fn compute_certificate_id(batch_id: Field<N>, signatures: &IndexMap<Signature<N>, i64>) -> Result<Field<N>> {
         let mut preimage = Vec::new();
         // Insert the batch ID.
-        preimage.extend_from_slice(&batch_id.to_bytes_le()?);
+        batch_id.write_le(&mut preimage)?;
         // Insert the signatures.
         for (signature, timestamp) in signatures {
             // Insert the signature.
-            preimage.extend_from_slice(&signature.to_bytes_le()?);
+            signature.write_le(&mut preimage)?;
             // Insert the timestamp.
-            preimage.extend_from_slice(&timestamp.to_bytes_le()?);
+            timestamp.write_le(&mut preimage)?;
         }
         // Hash the preimage.
         N::hash_bhp1024(&preimage.to_bits_le())
@@ -222,5 +222,37 @@ pub mod test_helpers {
         }
         // Return the sample vector.
         sample
+    }
+
+    /// Returns a sample batch certificate with previous certificates, sampled at random.
+    pub fn sample_batch_certificate_with_previous_certificates(
+        round: u64,
+        rng: &mut TestRng,
+    ) -> (BatchCertificate<CurrentNetwork>, Vec<BatchCertificate<CurrentNetwork>>) {
+        assert!(round > 1, "Round must be greater than 1");
+
+        // Initialize the round parameters.
+        let previous_round = round - 1; // <- This must be an even number, for `BFT::update_dag` to behave correctly below.
+        let current_round = round;
+
+        assert_eq!(previous_round % 2, 0, "Previous round must be even");
+
+        // Sample the previous certificates.
+        let previous_certificates = vec![
+            sample_batch_certificate_for_round(previous_round, rng),
+            sample_batch_certificate_for_round(previous_round, rng),
+            sample_batch_certificate_for_round(previous_round, rng),
+            sample_batch_certificate_for_round(previous_round, rng),
+        ];
+        // Construct the previous certificate IDs.
+        let previous_certificate_ids: IndexSet<_> = previous_certificates.iter().map(|c| c.certificate_id()).collect();
+        // Sample the leader certificate.
+        let certificate = sample_batch_certificate_for_round_with_previous_certificate_ids(
+            current_round,
+            previous_certificate_ids.clone(),
+            rng,
+        );
+
+        (certificate, previous_certificates)
     }
 }

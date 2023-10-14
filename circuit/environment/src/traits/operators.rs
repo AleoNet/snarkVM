@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+pub use crate::prelude::num_traits::Pow;
 pub use console::traits::{
     arithmetic::*,
     bitwise::*,
