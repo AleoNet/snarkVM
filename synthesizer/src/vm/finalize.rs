@@ -37,7 +37,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         let aborted_transaction_ids = aborted_transaction_ids
             .into_iter()
             .map(|(tx, error)| {
-                warn!("Aborted a transaction (after speculation) - {error} ({})", tx.id());
+                warn!("Speculation safely aborted a transaction - {error} ({})", tx.id());
                 tx.id()
             })
             .collect::<Vec<_>>();
