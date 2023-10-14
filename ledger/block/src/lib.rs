@@ -174,9 +174,9 @@ impl<N: Network> Block<N> {
             previous_hash,
             header,
             authority,
-            transactions,
             ratifications,
             solutions,
+            transactions,
             aborted_transaction_ids,
         )
     }
@@ -188,9 +188,9 @@ impl<N: Network> Block<N> {
         previous_hash: N::BlockHash,
         header: Header<N>,
         authority: Authority<N>,
-        transactions: Transactions<N>,
         ratifications: Ratifications<N>,
         solutions: Option<CoinbaseSolution<N>>,
+        transactions: Transactions<N>,
         aborted_transaction_ids: Vec<N::TransactionID>,
     ) -> Result<Self> {
         // Return the block.
