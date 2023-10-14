@@ -138,9 +138,6 @@ pub trait MapRead<
         K: Borrow<Q>,
         Q: PartialEq + Eq + Hash + Serialize + ?Sized,
     {
-        // Return early in case of errors in order to not conceal them.
-        let map_value = self.get_confirmed(key)?;
-
         // Retrieve the atomic batch value, if it exists.
         let atomic_batch_value = self.get_pending(key);
 
@@ -148,7 +145,7 @@ pub trait MapRead<
         match atomic_batch_value {
             Some(Some(value)) => Ok(Some(Cow::Owned(value))),
             Some(None) => Ok(None),
-            None => Ok(map_value),
+            None => Ok(self.get_confirmed(key)?),
         }
     }
 
