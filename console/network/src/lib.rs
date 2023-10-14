@@ -160,6 +160,8 @@ pub trait Network:
     type StateRoot: Bech32ID<Field<Self>>;
     /// The block hash type.
     type BlockHash: Bech32ID<Field<Self>>;
+    /// The ratification ID type.
+    type RatificationID: Bech32ID<Field<Self>>;
     /// The transaction ID type.
     type TransactionID: Bech32ID<Field<Self>>;
     /// The transition ID type.

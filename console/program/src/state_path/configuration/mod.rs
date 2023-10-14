@@ -42,9 +42,14 @@ pub type HeaderTree<N> = BHPMerkleTree<N, HEADER_DEPTH>;
 /// The Merkle path for the block header.
 pub type HeaderPath<N> = MerklePath<N, HEADER_DEPTH>;
 
+/// The Merkle tree for ratifications in a block.
+pub type RatificationsTree<N> = BHPMerkleTree<N, RATIFICATIONS_DEPTH>;
+/// The Merkle path for a ratification in a block.
+pub type RatificationsPath<N> = MerklePath<N, RATIFICATIONS_DEPTH>;
+
 /// The Merkle tree for transactions in a block.
 pub type TransactionsTree<N> = BHPMerkleTree<N, TRANSACTIONS_DEPTH>;
-/// The Merkle path for transaction in a block.
+/// The Merkle path for a transaction in a block.
 pub type TransactionsPath<N> = MerklePath<N, TRANSACTIONS_DEPTH>;
 
 /// The Merkle tree for the transaction.

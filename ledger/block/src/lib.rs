@@ -23,6 +23,9 @@ pub use header::*;
 mod helpers;
 pub use helpers::*;
 
+pub mod ratifications;
+pub use ratifications::*;
+
 pub mod ratify;
 pub use ratify::*;
 

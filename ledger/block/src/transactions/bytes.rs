@@ -26,6 +26,10 @@ impl<N: Network> FromBytes for Transactions<N> {
         }
         // Read the number of transactions.
         let num_txs: u32 = FromBytes::read_le(&mut reader)?;
+        // Ensure the number of transactions is within bounds.
+        if num_txs as usize > Self::MAX_TRANSACTIONS {
+            return Err(error("Failed to read transactions: too many transactions"));
+        }
         // Read the transactions.
         let transactions = (0..num_txs).map(|_| FromBytes::read_le(&mut reader)).collect::<Result<Vec<_>, _>>()?;
         // Return the transactions.
