@@ -66,7 +66,7 @@ impl<E: Environment, I: IntegerType, M: Magnitude> ShlChecked<Integer<E, M>> for
 
     #[inline]
     fn shl_checked(&self, rhs: &Integer<E, M>) -> Self::Output {
-        // Index of the first upper bit of rhs that we mask.
+        // Retrieve the index for the first upper bit from the RHS that we mask.
         let first_upper_bit_index = I::BITS.trailing_zeros() as usize;
         // Initialize a constant `two`.
         let two = Self::one() + Self::one();

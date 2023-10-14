@@ -24,7 +24,7 @@ impl<E: Environment, I: IntegerType, M: Magnitude> ShlWrapped<Integer<E, M>> for
             // Note: Casting `rhs` to a `u32` is safe since `Magnitude`s can only be `u8`, `u16`, or `u32`.
             witness!(|self, rhs| console::Integer::new(self.wrapping_shl(rhs.to_u32().unwrap())))
         } else {
-            // Index of the first upper bit of rhs that we mask.
+            // Retrieve the index for the first upper bit from the RHS that we mask.
             let first_upper_bit_index = I::BITS.trailing_zeros() as usize;
 
             // Perform the left shift operation by exponentiation and multiplication.

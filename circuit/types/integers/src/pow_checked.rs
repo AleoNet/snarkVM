@@ -60,7 +60,7 @@ impl<E: Environment, I: IntegerType, M: Magnitude> PowChecked<Integer<E, M>> for
 
                 let result_times_self = if I::is_signed() {
                     // Multiply the absolute value of `self` and `other` in the base field.
-                    // Note that it is safe to use abs_wrapped since we want Integer::MIN to be interpreted as an unsigned number.
+                    // Note: it is safe to use `abs_wrapped` since we want `Integer::MIN` to be interpreted as an unsigned number.
                     let (product, overflow) = Self::mul_with_flags(&(&result).abs_wrapped(), &self.abs_wrapped());
 
                     // If the product should be positive, then it cannot exceed the signed maximum.

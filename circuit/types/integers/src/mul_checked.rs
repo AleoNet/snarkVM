@@ -90,8 +90,8 @@ impl<E: Environment, I: IntegerType> MulChecked<Self> for Integer<E, I> {
                 None => E::halt("Integer overflow on multiplication of two constants"),
             }
         } else if I::is_signed() {
-            // Compute the product of `abs(self)` and `abs(other)`, checking for overflow
-            // Note that it is safe to use abs_wrapped since we want Integer::MIN to be interpreted as an unsigned number.
+            // Compute the product of `abs(self)` and `abs(other)`, while checking for an overflow.
+            // Note: it is safe to use `abs_wrapped` as we want `Integer::MIN` to be interpreted as an unsigned number.
             let product = Self::mul_and_check(&self.abs_wrapped(), &other.abs_wrapped());
 
             // If the product should be positive, then it cannot exceed the signed maximum.
@@ -113,14 +113,14 @@ impl<E: Environment, I: IntegerType> MulChecked<Self> for Integer<E, I> {
             // Return the product of `self` and `other` with the appropriate sign.
             Self::ternary(operands_same_sign, &product, &Self::zero().sub_wrapped(&product))
         } else {
-            // Compute the product of `self` and `other`, checking for overflow.
+            // Compute the product of `self` and `other`, while checking for an overflow.
             Self::mul_and_check(self, other)
         }
     }
 }
 
 impl<E: Environment, I: IntegerType> Integer<E, I> {
-    /// Multiply the integer bits of `this` and `that`, checking for overflow.
+    /// Multiply the integer bits of `this` and `that`, while checking for an overflow.
     /// This function assumes that `this` and `that` are non-negative.
     #[inline]
     fn mul_and_check(this: &Integer<E, I>, that: &Integer<E, I>) -> Integer<E, I> {
@@ -158,7 +158,9 @@ impl<E: Environment, I: IntegerType> Integer<E, I> {
 
 impl<E: Environment, I: IntegerType> Integer<E, I> {
     /// Multiply the integer bits of `this` and `that`, using Karatsuba multiplication.
+    ///
     /// See this page for reference: https://en.wikipedia.org/wiki/Karatsuba_algorithm.
+    ///
     /// We follow the naming convention given in the `Basic Step` section of the cited page.
     /// The output is the product of `this` and `that`, the upper bits of `z1`, and `z2` as a field element.
     /// This function assumes that 1.5 * I::BITS fits in 1 field element.
@@ -198,7 +200,7 @@ impl<E: Environment, I: IntegerType> Integer<E, I> {
 
         let bits_le = z_0_plus_scaled_z_1.to_lower_bits_le(I::BITS as usize + I::BITS as usize / 2 + 1);
 
-        // Split the integer bits into product bits and the upper bits of z1.
+        // Split the integer bits into product bits and the upper bits of `z_1`.
         let (bits_le, carry) = bits_le.split_at(I::BITS as usize);
 
         // Return the product of `self` and `other`, along with the carry bits.
