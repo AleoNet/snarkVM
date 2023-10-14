@@ -23,10 +23,10 @@ const REMOTE_URL: &str = "https://s3-us-west-1.amazonaws.com/testnet3.parameters
 // Degrees
 #[cfg(not(feature = "wasm"))]
 impl_local!(Degree15, "resources/", "powers-of-beta-15", "usrs");
-#[cfg(not(feature = "wasm"))]
-impl_local!(Degree16, "resources/", "powers-of-beta-16", "usrs");
 #[cfg(feature = "wasm")]
 impl_remote!(Degree15, REMOTE_URL, "resources/", "powers-of-beta-15", "usrs");
+#[cfg(not(feature = "wasm"))]
+impl_local!(Degree16, "resources/", "powers-of-beta-16", "usrs");
 #[cfg(feature = "wasm")]
 impl_remote!(Degree16, REMOTE_URL, "resources/", "powers-of-beta-16", "usrs");
 impl_remote!(Degree17, REMOTE_URL, "resources/", "powers-of-beta-17", "usrs");
