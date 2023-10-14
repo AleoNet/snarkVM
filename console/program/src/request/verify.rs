@@ -18,7 +18,7 @@ impl<N: Network> Request<N> {
     /// Returns `true` if the request is valid, and `false` otherwise.
     ///
     /// Verifies (challenge == challenge') && (address == address') && (serial_numbers == serial_numbers') where:
-    ///     challenge' := HashToScalar(r * G, pk_sig, pr_sig, caller, \[tvk, tcm, function ID, input IDs\])
+    ///     challenge' := HashToScalar(r * G, pk_sig, pr_sig, signer, \[tvk, tcm, function ID, input IDs\])
     pub fn verify(&self, input_types: &[ValueType<N>]) -> bool {
         // Verify the transition public key, transition view key, and transition commitment are well-formed.
         {
@@ -30,8 +30,8 @@ impl<N: Network> Request<N> {
                 return false;
             }
 
-            // Compute the transition view key `tvk` as `tsk * caller`.
-            let tvk = (*self.caller * self.tsk).to_x_coordinate();
+            // Compute the transition view key `tvk` as `tsk * signer`.
+            let tvk = (*self.signer * self.tsk).to_x_coordinate();
             // Ensure the computed transition view key matches.
             if tvk != self.tvk {
                 eprintln!("Invalid transition view key in request.");
@@ -72,7 +72,7 @@ impl<N: Network> Request<N> {
         };
 
         // Construct the signature message as `[tvk, tcm, function ID, input IDs]`.
-        let mut message = Vec::with_capacity(1 + self.input_ids.len());
+        let mut message = Vec::with_capacity(3 + self.input_ids.len());
         message.push(self.tvk);
         message.push(self.tcm);
         message.push(function_id);
@@ -88,7 +88,8 @@ impl<N: Network> Request<N> {
                         // Construct the (console) input index as a field element.
                         let index = Field::from_u16(u16::try_from(index).or_halt_with::<N>("Input index exceeds u16"));
                         // Construct the preimage as `(function ID || input || tcm || index)`.
-                        let mut preimage = vec![function_id];
+                        let mut preimage = Vec::new();
+                        preimage.push(function_id);
                         preimage.extend(input.to_fields()?);
                         preimage.push(self.tcm);
                         preimage.push(index);
@@ -108,7 +109,8 @@ impl<N: Network> Request<N> {
                         // Construct the (console) input index as a field element.
                         let index = Field::from_u16(u16::try_from(index).or_halt_with::<N>("Input index exceeds u16"));
                         // Construct the preimage as `(function ID || input || tcm || index)`.
-                        let mut preimage = vec![function_id];
+                        let mut preimage = Vec::new();
+                        preimage.push(function_id);
                         preimage.extend(input.to_fields()?);
                         preimage.push(self.tcm);
                         preimage.push(index);
@@ -134,6 +136,7 @@ impl<N: Network> Request<N> {
                             Value::Plaintext(plaintext) => plaintext.encrypt_symmetric(input_view_key)?,
                             // Ensure the input is a plaintext.
                             Value::Record(..) => bail!("Expected a plaintext input, found a record input"),
+                            Value::Future(..) => bail!("Expected a plaintext input, found a future input"),
                         };
                         // Hash the ciphertext to a field element.
                         let candidate_hash = N::hash_psd8(&ciphertext.to_fields()?)?;
@@ -150,6 +153,7 @@ impl<N: Network> Request<N> {
                             Value::Record(record) => record,
                             // Ensure the input is a record.
                             Value::Plaintext(..) => bail!("Expected a record input, found a plaintext input"),
+                            Value::Future(..) => bail!("Expected a record input, found a future input"),
                         };
                         // Retrieve the record name.
                         let record_name = match input_type {
@@ -157,8 +161,8 @@ impl<N: Network> Request<N> {
                             // Ensure the input type is a record.
                             _ => bail!("Expected a record type at input {index}"),
                         };
-                        // Ensure the record belongs to the caller.
-                        ensure!(**record.owner() == self.caller, "Input record does not belong to the caller");
+                        // Ensure the record belongs to the signer.
+                        ensure!(**record.owner() == self.signer, "Input record does not belong to the signer");
 
                         // Compute the record commitment.
                         let candidate_cm = record.to_commitment(&self.program_id, record_name)?;
@@ -192,7 +196,8 @@ impl<N: Network> Request<N> {
                         // Construct the (console) input index as a field element.
                         let index = Field::from_u16(u16::try_from(index).or_halt_with::<N>("Input index exceeds u16"));
                         // Construct the preimage as `(function ID || input || tvk || index)`.
-                        let mut preimage = vec![function_id];
+                        let mut preimage = Vec::new();
+                        preimage.push(function_id);
                         preimage.extend(input.to_fields()?);
                         preimage.push(self.tvk);
                         preimage.push(index);
@@ -213,7 +218,7 @@ impl<N: Network> Request<N> {
         }
 
         // Verify the signature.
-        self.signature.verify(&self.caller, &message)
+        self.signature.verify(&self.signer, &message)
     }
 }
 

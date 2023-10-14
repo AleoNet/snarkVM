@@ -31,6 +31,13 @@ pub type HashBHP768<N> = HashInstruction<N, { Hasher::HashBHP768 as u8 }>;
 /// BHP1024 is a collision-resistant hash function that processes inputs in 1024-bit chunks.
 pub type HashBHP1024<N> = HashInstruction<N, { Hasher::HashBHP1024 as u8 }>;
 
+/// Keccak256 is a cryptographic hash function that outputs a 256-bit digest.
+pub type HashKeccak256<N> = HashInstruction<N, { Hasher::HashKeccak256 as u8 }>;
+/// Keccak384 is a cryptographic hash function that outputs a 384-bit digest.
+pub type HashKeccak384<N> = HashInstruction<N, { Hasher::HashKeccak384 as u8 }>;
+/// Keccak512 is a cryptographic hash function that outputs a 512-bit digest.
+pub type HashKeccak512<N> = HashInstruction<N, { Hasher::HashKeccak512 as u8 }>;
+
 /// Pedersen64 is a collision-resistant hash function that processes inputs in 64-bit chunks.
 pub type HashPED64<N> = HashInstruction<N, { Hasher::HashPED64 as u8 }>;
 /// Pedersen128 is a collision-resistant hash function that processes inputs in 128-bit chunks.
@@ -42,6 +49,13 @@ pub type HashPSD2<N> = HashInstruction<N, { Hasher::HashPSD2 as u8 }>;
 pub type HashPSD4<N> = HashInstruction<N, { Hasher::HashPSD4 as u8 }>;
 /// Poseidon8 is a cryptographic hash function that processes inputs in 8-field chunks.
 pub type HashPSD8<N> = HashInstruction<N, { Hasher::HashPSD8 as u8 }>;
+
+/// SHA3-256 is a cryptographic hash function that outputs a 256-bit digest.
+pub type HashSha3_256<N> = HashInstruction<N, { Hasher::HashSha3_256 as u8 }>;
+/// SHA3-384 is a cryptographic hash function that outputs a 384-bit digest.
+pub type HashSha3_384<N> = HashInstruction<N, { Hasher::HashSha3_384 as u8 }>;
+/// SHA3-512 is a cryptographic hash function that outputs a 512-bit digest.
+pub type HashSha3_512<N> = HashInstruction<N, { Hasher::HashSha3_512 as u8 }>;
 
 /// Poseidon2 is a cryptographic hash function that processes inputs in 2-field chunks.
 pub type HashManyPSD2<N> = HashInstruction<N, { Hasher::HashManyPSD2 as u8 }>;
@@ -55,11 +69,17 @@ enum Hasher {
     HashBHP512,
     HashBHP768,
     HashBHP1024,
+    HashKeccak256,
+    HashKeccak384,
+    HashKeccak512,
     HashPED64,
     HashPED128,
     HashPSD2,
     HashPSD4,
     HashPSD8,
+    HashSha3_256,
+    HashSha3_384,
+    HashSha3_512,
     HashManyPSD2,
     HashManyPSD4,
     HashManyPSD8,
@@ -68,7 +88,7 @@ enum Hasher {
 /// Returns the expected number of operands given the variant.
 const fn expected_num_operands(variant: u8) -> usize {
     match variant {
-        9..=11 => 2,
+        15..=17 => 2,
         _ => 1,
     }
 }
@@ -84,8 +104,11 @@ fn check_number_of_operands(variant: u8, opcode: Opcode, num_operands: usize) ->
 }
 
 /// Returns 'true' if the destination type is valid.
-fn is_valid_destination_type(destination_type: LiteralType) -> bool {
-    !matches!(destination_type, LiteralType::Boolean | LiteralType::String)
+fn is_valid_destination_type<N: Network>(destination_type: &PlaintextType<N>) -> bool {
+    !matches!(
+        destination_type,
+        PlaintextType::Literal(LiteralType::Boolean) | PlaintextType::Literal(LiteralType::String)
+    )
 }
 
 /// Hashes the operand into the declared type.
@@ -96,17 +119,21 @@ pub struct HashInstruction<N: Network, const VARIANT: u8> {
     /// The destination register.
     destination: Register<N>,
     /// The destination register type.
-    destination_type: LiteralType,
+    destination_type: PlaintextType<N>,
 }
 
 impl<N: Network, const VARIANT: u8> HashInstruction<N, VARIANT> {
     /// Initializes a new `hash` instruction.
     #[inline]
-    pub fn new(operands: Vec<Operand<N>>, destination: Register<N>, destination_type: LiteralType) -> Result<Self> {
+    pub fn new(
+        operands: Vec<Operand<N>>,
+        destination: Register<N>,
+        destination_type: PlaintextType<N>,
+    ) -> Result<Self> {
         // Sanity check the number of operands.
         check_number_of_operands(VARIANT, Self::opcode(), operands.len())?;
         // Sanity check the destination type.
-        if !is_valid_destination_type(destination_type) {
+        if !is_valid_destination_type(&destination_type) {
             bail!("Invalid destination type for 'hash' instruction")
         }
         // Return the instruction.
@@ -121,15 +148,21 @@ impl<N: Network, const VARIANT: u8> HashInstruction<N, VARIANT> {
             1 => Opcode::Hash("hash.bhp512"),
             2 => Opcode::Hash("hash.bhp768"),
             3 => Opcode::Hash("hash.bhp1024"),
-            4 => Opcode::Hash("hash.ped64"),
-            5 => Opcode::Hash("hash.ped128"),
-            6 => Opcode::Hash("hash.psd2"),
-            7 => Opcode::Hash("hash.psd4"),
-            8 => Opcode::Hash("hash.psd8"),
-            9 => Opcode::Hash("hash_many.psd2"),
-            10 => Opcode::Hash("hash_many.psd4"),
-            11 => Opcode::Hash("hash_many.psd8"),
-            12.. => panic!("Invalid 'hash' instruction opcode"),
+            4 => Opcode::Hash("hash.keccak256"),
+            5 => Opcode::Hash("hash.keccak384"),
+            6 => Opcode::Hash("hash.keccak512"),
+            7 => Opcode::Hash("hash.ped64"),
+            8 => Opcode::Hash("hash.ped128"),
+            9 => Opcode::Hash("hash.psd2"),
+            10 => Opcode::Hash("hash.psd4"),
+            11 => Opcode::Hash("hash.psd8"),
+            12 => Opcode::Hash("hash.sha3_256"),
+            13 => Opcode::Hash("hash.sha3_384"),
+            14 => Opcode::Hash("hash.sha3_512"),
+            15 => Opcode::Hash("hash_many.psd2"),
+            16 => Opcode::Hash("hash_many.psd4"),
+            17 => Opcode::Hash("hash_many.psd8"),
+            18.. => panic!("Invalid 'hash' instruction opcode"),
         }
     }
 
@@ -154,8 +187,8 @@ impl<N: Network, const VARIANT: u8> HashInstruction<N, VARIANT> {
 
     /// Returns the destination register type.
     #[inline]
-    pub const fn destination_type(&self) -> LiteralType {
-        self.destination_type
+    pub const fn destination_type(&self) -> &PlaintextType<N> {
+        &self.destination_type
     }
 }
 
@@ -170,37 +203,61 @@ impl<N: Network, const VARIANT: u8> HashInstruction<N, VARIANT> {
         // Ensure the number of operands is correct.
         check_number_of_operands(VARIANT, Self::opcode(), self.operands.len())?;
         // Ensure the destination type is valid.
-        ensure!(is_valid_destination_type(self.destination_type), "Invalid destination type in 'hash' instruction");
+        ensure!(is_valid_destination_type(&self.destination_type), "Invalid destination type in 'hash' instruction");
 
         // Load the operand.
         let input = registers.load(stack, &self.operands[0])?;
         // Hash the input.
-        let output = match (VARIANT, self.destination_type) {
-            (0, _) => Literal::Group(N::hash_to_group_bhp256(&input.to_bits_le())?),
-            (1, _) => Literal::Group(N::hash_to_group_bhp512(&input.to_bits_le())?),
-            (2, _) => Literal::Group(N::hash_to_group_bhp768(&input.to_bits_le())?),
-            (3, _) => Literal::Group(N::hash_to_group_bhp1024(&input.to_bits_le())?),
-            (4, _) => Literal::Group(N::hash_to_group_ped64(&input.to_bits_le())?),
-            (5, _) => Literal::Group(N::hash_to_group_ped128(&input.to_bits_le())?),
-            (6, LiteralType::Address) | (6, LiteralType::Group) => {
+        let output = match (VARIANT, &self.destination_type) {
+            (0, PlaintextType::Literal(..)) => Literal::Group(N::hash_to_group_bhp256(&input.to_bits_le())?),
+            (1, PlaintextType::Literal(..)) => Literal::Group(N::hash_to_group_bhp512(&input.to_bits_le())?),
+            (2, PlaintextType::Literal(..)) => Literal::Group(N::hash_to_group_bhp768(&input.to_bits_le())?),
+            (3, PlaintextType::Literal(..)) => Literal::Group(N::hash_to_group_bhp1024(&input.to_bits_le())?),
+            (4, PlaintextType::Literal(..)) => {
+                Literal::Group(N::hash_to_group_bhp256(&N::hash_keccak256(&input.to_bits_le())?)?)
+            }
+            (5, PlaintextType::Literal(..)) => {
+                Literal::Group(N::hash_to_group_bhp512(&N::hash_keccak384(&input.to_bits_le())?)?)
+            }
+            (6, PlaintextType::Literal(..)) => {
+                Literal::Group(N::hash_to_group_bhp512(&N::hash_keccak512(&input.to_bits_le())?)?)
+            }
+            (7, PlaintextType::Literal(..)) => Literal::Group(N::hash_to_group_ped64(&input.to_bits_le())?),
+            (8, PlaintextType::Literal(..)) => Literal::Group(N::hash_to_group_ped128(&input.to_bits_le())?),
+            (9, PlaintextType::Literal(LiteralType::Address)) | (9, PlaintextType::Literal(LiteralType::Group)) => {
                 Literal::Group(N::hash_to_group_psd2(&input.to_fields()?)?)
             }
-            (6, _) => Literal::Field(N::hash_psd2(&input.to_fields()?)?),
-            (7, LiteralType::Address) | (7, LiteralType::Group) => {
+            (9, PlaintextType::Literal(..)) => Literal::Field(N::hash_psd2(&input.to_fields()?)?),
+            (10, PlaintextType::Literal(LiteralType::Address)) | (10, PlaintextType::Literal(LiteralType::Group)) => {
                 Literal::Group(N::hash_to_group_psd4(&input.to_fields()?)?)
             }
-            (7, _) => Literal::Field(N::hash_psd4(&input.to_fields()?)?),
-            (8, LiteralType::Address) | (8, LiteralType::Group) => {
+            (10, PlaintextType::Literal(..)) => Literal::Field(N::hash_psd4(&input.to_fields()?)?),
+            (11, PlaintextType::Literal(LiteralType::Address)) | (11, PlaintextType::Literal(LiteralType::Group)) => {
                 Literal::Group(N::hash_to_group_psd8(&input.to_fields()?)?)
             }
-            (8, _) => Literal::Field(N::hash_psd8(&input.to_fields()?)?),
-            (9, _) => bail!("'hash_many' is not yet implemented"),
-            (10, _) => bail!("'hash_many' is not yet implemented"),
-            (11, _) => bail!("'hash_many' is not yet implemented"),
-            (12.., _) => bail!("Invalid 'hash' variant: {VARIANT}"),
+            (11, PlaintextType::Literal(..)) => Literal::Field(N::hash_psd8(&input.to_fields()?)?),
+            (12, PlaintextType::Literal(..)) => {
+                Literal::Group(N::hash_to_group_bhp256(&N::hash_sha3_256(&input.to_bits_le())?)?)
+            }
+            (13, PlaintextType::Literal(..)) => {
+                Literal::Group(N::hash_to_group_bhp512(&N::hash_sha3_384(&input.to_bits_le())?)?)
+            }
+            (14, PlaintextType::Literal(..)) => {
+                Literal::Group(N::hash_to_group_bhp512(&N::hash_sha3_512(&input.to_bits_le())?)?)
+            }
+            (15, _) => bail!("'hash_many.psd2' is not yet implemented"),
+            (16, _) => bail!("'hash_many.psd4' is not yet implemented"),
+            (17, _) => bail!("'hash_many.psd8' is not yet implemented"),
+            (18.., _) => bail!("Invalid 'hash' variant: {VARIANT}"),
+            (_, PlaintextType::Struct(..)) => bail!("Cannot hash into a struct"),
+            (_, PlaintextType::Array(..)) => bail!("Cannot hash into an array (yet)"),
         };
         // Cast the output to the destination type.
-        let output = output.downcast_lossy(self.destination_type)?;
+        let output = match self.destination_type {
+            PlaintextType::Literal(literal_type) => output.cast_lossy(literal_type)?,
+            PlaintextType::Struct(..) => bail!("Cannot hash into a struct"),
+            PlaintextType::Array(..) => bail!("Cannot hash into an array (yet)"),
+        };
         // Store the output.
         registers.store(stack, &self.destination, Value::Plaintext(Plaintext::from(output)))
     }
@@ -212,41 +269,66 @@ impl<N: Network, const VARIANT: u8> HashInstruction<N, VARIANT> {
         stack: &(impl StackMatches<N> + StackProgram<N>),
         registers: &mut (impl RegistersLoadCircuit<N, A> + RegistersStoreCircuit<N, A>),
     ) -> Result<()> {
-        use circuit::{ToBits, ToFields};
+        use circuit::traits::{ToBits, ToFields};
 
         // Ensure the number of operands is correct.
         check_number_of_operands(VARIANT, Self::opcode(), self.operands.len())?;
         // Ensure the destination type is valid.
-        ensure!(is_valid_destination_type(self.destination_type), "Invalid destination type in 'hash' instruction");
+        ensure!(is_valid_destination_type(&self.destination_type), "Invalid destination type in 'hash' instruction");
 
         // Load the operand.
         let input = registers.load_circuit(stack, &self.operands[0])?;
         // Hash the input.
-        let output = match (VARIANT, self.destination_type) {
-            (0, _) => circuit::Literal::Group(A::hash_to_group_bhp256(&input.to_bits_le())),
-            (1, _) => circuit::Literal::Group(A::hash_to_group_bhp512(&input.to_bits_le())),
-            (2, _) => circuit::Literal::Group(A::hash_to_group_bhp768(&input.to_bits_le())),
-            (3, _) => circuit::Literal::Group(A::hash_to_group_bhp1024(&input.to_bits_le())),
-            (4, _) => circuit::Literal::Group(A::hash_to_group_ped64(&input.to_bits_le())),
-            (5, _) => circuit::Literal::Group(A::hash_to_group_ped128(&input.to_bits_le())),
-            (6, LiteralType::Address) | (6, LiteralType::Group) => {
+        let output = match (VARIANT, &self.destination_type) {
+            (0, PlaintextType::Literal(..)) => circuit::Literal::Group(A::hash_to_group_bhp256(&input.to_bits_le())),
+            (1, PlaintextType::Literal(..)) => circuit::Literal::Group(A::hash_to_group_bhp512(&input.to_bits_le())),
+            (2, PlaintextType::Literal(..)) => circuit::Literal::Group(A::hash_to_group_bhp768(&input.to_bits_le())),
+            (3, PlaintextType::Literal(..)) => circuit::Literal::Group(A::hash_to_group_bhp1024(&input.to_bits_le())),
+            (4, PlaintextType::Literal(..)) => {
+                circuit::Literal::Group(A::hash_to_group_bhp256(&A::hash_keccak256(&input.to_bits_le())))
+            }
+            (5, PlaintextType::Literal(..)) => {
+                circuit::Literal::Group(A::hash_to_group_bhp512(&A::hash_keccak384(&input.to_bits_le())))
+            }
+            (6, PlaintextType::Literal(..)) => {
+                circuit::Literal::Group(A::hash_to_group_bhp512(&A::hash_keccak512(&input.to_bits_le())))
+            }
+            (7, PlaintextType::Literal(..)) => circuit::Literal::Group(A::hash_to_group_ped64(&input.to_bits_le())),
+            (8, PlaintextType::Literal(..)) => circuit::Literal::Group(A::hash_to_group_ped128(&input.to_bits_le())),
+            (9, PlaintextType::Literal(LiteralType::Address)) | (9, PlaintextType::Literal(LiteralType::Group)) => {
                 circuit::Literal::Group(A::hash_to_group_psd2(&input.to_fields()))
             }
-            (6, _) => circuit::Literal::Field(A::hash_psd2(&input.to_fields())),
-            (7, LiteralType::Address) | (7, LiteralType::Group) => {
+            (9, PlaintextType::Literal(..)) => circuit::Literal::Field(A::hash_psd2(&input.to_fields())),
+            (10, PlaintextType::Literal(LiteralType::Address)) | (10, PlaintextType::Literal(LiteralType::Group)) => {
                 circuit::Literal::Group(A::hash_to_group_psd4(&input.to_fields()))
             }
-            (7, _) => circuit::Literal::Field(A::hash_psd4(&input.to_fields())),
-            (8, LiteralType::Address) | (8, LiteralType::Group) => {
+            (10, PlaintextType::Literal(..)) => circuit::Literal::Field(A::hash_psd4(&input.to_fields())),
+            (11, PlaintextType::Literal(LiteralType::Address)) | (11, PlaintextType::Literal(LiteralType::Group)) => {
                 circuit::Literal::Group(A::hash_to_group_psd8(&input.to_fields()))
             }
-            (8, _) => circuit::Literal::Field(A::hash_psd8(&input.to_fields())),
-            (9, _) => bail!("'hash_many' is not yet implemented"),
-            (10, _) => bail!("'hash_many' is not yet implemented"),
-            (11, _) => bail!("'hash_many' is not yet implemented"),
-            (12.., _) => bail!("Invalid 'hash' variant: {VARIANT}"),
+            (11, PlaintextType::Literal(..)) => circuit::Literal::Field(A::hash_psd8(&input.to_fields())),
+            (12, PlaintextType::Literal(..)) => {
+                circuit::Literal::Group(A::hash_to_group_bhp256(&A::hash_sha3_256(&input.to_bits_le())))
+            }
+            (13, PlaintextType::Literal(..)) => {
+                circuit::Literal::Group(A::hash_to_group_bhp512(&A::hash_sha3_384(&input.to_bits_le())))
+            }
+            (14, PlaintextType::Literal(..)) => {
+                circuit::Literal::Group(A::hash_to_group_bhp512(&A::hash_sha3_512(&input.to_bits_le())))
+            }
+            (15, _) => bail!("'hash_many.psd2' is not yet implemented"),
+            (16, _) => bail!("'hash_many.psd4' is not yet implemented"),
+            (17, _) => bail!("'hash_many.psd8' is not yet implemented"),
+            (18.., _) => bail!("Invalid 'hash' variant: {VARIANT}"),
+            (_, PlaintextType::Struct(..)) => bail!("Cannot hash into a struct"),
+            (_, PlaintextType::Array(..)) => bail!("Cannot hash into an array (yet)"),
         };
-        let output = output.downcast_lossy(self.destination_type)?;
+        // Cast the output to the destination type.
+        let output = match self.destination_type {
+            PlaintextType::Literal(literal_type) => output.cast_lossy(literal_type)?,
+            PlaintextType::Struct(..) => bail!("Cannot hash into a struct"),
+            PlaintextType::Array(..) => bail!("Cannot hash into an array (yet)"),
+        };
         // Convert the output to a stack value.
         let output = circuit::Value::Plaintext(circuit::Plaintext::Literal(output, Default::default()));
         // Store the output.
@@ -275,14 +357,14 @@ impl<N: Network, const VARIANT: u8> HashInstruction<N, VARIANT> {
         // Ensure the number of operands is correct.
         check_number_of_operands(VARIANT, Self::opcode(), self.operands.len())?;
         // Ensure the destination type is valid.
-        ensure!(is_valid_destination_type(self.destination_type), "Invalid destination type in 'hash' instruction");
+        ensure!(is_valid_destination_type(&self.destination_type), "Invalid destination type in 'hash' instruction");
 
         // TODO (howardwu): If the operation is Pedersen, check that it is within the number of bits.
 
         match VARIANT {
-            0..=8 => Ok(vec![RegisterType::Plaintext(PlaintextType::Literal(self.destination_type))]),
-            9..=11 => bail!("'hash_many' is not yet implemented"),
-            12.. => bail!("Invalid 'hash' variant: {VARIANT}"),
+            0..=14 => Ok(vec![RegisterType::Plaintext(self.destination_type.clone())]),
+            15..=17 => bail!("'hash_many' is not yet implemented"),
+            18.. => bail!("Invalid 'hash' variant: {VARIANT}"),
         }
     }
 }
@@ -297,8 +379,10 @@ impl<N: Network, const VARIANT: u8> Parser for HashInstruction<N, VARIANT> {
             let mut string = string;
 
             for _ in 0..num_operands {
+                // Parse the whitespace from the string.
+                let (next_string, _) = Sanitizer::parse_whitespaces(string)?;
                 // Parse the operand from the string.
-                let (next_string, operand) = Operand::parse(string)?;
+                let (next_string, operand) = Operand::parse(next_string)?;
                 // Update the string.
                 string = next_string;
                 // Push the operand.
@@ -310,8 +394,6 @@ impl<N: Network, const VARIANT: u8> Parser for HashInstruction<N, VARIANT> {
 
         // Parse the opcode from the string.
         let (string, _) = tag(*Self::opcode())(string)?;
-        // Parse the whitespace from the string.
-        let (string, _) = Sanitizer::parse_whitespaces(string)?;
         // Parse the operands from the string.
         let (string, operands) = parse_operands(string, expected_num_operands(VARIANT))?;
         // Parse the whitespace from the string.
@@ -329,12 +411,14 @@ impl<N: Network, const VARIANT: u8> Parser for HashInstruction<N, VARIANT> {
         // Parse the whitespace from the string.
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
         // Parse the destination register type from the string.
-        let (string, destination_type) = LiteralType::parse(string)?;
+        let (string, destination_type) = PlaintextType::parse(string)?;
         // Ensure the destination type is allowed.
         match destination_type {
-            LiteralType::Boolean | LiteralType::String => map_res(fail, |_: ParserResult<Self>| {
-                Err(error(format!("Failed to parse 'hash': '{destination_type}' is invalid")))
-            })(string),
+            PlaintextType::Literal(LiteralType::Boolean) | PlaintextType::Literal(LiteralType::String) => {
+                map_res(fail, |_: ParserResult<Self>| {
+                    Err(error(format!("Failed to parse 'hash': '{destination_type}' is invalid")))
+                })(string)
+            }
             _ => Ok((string, Self { operands, destination, destination_type })),
         }
     }
@@ -387,7 +471,7 @@ impl<N: Network, const VARIANT: u8> FromBytes for HashInstruction<N, VARIANT> {
         // Read the destination register.
         let destination = Register::read_le(&mut reader)?;
         // Read the destination register type.
-        let destination_type = LiteralType::read_le(&mut reader)?;
+        let destination_type = PlaintextType::read_le(&mut reader)?;
         // Return the operation.
         Ok(Self { operands, destination, destination_type })
     }
@@ -415,22 +499,22 @@ mod tests {
     type CurrentNetwork = Testnet3;
 
     /// **Attention**: When changing this, also update in `tests/instruction/hash.rs`.
-    fn valid_destination_types() -> &'static [LiteralType] {
+    fn valid_destination_types<N: Network>() -> &'static [PlaintextType<N>] {
         &[
-            LiteralType::Address,
-            LiteralType::Field,
-            LiteralType::Group,
-            LiteralType::I8,
-            LiteralType::I16,
-            LiteralType::I32,
-            LiteralType::I64,
-            LiteralType::I128,
-            LiteralType::U8,
-            LiteralType::U16,
-            LiteralType::U32,
-            LiteralType::U64,
-            LiteralType::U128,
-            LiteralType::Scalar,
+            PlaintextType::Literal(LiteralType::Address),
+            PlaintextType::Literal(LiteralType::Field),
+            PlaintextType::Literal(LiteralType::Group),
+            PlaintextType::Literal(LiteralType::I8),
+            PlaintextType::Literal(LiteralType::I16),
+            PlaintextType::Literal(LiteralType::I32),
+            PlaintextType::Literal(LiteralType::I64),
+            PlaintextType::Literal(LiteralType::I128),
+            PlaintextType::Literal(LiteralType::U8),
+            PlaintextType::Literal(LiteralType::U16),
+            PlaintextType::Literal(LiteralType::U32),
+            PlaintextType::Literal(LiteralType::U64),
+            PlaintextType::Literal(LiteralType::U128),
+            PlaintextType::Literal(LiteralType::Scalar),
         ]
     }
 
@@ -443,7 +527,7 @@ mod tests {
             assert_eq!(hash.operands.len(), 1, "The number of operands is incorrect");
             assert_eq!(hash.operands[0], Operand::Register(Register::Locator(0)), "The first operand is incorrect");
             assert_eq!(hash.destination, Register::Locator(1), "The destination register is incorrect");
-            assert_eq!(hash.destination_type, *destination_type, "The destination type is incorrect");
+            assert_eq!(&hash.destination_type, destination_type, "The destination type is incorrect");
         }
     }
 }

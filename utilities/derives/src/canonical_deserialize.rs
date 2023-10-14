@@ -80,12 +80,11 @@ fn impl_valid(ast: &syn::DeriveInput) -> TokenStream {
 
     let gen = quote! {
         impl #impl_generics snarkvm_utilities::Valid for #name #ty_generics #where_clause {
-            #[allow(unused_mut, unused_variables)]
+            #[allow(unused_variables)]
             fn check(&self) -> Result<(), snarkvm_utilities::serialize::SerializationError> {
                 #(#check_body)*
                 Ok(())
             }
-            #[allow(unused_mut, unused_variables)]
             fn batch_check<'a>(batch: impl Iterator<Item = &'a Self> + Send) -> Result<(), snarkvm_utilities::serialize::SerializationError>
                 where
             Self: 'a
@@ -159,7 +158,6 @@ pub(super) fn impl_canonical_deserialize(ast: &syn::DeriveInput) -> TokenStream 
 
     let mut gen = quote! {
         impl #impl_generics CanonicalDeserialize for #name #ty_generics #where_clause {
-            #[allow(unused_mut,unused_variables)]
             fn deserialize_with_mode<R: snarkvm_utilities::io::Read>(
                 mut reader: R,
                 compress: snarkvm_utilities::serialize::Compress,

@@ -18,8 +18,11 @@
 #[macro_use]
 extern crate tracing;
 
+pub use ledger_authority as authority;
 pub use ledger_block as block;
 pub use ledger_coinbase as coinbase;
+pub use ledger_committee as committee;
+pub use ledger_narwhal as narwhal;
 pub use ledger_query as query;
 pub use ledger_store as store;
 
@@ -29,7 +32,8 @@ mod helpers;
 pub use helpers::*;
 
 mod advance;
-mod check;
+mod check_next_block;
+mod check_transaction_basic;
 mod contains;
 mod find;
 mod get;
@@ -39,7 +43,7 @@ mod iterators;
 mod tests;
 
 use console::{
-    account::{Address, GraphKey, PrivateKey, Signature, ViewKey},
+    account::{Address, GraphKey, PrivateKey, ViewKey},
     network::prelude::*,
     program::{
         Ciphertext,
@@ -55,8 +59,11 @@ use console::{
     },
     types::{Field, Group},
 };
+use ledger_authority::Authority;
 use ledger_block::{Block, ConfirmedTransaction, Header, Metadata, Ratify, Transaction, Transactions};
 use ledger_coinbase::{CoinbasePuzzle, CoinbaseSolution, EpochChallenge, ProverSolution, PuzzleCommitment};
+use ledger_committee::Committee;
+use ledger_narwhal::{BatchCertificate, Subdag, Transmission, TransmissionID};
 use ledger_query::Query;
 use ledger_store::{ConsensusStorage, ConsensusStore};
 use synthesizer::{
@@ -67,7 +74,7 @@ use synthesizer::{
 use aleo_std::prelude::{finish, lap, timer};
 use anyhow::Result;
 use core::ops::Range;
-use indexmap::{IndexMap, IndexSet};
+use indexmap::IndexMap;
 use parking_lot::RwLock;
 use rand::{prelude::IteratorRandom, rngs::OsRng};
 use std::{borrow::Cow, sync::Arc};
@@ -97,40 +104,40 @@ pub struct Ledger<N: Network, C: ConsensusStorage<N>> {
     /// The VM state.
     vm: VM<N, C>,
     /// The genesis block.
-    genesis: Block<N>,
+    genesis_block: Block<N>,
     /// The coinbase puzzle.
     coinbase_puzzle: CoinbasePuzzle<N>,
-    /// The current block.
-    current_block: Arc<RwLock<Block<N>>>,
     /// The current epoch challenge.
     current_epoch_challenge: Arc<RwLock<Option<EpochChallenge<N>>>>,
     /// The current committee.
-    current_committee: Arc<RwLock<IndexSet<Address<N>>>>,
+    current_committee: Arc<RwLock<Option<Committee<N>>>>,
+    /// The current block.
+    current_block: Arc<RwLock<Block<N>>>,
 }
 
 impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
     /// Loads the ledger from storage.
-    pub fn load(genesis: Block<N>, dev: Option<u16>) -> Result<Self> {
+    pub fn load(genesis_block: Block<N>, dev: Option<u16>) -> Result<Self> {
         let timer = timer!("Ledger::load");
 
         // Retrieve the genesis hash.
-        let genesis_hash = genesis.hash();
+        let genesis_hash = genesis_block.hash();
         // Initialize the ledger.
-        let ledger = Self::load_unchecked(genesis, dev)?;
+        let ledger = Self::load_unchecked(genesis_block, dev)?;
 
         // Ensure the ledger contains the correct genesis block.
         if !ledger.contains_block_hash(&genesis_hash)? {
             bail!("Incorrect genesis block (run 'snarkos clean' and try again)")
         }
 
+        // Spot check the integrity of `NUM_BLOCKS` random blocks upon bootup.
+        const NUM_BLOCKS: usize = 10;
         // Retrieve the latest height.
-        let latest_height =
-            *ledger.vm.block_store().heights().max().ok_or_else(|| anyhow!("Failed to load blocks from the ledger"))?;
-
-        // Safety check the existence of `NUM_BLOCKS` random blocks.
-        const NUM_BLOCKS: usize = 1000;
-        let block_heights: Vec<u32> = (0..=latest_height)
-            .choose_multiple(&mut OsRng::default(), core::cmp::min(NUM_BLOCKS, latest_height as usize));
+        let latest_height = ledger.current_block.read().height();
+        debug_assert_eq!(latest_height, *ledger.vm.block_store().heights().max().unwrap(), "Mismatch in latest height");
+        // Sample random block heights.
+        let block_heights: Vec<u32> =
+            (0..=latest_height).choose_multiple(&mut OsRng, (latest_height as usize).min(NUM_BLOCKS));
         cfg_into_iter!(block_heights).try_for_each(|height| {
             ledger.get_block(height)?;
             Ok::<_, Error>(())
@@ -142,13 +149,12 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
     }
 
     /// Loads the ledger from storage, without performing integrity checks.
-    pub fn load_unchecked(genesis: Block<N>, dev: Option<u16>) -> Result<Self> {
+    pub fn load_unchecked(genesis_block: Block<N>, dev: Option<u16>) -> Result<Self> {
         let timer = timer!("Ledger::load_unchecked");
 
         // Initialize the consensus store.
-        let store = match ConsensusStore::<N, C>::open(dev) {
-            Ok(store) => store,
-            _ => bail!("Failed to load ledger (run 'snarkos clean' and try again)"),
+        let Ok(store) = ConsensusStore::<N, C>::open(dev) else {
+            bail!("Failed to load ledger (run 'snarkos clean' and try again)");
         };
         lap!(timer, "Load consensus store");
 
@@ -156,23 +162,23 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         let vm = VM::from(store)?;
         lap!(timer, "Initialize a new VM");
 
+        // Retrieve the current committee.
+        let current_committee = vm.finalize_store().committee_store().current_committee().ok();
+
         // Initialize the ledger.
         let mut ledger = Self {
             vm,
-            genesis: genesis.clone(),
+            genesis_block: genesis_block.clone(),
             coinbase_puzzle: CoinbasePuzzle::<N>::load()?,
-            current_block: Arc::new(RwLock::new(genesis.clone())),
             current_epoch_challenge: Default::default(),
-            current_committee: Default::default(),
+            current_committee: Arc::new(RwLock::new(current_committee)),
+            current_block: Arc::new(RwLock::new(genesis_block.clone())),
         };
-
-        // Add the genesis validator to the committee.
-        ledger.current_committee.write().insert(genesis.signature().to_address());
 
         // If the block store is empty, initialize the genesis block.
         if ledger.vm.block_store().heights().max().is_none() {
             // Add the genesis block.
-            ledger.advance_to_next_block(&genesis)?;
+            ledger.advance_to_next_block(&genesis_block)?;
         }
         lap!(timer, "Initialize genesis");
 
@@ -186,17 +192,13 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
 
         // Set the current block.
         ledger.current_block = Arc::new(RwLock::new(block));
+        // Set the current committee (and ensures the latest committee exists).
+        ledger.current_committee = Arc::new(RwLock::new(Some(ledger.latest_committee()?)));
         // Set the current epoch challenge.
         ledger.current_epoch_challenge = Arc::new(RwLock::new(Some(ledger.get_epoch_challenge(latest_height)?)));
-        lap!(timer, "Initialize ledger");
 
-        finish!(timer);
+        finish!(timer, "Initialize ledger");
         Ok(ledger)
-    }
-
-    /// TODO: Delete this after testing for snarkOS team.
-    pub fn insert_committee_member(&self, address: Address<N>) {
-        self.current_committee.write().insert(address);
     }
 
     /// Returns the VM.
@@ -210,13 +212,29 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
     }
 
     /// Returns the latest committee.
-    pub fn latest_committee(&self) -> IndexSet<Address<N>> {
-        self.current_committee.read().clone()
+    pub fn latest_committee(&self) -> Result<Committee<N>> {
+        match self.current_committee.read().as_ref() {
+            Some(committee) => Ok(committee.clone()),
+            None => self.vm.finalize_store().committee_store().current_committee(),
+        }
     }
 
     /// Returns the latest state root.
     pub fn latest_state_root(&self) -> N::StateRoot {
         self.vm.block_store().current_state_root()
+    }
+
+    /// Returns the latest epoch number.
+    pub fn latest_epoch_number(&self) -> u32 {
+        self.current_block.read().height() / N::NUM_BLOCKS_PER_EPOCH
+    }
+
+    /// Returns the latest epoch challenge.
+    pub fn latest_epoch_challenge(&self) -> Result<EpochChallenge<N>> {
+        match self.current_epoch_challenge.read().as_ref() {
+            Some(challenge) => Ok(challenge.clone()),
+            None => self.get_epoch_challenge(self.latest_height()),
+        }
     }
 
     /// Returns the latest block.
@@ -244,19 +262,19 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         *self.current_block.read().header()
     }
 
-    /// Returns the latest total supply in microcredits.
-    pub fn latest_total_supply_in_microcredits(&self) -> u64 {
-        self.current_block.read().header().total_supply_in_microcredits()
-    }
-
-    /// Returns the latest latest cumulative weight.
+    /// Returns the latest block cumulative weight.
     pub fn latest_cumulative_weight(&self) -> u128 {
         self.current_block.read().cumulative_weight()
     }
 
-    /// Returns the latest block coinbase accumulator point.
-    pub fn latest_coinbase_accumulator_point(&self) -> Field<N> {
-        self.current_block.read().header().coinbase_accumulator_point()
+    /// Returns the latest block cumulative proof target.
+    pub fn latest_cumulative_proof_target(&self) -> u128 {
+        self.current_block.read().cumulative_proof_target()
+    }
+
+    /// Returns the latest block solutions root.
+    pub fn latest_solutions_root(&self) -> Field<N> {
+        self.current_block.read().header().solutions_root()
     }
 
     /// Returns the latest block coinbase target.
@@ -287,19 +305,6 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
     /// Returns the latest block transactions.
     pub fn latest_transactions(&self) -> Transactions<N> {
         self.current_block.read().transactions().clone()
-    }
-
-    /// Returns the latest epoch number.
-    pub fn latest_epoch_number(&self) -> u32 {
-        self.current_block.read().height() / N::NUM_BLOCKS_PER_EPOCH
-    }
-
-    /// Returns the latest epoch challenge.
-    pub fn latest_epoch_challenge(&self) -> Result<EpochChallenge<N>> {
-        match self.current_epoch_challenge.read().as_ref() {
-            Some(challenge) => Ok(challenge.clone()),
-            None => self.get_epoch_challenge(self.latest_height()),
-        }
     }
 }
 
@@ -337,12 +342,11 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         // Initialize an RNG.
         let rng = &mut ::rand::thread_rng();
 
-        // Prepare the fee.
-        let fee_record = records.next().unwrap().clone();
-        let fee = (fee_record, priority_fee_in_microcredits);
+        // Prepare the fee record.
+        let fee_record = Some(records.next().unwrap().clone());
 
         // Create a new deploy transaction.
-        self.vm.deploy(private_key, program, fee, query, rng)
+        self.vm.deploy(private_key, program, fee_record, priority_fee_in_microcredits, query, rng)
     }
 
     /// Creates a transfer transaction.
@@ -372,11 +376,18 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         ];
 
         // Prepare the fee.
-        let fee_record = records.next().unwrap().clone();
-        let fee = Some((fee_record, priority_fee_in_microcredits));
+        let fee_record = Some(records.next().unwrap().clone());
 
         // Create a new execute transaction.
-        self.vm.execute(private_key, ("credits.aleo", "transfer_private"), inputs.iter(), fee, query, rng)
+        self.vm.execute(
+            private_key,
+            ("credits.aleo", "transfer_private"),
+            inputs.iter(),
+            fee_record,
+            priority_fee_in_microcredits,
+            query,
+            rng,
+        )
     }
 }
 
@@ -425,7 +436,7 @@ pub(crate) mod test_helpers {
         // Initialize the store.
         let store = ConsensusStore::<_, ConsensusMemory<_>>::open(None).unwrap();
         // Create a genesis block.
-        let genesis = VM::from(store).unwrap().genesis(&private_key, rng).unwrap();
+        let genesis = VM::from(store).unwrap().genesis_beacon(&private_key, rng).unwrap();
         // Initialize the ledger with the genesis block.
         let ledger = CurrentLedger::load(genesis.clone(), None).unwrap();
         // Ensure the genesis block is correct.

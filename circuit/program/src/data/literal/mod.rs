@@ -12,7 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod downcast;
+pub use cast::Cast;
+pub use cast_lossy::CastLossy;
+
+mod cast;
+mod cast_lossy;
 mod equal;
 mod from_bits;
 mod size_in_bits;
@@ -21,9 +25,12 @@ mod to_fields;
 mod to_type;
 mod variant;
 
-use console::LiteralType;
+use snarkvm_circuit_account::Signature;
 use snarkvm_circuit_network::Aleo;
 use snarkvm_circuit_types::prelude::*;
+
+#[cfg(test)]
+use console::LiteralType;
 
 /// The literal enum represents all supported circuit types in snarkVM.
 #[derive(Clone)]
@@ -58,6 +65,8 @@ pub enum Literal<A: Aleo> {
     U128(U128<A>),
     /// The scalar type (scalar field).
     Scalar(Scalar<A>),
+    /// The signature type.
+    Signature(Box<Signature<A>>),
     /// The string type.
     String(StringType<A>),
 }
@@ -84,6 +93,7 @@ impl<A: Aleo> Inject for Literal<A> {
             Self::Primitive::U64(u64) => Self::U64(U64::new(mode, u64)),
             Self::Primitive::U128(u128) => Self::U128(U128::new(mode, u128)),
             Self::Primitive::Scalar(scalar) => Self::Scalar(Scalar::new(mode, scalar)),
+            Self::Primitive::Signature(signature) => Self::Signature(Box::new(Signature::new(mode, *signature))),
             Self::Primitive::String(string) => Self::String(StringType::new(mode, string)),
         }
     }
@@ -111,6 +121,7 @@ impl<A: Aleo> Eject for Literal<A> {
             Self::U64(literal) => literal.eject_mode(),
             Self::U128(literal) => literal.eject_mode(),
             Self::Scalar(literal) => literal.eject_mode(),
+            Self::Signature(literal) => literal.eject_mode(),
             Self::String(literal) => literal.eject_mode(),
         }
     }
@@ -133,6 +144,7 @@ impl<A: Aleo> Eject for Literal<A> {
             Self::U64(literal) => Self::Primitive::U64(literal.eject_value()),
             Self::U128(literal) => Self::Primitive::U128(literal.eject_value()),
             Self::Scalar(literal) => Self::Primitive::Scalar(literal.eject_value()),
+            Self::Signature(literal) => Self::Primitive::Signature(Box::new(literal.eject_value())),
             Self::String(literal) => Self::Primitive::String(literal.eject_value()),
         }
     }
@@ -159,6 +171,7 @@ impl<A: Aleo> Parser for Literal<A> {
             map(U64::parse, |literal| Self::U64(literal)),
             map(U128::parse, |literal| Self::U128(literal)),
             map(Scalar::parse, |literal| Self::Scalar(literal)),
+            map(Signature::parse, |literal| Self::Signature(Box::new(literal))),
             map(StringType::parse, |literal| Self::String(literal)),
         ))(string)
     }
@@ -203,6 +216,7 @@ impl<A: Aleo> Literal<A> {
             Self::U64(..) => U64::<A>::type_name(),
             Self::U128(..) => U128::<A>::type_name(),
             Self::Scalar(..) => Scalar::<A>::type_name(),
+            Self::Signature(..) => Signature::<A>::type_name(),
             Self::String(..) => StringType::<A>::type_name(),
         }
     }
@@ -234,6 +248,7 @@ impl<A: Aleo> Display for Literal<A> {
             Self::U64(literal) => Display::fmt(literal, f),
             Self::U128(literal) => Display::fmt(literal, f),
             Self::Scalar(literal) => Display::fmt(literal, f),
+            Self::Signature(literal) => Display::fmt(literal, f),
             Self::String(literal) => Display::fmt(literal, f),
         }
     }

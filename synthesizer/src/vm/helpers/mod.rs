@@ -12,7 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+pub(crate) mod committee;
+pub use committee::*;
+
 mod cost;
 pub use cost::*;
 
 mod macros;
+
+mod rewards;
+pub use rewards::*;

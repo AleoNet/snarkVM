@@ -13,20 +13,19 @@
 // limitations under the License.
 
 use crate::ledger::block::Deployment;
-use snarkvm_console::{prelude::DeserializeExt, types::Address};
+use snarkvm_console::prelude::DeserializeExt;
 
 use super::*;
 
 pub struct DeployRequest<N: Network> {
     deployment: Deployment<N>,
-    address: Address<N>,
     program_id: ProgramID<N>,
 }
 
 impl<N: Network> DeployRequest<N> {
     /// Sends the request to the given endpoint.
-    pub fn new(deployment: Deployment<N>, address: Address<N>, program_id: ProgramID<N>) -> Self {
-        Self { deployment, address, program_id }
+    pub fn new(deployment: Deployment<N>, program_id: ProgramID<N>) -> Self {
+        Self { deployment, program_id }
     }
 
     /// Sends the request to the given endpoint.
@@ -39,11 +38,6 @@ impl<N: Network> DeployRequest<N> {
         &self.deployment
     }
 
-    /// Returns the program address.
-    pub const fn address(&self) -> &Address<N> {
-        &self.address
-    }
-
     /// Returns the imports.
     pub const fn program_id(&self) -> &ProgramID<N> {
         &self.program_id
@@ -53,12 +47,10 @@ impl<N: Network> DeployRequest<N> {
 impl<N: Network> Serialize for DeployRequest<N> {
     /// Serializes the deploy request into string or bytes.
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        let mut request = serializer.serialize_struct("DeployRequest", 3)?;
+        let mut request = serializer.serialize_struct("DeployRequest", 2)?;
         // Serialize the deployment.
         request.serialize_field("deployment", &self.deployment)?;
-        // Serialize the address.
-        request.serialize_field("address", &self.address)?;
-        // Serialize the program id.
+        // Serialize the program ID.
         request.serialize_field("program_id", &self.program_id)?;
         request.end()
     }
@@ -73,8 +65,6 @@ impl<'de, N: Network> Deserialize<'de> for DeployRequest<N> {
         Ok(Self::new(
             // Retrieve the program.
             DeserializeExt::take_from_value::<D>(&mut request, "deployment")?,
-            // Retrieve the address of the program.
-            DeserializeExt::take_from_value::<D>(&mut request, "address")?,
             // Retrieve the program ID.
             DeserializeExt::take_from_value::<D>(&mut request, "program_id")?,
         ))
@@ -129,9 +119,6 @@ impl<N: Network> Package<N> {
         // Retrieve the main program ID.
         let program_id = program.id();
 
-        // Retrieve the Aleo address of the deployment caller.
-        let caller = self.manifest_file().development_address();
-
         #[cfg(feature = "aleo-cli")]
         println!("⏳ Deploying '{}'...\n", program_id.to_string().bold());
 
@@ -161,7 +148,7 @@ impl<N: Network> Package<N> {
         match endpoint {
             Some(ref endpoint) => {
                 // Construct the deploy request.
-                let request = DeployRequest::new(deployment, *caller, *program_id);
+                let request = DeployRequest::new(deployment, *program_id);
                 // Send the deploy request.
                 let response = request.send(endpoint)?;
                 // Ensure the program ID matches.
@@ -187,7 +174,7 @@ mod tests {
     #[test]
     fn test_deploy() {
         // Samples a new package at a temporary directory.
-        let (directory, package) = crate::package::test_helpers::sample_package();
+        let (directory, package) = crate::package::test_helpers::sample_token_package();
 
         // Deploy the package.
         let deployment = package.deploy::<CurrentAleo>(None).unwrap();
@@ -206,7 +193,7 @@ mod tests {
     #[test]
     fn test_deploy_with_import() {
         // Samples a new package at a temporary directory.
-        let (directory, package) = crate::package::test_helpers::sample_package_with_import();
+        let (directory, package) = crate::package::test_helpers::sample_wallet_package();
 
         // Deploy the package.
         let deployment = package.deploy::<CurrentAleo>(None).unwrap();

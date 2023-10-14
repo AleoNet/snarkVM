@@ -154,6 +154,20 @@ macro_rules! cfg_chunks_mut {
     }};
 }
 
+/// Creates parallel iterator from iterator if `parallel` feature is enabled.
+#[macro_export]
+macro_rules! cfg_par_bridge {
+    ($e: expr) => {{
+        #[cfg(not(feature = "serial"))]
+        let result = $e.par_bridge();
+
+        #[cfg(feature = "serial")]
+        let result = $e;
+
+        result
+    }};
+}
+
 /// Applies the reduce operation over an iterator.
 #[macro_export]
 macro_rules! cfg_reduce {

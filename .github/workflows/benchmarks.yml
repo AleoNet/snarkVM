@@ -34,7 +34,7 @@ jobs:
           cd algorithms
           cargo bench --bench variable_base -- --output-format bencher | tee -a ../output.txt
           cargo bench --bench poseidon_sponge -- --output-format bencher | tee -a ../output.txt
-          cargo bench --bench marlin -- --output-format bencher | tee -a ../output.txt
+          cargo bench --bench varuna -- --output-format bencher | tee -a ../output.txt
           cd ..
 
       - name: Benchmark circuit/environment
@@ -52,13 +52,15 @@ jobs:
       - name: Benchmark console/algorithms
         run: |
           cd console/algorithms
-          cargo bench --bench poseidon_sponge -- --output-format bencher | tee -a ../../output.txt
+          cargo bench --bench poseidon -- --output-format bencher | tee -a ../../output.txt
+          cargo bench --bench elligator2 -- --output-format bencher | tee -a ../../output.txt
           cd ../..
 
       - name: Benchmark console/collections
         run: |
           cd console/collections
           cargo bench --bench merkle_tree -- --output-format bencher | tee -a ../../output.txt
+          cargo bench --bench kary_merkle_tree -- --output-format bencher | tee -a ../../output.txt
           cd ../..
           
       - name: Benchmark curves
@@ -67,16 +69,16 @@ jobs:
           cargo bench --bench curves -- --output-format bencher | tee -a ../output.txt
           cd ..
 
-      - name: Benchmark synthesizer
+      - name: Benchmark ledger
         run: |
-          cd synthesizer
+          cd ledger
           cargo bench --bench block -- --output-format bencher | tee -a ../output.txt
           cargo bench --bench transaction -- --output-format bencher | tee -a ../output.txt
           cd ..
 
-      - name: Benchmark synthesizer/coinbase
+      - name: Benchmark ledger/coinbase
         run: |
-          cd synthesizer/coinbase
+          cd ledger/coinbase
           cargo bench --bench coinbase_puzzle --features "setup" -- --output-format bencher | tee -a ../../output.txt
           cd ../..
 

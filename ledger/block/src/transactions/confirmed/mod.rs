@@ -78,10 +78,12 @@ impl<N: Network> ConfirmedTransaction<N> {
         for operation in finalize_operations.iter() {
             // Ensure the finalize operation is an insert or update key-value operation.
             match operation {
-                FinalizeOperation::InsertKeyValue(..) | FinalizeOperation::UpdateKeyValue(..) => (),
+                FinalizeOperation::InsertKeyValue(..)
+                | FinalizeOperation::UpdateKeyValue(..)
+                | FinalizeOperation::RemoveKeyValue(..) => (),
                 FinalizeOperation::InitializeMapping(..)
-                | FinalizeOperation::RemoveMapping(..)
-                | FinalizeOperation::RemoveKeyValue(..) => {
+                | FinalizeOperation::ReplaceMapping(..)
+                | FinalizeOperation::RemoveMapping(..) => {
                     bail!("Transaction '{}' (execute) contains an invalid finalize operation type", transaction.id())
                 }
             }
@@ -118,7 +120,7 @@ impl<N: Network> ConfirmedTransaction<N> {
 
 impl<N: Network> ConfirmedTransaction<N> {
     /// Returns 'true' if the confirmed transaction is accepted.
-    pub fn is_accepted(&self) -> bool {
+    pub const fn is_accepted(&self) -> bool {
         match self {
             Self::AcceptedDeploy(..) | Self::AcceptedExecute(..) => true,
             Self::RejectedDeploy(..) | Self::RejectedExecute(..) => false,
@@ -126,14 +128,14 @@ impl<N: Network> ConfirmedTransaction<N> {
     }
 
     /// Returns 'true' if the confirmed transaction is rejected.
-    pub fn is_rejected(&self) -> bool {
+    pub const fn is_rejected(&self) -> bool {
         !self.is_accepted()
     }
 }
 
 impl<N: Network> ConfirmedTransaction<N> {
     /// Returns the confirmed transaction index.
-    pub fn index(&self) -> u32 {
+    pub const fn index(&self) -> u32 {
         match self {
             Self::AcceptedDeploy(index, ..) => *index,
             Self::AcceptedExecute(index, ..) => *index,
@@ -142,8 +144,18 @@ impl<N: Network> ConfirmedTransaction<N> {
         }
     }
 
+    /// Returns the human-readable variant of the confirmed transaction.
+    pub const fn variant(&self) -> &str {
+        match self {
+            Self::AcceptedDeploy(..) => "accepted deploy",
+            Self::AcceptedExecute(..) => "accepted execute",
+            Self::RejectedDeploy(..) => "rejected deploy",
+            Self::RejectedExecute(..) => "rejected execute",
+        }
+    }
+
     /// Returns the transaction.
-    pub fn transaction(&self) -> &Transaction<N> {
+    pub const fn transaction(&self) -> &Transaction<N> {
         match self {
             Self::AcceptedDeploy(_, transaction, _) => transaction,
             Self::AcceptedExecute(_, transaction, _) => transaction,
@@ -171,11 +183,50 @@ impl<N: Network> ConfirmedTransaction<N> {
     }
 
     /// Returns the finalize operations for the confirmed transaction.
-    pub fn finalize_operations(&self) -> Option<&Vec<FinalizeOperation<N>>> {
+    pub const fn finalize_operations(&self) -> Option<&Vec<FinalizeOperation<N>>> {
         match self {
             Self::AcceptedDeploy(_, _, finalize) => Some(finalize),
             Self::AcceptedExecute(_, _, finalize) => Some(finalize),
             Self::RejectedDeploy(..) | Self::RejectedExecute(..) => None,
+        }
+    }
+
+    /// Returns the unconfirmed transaction ID, which is defined as the transaction ID prior to confirmation.
+    /// When a transaction is rejected, its fee transition is used to construct the confirmed transaction ID,
+    /// changing the original transaction ID.
+    pub fn unconfirmed_id(&self) -> Result<N::TransactionID> {
+        match self {
+            Self::AcceptedDeploy(_, transaction, _) => Ok(transaction.id()),
+            Self::AcceptedExecute(_, transaction, _) => Ok(transaction.id()),
+            Self::RejectedDeploy(_, fee_transaction, rejected)
+            | Self::RejectedExecute(_, fee_transaction, rejected) => {
+                Ok(rejected.to_unconfirmed_id(&fee_transaction.fee_transition())?.into())
+            }
+        }
+    }
+
+    /// Returns the unconfirmed transaction, which is defined as the transaction prior to confirmation.
+    /// When a transaction is rejected, its fee transition is used to construct the confirmed transaction,
+    /// changing the original transaction.
+    pub fn unconfirmed_transaction(&self) -> Result<Transaction<N>> {
+        match self {
+            Self::AcceptedDeploy(_, transaction, _) => Ok(transaction.clone()),
+            Self::AcceptedExecute(_, transaction, _) => Ok(transaction.clone()),
+            Self::RejectedDeploy(_, fee_transaction, rejected) => {
+                let program_owner = rejected
+                    .program_owner()
+                    .ok_or_else(|| anyhow!("Missing program owner for rejected transaction"))?;
+                let rejected_deployment =
+                    rejected.deployment().ok_or_else(|| anyhow!("Missing deployment for rejected transaction"))?;
+                let fee =
+                    fee_transaction.fee_transition().ok_or_else(|| anyhow!("Missing fee for rejected deployment"))?;
+                Transaction::from_deployment(*program_owner, rejected_deployment.clone(), fee)
+            }
+            Self::RejectedExecute(_, fee_transaction, rejected) => {
+                let rejected_execution =
+                    rejected.execution().ok_or_else(|| anyhow!("Missing execution for rejected transaction"))?;
+                Transaction::from_execution(rejected_execution.clone(), fee_transaction.fee_transition())
+            }
         }
     }
 }
@@ -197,41 +248,63 @@ pub mod test_helpers {
     type CurrentNetwork = Testnet3;
 
     /// Samples an accepted deploy transaction at the given index.
-    pub(crate) fn sample_accepted_deploy(index: u32, rng: &mut TestRng) -> ConfirmedTransaction<CurrentNetwork> {
+    pub(crate) fn sample_accepted_deploy(
+        index: u32,
+        is_fee_private: bool,
+        rng: &mut TestRng,
+    ) -> ConfirmedTransaction<CurrentNetwork> {
         // Sample a deploy transaction.
-        let tx = crate::transaction::test_helpers::sample_deployment_transaction(rng);
+        let tx = crate::transaction::test_helpers::sample_deployment_transaction(is_fee_private, rng);
         // Return the confirmed transaction.
         ConfirmedTransaction::accepted_deploy(index, tx, vec![FinalizeOperation::InitializeMapping(Uniform::rand(rng))])
             .unwrap()
     }
 
     /// Samples an accepted execute transaction at the given index.
-    pub(crate) fn sample_accepted_execute(index: u32, rng: &mut TestRng) -> ConfirmedTransaction<CurrentNetwork> {
+    pub(crate) fn sample_accepted_execute(
+        index: u32,
+        is_fee_private: bool,
+        rng: &mut TestRng,
+    ) -> ConfirmedTransaction<CurrentNetwork> {
         // Sample an execute transaction.
-        let tx = crate::transaction::test_helpers::sample_execution_transaction_with_fee(rng);
+        let tx = crate::transaction::test_helpers::sample_execution_transaction_with_fee(is_fee_private, rng);
         // Return the confirmed transaction.
         ConfirmedTransaction::accepted_execute(index, tx, vec![]).unwrap()
     }
 
     /// Samples a rejected deploy transaction at the given index.
-    pub(crate) fn sample_rejected_deploy(index: u32, rng: &mut TestRng) -> ConfirmedTransaction<CurrentNetwork> {
+    pub(crate) fn sample_rejected_deploy(
+        index: u32,
+        is_fee_private: bool,
+        rng: &mut TestRng,
+    ) -> ConfirmedTransaction<CurrentNetwork> {
         // Sample a fee transaction.
-        let fee_transaction = crate::transaction::test_helpers::sample_fee_transaction(rng);
+        let fee_transaction = match is_fee_private {
+            true => crate::transaction::test_helpers::sample_private_fee_transaction(rng),
+            false => crate::transaction::test_helpers::sample_fee_public_transaction(rng),
+        };
 
         // Extract the rejected deployment.
-        let rejected = crate::rejected::test_helpers::sample_rejected_deployment(rng);
+        let rejected = crate::rejected::test_helpers::sample_rejected_deployment(is_fee_private, rng);
 
         // Return the confirmed transaction.
         ConfirmedTransaction::rejected_deploy(index, fee_transaction, rejected).unwrap()
     }
 
     /// Samples a rejected execute transaction at the given index.
-    pub(crate) fn sample_rejected_execute(index: u32, rng: &mut TestRng) -> ConfirmedTransaction<CurrentNetwork> {
+    pub(crate) fn sample_rejected_execute(
+        index: u32,
+        is_fee_private: bool,
+        rng: &mut TestRng,
+    ) -> ConfirmedTransaction<CurrentNetwork> {
         // Sample a fee transaction.
-        let fee_transaction = crate::transaction::test_helpers::sample_fee_transaction(rng);
+        let fee_transaction = match is_fee_private {
+            true => crate::transaction::test_helpers::sample_private_fee_transaction(rng),
+            false => crate::transaction::test_helpers::sample_fee_public_transaction(rng),
+        };
 
         // Extract the rejected execution.
-        let rejected = crate::rejected::test_helpers::sample_rejected_execution(rng);
+        let rejected = crate::rejected::test_helpers::sample_rejected_execution(is_fee_private, rng);
 
         // Return the confirmed transaction.
         ConfirmedTransaction::rejected_execute(index, fee_transaction, rejected).unwrap()
@@ -242,14 +315,144 @@ pub mod test_helpers {
         let rng = &mut TestRng::default();
 
         vec![
-            sample_accepted_deploy(0, rng),
-            sample_accepted_execute(1, rng),
-            sample_rejected_deploy(2, rng),
-            sample_rejected_execute(3, rng),
-            sample_accepted_deploy(Uniform::rand(rng), rng),
-            sample_accepted_execute(Uniform::rand(rng), rng),
-            sample_rejected_deploy(Uniform::rand(rng), rng),
-            sample_rejected_execute(Uniform::rand(rng), rng),
+            sample_accepted_deploy(0, true, rng),
+            sample_accepted_deploy(0, false, rng),
+            sample_accepted_execute(1, true, rng),
+            sample_accepted_execute(1, false, rng),
+            sample_rejected_deploy(2, true, rng),
+            sample_rejected_deploy(2, false, rng),
+            sample_rejected_execute(3, true, rng),
+            sample_rejected_execute(3, false, rng),
+            sample_accepted_deploy(Uniform::rand(rng), true, rng),
+            sample_accepted_deploy(Uniform::rand(rng), false, rng),
+            sample_accepted_execute(Uniform::rand(rng), true, rng),
+            sample_accepted_execute(Uniform::rand(rng), false, rng),
+            sample_rejected_deploy(Uniform::rand(rng), true, rng),
+            sample_rejected_deploy(Uniform::rand(rng), false, rng),
+            sample_rejected_execute(Uniform::rand(rng), true, rng),
+            sample_rejected_execute(Uniform::rand(rng), false, rng),
         ]
+    }
+}
+
+#[cfg(test)]
+mod test {
+
+    use super::*;
+    use crate::transactions::confirmed::test_helpers;
+
+    #[test]
+    fn test_accepted_execute() {
+        let rng = &mut TestRng::default();
+
+        let index = Uniform::rand(rng);
+        let tx = crate::transaction::test_helpers::sample_execution_transaction_with_fee(true, rng);
+
+        // Create an `AcceptedExecution` with valid `FinalizeOperation`s.
+        let finalize_operations = vec![
+            FinalizeOperation::InsertKeyValue(Uniform::rand(rng), Uniform::rand(rng), Uniform::rand(rng)),
+            FinalizeOperation::UpdateKeyValue(
+                Uniform::rand(rng),
+                Uniform::rand(rng),
+                Uniform::rand(rng),
+                Uniform::rand(rng),
+            ),
+            FinalizeOperation::RemoveKeyValue(Uniform::rand(rng), Uniform::rand(rng)),
+        ];
+        let confirmed = ConfirmedTransaction::accepted_execute(index, tx.clone(), finalize_operations.clone()).unwrap();
+
+        assert_eq!(confirmed.index(), index);
+        assert_eq!(confirmed.transaction(), &tx);
+        assert_eq!(confirmed.num_finalize(), finalize_operations.len());
+        assert_eq!(confirmed.finalize_operations().unwrap(), &finalize_operations);
+
+        // Attempt to create an `AcceptedExecution` with invalid `FinalizeOperation`s.
+        let finalize_operations = vec![FinalizeOperation::InitializeMapping(Uniform::rand(rng))];
+        let confirmed = ConfirmedTransaction::accepted_execute(index, tx.clone(), finalize_operations);
+        assert!(confirmed.is_err());
+
+        let finalize_operations = vec![FinalizeOperation::RemoveMapping(Uniform::rand(rng))];
+        let confirmed = ConfirmedTransaction::accepted_execute(index, tx, finalize_operations);
+        assert!(confirmed.is_err());
+    }
+
+    #[test]
+    fn test_unconfirmed_transaction_ids() {
+        let rng = &mut TestRng::default();
+
+        // Ensure that the unconfirmed transaction ID of an accepted deployment is equivalent to its confirmed transaction ID.
+        let accepted_deploy = test_helpers::sample_accepted_deploy(Uniform::rand(rng), true, rng);
+        assert_eq!(accepted_deploy.unconfirmed_id().unwrap(), accepted_deploy.id());
+        let accepted_deploy = test_helpers::sample_accepted_deploy(Uniform::rand(rng), false, rng);
+        assert_eq!(accepted_deploy.unconfirmed_id().unwrap(), accepted_deploy.id());
+
+        // Ensure that the unconfirmed transaction ID of an accepted execute is equivalent to its confirmed transaction ID.
+        let accepted_execution = test_helpers::sample_accepted_execute(Uniform::rand(rng), true, rng);
+        assert_eq!(accepted_execution.unconfirmed_id().unwrap(), accepted_execution.id());
+        let accepted_execution = test_helpers::sample_accepted_execute(Uniform::rand(rng), false, rng);
+        assert_eq!(accepted_execution.unconfirmed_id().unwrap(), accepted_execution.id());
+
+        // Ensure that the unconfirmed transaction ID of a rejected deployment is not equivalent to its confirmed transaction ID.
+        let rejected_deploy = test_helpers::sample_rejected_deploy(Uniform::rand(rng), true, rng);
+        assert_ne!(rejected_deploy.unconfirmed_id().unwrap(), rejected_deploy.id());
+        let rejected_deploy = test_helpers::sample_rejected_deploy(Uniform::rand(rng), false, rng);
+        assert_ne!(rejected_deploy.unconfirmed_id().unwrap(), rejected_deploy.id());
+
+        // Ensure that the unconfirmed transaction ID of a rejected execute is not equivalent to its confirmed transaction ID.
+        let rejected_execution = test_helpers::sample_rejected_execute(Uniform::rand(rng), true, rng);
+        assert_ne!(rejected_execution.unconfirmed_id().unwrap(), rejected_execution.id());
+        let rejected_execution = test_helpers::sample_rejected_execute(Uniform::rand(rng), false, rng);
+        assert_ne!(rejected_execution.unconfirmed_id().unwrap(), rejected_execution.id());
+    }
+
+    #[test]
+    fn test_unconfirmed_transactions() {
+        let rng = &mut TestRng::default();
+
+        // Ensure that the unconfirmed transaction of an accepted deployment is equivalent to its confirmed transaction.
+        let accepted_deploy = test_helpers::sample_accepted_deploy(Uniform::rand(rng), true, rng);
+        assert_eq!(&accepted_deploy.unconfirmed_transaction().unwrap(), accepted_deploy.transaction());
+        let accepted_deploy = test_helpers::sample_accepted_deploy(Uniform::rand(rng), false, rng);
+        assert_eq!(&accepted_deploy.unconfirmed_transaction().unwrap(), accepted_deploy.transaction());
+
+        // Ensure that the unconfirmed transaction of an accepted execute is equivalent to its confirmed transaction.
+        let accepted_execution = test_helpers::sample_accepted_execute(Uniform::rand(rng), true, rng);
+        assert_eq!(&accepted_execution.unconfirmed_transaction().unwrap(), accepted_execution.transaction());
+        let accepted_execution = test_helpers::sample_accepted_execute(Uniform::rand(rng), false, rng);
+        assert_eq!(&accepted_execution.unconfirmed_transaction().unwrap(), accepted_execution.transaction());
+
+        // Ensure that the unconfirmed transaction of a rejected deployment is not equivalent to its confirmed transaction.
+        let deployment_transaction = crate::transaction::test_helpers::sample_deployment_transaction(true, rng);
+        let rejected = Rejected::new_deployment(
+            *deployment_transaction.owner().unwrap(),
+            deployment_transaction.deployment().unwrap().clone(),
+        );
+        let fee = Transaction::from_fee(deployment_transaction.fee_transition().unwrap()).unwrap();
+        let rejected_deploy = ConfirmedTransaction::rejected_deploy(Uniform::rand(rng), fee, rejected).unwrap();
+        assert_eq!(rejected_deploy.unconfirmed_id().unwrap(), deployment_transaction.id());
+        assert_eq!(rejected_deploy.unconfirmed_transaction().unwrap(), deployment_transaction);
+        let deployment_transaction = crate::transaction::test_helpers::sample_deployment_transaction(false, rng);
+        let rejected = Rejected::new_deployment(
+            *deployment_transaction.owner().unwrap(),
+            deployment_transaction.deployment().unwrap().clone(),
+        );
+        let fee = Transaction::from_fee(deployment_transaction.fee_transition().unwrap()).unwrap();
+        let rejected_deploy = ConfirmedTransaction::rejected_deploy(Uniform::rand(rng), fee, rejected).unwrap();
+        assert_eq!(rejected_deploy.unconfirmed_id().unwrap(), deployment_transaction.id());
+        assert_eq!(rejected_deploy.unconfirmed_transaction().unwrap(), deployment_transaction);
+
+        // Ensure that the unconfirmed transaction of a rejected execute is not equivalent to its confirmed transaction.
+        let execution_transaction = crate::transaction::test_helpers::sample_execution_transaction_with_fee(true, rng);
+        let rejected = Rejected::new_execution(execution_transaction.execution().unwrap().clone());
+        let fee = Transaction::from_fee(execution_transaction.fee_transition().unwrap()).unwrap();
+        let rejected_execute = ConfirmedTransaction::rejected_execute(Uniform::rand(rng), fee, rejected).unwrap();
+        assert_eq!(rejected_execute.unconfirmed_id().unwrap(), execution_transaction.id());
+        assert_eq!(rejected_execute.unconfirmed_transaction().unwrap(), execution_transaction);
+        let execution_transaction = crate::transaction::test_helpers::sample_execution_transaction_with_fee(false, rng);
+        let rejected = Rejected::new_execution(execution_transaction.execution().unwrap().clone());
+        let fee = Transaction::from_fee(execution_transaction.fee_transition().unwrap()).unwrap();
+        let rejected_execute = ConfirmedTransaction::rejected_execute(Uniform::rand(rng), fee, rejected).unwrap();
+        assert_eq!(rejected_execute.unconfirmed_id().unwrap(), execution_transaction.id());
+        assert_eq!(rejected_execute.unconfirmed_transaction().unwrap(), execution_transaction);
     }
 }

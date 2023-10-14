@@ -20,11 +20,17 @@ impl<A: Aleo> Record<A, Ciphertext<A>> {
         // Compute the record view key.
         let record_view_key = (&**view_key * &self.nonce).to_x_coordinate();
         // Decrypt the record.
-        self.decrypt_symmetric(record_view_key)
+        let record = self.decrypt_symmetric_unchecked(record_view_key);
+        // Ensure the view key corresponds to the record owner.
+        A::assert_eq(view_key.to_address(), record.owner().deref());
+        // Return the decrypted record.
+        record
     }
 
     /// Decrypts `self` into a plaintext record using the given record view key.
-    pub fn decrypt_symmetric(&self, record_view_key: Field<A>) -> Record<A, Plaintext<A>> {
+    /// Note: This method does not check that the record view key corresponds to the record owner.
+    /// Use `Self::decrypt` for the checked variant.
+    pub fn decrypt_symmetric_unchecked(&self, record_view_key: Field<A>) -> Record<A, Plaintext<A>> {
         // Determine the number of randomizers needed to encrypt the record.
         let num_randomizers = self.num_randomizers();
         // Prepare a randomizer for each field element.

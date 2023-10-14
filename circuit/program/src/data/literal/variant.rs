@@ -33,7 +33,8 @@ impl<A: Aleo> Literal<A> {
             Self::U64(..) => console::U8::new(12),
             Self::U128(..) => console::U8::new(13),
             Self::Scalar(..) => console::U8::new(14),
-            Self::String(..) => console::U8::new(15),
+            Self::Signature(..) => console::U8::new(15),
+            Self::String(..) => console::U8::new(16),
         })
     }
 }

@@ -16,13 +16,13 @@ use super::*;
 
 impl<E: Environment> ToBits for Address<E> {
     /// Outputs the little-endian bit representation of `self.to_x_coordinate()` *without* trailing zeros.
-    fn to_bits_le(&self) -> Vec<bool> {
-        self.address.to_x_coordinate().to_bits_le()
+    fn write_bits_le(&self, vec: &mut Vec<bool>) {
+        self.address.to_x_coordinate().write_bits_le(vec);
     }
 
     /// Outputs the big-endian bit representation of `self.to_x_coordinate()` *without* leading zeros.
-    fn to_bits_be(&self) -> Vec<bool> {
-        self.address.to_x_coordinate().to_bits_be()
+    fn write_bits_be(&self, vec: &mut Vec<bool>) {
+        self.address.to_x_coordinate().write_bits_be(vec);
     }
 }
 
@@ -41,7 +41,7 @@ mod tests {
 
         for _ in 0..ITERATIONS {
             // Sample a random value.
-            let address = Address::<CurrentEnvironment>::new(Uniform::rand(&mut rng));
+            let address = Address::<CurrentEnvironment>::rand(&mut rng);
 
             let candidate = address.to_bits_le();
             assert_eq!(Address::<CurrentEnvironment>::size_in_bits(), candidate.len());
@@ -58,7 +58,7 @@ mod tests {
 
         for _ in 0..ITERATIONS {
             // Sample a random value.
-            let address = Address::<CurrentEnvironment>::new(Uniform::rand(&mut rng));
+            let address = Address::<CurrentEnvironment>::rand(&mut rng);
 
             let candidate = address.to_bits_be();
             assert_eq!(Address::<CurrentEnvironment>::size_in_bits(), candidate.len());

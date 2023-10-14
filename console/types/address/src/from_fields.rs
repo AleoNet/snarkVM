@@ -40,7 +40,7 @@ mod tests {
 
         for _ in 0..ITERATIONS {
             // Sample a random value.
-            let expected = Address::<CurrentEnvironment>::new(Uniform::rand(&mut rng));
+            let expected = Address::<CurrentEnvironment>::rand(&mut rng);
             let candidate = Address::<CurrentEnvironment>::from_fields(&expected.to_fields()?)?;
             assert_eq!(expected, candidate);
         }

@@ -21,7 +21,7 @@ impl<N: Network> FromBytes for Block<N> {
         // Read the version.
         let version = u8::read_le(&mut reader)?;
         // Ensure the version is valid.
-        if version != 0 {
+        if version != 1 {
             return Err(error("Invalid block version"));
         }
 
@@ -31,6 +31,10 @@ impl<N: Network> FromBytes for Block<N> {
         let previous_hash = FromBytes::read_le(&mut reader)?;
         // Read the header.
         let header = FromBytes::read_le(&mut reader)?;
+
+        // Write the authority.
+        let authority = FromBytes::read_le(&mut reader)?;
+
         // Read the transactions.
         let transactions = FromBytes::read_le(&mut reader)?;
 
@@ -49,11 +53,8 @@ impl<N: Network> FromBytes for Block<N> {
             _ => return Err(error("Invalid coinbase variant")),
         };
 
-        // Write the signature.
-        let signature = FromBytes::read_le(&mut reader)?;
-
         // Construct the block.
-        let block = Self::from(previous_hash, header, transactions, ratifications, coinbase, signature)
+        let block = Self::from(previous_hash, header, authority, transactions, ratifications, coinbase)
             .map_err(|e| error(e.to_string()))?;
 
         // Ensure the block hash matches.
@@ -69,7 +70,7 @@ impl<N: Network> ToBytes for Block<N> {
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Write the version.
-        0u8.write_le(&mut writer)?;
+        1u8.write_le(&mut writer)?;
 
         // Write the block hash.
         self.block_hash.write_le(&mut writer)?;
@@ -77,6 +78,10 @@ impl<N: Network> ToBytes for Block<N> {
         self.previous_hash.write_le(&mut writer)?;
         // Write the header.
         self.header.write_le(&mut writer)?;
+
+        // Write the authority.
+        self.authority.write_le(&mut writer)?;
+
         // Write the transactions.
         self.transactions.write_le(&mut writer)?;
 
@@ -86,17 +91,15 @@ impl<N: Network> ToBytes for Block<N> {
             ratification.write_le(&mut writer)?;
         }
 
-        // Write the coinbase solution.
+        // Write the solutions.
         match self.coinbase {
             None => 0u8.write_le(&mut writer)?,
-            Some(ref coinbase) => {
+            Some(ref solutions) => {
                 1u8.write_le(&mut writer)?;
-                coinbase.write_le(&mut writer)?;
+                solutions.write_le(&mut writer)?;
             }
         }
-
-        // Write the signature.
-        self.signature.write_le(&mut writer)
+        Ok(())
     }
 }
 

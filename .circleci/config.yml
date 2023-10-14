@@ -134,7 +134,7 @@ commands:
 jobs:
   snarkvm:
     docker:
-      - image: cimg/rust:1.69
+      - image: cimg/rust:1.71.1
     resource_class: 2xlarge
     steps:
       - checkout
@@ -144,16 +144,26 @@ jobs:
 
   algorithms:
     docker:
-      - image: cimg/rust:1.69
+      - image: cimg/rust:1.71.1
     resource_class: 2xlarge
     steps:
       - run_serial:
           workspace_member: algorithms
           cache_key: snarkvm-algorithms-cache
 
+  algorithms-profiler:
+    docker:
+      - image: cimg/rust:1.71.1
+    resource_class: xlarge
+    steps:
+      - run_serial: # This runs a single test with profiler enabled
+          workspace_member: algorithms
+          cache_key: snarkvm-algorithms-cache
+          flags: varuna::prove_and_verify_with_square_matrix --features profiler
+
   circuit:
     docker:
-      - image: cimg/rust:1.69
+      - image: cimg/rust:1.71.1
     resource_class: xlarge
     steps:
       - run_serial:
@@ -162,7 +172,7 @@ jobs:
 
   circuit-account:
     docker:
-      - image: cimg/rust:1.69
+      - image: cimg/rust:1.71.1
     resource_class: xlarge
     steps:
       - run_serial:
@@ -172,7 +182,7 @@ jobs:
   # This checks that no `console` structs are used in core circuit logic.
   circuit-account-noconsole:
     docker:
-      - image: cimg/rust:1.69
+      - image: cimg/rust:1.71.1
     resource_class: xlarge
     steps:
       - run_serial:
@@ -182,7 +192,7 @@ jobs:
 
   circuit-algorithms:
     docker:
-      - image: cimg/rust:1.69
+      - image: cimg/rust:1.71.1
     resource_class: xlarge
     steps:
       - run_serial:
@@ -191,7 +201,7 @@ jobs:
 
   circuit-collections:
     docker:
-      - image: cimg/rust:1.69
+      - image: cimg/rust:1.71.1
     resource_class: xlarge
     steps:
       - run_serial:
@@ -201,7 +211,7 @@ jobs:
   # This checks that no `console` structs are used in core circuit logic.
   circuit-collections-noconsole:
     docker:
-      - image: cimg/rust:1.69
+      - image: cimg/rust:1.71.1
     resource_class: xlarge
     steps:
       - run_serial:
@@ -211,7 +221,7 @@ jobs:
 
   circuit-environment:
     docker:
-      - image: cimg/rust:1.69
+      - image: cimg/rust:1.71.1
     resource_class: xlarge
     steps:
       - run_serial:
@@ -220,7 +230,7 @@ jobs:
 
   circuit-network:
     docker:
-      - image: cimg/rust:1.69
+      - image: cimg/rust:1.71.1
     resource_class: xlarge
     steps:
       - run_serial:
@@ -229,7 +239,7 @@ jobs:
 
   circuit-program:
     docker:
-      - image: cimg/rust:1.69
+      - image: cimg/rust:1.71.1
     resource_class: xlarge
     steps:
       - run_serial:
@@ -238,7 +248,7 @@ jobs:
 
   circuit-types:
     docker:
-      - image: cimg/rust:1.69
+      - image: cimg/rust:1.71.1
     resource_class: xlarge
     steps:
       - run_serial:
@@ -247,7 +257,7 @@ jobs:
 
   circuit-types-address:
     docker:
-      - image: cimg/rust:1.69
+      - image: cimg/rust:1.71.1
     resource_class: xlarge
     steps:
       - run_serial:
@@ -256,7 +266,7 @@ jobs:
 
   circuit-types-boolean:
     docker:
-      - image: cimg/rust:1.69
+      - image: cimg/rust:1.71.1
     resource_class: xlarge
     steps:
       - run_serial:
@@ -265,7 +275,7 @@ jobs:
 
   circuit-types-field:
     docker:
-      - image: cimg/rust:1.69
+      - image: cimg/rust:1.71.1
     resource_class: xlarge
     steps:
       - run_serial:
@@ -274,7 +284,7 @@ jobs:
 
   circuit-types-group:
     docker:
-      - image: cimg/rust:1.69
+      - image: cimg/rust:1.71.1
     resource_class: xlarge
     steps:
       - run_serial:
@@ -283,7 +293,7 @@ jobs:
 
   circuit-types-integers:
     docker:
-      - image: cimg/rust:1.69
+      - image: cimg/rust:1.71.1
     resource_class: 2xlarge
     steps:
       - run_serial:
@@ -293,7 +303,7 @@ jobs:
 
   circuit-types-scalar:
     docker:
-      - image: cimg/rust:1.69
+      - image: cimg/rust:1.71.1
     resource_class: xlarge
     steps:
       - run_serial:
@@ -302,7 +312,7 @@ jobs:
 
   circuit-types-string:
     docker:
-      - image: cimg/rust:1.69
+      - image: cimg/rust:1.71.1
     resource_class: xlarge
     steps:
       - run_serial:
@@ -310,7 +320,7 @@ jobs:
           cache_key: snarkvm-circuit-types-string-cache
   console:
     docker:
-      - image: cimg/rust:1.69
+      - image: cimg/rust:1.71.1
     resource_class: xlarge
     steps:
       - run_serial:
@@ -319,7 +329,7 @@ jobs:
 
   console-account:
     docker:
-      - image: cimg/rust:1.69
+      - image: cimg/rust:1.71.1
     resource_class: xlarge
     steps:
       - run_serial:
@@ -328,7 +338,7 @@ jobs:
 
   console-algorithms:
     docker:
-      - image: cimg/rust:1.69
+      - image: cimg/rust:1.71.1
     resource_class: xlarge
     steps:
       - run_serial:
@@ -337,7 +347,7 @@ jobs:
 
   console-collections:
     docker:
-      - image: cimg/rust:1.69
+      - image: cimg/rust:1.71.1
     resource_class: xlarge
     steps:
       - run_serial:
@@ -346,7 +356,7 @@ jobs:
 
   console-network:
     docker:
-      - image: cimg/rust:1.69
+      - image: cimg/rust:1.71.1
     resource_class: xlarge
     steps:
       - run_serial:
@@ -355,7 +365,7 @@ jobs:
 
   console-network-environment:
     docker:
-      - image: cimg/rust:1.69
+      - image: cimg/rust:1.71.1
     resource_class: xlarge
     steps:
       - run_serial:
@@ -364,7 +374,7 @@ jobs:
 
   console-program:
     docker:
-      - image: cimg/rust:1.69
+      - image: cimg/rust:1.71.1
     resource_class: xlarge
     steps:
       - run_serial:
@@ -373,7 +383,7 @@ jobs:
 
   console-types:
     docker:
-      - image: cimg/rust:1.69
+      - image: cimg/rust:1.71.1
     resource_class: xlarge
     steps:
       - run_serial:
@@ -382,7 +392,7 @@ jobs:
 
   console-types-address:
     docker:
-      - image: cimg/rust:1.69
+      - image: cimg/rust:1.71.1
     resource_class: xlarge
     steps:
       - run_serial:
@@ -391,7 +401,7 @@ jobs:
 
   console-types-boolean:
     docker:
-      - image: cimg/rust:1.69
+      - image: cimg/rust:1.71.1
     resource_class: xlarge
     steps:
       - run_serial:
@@ -400,7 +410,7 @@ jobs:
 
   console-types-field:
     docker:
-      - image: cimg/rust:1.69
+      - image: cimg/rust:1.71.1
     resource_class: xlarge
     steps:
       - run_serial:
@@ -409,7 +419,7 @@ jobs:
 
   console-types-group:
     docker:
-      - image: cimg/rust:1.69
+      - image: cimg/rust:1.71.1
     resource_class: xlarge
     steps:
       - run_serial:
@@ -418,7 +428,7 @@ jobs:
 
   console-types-integers:
     docker:
-      - image: cimg/rust:1.69
+      - image: cimg/rust:1.71.1
     resource_class: xlarge
     steps:
       - run_serial:
@@ -427,7 +437,7 @@ jobs:
 
   console-types-scalar:
     docker:
-      - image: cimg/rust:1.69
+      - image: cimg/rust:1.71.1
     resource_class: xlarge
     steps:
       - run_serial:
@@ -436,7 +446,7 @@ jobs:
 
   console-types-string:
     docker:
-      - image: cimg/rust:1.69
+      - image: cimg/rust:1.71.1
     resource_class: xlarge
     steps:
       - run_serial:
@@ -445,7 +455,7 @@ jobs:
 
   curves:
     docker:
-      - image: cimg/rust:1.69
+      - image: cimg/rust:1.71.1
     resource_class: xlarge
     steps:
       - run_serial:
@@ -454,7 +464,7 @@ jobs:
 
   fields:
     docker:
-      - image: cimg/rust:1.69
+      - image: cimg/rust:1.71.1
     resource_class: xlarge
     steps:
       - run_serial:
@@ -463,16 +473,25 @@ jobs:
 
   ledger:
     docker:
-      - image: cimg/rust:1.69
+      - image: cimg/rust:1.71.1
     resource_class: 2xlarge
     steps:
       - run_serial:
           workspace_member: ledger
           cache_key: snarkvm-ledger-cache
 
+  ledger-authority:
+    docker:
+      - image: cimg/rust:1.71.1
+    resource_class: 2xlarge
+    steps:
+      - run_serial:
+          workspace_member: ledger/authority
+          cache_key: snarkvm-ledger-authority-cache
+
   ledger-block:
     docker:
-      - image: cimg/rust:1.69
+      - image: cimg/rust:1.71.1
     resource_class: 2xlarge
     steps:
       - run_serial:
@@ -481,16 +500,88 @@ jobs:
 
   ledger-coinbase:
     docker:
-      - image: cimg/rust:1.69
+      - image: cimg/rust:1.71.1
     resource_class: 2xlarge
     steps:
       - run_serial:
           workspace_member: ledger/coinbase
           cache_key: snarkvm-ledger-coinbase-cache
 
+  ledger-committee:
+    docker:
+      - image: cimg/rust:1.71.1
+    resource_class: xlarge
+    steps:
+      - run_serial:
+          workspace_member: ledger/committee
+          cache_key: snarkvm-ledger-committee-cache
+
+  ledger-narwhal:
+    docker:
+      - image: cimg/rust:1.71.1
+    resource_class: 2xlarge
+    steps:
+      - run_serial:
+          workspace_member: ledger/narwhal
+          cache_key: snarkvm-ledger-narwhal-cache
+
+  ledger-narwhal-batch-certificate:
+    docker:
+      - image: cimg/rust:1.71.1
+    resource_class: 2xlarge
+    steps:
+      - run_serial:
+          workspace_member: ledger/narwhal/batch-certificate
+          cache_key: snarkvm-ledger-narwhal-batch-certificate-cache
+
+  ledger-narwhal-batch-header:
+    docker:
+      - image: cimg/rust:1.71.1
+    resource_class: 2xlarge
+    steps:
+      - run_serial:
+          workspace_member: ledger/narwhal/batch-header
+          cache_key: snarkvm-ledger-narwhal-batch-header-cache
+
+  ledger-narwhal-data:
+    docker:
+      - image: cimg/rust:1.71.1
+    resource_class: 2xlarge
+    steps:
+      - run_serial:
+          workspace_member: ledger/narwhal/data
+          cache_key: snarkvm-ledger-narwhal-data-cache
+
+  ledger-narwhal-subdag:
+    docker:
+      - image: cimg/rust:1.71.1
+    resource_class: 2xlarge
+    steps:
+      - run_serial:
+          workspace_member: ledger/narwhal/subdag
+          cache_key: snarkvm-ledger-narwhal-subdag-cache
+
+  ledger-narwhal-transmission:
+    docker:
+      - image: cimg/rust:1.71.1
+    resource_class: 2xlarge
+    steps:
+      - run_serial:
+          workspace_member: ledger/narwhal/transmission
+          cache_key: snarkvm-ledger-narwhal-transmission-cache
+
+  ledger-narwhal-transmission-id:
+    docker:
+      - image: cimg/rust:1.71.1
+    resource_class: 2xlarge
+    steps:
+      - run_serial:
+          workspace_member: ledger/narwhal/transmission-id
+          cache_key: snarkvm-ledger-narwhal-transmission-id-cache
+
   ledger-query:
     docker:
-      - image: cimg/rust:1.69
+      - image: cimg/rust:1.71.1
     resource_class: 2xlarge
     steps:
       - run_serial:
@@ -499,7 +590,7 @@ jobs:
 
   ledger-store:
     docker:
-      - image: cimg/rust:1.69
+      - image: cimg/rust:1.71.1
     resource_class: 2xlarge
     steps:
       - run_serial:
@@ -509,7 +600,7 @@ jobs:
 
   ledger-test-helpers:
     docker:
-      - image: cimg/rust:1.69
+      - image: cimg/rust:1.71.1
     resource_class: 2xlarge
     steps:
       - run_serial:
@@ -518,7 +609,7 @@ jobs:
 
   parameters:
     docker:
-      - image: cimg/rust:1.69
+      - image: cimg/rust:1.71.1
     resource_class: xlarge
     steps:
       - run_serial:
@@ -527,7 +618,7 @@ jobs:
 
   synthesizer:
     docker:
-      - image: cimg/rust:1.69
+      - image: cimg/rust:1.71.1
     resource_class: 2xlarge
     steps:
       - run_serial:
@@ -537,7 +628,7 @@ jobs:
 
   synthesizer-integration:
     docker:
-      - image: cimg/rust:1.69
+      - image: cimg/rust:1.71.1
     resource_class: 2xlarge
     steps:
       - run_serial:
@@ -547,7 +638,7 @@ jobs:
 
   synthesizer-process:
     docker:
-      - image: cimg/rust:1.69
+      - image: cimg/rust:1.71.1
     resource_class: 2xlarge
     steps:
       - run_serial:
@@ -556,16 +647,57 @@ jobs:
 
   synthesizer-program:
     docker:
-      - image: cimg/rust:1.69
+      - image: cimg/rust:1.71.1
     resource_class: 2xlarge
     steps:
       - run_serial:
+          flags: --lib --bins
+          workspace_member: synthesizer/program
+          cache_key: snarkvm-synthesizer-program-cache
+
+  synthesizer-program-integration-keccak:
+    docker:
+      - image: cimg/rust:1.71.1
+    resource_class: 2xlarge
+    steps:
+      - run_serial:
+          flags: keccak --test '*'
+          workspace_member: synthesizer/program
+          cache_key: snarkvm-synthesizer-program-cache
+
+  synthesizer-program-integration-psd:
+    docker:
+      - image: cimg/rust:1.71.1
+    resource_class: 2xlarge
+    steps:
+      - run_serial:
+          flags: psd --test '*'
+          workspace_member: synthesizer/program
+          cache_key: snarkvm-synthesizer-program-cache
+
+  synthesizer-program-integration-sha:
+    docker:
+      - image: cimg/rust:1.71.1
+    resource_class: 2xlarge
+    steps:
+      - run_serial:
+          flags: sha --test '*'
+          workspace_member: synthesizer/program
+          cache_key: snarkvm-synthesizer-program-cache
+
+  synthesizer-program-integration-rest:
+    docker:
+      - image: cimg/rust:1.71.1
+    resource_class: 2xlarge
+    steps:
+      - run_serial:
+          flags: --test '*' -- --skip keccak --skip psd --skip sha
           workspace_member: synthesizer/program
           cache_key: snarkvm-synthesizer-program-cache
 
   synthesizer-snark:
     docker:
-      - image: cimg/rust:1.69
+      - image: cimg/rust:1.71.1
     resource_class: 2xlarge
     steps:
       - run_serial:
@@ -574,7 +706,7 @@ jobs:
 
   utilities:
     docker:
-      - image: cimg/rust:1.69
+      - image: cimg/rust:1.71.1
     resource_class: xlarge
     steps:
       - run_serial:
@@ -583,7 +715,7 @@ jobs:
 
   utilities-derives:
     docker:
-      - image: cimg/rust:1.69
+      - image: cimg/rust:1.71.1
     resource_class: xlarge
     steps:
       - run_serial:
@@ -592,7 +724,7 @@ jobs:
 
   wasm:
     docker:
-      - image: cimg/rust:1.69
+      - image: cimg/rust:1.71.1
     resource_class: 2xlarge
     steps:
       - checkout
@@ -610,7 +742,7 @@ jobs:
 
   check-fmt:
     docker:
-      - image: cimg/rust:1.69
+      - image: cimg/rust:1.71.1
     resource_class: xlarge
     steps:
       - checkout
@@ -626,7 +758,7 @@ jobs:
 
   check-clippy:
     docker:
-      - image: cimg/rust:1.69
+      - image: cimg/rust:1.71.1
     resource_class: 2xlarge
     steps:
       - checkout
@@ -643,7 +775,7 @@ jobs:
 
   check-all-targets:
     docker:
-      - image: cimg/rust:1.69
+      - image: cimg/rust:1.71.1
     resource_class: xlarge
     steps:
       - checkout
@@ -676,6 +808,7 @@ workflows:
     jobs:
       - snarkvm
       - algorithms
+      - algorithms-profiler
       - circuit
       - circuit-account
       - circuit-account-noconsole
@@ -711,8 +844,17 @@ workflows:
       - curves
       - fields
       - ledger
+      - ledger-authority
       - ledger-block
       - ledger-coinbase
+      - ledger-committee
+      - ledger-narwhal
+      - ledger-narwhal-batch-certificate
+      - ledger-narwhal-batch-header
+      - ledger-narwhal-data
+      - ledger-narwhal-subdag
+      - ledger-narwhal-transmission
+      - ledger-narwhal-transmission-id
       - ledger-query
       - ledger-store
       - ledger-test-helpers
@@ -721,6 +863,10 @@ workflows:
       - synthesizer-integration
       - synthesizer-process
       - synthesizer-program
+      - synthesizer-program-integration-keccak
+      - synthesizer-program-integration-psd
+      - synthesizer-program-integration-sha
+      - synthesizer-program-integration-rest
       - synthesizer-snark
       - utilities
       - utilities-derives

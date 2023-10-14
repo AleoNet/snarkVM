@@ -103,7 +103,7 @@ impl<N: Network> Stack<N> {
         self.register_types.insert(*name, register_types);
 
         // If the function contains a finalize, insert it.
-        if let Some((_, finalize)) = function.finalize() {
+        if let Some(finalize) = function.finalize_logic() {
             // Compute the finalize types.
             let finalize_types = FinalizeTypes::from_finalize(self, finalize)?;
             // Add the finalize name and finalize types to the stack.

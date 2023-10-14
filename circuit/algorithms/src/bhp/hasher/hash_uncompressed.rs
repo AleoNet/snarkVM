@@ -124,7 +124,7 @@ impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> HashUncompres
                         // Determine the correct sign of the y-coordinate, as a witness.
                         //
                         // Instead of using `Field::ternary`, we create a witness & custom constraint to reduce
-                        // the number of nonzero entries in the circuit, improving setup & proving time for Marlin.
+                        // the number of nonzero entries in the circuit, improving setup & proving time for Varuna.
                         let montgomery_y: Field<E> = witness!(|chunk_bits, y| if chunk_bits[2] { -y } else { y });
 
                         // Ensure the conditional negation of `witness_y` is correct as follows (1 constraint):

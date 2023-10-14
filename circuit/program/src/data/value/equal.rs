@@ -22,7 +22,8 @@ impl<A: Aleo> Equal<Self> for Value<A> {
         match (self, other) {
             (Self::Plaintext(a), Self::Plaintext(b)) => a.is_equal(b),
             (Self::Record(a), Self::Record(b)) => a.is_equal(b),
-            (Self::Plaintext(..), _) | (Self::Record(..), _) => Boolean::constant(false),
+            (Self::Future(a), Self::Future(b)) => a.is_equal(b),
+            (Self::Plaintext(..), _) | (Self::Record(..), _) | (Self::Future(..), _) => Boolean::constant(false),
         }
     }
 
@@ -31,7 +32,8 @@ impl<A: Aleo> Equal<Self> for Value<A> {
         match (self, other) {
             (Self::Plaintext(a), Self::Plaintext(b)) => a.is_not_equal(b),
             (Self::Record(a), Self::Record(b)) => a.is_not_equal(b),
-            (Self::Plaintext(..), _) | (Self::Record(..), _) => Boolean::constant(true),
+            (Self::Future(a), Self::Future(b)) => a.is_not_equal(b),
+            (Self::Plaintext(..), _) | (Self::Record(..), _) | (Self::Future(..), _) => Boolean::constant(true),
         }
     }
 }

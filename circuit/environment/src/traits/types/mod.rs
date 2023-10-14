@@ -12,23 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-pub mod address;
+mod address;
 pub use address::*;
 
-pub mod boolean;
+mod boolean;
 pub use boolean::*;
 
-pub mod field;
+mod field;
 pub use field::*;
 
-pub mod group;
+mod group;
 pub use group::*;
 
-pub mod integers;
+mod integers;
 pub use integers::{IntegerCore, IntegerTrait};
 
-pub mod scalar;
+mod scalar;
 pub use scalar::*;
 
-pub mod string;
+mod string;
 pub use string::*;

@@ -20,6 +20,7 @@ mod genesis;
 mod merkle;
 mod serialize;
 mod string;
+mod verify;
 
 use crate::Transactions;
 use console::{
@@ -32,15 +33,17 @@ use console::{
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Header<N: Network> {
     /// The Merkle root representing the blocks in the ledger up to the previous block.
-    previous_state_root: Field<N>,
+    previous_state_root: N::StateRoot,
     /// The Merkle root representing the transactions in the block.
     transactions_root: Field<N>,
     /// The Merkle root representing the on-chain finalize including the current block.
     finalize_root: Field<N>,
     /// The Merkle root representing the ratifications in the block.
     ratifications_root: Field<N>,
-    /// The accumulator point of the coinbase puzzle.
-    coinbase_accumulator_point: Field<N>,
+    /// The solutions root of the puzzle.
+    solutions_root: Field<N>,
+    /// The subdag root of the authority.
+    subdag_root: Field<N>,
     /// The metadata of the block.
     metadata: Metadata<N>,
 }
@@ -48,11 +51,12 @@ pub struct Header<N: Network> {
 impl<N: Network> Header<N> {
     /// Initializes a new block header with the given inputs.
     pub fn from(
-        previous_state_root: Field<N>,
+        previous_state_root: N::StateRoot,
         transactions_root: Field<N>,
         finalize_root: Field<N>,
         ratifications_root: Field<N>,
-        coinbase_accumulator_point: Field<N>,
+        solutions_root: Field<N>,
+        subdag_root: Field<N>,
         metadata: Metadata<N>,
     ) -> Result<Self> {
         // Construct a new block header.
@@ -61,7 +65,8 @@ impl<N: Network> Header<N> {
             transactions_root,
             finalize_root,
             ratifications_root,
-            coinbase_accumulator_point,
+            solutions_root,
+            subdag_root,
             metadata,
         };
         // Ensure the header is valid.
@@ -77,7 +82,7 @@ impl<N: Network> Header<N> {
             true => self.is_genesis(),
             false => {
                 // Ensure the previous ledger root is nonzero.
-                self.previous_state_root != Field::zero()
+                *self.previous_state_root != Field::zero()
                     // Ensure the transactions root is nonzero.
                     && self.transactions_root != Field::zero()
                     // Ensure the finalize root is nonzero.
@@ -91,7 +96,7 @@ impl<N: Network> Header<N> {
     }
 
     /// Returns the previous state root from the block header.
-    pub const fn previous_state_root(&self) -> Field<N> {
+    pub const fn previous_state_root(&self) -> N::StateRoot {
         self.previous_state_root
     }
 
@@ -110,9 +115,14 @@ impl<N: Network> Header<N> {
         self.ratifications_root
     }
 
-    /// Returns the coinbase puzzle accumulator point in the block header.
-    pub const fn coinbase_accumulator_point(&self) -> Field<N> {
-        self.coinbase_accumulator_point
+    /// Returns the solutions root in the block header.
+    pub const fn solutions_root(&self) -> Field<N> {
+        self.solutions_root
+    }
+
+    /// Returns the subdag root in the block header.
+    pub const fn subdag_root(&self) -> Field<N> {
+        self.subdag_root
     }
 
     /// Returns the metadata in the block header.
@@ -133,11 +143,6 @@ impl<N: Network> Header<N> {
     /// Returns the height of the block.
     pub const fn height(&self) -> u32 {
         self.metadata.height()
-    }
-
-    /// Returns the total supply of microcredits at this block.
-    pub const fn total_supply_in_microcredits(&self) -> u64 {
-        self.metadata.total_supply_in_microcredits()
     }
 
     /// Returns the cumulative weight for this block.

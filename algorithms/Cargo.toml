@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-algorithms"
-version = "0.14.1"
+version = "0.15.4"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Algorithms for a decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -40,33 +40,34 @@ harness = false
 bench = false
 
 [[bench]]
-name = "marlin"
-path = "benches/snark/marlin.rs"
+name = "varuna"
+path = "benches/snark/varuna.rs"
 harness = false
+required-features = [ "test" ]
 
 [dependencies.snarkvm-curves]
 path = "../curves"
-version = "=0.14.1"
+version = "=0.15.4"
 default-features = false
 
 [dependencies.snarkvm-fields]
 path = "../fields"
-version = "=0.14.1"
+version = "=0.15.4"
 default-features = false
 
 [dependencies.snarkvm-parameters]
 path = "../parameters"
-version = "=0.14.1"
+version = "=0.15.4"
 optional = true
 
 [dependencies.snarkvm-utilities]
 path = "../utilities"
-version = "=0.14.1"
+version = "=0.15.4"
 default-features = false
 
 [dependencies.snarkvm-algorithms-cuda]
 path = "./cuda"
-version = "=0.14.1"
+version = "=0.15.4"
 optional = true
 
 [dependencies.aleo-std]
@@ -152,6 +153,9 @@ version = "1.0"
 version = "0.4"
 optional = true
 
+[dependencies.num-traits]
+version = "0.2"
+
 [dev-dependencies.expect-test]
 version = "1.4.1"
 
@@ -197,6 +201,7 @@ profiler = [ "aleo-std/profiler" ]
 crypto_hash = [ ]
 fft = [ ]
 msm = [ ]
+test = [ ]
 polycommit = [ "crypto_hash", "fft", "msm", "rand_core" ]
 polycommit_wasm = [ "polycommit", "snarkvm-parameters/wasm" ]
 polycommit_full = [ "polycommit", "snarkvm-parameters/default" ]

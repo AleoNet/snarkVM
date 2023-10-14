@@ -15,11 +15,17 @@
 use super::*;
 use snarkvm_console_algorithms::{
     Blake2Xs,
+    Keccak256,
+    Keccak384,
+    Keccak512,
     Pedersen128,
     Pedersen64,
     Poseidon2,
     Poseidon4,
     Poseidon8,
+    Sha3_256,
+    Sha3_384,
+    Sha3_512,
     BHP1024,
     BHP256,
     BHP512,
@@ -30,8 +36,8 @@ lazy_static! {
     /// The group bases for the Aleo signature and encryption schemes.
     pub static ref GENERATOR_G: Vec<Group<Testnet3>> = Testnet3::new_bases("AleoAccountEncryptionAndSignatureScheme0");
 
-    /// The Marlin sponge parameters.
-    pub static ref MARLIN_FS_PARAMETERS: FiatShamirParameters<Testnet3> = FiatShamir::<Testnet3>::sample_parameters();
+    /// The Varuna sponge parameters.
+    pub static ref VARUNA_FS_PARAMETERS: FiatShamirParameters<Testnet3> = FiatShamir::<Testnet3>::sample_parameters();
 
     /// The encryption domain as a constant field element.
     pub static ref ENCRYPTION_DOMAIN: Field<Testnet3> = Field::<Testnet3>::new_domain_separator("AleoSymmetricEncryption0");
@@ -61,17 +67,19 @@ lazy_static! {
     /// The Poseidon hash function, using a rate of 8.
     pub static ref POSEIDON_8: Poseidon8<Testnet3> = Poseidon8::<Testnet3>::setup("AleoPoseidon8").expect("Failed to setup Poseidon8");
 
-    pub static ref CREDITS_PROVING_KEYS: IndexMap<String, Arc<MarlinProvingKey<Console>>> = {
+    pub static ref CREDITS_PROVING_KEYS: IndexMap<String, Arc<VarunaProvingKey<Console>>> = {
         let mut map = IndexMap::new();
-        snarkvm_parameters::insert_credit_keys!(map, MarlinProvingKey<Console>, Prover);
+        snarkvm_parameters::insert_credit_keys!(map, VarunaProvingKey<Console>, Prover);
         map
     };
-    pub static ref CREDITS_VERIFYING_KEYS: IndexMap<String, Arc<MarlinVerifyingKey<Console>>> = {
+    pub static ref CREDITS_VERIFYING_KEYS: IndexMap<String, Arc<VarunaVerifyingKey<Console>>> = {
         let mut map = IndexMap::new();
-        snarkvm_parameters::insert_credit_keys!(map, MarlinVerifyingKey<Console>, Verifier);
+        snarkvm_parameters::insert_credit_keys!(map, VarunaVerifyingKey<Console>, Verifier);
         map
     };
 }
+
+pub const TRANSACTION_PREFIX: &str = "at";
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Testnet3;
@@ -117,7 +125,7 @@ impl Network for Testnet3 {
     /// The state root type.
     type StateRoot = AleoID<Field<Self>, { hrp2!("ar") }>;
     /// The transaction ID type.
-    type TransactionID = AleoID<Field<Self>, { hrp2!("at") }>;
+    type TransactionID = AleoID<Field<Self>, { hrp2!(TRANSACTION_PREFIX) }>;
     /// The transition ID type.
     type TransitionID = AleoID<Field<Self>, { hrp2!("as") }>;
 
@@ -136,22 +144,22 @@ impl Network for Testnet3 {
     }
 
     /// Returns the proving key for the given function name in `credits.aleo`.
-    fn get_credits_proving_key(function_name: String) -> Result<&'static Arc<MarlinProvingKey<Self>>> {
+    fn get_credits_proving_key(function_name: String) -> Result<&'static Arc<VarunaProvingKey<Self>>> {
         CREDITS_PROVING_KEYS
             .get(&function_name)
             .ok_or_else(|| anyhow!("Proving key for credits.aleo/{function_name}' not found"))
     }
 
     /// Returns the verifying key for the given function name in `credits.aleo`.
-    fn get_credits_verifying_key(function_name: String) -> Result<&'static Arc<MarlinVerifyingKey<Self>>> {
+    fn get_credits_verifying_key(function_name: String) -> Result<&'static Arc<VarunaVerifyingKey<Self>>> {
         CREDITS_VERIFYING_KEYS
             .get(&function_name)
             .ok_or_else(|| anyhow!("Verifying key for credits.aleo/{function_name}' not found"))
     }
 
     /// Returns the `proving key` for the inclusion circuit.
-    fn inclusion_proving_key() -> &'static Arc<MarlinProvingKey<Self>> {
-        static INSTANCE: OnceCell<Arc<MarlinProvingKey<Console>>> = OnceCell::new();
+    fn inclusion_proving_key() -> &'static Arc<VarunaProvingKey<Self>> {
+        static INSTANCE: OnceCell<Arc<VarunaProvingKey<Console>>> = OnceCell::new();
         INSTANCE.get_or_init(|| {
             // Skipping the first byte, which is the encoded version.
             Arc::new(
@@ -162,8 +170,8 @@ impl Network for Testnet3 {
     }
 
     /// Returns the `verifying key` for the inclusion circuit.
-    fn inclusion_verifying_key() -> &'static Arc<MarlinVerifyingKey<Self>> {
-        static INSTANCE: OnceCell<Arc<MarlinVerifyingKey<Console>>> = OnceCell::new();
+    fn inclusion_verifying_key() -> &'static Arc<VarunaVerifyingKey<Self>> {
+        static INSTANCE: OnceCell<Arc<VarunaVerifyingKey<Console>>> = OnceCell::new();
         INSTANCE.get_or_init(|| {
             // Skipping the first byte, which is the encoded version.
             Arc::new(
@@ -190,8 +198,8 @@ impl Network for Testnet3 {
             .sum()
     }
 
-    /// Returns the Marlin universal prover.
-    fn marlin_universal_prover() -> &'static UniversalProver<Self::PairingCurve> {
+    /// Returns the Varuna universal prover.
+    fn varuna_universal_prover() -> &'static UniversalProver<Self::PairingCurve> {
         static INSTANCE: OnceCell<UniversalProver<<Console as Environment>::PairingCurve>> = OnceCell::new();
         INSTANCE.get_or_init(|| {
             snarkvm_algorithms::polycommit::kzg10::UniversalParams::load()
@@ -201,8 +209,8 @@ impl Network for Testnet3 {
         })
     }
 
-    /// Returns the Marlin universal verifier.
-    fn marlin_universal_verifier() -> &'static UniversalVerifier<Self::PairingCurve> {
+    /// Returns the Varuna universal verifier.
+    fn varuna_universal_verifier() -> &'static UniversalVerifier<Self::PairingCurve> {
         static INSTANCE: OnceCell<UniversalVerifier<<Console as Environment>::PairingCurve>> = OnceCell::new();
         INSTANCE.get_or_init(|| {
             snarkvm_algorithms::polycommit::kzg10::UniversalParams::load()
@@ -212,9 +220,9 @@ impl Network for Testnet3 {
         })
     }
 
-    /// Returns the sponge parameters used for the sponge in the Marlin SNARK.
-    fn marlin_fs_parameters() -> &'static FiatShamirParameters<Self> {
-        &MARLIN_FS_PARAMETERS
+    /// Returns the sponge parameters used for the sponge in the Varuna SNARK.
+    fn varuna_fs_parameters() -> &'static FiatShamirParameters<Self> {
+        &VARUNA_FS_PARAMETERS
     }
 
     /// Returns the encryption domain as a constant field element.
@@ -312,6 +320,21 @@ impl Network for Testnet3 {
         BHP_1024.hash(input)
     }
 
+    /// Returns the Keccak hash with a 256-bit output.
+    fn hash_keccak256(input: &[bool]) -> Result<Vec<bool>> {
+        Keccak256::default().hash(input)
+    }
+
+    /// Returns the Keccak hash with a 384-bit output.
+    fn hash_keccak384(input: &[bool]) -> Result<Vec<bool>> {
+        Keccak384::default().hash(input)
+    }
+
+    /// Returns the Keccak hash with a 512-bit output.
+    fn hash_keccak512(input: &[bool]) -> Result<Vec<bool>> {
+        Keccak512::default().hash(input)
+    }
+
     /// Returns the Pedersen hash for a given (up to) 64-bit input.
     fn hash_ped64(input: &[bool]) -> Result<Field<Self>> {
         PEDERSEN_64.hash(input)
@@ -335,6 +358,21 @@ impl Network for Testnet3 {
     /// Returns the Poseidon hash with an input rate of 8.
     fn hash_psd8(input: &[Field<Self>]) -> Result<Field<Self>> {
         POSEIDON_8.hash(input)
+    }
+
+    /// Returns the SHA-3 hash with a 256-bit output.
+    fn hash_sha3_256(input: &[bool]) -> Result<Vec<bool>> {
+        Sha3_256::default().hash(input)
+    }
+
+    /// Returns the SHA-3 hash with a 384-bit output.
+    fn hash_sha3_384(input: &[bool]) -> Result<Vec<bool>> {
+        Sha3_384::default().hash(input)
+    }
+
+    /// Returns the SHA-3 hash with a 512-bit output.
+    fn hash_sha3_512(input: &[bool]) -> Result<Vec<bool>> {
+        Sha3_512::default().hash(input)
     }
 
     /// Returns the extended Poseidon hash with an input rate of 2.

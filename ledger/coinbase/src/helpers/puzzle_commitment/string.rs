@@ -14,7 +14,7 @@
 
 use super::*;
 
-static PUZZLE_COMMITMENT_PREFIX: &str = "puzzle";
+pub static PUZZLE_COMMITMENT_PREFIX: &str = "puzzle";
 
 impl<N: Network> FromStr for PuzzleCommitment<N> {
     type Err = Error;

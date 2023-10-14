@@ -28,6 +28,8 @@ pub enum OutputID<N: Network> {
     Record(Field<N>, Field<N>),
     /// The hash of the external record output.
     ExternalRecord(Field<N>),
+    /// The hash of the future output.
+    Future(Field<N>),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -80,7 +82,8 @@ impl<N: Network> Response<N> {
                             u16::try_from(num_inputs + index).or_halt_with::<N>("Output index exceeds u16"),
                         );
                         // Construct the preimage as `(function ID || output || tcm || index)`.
-                        let mut preimage = vec![function_id];
+                        let mut preimage = Vec::new();
+                        preimage.push(function_id);
                         preimage.extend(output.to_fields()?);
                         preimage.push(*tcm);
                         preimage.push(index);
@@ -100,7 +103,8 @@ impl<N: Network> Response<N> {
                             u16::try_from(num_inputs + index).or_halt_with::<N>("Output index exceeds u16"),
                         );
                         // Construct the preimage as `(function ID || output || tcm || index)`.
-                        let mut preimage = vec![function_id];
+                        let mut preimage = Vec::new();
+                        preimage.push(function_id);
                         preimage.extend(output.to_fields()?);
                         preimage.push(*tcm);
                         preimage.push(index);
@@ -125,6 +129,7 @@ impl<N: Network> Response<N> {
                             Value::Plaintext(plaintext) => plaintext.encrypt_symmetric(output_view_key)?,
                             // Ensure the output is a plaintext.
                             Value::Record(..) => bail!("Expected a plaintext output, found a record output"),
+                            Value::Future(..) => bail!("Expected a plaintext output, found a future output"),
                         };
                         // Hash the ciphertext to a field element.
                         let output_hash = N::hash_psd8(&ciphertext.to_fields()?)?;
@@ -138,6 +143,7 @@ impl<N: Network> Response<N> {
                             Value::Record(record) => record,
                             // Ensure the input is a record.
                             Value::Plaintext(..) => bail!("Expected a record output, found a plaintext output"),
+                            Value::Future(..) => bail!("Expected a record output, found a future output"),
                         };
 
                         // Retrieve the output register.
@@ -172,7 +178,8 @@ impl<N: Network> Response<N> {
                             u16::try_from(num_inputs + index).or_halt_with::<N>("Output index exceeds u16"),
                         );
                         // Construct the preimage as `(function ID || output || tvk || index)`.
-                        let mut preimage = vec![function_id];
+                        let mut preimage = Vec::new();
+                        preimage.push(function_id);
                         preimage.extend(output.to_fields()?);
                         preimage.push(*tvk);
                         preimage.push(index);
@@ -181,6 +188,27 @@ impl<N: Network> Response<N> {
 
                         // Return the output ID.
                         Ok(OutputID::ExternalRecord(output_hash))
+                    }
+                    // For a future output, compute the hash (using `tcm`) of the output.
+                    ValueType::Future(..) => {
+                        // Ensure the output is a future.
+                        ensure!(matches!(output, Value::Future(..)), "Expected a future output");
+
+                        // Construct the (console) output index as a field element.
+                        let index = Field::from_u16(
+                            u16::try_from(num_inputs + index).or_halt_with::<N>("Output index exceeds u16"),
+                        );
+                        // Construct the preimage as `(function ID || output || tcm || index)`.
+                        let mut preimage = Vec::new();
+                        preimage.push(function_id);
+                        preimage.extend(output.to_fields()?);
+                        preimage.push(*tcm);
+                        preimage.push(index);
+                        // Hash the output to a field element.
+                        let output_hash = N::hash_psd8(&preimage)?;
+
+                        // Return the output ID.
+                        Ok(OutputID::Future(output_hash))
                     }
                 }
             })

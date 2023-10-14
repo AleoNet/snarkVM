@@ -18,6 +18,7 @@ mod serialize;
 mod string;
 mod to_bits;
 mod to_hash;
+mod verify;
 
 use console::{network::prelude::*, types::Field};
 
@@ -31,8 +32,6 @@ pub struct Metadata<N: Network> {
     round: u64,
     /// The height of this block - 4 bytes.
     height: u32,
-    /// The total supply of microcredits - 8 bytes.
-    total_supply_in_microcredits: u64,
     /// The cumulative weight for this block - 16 bytes.
     cumulative_weight: u128,
     /// The cumulative proof target for this block - 16 bytes.
@@ -58,7 +57,6 @@ impl<N: Network> Metadata<N> {
         network: u16,
         round: u64,
         height: u32,
-        total_supply_in_microcredits: u64,
         cumulative_weight: u128,
         cumulative_proof_target: u128,
         coinbase_target: u64,
@@ -72,7 +70,6 @@ impl<N: Network> Metadata<N> {
             network,
             round,
             height,
-            total_supply_in_microcredits,
             cumulative_weight,
             cumulative_proof_target,
             coinbase_target,
@@ -89,7 +86,7 @@ impl<N: Network> Metadata<N> {
         }
     }
 
-    /// Returns `true` if the block header is well-formed.
+    /// Returns `true` if the block metadata is well-formed.
     pub fn is_valid(&self) -> bool {
         match self.height == 0u32 {
             true => self.is_genesis(),
@@ -100,8 +97,8 @@ impl<N: Network> Metadata<N> {
                     && self.round != 0u64
                     // Ensure the height is nonzero.
                     && self.height != 0u32
-                    // Ensure the total supply is nonzero.
-                    && self.total_supply_in_microcredits != 0u64
+                    // Ensure the round is at least as large as the height.
+                    && self.round >= self.height as u64
                     // Ensure the coinbase target is at or above the minimum.
                     && self.coinbase_target >= N::GENESIS_COINBASE_TARGET
                     // Ensure the proof target is at or above the minimum.
@@ -135,11 +132,6 @@ impl<N: Network> Metadata<N> {
         self.height
     }
 
-    /// Returns the total supply of microcredits at this block.
-    pub const fn total_supply_in_microcredits(&self) -> u64 {
-        self.total_supply_in_microcredits
-    }
-
     /// Returns the cumulative weight for this block.
     pub const fn cumulative_weight(&self) -> u128 {
         self.cumulative_weight
@@ -165,7 +157,7 @@ impl<N: Network> Metadata<N> {
         self.last_coinbase_target
     }
 
-    /// Returns the Unix timestamp (UTC) of the last coinbase.
+    /// Returns the block timestamp of the last coinbase.
     pub const fn last_coinbase_timestamp(&self) -> i64 {
         self.last_coinbase_timestamp
     }

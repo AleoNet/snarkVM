@@ -156,7 +156,7 @@ pub trait FeeStorage<N: Network>: Clone + Send + Sync {
         };
         // Retrieve the fee transition.
         match self.transition_store().get_transition(&fee_transition_id)? {
-            Some(transition) => Ok(Some(Fee::from(transition, global_state_root, proof))),
+            Some(transition) => Ok(Some(Fee::from_unchecked(transition, global_state_root, proof))),
             None => bail!("Failed to locate the fee transition for transaction '{transaction_id}'"),
         }
     }
@@ -268,74 +268,84 @@ mod tests {
     fn test_insert_get_remove() {
         let rng = &mut TestRng::default();
 
-        // Sample the fee transaction.
-        let transaction = ledger_test_helpers::sample_fee_transaction(rng);
-        let (transaction_id, fee) = match transaction {
-            Transaction::Fee(id, fee) => (id, fee),
-            _ => unreachable!("sample_fee_transaction should only return fee transactions"),
-        };
+        // Sample the fee transactions.
+        let transaction_0 = ledger_test_helpers::sample_fee_private_transaction(rng);
+        let transaction_1 = ledger_test_helpers::sample_fee_public_transaction(rng);
+        let transactions = vec![transaction_0, transaction_1];
 
-        // Initialize a new transition store.
-        let transition_store = TransitionStore::open(None).unwrap();
-        // Initialize a new fee store.
-        let fee_store = FeeMemory::open(transition_store).unwrap();
+        for transaction in transactions {
+            let (transaction_id, fee) = match transaction {
+                Transaction::Fee(id, fee) => (id, fee),
+                _ => unreachable!("Invalid transaction type - expected a fee transaction"),
+            };
 
-        // Ensure the fee transaction does not exist.
-        let candidate = fee_store.get_fee(&transaction_id).unwrap();
-        assert_eq!(None, candidate);
+            // Initialize a new transition store.
+            let transition_store = TransitionStore::open(None).unwrap();
+            // Initialize a new fee store.
+            let fee_store = FeeMemory::open(transition_store).unwrap();
 
-        // Insert the fee transaction.
-        fee_store.insert(transaction_id, &fee).unwrap();
+            // Ensure the fee transaction does not exist.
+            let candidate = fee_store.get_fee(&transaction_id).unwrap();
+            assert_eq!(None, candidate);
 
-        // Retrieve the fee.
-        let candidate = fee_store.get_fee(&transaction_id).unwrap();
-        assert_eq!(Some(fee), candidate);
+            // Insert the fee transaction.
+            fee_store.insert(transaction_id, &fee).unwrap();
 
-        // Remove the fee transaction.
-        fee_store.remove(&transaction_id).unwrap();
+            // Retrieve the fee.
+            let candidate = fee_store.get_fee(&transaction_id).unwrap();
+            assert_eq!(Some(fee), candidate);
 
-        // Ensure the fee does not exist.
-        let candidate = fee_store.get_fee(&transaction_id).unwrap();
-        assert_eq!(None, candidate);
+            // Remove the fee transaction.
+            fee_store.remove(&transaction_id).unwrap();
+
+            // Ensure the fee does not exist.
+            let candidate = fee_store.get_fee(&transaction_id).unwrap();
+            assert_eq!(None, candidate);
+        }
     }
 
     #[test]
     fn test_find_transaction_id() {
         let rng = &mut TestRng::default();
 
-        // Sample the fee transaction.
-        let transaction = ledger_test_helpers::sample_fee_transaction(rng);
-        let (transaction_id, fee) = match transaction {
-            Transaction::Fee(id, fee) => (id, fee),
-            _ => unreachable!("sample_fee_transaction should only return fee transactions"),
-        };
-        let fee_transition_id = fee.id();
+        // Sample the fee transactions.
+        let transaction_0 = ledger_test_helpers::sample_fee_private_transaction(rng);
+        let transaction_1 = ledger_test_helpers::sample_fee_public_transaction(rng);
+        let transactions = vec![transaction_0, transaction_1];
 
-        // Initialize a new transition store.
-        let transition_store = TransitionStore::open(None).unwrap();
-        // Initialize a new fee store.
-        let fee_store = FeeMemory::open(transition_store).unwrap();
+        for transaction in transactions {
+            let (transaction_id, fee) = match transaction {
+                Transaction::Fee(id, fee) => (id, fee),
+                _ => unreachable!("Invalid transaction type - expected a fee transaction"),
+            };
+            let fee_transition_id = fee.id();
 
-        // Ensure the fee does not exist.
-        let candidate = fee_store.get_fee(&transaction_id).unwrap();
-        assert_eq!(None, candidate);
+            // Initialize a new transition store.
+            let transition_store = TransitionStore::open(None).unwrap();
+            // Initialize a new fee store.
+            let fee_store = FeeMemory::open(transition_store).unwrap();
 
-        // Ensure the transaction ID is not found.
-        let candidate = fee_store.find_transaction_id_from_transition_id(fee_transition_id).unwrap();
-        assert_eq!(None, candidate);
+            // Ensure the fee does not exist.
+            let candidate = fee_store.get_fee(&transaction_id).unwrap();
+            assert_eq!(None, candidate);
 
-        // Insert the fee transaction.
-        fee_store.insert(transaction_id, &fee).unwrap();
+            // Ensure the transaction ID is not found.
+            let candidate = fee_store.find_transaction_id_from_transition_id(fee_transition_id).unwrap();
+            assert_eq!(None, candidate);
 
-        // Find the transaction ID.
-        let candidate = fee_store.find_transaction_id_from_transition_id(fee_transition_id).unwrap();
-        assert_eq!(Some(transaction_id), candidate);
+            // Insert the fee transaction.
+            fee_store.insert(transaction_id, &fee).unwrap();
 
-        // Remove the fee transaction.
-        fee_store.remove(&transaction_id).unwrap();
+            // Find the transaction ID.
+            let candidate = fee_store.find_transaction_id_from_transition_id(fee_transition_id).unwrap();
+            assert_eq!(Some(transaction_id), candidate);
 
-        // Ensure the transaction ID is not found.
-        let candidate = fee_store.find_transaction_id_from_transition_id(fee_transition_id).unwrap();
-        assert_eq!(None, candidate);
+            // Remove the fee transaction.
+            fee_store.remove(&transaction_id).unwrap();
+
+            // Ensure the transaction ID is not found.
+            let candidate = fee_store.find_transaction_id_from_transition_id(fee_transition_id).unwrap();
+            assert_eq!(None, candidate);
+        }
     }
 }

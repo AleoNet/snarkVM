@@ -91,8 +91,8 @@ macro_rules! operation {
         paste::paste! {
             #[cfg(test)]
             mod [<test _ $operate>] {
-                use super::$name;
-                use console::{network::prelude::*, types::*};
+                use super::*;
+                use console::types::*;
 
                 // Prepare the environment.
                 type CurrentNetwork = console::network::Testnet3;
@@ -146,8 +146,8 @@ macro_rules! operation {
         paste::paste! {
             #[cfg(test)]
             mod [<test _ $operate>] {
-                use super::$name;
-                use console::{network::prelude::*, types::*};
+                use super::*;
+                use console::types::*;
 
                 // Prepare the environment.
                 type CurrentNetwork = console::network::Testnet3;
@@ -340,7 +340,7 @@ mod tests {
     macro_rules! sample_literals {
         ($network:ident, $rng:expr) => {
             [
-                console::program::Literal::<$network>::Address(console::types::Address::new(Uniform::rand($rng))),
+                console::program::Literal::<$network>::Address(console::types::Address::rand($rng)),
                 console::program::Literal::Boolean(console::types::Boolean::rand($rng)),
                 console::program::Literal::Field(console::types::Field::rand($rng)),
                 console::program::Literal::Group(console::types::Group::rand($rng)),
@@ -355,6 +355,7 @@ mod tests {
                 console::program::Literal::U64(console::types::U64::rand($rng)),
                 console::program::Literal::U128(console::types::U128::rand($rng)),
                 console::program::Literal::Scalar(console::types::Scalar::rand($rng)),
+                console::program::Literal::sample(console::program::LiteralType::Signature, $rng),
                 console::program::Literal::String(console::types::StringType::rand($rng)),
             ]
         };
@@ -767,7 +768,7 @@ mod tests {
                             ("ensure shifting past boundary halts") => {
                                 match *<$operation as $crate::Operation<_, _, _, 2>>::OPCODE {
                                     // Note that this case needs special handling, since the desired behavior of `checked_shl` deviates from Rust semantics.
-                                    "shl" => should_succeed &= console::prelude::traits::integers::CheckedShl::checked_shl(&*a, &(*b as u32)).is_some(),
+                                    "shl" => should_succeed &= console::prelude::CheckedShl::checked_shl(&*a, &(*b as u32)).is_some(),
                                     "shr" => should_succeed &= (*a).checked_shr(*b as u32).is_some(),
                                     _ => panic!("Unsupported test enforcement for '{}'", <$operation as $crate::Operation<_, _, _, 2>>::OPCODE),
                                 }
@@ -882,7 +883,7 @@ mod tests {
 
                     // Check the operation on randomly-sampled values.
                     for i in 0..num_iterations {
-                        // Sample the first and second value.
+                        // Sample the first, second, and third values.
                         #[allow(deprecated)]
                         let (a, b, c) = match i {
                             0 => ($input_a::zero(), $input_b::zero(), $input_c::zero()),
@@ -901,7 +902,7 @@ mod tests {
 
                         // If `should_succeed` is `true`, compute the expected output.
                         let expected = match should_succeed {
-                            true => Some(console::program::Literal::$output($operator::$operate(&a, &b, &c))),
+                            true => Some(console::program::Literal::from_str(&format!("{}", $operator::$operate(&a, &b, &c)))?),
                             false => None
                         };
 

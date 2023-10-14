@@ -474,18 +474,14 @@ impl<P: Fp12Parameters> From<u8> for Fp12<P> {
 }
 
 impl<P: Fp12Parameters> ToBits for Fp12<P> {
-    fn to_bits_le(&self) -> Vec<bool> {
-        let mut res = vec![];
-        res.extend_from_slice(&self.c0.to_bits_le());
-        res.extend_from_slice(&self.c1.to_bits_le());
-        res
+    fn write_bits_le(&self, vec: &mut Vec<bool>) {
+        self.c0.write_bits_le(vec);
+        self.c1.write_bits_le(vec);
     }
 
-    fn to_bits_be(&self) -> Vec<bool> {
-        let mut res = vec![];
-        res.extend_from_slice(&self.c0.to_bits_be());
-        res.extend_from_slice(&self.c1.to_bits_be());
-        res
+    fn write_bits_be(&self, vec: &mut Vec<bool>) {
+        self.c0.write_bits_be(vec);
+        self.c1.write_bits_be(vec);
     }
 }
 

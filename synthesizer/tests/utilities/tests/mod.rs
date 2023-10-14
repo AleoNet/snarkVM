@@ -30,7 +30,6 @@ use walkdir::WalkDir;
 /// The expected result can be saved.
 pub trait ExpectedTest: Sized {
     type Output;
-    type Test;
     /// Loads the test and expectation from the given path.
     fn load<P: AsRef<Path>>(test_path: P, expectation_dir: P) -> Self;
     /// Checks the expectation against the given output.

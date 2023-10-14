@@ -35,7 +35,7 @@ pub fn sample_registers(
 ) -> Result<Registers<CurrentNetwork, CurrentAleo>> {
     // Initialize the registers.
     let mut registers = Registers::<CurrentNetwork, CurrentAleo>::new(
-        CallStack::evaluate(Authorization::new(&[]))?,
+        CallStack::evaluate(Authorization::try_from((vec![], vec![]))?)?,
         stack.get_register_types(function_name)?.clone(),
     );
 
@@ -68,7 +68,7 @@ pub fn sample_finalize_registers(
 ) -> Result<FinalizeRegisters<CurrentNetwork>> {
     // Initialize the registers.
     let mut finalize_registers = FinalizeRegisters::<CurrentNetwork>::new(
-        FinalizeGlobalState::from(1, [0; 32]),
+        FinalizeGlobalState::from(1, 1, [0; 32]),
         <CurrentNetwork as Network>::TransitionID::default(),
         *function_name,
         stack.get_finalize_types(function_name)?.clone(),

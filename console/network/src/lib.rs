@@ -35,7 +35,7 @@ pub mod prelude {
 use crate::environment::prelude::*;
 use snarkvm_algorithms::{
     crypto_hash::PoseidonSponge,
-    snark::marlin::{CircuitProvingKey, CircuitVerifyingKey, MarlinHidingMode},
+    snark::varuna::{CircuitProvingKey, CircuitVerifyingKey, VarunaHidingMode},
     srs::{UniversalProver, UniversalVerifier},
     AlgebraicSponge,
 };
@@ -53,14 +53,14 @@ pub type BHPMerkleTree<N, const DEPTH: u8> = MerkleTree<N, BHP1024<N>, BHP512<N>
 /// A helper type for the Poseidon Merkle tree.
 pub type PoseidonMerkleTree<N, const DEPTH: u8> = MerkleTree<N, Poseidon4<N>, Poseidon2<N>, DEPTH>;
 
-/// Helper types for the Marlin parameters.
+/// Helper types for the Varuna parameters.
 type Fq<N> = <<N as Environment>::PairingCurve as PairingEngine>::Fq;
 pub type FiatShamir<N> = PoseidonSponge<Fq<N>, 2, 1>;
 pub type FiatShamirParameters<N> = <FiatShamir<N> as AlgebraicSponge<Fq<N>, 2>>::Parameters;
 
-/// Helper types for the Marlin proving and verifying key.
-pub(crate) type MarlinProvingKey<N> = CircuitProvingKey<<N as Environment>::PairingCurve, MarlinHidingMode>;
-pub(crate) type MarlinVerifyingKey<N> = CircuitVerifyingKey<<N as Environment>::PairingCurve>;
+/// Helper types for the Varuna proving and verifying key.
+pub(crate) type VarunaProvingKey<N> = CircuitProvingKey<<N as Environment>::PairingCurve, VarunaHidingMode>;
+pub(crate) type VarunaVerifyingKey<N> = CircuitVerifyingKey<<N as Environment>::PairingCurve>;
 
 pub trait Network:
     'static
@@ -101,14 +101,18 @@ pub trait Network:
     /// The maximum number of microcredits that can be spent as a fee.
     const MAX_FEE: u64 = 1_000_000_000_000_000;
 
-    /// The anchor time per block in seconds, which must be greater than the round time per block.
+    /// The anchor height, defined as the expected number of blocks to reach the coinbase target.
+    const ANCHOR_HEIGHT: u32 = Self::ANCHOR_TIME as u32 / Self::BLOCK_TIME as u32;
+    /// The anchor time in seconds.
     const ANCHOR_TIME: u16 = 25;
+    /// The expected time per block in seconds.
+    const BLOCK_TIME: u16 = 10;
     /// The coinbase puzzle degree.
     const COINBASE_PUZZLE_DEGREE: u32 = (1 << 13) - 1; // 8,191
     /// The maximum number of prover solutions that can be included per block.
     const MAX_PROVER_SOLUTIONS: usize = 1 << 8; // 256 prover solutions
-    /// The number of blocks per epoch (1 hour).
-    const NUM_BLOCKS_PER_EPOCH: u32 = 1 << 8; // 256 blocks == ~1 hour
+    /// The number of blocks per epoch.
+    const NUM_BLOCKS_PER_EPOCH: u32 = 3600 / Self::BLOCK_TIME as u32; // 360 blocks == ~1 hour
 
     /// The maximum number of entries in data.
     const MAX_DATA_ENTRIES: usize = 32;
@@ -123,6 +127,11 @@ pub trait Network:
     const MIN_STRUCT_ENTRIES: usize = 1; // This ensures the struct is not empty.
     /// The maximum number of entries in a struct.
     const MAX_STRUCT_ENTRIES: usize = Self::MAX_DATA_ENTRIES;
+
+    /// The minimum number of elements in an array.
+    const MIN_ARRAY_ELEMENTS: usize = 1; // This ensures the array is not empty.
+    /// The maximum number of elements in an array.
+    const MAX_ARRAY_ELEMENTS: usize = Self::MAX_DATA_ENTRIES;
 
     /// The minimum number of entries in a record.
     const MIN_RECORD_ENTRIES: usize = 1; // This accounts for 'record.owner'.
@@ -140,7 +149,7 @@ pub trait Network:
     /// The maximum number of commands in finalize.
     const MAX_COMMANDS: usize = u16::MAX as usize;
     /// The maximum number of write commands in finalize.
-    const MAX_WRITES: u16 = 10;
+    const MAX_WRITES: u16 = 16;
 
     /// The maximum number of inputs per transition.
     const MAX_INPUTS: usize = 16;
@@ -160,16 +169,16 @@ pub trait Network:
     fn genesis_bytes() -> &'static [u8];
 
     /// Returns the proving key for the given function name in `credits.aleo`.
-    fn get_credits_proving_key(function_name: String) -> Result<&'static Arc<MarlinProvingKey<Self>>>;
+    fn get_credits_proving_key(function_name: String) -> Result<&'static Arc<VarunaProvingKey<Self>>>;
 
     /// Returns the verifying key for the given function name in `credits.aleo`.
-    fn get_credits_verifying_key(function_name: String) -> Result<&'static Arc<MarlinVerifyingKey<Self>>>;
+    fn get_credits_verifying_key(function_name: String) -> Result<&'static Arc<VarunaVerifyingKey<Self>>>;
 
     /// Returns the `proving key` for the inclusion circuit.
-    fn inclusion_proving_key() -> &'static Arc<MarlinProvingKey<Self>>;
+    fn inclusion_proving_key() -> &'static Arc<VarunaProvingKey<Self>>;
 
     /// Returns the `verifying key` for the inclusion circuit.
-    fn inclusion_verifying_key() -> &'static Arc<MarlinVerifyingKey<Self>>;
+    fn inclusion_verifying_key() -> &'static Arc<VarunaVerifyingKey<Self>>;
 
     /// Returns the powers of `G`.
     fn g_powers() -> &'static Vec<Group<Self>>;
@@ -177,14 +186,14 @@ pub trait Network:
     /// Returns the scalar multiplication on the generator `G`.
     fn g_scalar_multiply(scalar: &Scalar<Self>) -> Group<Self>;
 
-    /// Returns the Marlin universal prover.
-    fn marlin_universal_prover() -> &'static UniversalProver<Self::PairingCurve>;
+    /// Returns the Varuna universal prover.
+    fn varuna_universal_prover() -> &'static UniversalProver<Self::PairingCurve>;
 
-    /// Returns the Marlin universal verifier.
-    fn marlin_universal_verifier() -> &'static UniversalVerifier<Self::PairingCurve>;
+    /// Returns the Varuna universal verifier.
+    fn varuna_universal_verifier() -> &'static UniversalVerifier<Self::PairingCurve>;
 
-    /// Returns the sponge parameters for Marlin.
-    fn marlin_fs_parameters() -> &'static FiatShamirParameters<Self>;
+    /// Returns the sponge parameters for Varuna.
+    fn varuna_fs_parameters() -> &'static FiatShamirParameters<Self>;
 
     /// Returns the encryption domain as a constant field element.
     fn encryption_domain() -> Field<Self>;
@@ -243,6 +252,15 @@ pub trait Network:
     /// Returns the BHP hash with an input hasher of 1024-bits.
     fn hash_bhp1024(input: &[bool]) -> Result<Field<Self>>;
 
+    /// Returns the Keccak hash with a 256-bit output.
+    fn hash_keccak256(input: &[bool]) -> Result<Vec<bool>>;
+
+    /// Returns the Keccak hash with a 384-bit output.
+    fn hash_keccak384(input: &[bool]) -> Result<Vec<bool>>;
+
+    /// Returns the Keccak hash with a 512-bit output.
+    fn hash_keccak512(input: &[bool]) -> Result<Vec<bool>>;
+
     /// Returns the Pedersen hash for a given (up to) 64-bit input.
     fn hash_ped64(input: &[bool]) -> Result<Field<Self>>;
 
@@ -257,6 +275,15 @@ pub trait Network:
 
     /// Returns the Poseidon hash with an input rate of 8.
     fn hash_psd8(input: &[Field<Self>]) -> Result<Field<Self>>;
+
+    /// Returns the SHA-3 hash with a 256-bit output.
+    fn hash_sha3_256(input: &[bool]) -> Result<Vec<bool>>;
+
+    /// Returns the SHA-3 hash with a 384-bit output.
+    fn hash_sha3_384(input: &[bool]) -> Result<Vec<bool>>;
+
+    /// Returns the SHA-3 hash with a 512-bit output.
+    fn hash_sha3_512(input: &[bool]) -> Result<Vec<bool>>;
 
     /// Returns the extended Poseidon hash with an input rate of 2.
     fn hash_many_psd2(input: &[Field<Self>], num_outputs: u16) -> Vec<Field<Self>>;

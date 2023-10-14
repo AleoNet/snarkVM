@@ -20,13 +20,12 @@ mod try_from;
 #[cfg(feature = "signature")]
 mod sign;
 
-#[cfg(feature = "ed25519")]
-mod to_ed25519;
-
 use snarkvm_console_network::prelude::*;
 use snarkvm_console_types::{Field, Scalar};
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+use zeroize::Zeroize;
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Zeroize)]
 pub struct PrivateKey<N: Network> {
     /// The account seed that derives the full private key.
     seed: Field<N>,

@@ -33,6 +33,8 @@ impl<N: Network> Parser for Record<N, Plaintext<N>> {
             let (string, _) = Sanitizer::parse(string)?;
             // Parse the entry from the string.
             let (string, entry) = Entry::parse(string)?;
+            // Parse the whitespace from the string.
+            let (string, _) = Sanitizer::parse_whitespaces(string)?;
             // Return the identifier and entry.
             Ok((string, (identifier, entry)))
         }
@@ -155,10 +157,13 @@ impl<N: Network> Record<N, Plaintext<N>> {
                 Entry::Constant(Plaintext::Literal(..))
                 | Entry::Public(Plaintext::Literal(..))
                 | Entry::Private(Plaintext::Literal(..)) => write!(f, "{entry}")?,
-                // If the entry is a struct, print the entry with indentation.
+                // If the entry is a struct or an array, print the entry with indentation.
                 Entry::Constant(Plaintext::Struct(..))
                 | Entry::Public(Plaintext::Struct(..))
-                | Entry::Private(Plaintext::Struct(..)) => entry.fmt_internal(f, depth + 1)?,
+                | Entry::Private(Plaintext::Struct(..))
+                | Entry::Constant(Plaintext::Array(..))
+                | Entry::Public(Plaintext::Array(..))
+                | Entry::Private(Plaintext::Array(..)) => entry.fmt_internal(f, depth + 1)?,
             }
             // Print the comma.
             write!(f, ",")?;
@@ -229,6 +234,80 @@ mod tests {
     thud: 12u8.public
   },
   _nonce: 2293253577170800572742339369209137467208538700597121244293392265726446806023group.public
+}";
+        let (remainder, candidate) = Record::<CurrentNetwork, Plaintext<CurrentNetwork>>::parse(expected)?;
+        println!("\nExpected: {expected}\n\nFound: {candidate}\n");
+        assert_eq!(expected, candidate.to_string());
+        assert_eq!("", remainder);
+
+        let expected = r"{
+  owner: aleo1lhcpfumagern97esytsgdva2ytme043zydlzyprhejsd0gw5vypqqz0zkw.private,
+  foo: {
+    bar: 0u128.private
+  },
+  baz: {
+    quine: {
+      flop: 0u64.private
+    },
+    slice: 0u16.private,
+    flag: true.private,
+    square: {
+      first: 0u128.private,
+      second: 1u128.private,
+      third: 2u128.private,
+      fourth: 3u128.private
+    }
+  },
+  _nonce: 0group.public
+}";
+        let (remainder, candidate) = Record::<CurrentNetwork, Plaintext<CurrentNetwork>>::parse(expected)?;
+        println!("\nExpected: {expected}\n\nFound: {candidate}\n");
+        assert_eq!(expected, candidate.to_string());
+        assert_eq!("", remainder);
+
+        let expected = r"{
+  owner: aleo18ttcegpydcs95yw4je0u400j3u7r26yqr9h8evqps3qa9slrvyrsqjwt9l.private,
+  c: {
+    c: {
+      a: 0u8.private,
+      b: 1u8.private
+    },
+    d: {
+      a: 0u8.private,
+      b: 1u8.private
+    }
+  },
+  d: {
+    c: {
+      a: 0u8.private,
+      b: 1u8.private
+    },
+    d: {
+      a: 0u8.private,
+      b: 1u8.private
+    }
+  },
+  _nonce: 8102307625287186026775464343238779600702564007094834161216556016558567413871group.public
+}";
+        let (remainder, candidate) = Record::<CurrentNetwork, Plaintext<CurrentNetwork>>::parse(expected)?;
+        println!("\nExpected: {expected}\n\nFound: {candidate}\n");
+        assert_eq!(expected, candidate.to_string());
+        assert_eq!("", remainder);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_parse_with_array_entry() -> Result<()> {
+        let expected = r"{
+  owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.public,
+  foo: 5u8.public,
+  bar: [
+    6u8.private,
+    7u8.private,
+    8u8.private
+  ],
+  _nonce: 0group.public
 }";
         let (remainder, candidate) = Record::<CurrentNetwork, Plaintext<CurrentNetwork>>::parse(expected)?;
         println!("\nExpected: {expected}\n\nFound: {candidate}\n");

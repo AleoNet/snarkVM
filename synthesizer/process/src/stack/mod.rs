@@ -43,6 +43,7 @@ use console::{
     program::{
         Entry,
         EntryType,
+        Future,
         Identifier,
         Literal,
         Locator,
@@ -69,7 +70,10 @@ use indexmap::IndexMap;
 use parking_lot::RwLock;
 use std::sync::Arc;
 
-pub type Assignments<N> = Arc<RwLock<Vec<circuit::Assignment<<N as Environment>::Field>>>>;
+#[cfg(not(feature = "serial"))]
+use rayon::prelude::*;
+
+pub type Assignments<N> = Arc<RwLock<Vec<(circuit::Assignment<<N as Environment>::Field>, CallMetrics<N>)>>>;
 
 #[derive(Clone)]
 pub enum CallStack<N: Network> {
@@ -78,6 +82,7 @@ pub enum CallStack<N: Network> {
     CheckDeployment(Vec<Request<N>>, PrivateKey<N>, Assignments<N>),
     Evaluate(Authorization<N>),
     Execute(Authorization<N>, Arc<RwLock<Trace<N>>>),
+    PackageRun(Vec<Request<N>>, PrivateKey<N>, Assignments<N>),
 }
 
 impl<N: Network> CallStack<N> {
@@ -111,15 +116,19 @@ impl<N: Network> CallStack<N> {
             CallStack::Execute(authorization, trace) => {
                 CallStack::Execute(authorization.replicate(), Arc::new(RwLock::new(trace.read().clone())))
             }
+            CallStack::PackageRun(requests, private_key, assignments) => {
+                CallStack::PackageRun(requests.clone(), *private_key, Arc::new(RwLock::new(assignments.read().clone())))
+            }
         }
     }
 
     /// Pushes the request to the stack.
     pub fn push(&mut self, request: Request<N>) -> Result<()> {
         match self {
-            CallStack::Authorize(requests, ..) => requests.push(request),
-            CallStack::Synthesize(requests, ..) => requests.push(request),
-            CallStack::CheckDeployment(requests, ..) => requests.push(request),
+            CallStack::Authorize(requests, ..)
+            | CallStack::Synthesize(requests, ..)
+            | CallStack::CheckDeployment(requests, ..)
+            | CallStack::PackageRun(requests, ..) => requests.push(request),
             CallStack::Evaluate(authorization) => authorization.push(request),
             CallStack::Execute(authorization, ..) => authorization.push(request),
         }
@@ -131,7 +140,8 @@ impl<N: Network> CallStack<N> {
         match self {
             CallStack::Authorize(requests, ..)
             | CallStack::Synthesize(requests, ..)
-            | CallStack::CheckDeployment(requests, ..) => {
+            | CallStack::CheckDeployment(requests, ..)
+            | CallStack::PackageRun(requests, ..) => {
                 requests.pop().ok_or_else(|| anyhow!("No more requests on the stack"))
             }
             CallStack::Evaluate(authorization) => authorization.next(),
@@ -144,7 +154,8 @@ impl<N: Network> CallStack<N> {
         match self {
             CallStack::Authorize(requests, ..)
             | CallStack::Synthesize(requests, ..)
-            | CallStack::CheckDeployment(requests, ..) => {
+            | CallStack::CheckDeployment(requests, ..)
+            | CallStack::PackageRun(requests, ..) => {
                 requests.last().cloned().ok_or_else(|| anyhow!("No more requests on the stack"))
             }
             CallStack::Evaluate(authorization) => authorization.peek_next(),
@@ -239,9 +250,9 @@ impl<N: Network> StackProgram<N> for Stack<N> {
         }
     }
 
-    /// Returns `true` if the stack contains the external record.
+    /// Returns the external record if the stack contains the external record.
     #[inline]
-    fn get_external_record(&self, locator: &Locator<N>) -> Result<RecordType<N>> {
+    fn get_external_record(&self, locator: &Locator<N>) -> Result<&RecordType<N>> {
         // Retrieve the external program.
         let external_program = self.get_external_program(locator.program_id())?;
         // Return the external record, if it exists.
@@ -251,11 +262,13 @@ impl<N: Network> StackProgram<N> for Stack<N> {
     /// Returns the function with the given function name.
     #[inline]
     fn get_function(&self, function_name: &Identifier<N>) -> Result<Function<N>> {
-        // Ensure the function exists.
-        match self.program.contains_function(function_name) {
-            true => self.program.get_function(function_name),
-            false => bail!("Function '{function_name}' does not exist in program '{}'.", self.program.id()),
-        }
+        self.program.get_function(function_name)
+    }
+
+    /// Returns a reference to the function with the given function name.
+    #[inline]
+    fn get_function_ref(&self, function_name: &Identifier<N>) -> Result<&Function<N>> {
+        self.program.get_function_ref(function_name)
     }
 
     /// Returns the expected number of calls for the given function name.
@@ -313,6 +326,8 @@ impl<N: Network> Stack<N> {
     /// Returns the proving key for the given function name.
     #[inline]
     pub fn get_proving_key(&self, function_name: &Identifier<N>) -> Result<ProvingKey<N>> {
+        // If the program is 'credits.aleo', try to load the proving key, if it does not exist.
+        self.try_insert_credits_function_proving_key(function_name)?;
         // Return the proving key, if it exists.
         match self.proving_keys.read().get(function_name) {
             Some(proving_key) => Ok(proving_key.clone()),
@@ -368,6 +383,22 @@ impl<N: Network> Stack<N> {
     #[inline]
     pub fn remove_verifying_key(&self, function_name: &Identifier<N>) {
         self.verifying_keys.write().remove(function_name);
+    }
+}
+
+impl<N: Network> Stack<N> {
+    /// Inserts the proving key if the program ID is 'credits.aleo'.
+    fn try_insert_credits_function_proving_key(&self, function_name: &Identifier<N>) -> Result<()> {
+        // If the program is 'credits.aleo' and it does not exist yet, load the proving key directly.
+        if self.program_id() == &ProgramID::from_str("credits.aleo")?
+            && !self.proving_keys.read().contains_key(function_name)
+        {
+            // Load the 'credits.aleo' function proving key.
+            let proving_key = N::get_credits_proving_key(function_name.to_string())?;
+            // Insert the 'credits.aleo' function proving key.
+            self.insert_proving_key(function_name, ProvingKey::new(proving_key.clone()))?;
+        }
+        Ok(())
     }
 }
 

@@ -19,7 +19,7 @@
 
 pub use snarkvm_console_types::{environment::prelude::*, Address, Field, Group, Scalar};
 
-pub mod address;
+mod address;
 
 #[cfg(feature = "compute_key")]
 pub mod compute_key;

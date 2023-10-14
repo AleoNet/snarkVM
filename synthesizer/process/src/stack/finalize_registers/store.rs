@@ -13,12 +13,13 @@
 // limitations under the License.
 
 use super::*;
+use console::program::FinalizeType;
 
 impl<N: Network> RegistersStore<N> for FinalizeRegisters<N> {
     /// Assigns the given value to the given register, assuming the register is not already assigned.
     ///
     /// # Errors
-    /// This method will halt if the given register is a register member.
+    /// This method will halt if the given register is a register access.
     /// This method will halt if the given register is an input register.
     /// This method will halt if the register is already used.
     #[inline]
@@ -28,38 +29,50 @@ impl<N: Network> RegistersStore<N> for FinalizeRegisters<N> {
         register: &Register<N>,
         stack_value: Value<N>,
     ) -> Result<()> {
-        // Ensure that the stack value is a plaintext value.
-        let plaintext_value = match stack_value {
-            Value::Plaintext(plaintext) => plaintext,
-            Value::Record(_) => bail!("Cannot store a record in a finalize register"),
-        };
         // Store the value to the register.
-        match register {
-            Register::Locator(locator) => {
+        match (register, stack_value) {
+            (Register::Locator(locator), stack_value) => {
                 // Ensure the register assignments are monotonically increasing.
-                let expected_locator = self.registers.len() as u64;
-                ensure!(expected_locator == *locator, "Out-of-order write operation at '{register}'");
+                match self.last_register {
+                    None => ensure!(*locator == 0, "Out-of-order write operation at '{register}'"),
+                    Some(last) => ensure!(*locator > last, "Out-of-order write operation at '{register}'"),
+                };
                 // Ensure the register does not already exist.
                 ensure!(!self.registers.contains_key(locator), "Cannot write to occupied register '{register}'");
 
                 // Ensure the type of the register is valid.
-                match self.finalize_types.get_type(stack, register) {
+                match (self.finalize_types.get_type(stack, register), &stack_value) {
                     // Ensure the plaintext value matches the plaintext type.
-                    Ok(plaintext_type) => stack.matches_plaintext(&plaintext_value, &plaintext_type)?,
+                    (Ok(FinalizeType::Plaintext(plaintext_type)), Value::Plaintext(plaintext_value)) => {
+                        stack.matches_plaintext(plaintext_value, &plaintext_type)?
+                    }
+                    // Ensure the future value matches the future type.
+                    (Ok(FinalizeType::Future(locator)), Value::Future(future)) => {
+                        stack.matches_future(future, &locator)?
+                    }
+                    // Ensure the store is valid in a finalize context.
+                    (Ok(finalize_type), stack_value) => bail!(
+                        "Attempted to store a '{stack_value}' value in a register '{register}' of type '{finalize_type}' in a finalize scope",
+                    ),
                     // Ensure the register is defined.
-                    Err(error) => bail!("Register '{register}' is missing a type definition: {error}"),
+                    (Err(error), _) => bail!("Register '{register}' is missing a type definition: {error}"),
                 };
 
                 // Store the plaintext value.
-                match self.registers.insert(*locator, plaintext_value) {
+                match self.registers.insert(*locator, stack_value) {
                     // Ensure the register has not been previously stored.
                     Some(..) => bail!("Attempted to write to register '{register}' again"),
-                    // Return on success.
-                    None => Ok(()),
+                    // Update the last register locator, and return on success.
+                    None => {
+                        // Update the last register locator.
+                        self.last_register = Some(*locator);
+                        // Return on success.
+                        Ok(())
+                    }
                 }
             }
-            // Ensure the register is not a register member.
-            Register::Member(..) => bail!("Cannot store to a register member: '{register}'"),
+            // Ensure the register is not a register access.
+            (Register::Access(..), _) => bail!("Cannot store to a register access: '{register}'"),
         }
     }
 }

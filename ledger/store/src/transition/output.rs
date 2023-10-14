@@ -18,7 +18,7 @@ use crate::{
 };
 use console::{
     network::prelude::*,
-    program::{Ciphertext, Plaintext, Record},
+    program::{Ciphertext, Future, Plaintext, Record},
     types::{Field, Group},
 };
 use ledger_block::Output;
@@ -44,6 +44,8 @@ pub trait OutputStorage<N: Network>: Clone + Send + Sync {
     type RecordNonceMap: for<'a> Map<'a, Group<N>, Field<N>>;
     /// The mapping of `external hash` to `()`. Note: This is **not** the record commitment.
     type ExternalRecordMap: for<'a> Map<'a, Field<N>, ()>;
+    /// The mapping of `future hash` to `(optional) future`.
+    type FutureMap: for<'a> Map<'a, Field<N>, Option<Future<N>>>;
 
     /// Initializes the transition output storage.
     fn open(dev: Option<u16>) -> Result<Self>;
@@ -64,6 +66,8 @@ pub trait OutputStorage<N: Network>: Clone + Send + Sync {
     fn record_nonce_map(&self) -> &Self::RecordNonceMap;
     /// Returns the external record map.
     fn external_record_map(&self) -> &Self::ExternalRecordMap;
+    /// Returns the future map.
+    fn future_map(&self) -> &Self::FutureMap;
 
     /// Returns the optional development ID.
     fn dev(&self) -> Option<u16>;
@@ -78,6 +82,7 @@ pub trait OutputStorage<N: Network>: Clone + Send + Sync {
         self.record_map().start_atomic();
         self.record_nonce_map().start_atomic();
         self.external_record_map().start_atomic();
+        self.future_map().start_atomic();
     }
 
     /// Checks if an atomic batch is in progress.
@@ -90,6 +95,7 @@ pub trait OutputStorage<N: Network>: Clone + Send + Sync {
             || self.record_map().is_atomic_in_progress()
             || self.record_nonce_map().is_atomic_in_progress()
             || self.external_record_map().is_atomic_in_progress()
+            || self.future_map().is_atomic_in_progress()
     }
 
     /// Checkpoints the atomic batch.
@@ -102,6 +108,7 @@ pub trait OutputStorage<N: Network>: Clone + Send + Sync {
         self.record_map().atomic_checkpoint();
         self.record_nonce_map().atomic_checkpoint();
         self.external_record_map().atomic_checkpoint();
+        self.future_map().atomic_checkpoint();
     }
 
     /// Clears the latest atomic batch checkpoint.
@@ -114,6 +121,7 @@ pub trait OutputStorage<N: Network>: Clone + Send + Sync {
         self.record_map().clear_latest_checkpoint();
         self.record_nonce_map().clear_latest_checkpoint();
         self.external_record_map().clear_latest_checkpoint();
+        self.future_map().clear_latest_checkpoint();
     }
 
     /// Rewinds the atomic batch to the previous checkpoint.
@@ -126,6 +134,7 @@ pub trait OutputStorage<N: Network>: Clone + Send + Sync {
         self.record_map().atomic_rewind();
         self.record_nonce_map().atomic_rewind();
         self.external_record_map().atomic_rewind();
+        self.future_map().atomic_rewind();
     }
 
     /// Aborts an atomic batch write operation.
@@ -138,6 +147,7 @@ pub trait OutputStorage<N: Network>: Clone + Send + Sync {
         self.record_map().abort_atomic();
         self.record_nonce_map().abort_atomic();
         self.external_record_map().abort_atomic();
+        self.future_map().abort_atomic();
     }
 
     /// Finishes an atomic batch write operation.
@@ -149,7 +159,8 @@ pub trait OutputStorage<N: Network>: Clone + Send + Sync {
         self.private_map().finish_atomic()?;
         self.record_map().finish_atomic()?;
         self.record_nonce_map().finish_atomic()?;
-        self.external_record_map().finish_atomic()
+        self.external_record_map().finish_atomic()?;
+        self.future_map().finish_atomic()
     }
 
     /// Stores the given `(transition ID, output)` pair into storage.
@@ -176,6 +187,7 @@ pub trait OutputStorage<N: Network>: Clone + Send + Sync {
                         self.record_map().insert(commitment, (checksum, optional_record))?
                     }
                     Output::ExternalRecord(output_id) => self.external_record_map().insert(output_id, ())?,
+                    Output::Future(output_id, future) => self.future_map().insert(output_id, future)?,
                 }
             }
 
@@ -214,6 +226,7 @@ pub trait OutputStorage<N: Network>: Clone + Send + Sync {
                 self.private_map().remove(&output_id)?;
                 self.record_map().remove(&output_id)?;
                 self.external_record_map().remove(&output_id)?;
+                self.future_map().remove(&output_id)?;
             }
 
             Ok(())
@@ -259,24 +272,26 @@ pub trait OutputStorage<N: Network>: Clone + Send + Sync {
 
         // A helper function to construct the output given the output ID.
         let construct_output = |output_id| {
-            let constant = self.constant_map().get_confirmed(&output_id)?;
-            let public = self.public_map().get_confirmed(&output_id)?;
-            let private = self.private_map().get_confirmed(&output_id)?;
-            let record = self.record_map().get_confirmed(&output_id)?;
-            let external_record = self.external_record_map().get_confirmed(&output_id)?;
+            if let Some(constant) = self.constant_map().get_confirmed(&output_id)? {
+                return Ok(into_output!(Output::Constant(output_id, constant)));
+            }
+            if let Some(public) = self.public_map().get_confirmed(&output_id)? {
+                return Ok(into_output!(Output::Public(output_id, public)));
+            }
+            if let Some(private) = self.private_map().get_confirmed(&output_id)? {
+                return Ok(into_output!(Output::Private(output_id, private)));
+            }
+            if let Some(record) = self.record_map().get_confirmed(&output_id)? {
+                return Ok(into_output!(Output::Record(output_id, record)));
+            }
+            if self.external_record_map().get_confirmed(&output_id)?.is_some() {
+                return Ok(Output::ExternalRecord(output_id));
+            }
+            if let Some(future) = self.future_map().get_confirmed(&output_id)? {
+                return Ok(into_output!(Output::Future(output_id, future)));
+            }
 
-            // Retrieve the output.
-            let output = match (constant, public, private, record, external_record) {
-                (Some(constant), None, None, None, None) => into_output!(Output::Constant(output_id, constant)),
-                (None, Some(public), None, None, None) => into_output!(Output::Public(output_id, public)),
-                (None, None, Some(private), None, None) => into_output!(Output::Private(output_id, private)),
-                (None, None, None, Some(record), None) => into_output!(Output::Record(output_id, record)),
-                (None, None, None, None, Some(_)) => Output::ExternalRecord(output_id),
-                (None, None, None, None, None) => bail!("Missing output '{output_id}' in transition '{transition_id}'"),
-                _ => bail!("Found multiple outputs for the output ID '{output_id}' in transition '{transition_id}'"),
-            };
-
-            Ok(output)
+            bail!("Missing output '{output_id}' in transition '{transition_id}'")
         };
 
         // Retrieve the output IDs.
@@ -303,6 +318,8 @@ pub struct OutputStore<N: Network, O: OutputStorage<N>> {
     record_nonce: O::RecordNonceMap,
     /// The map of external record outputs.
     external_record: O::ExternalRecordMap,
+    /// The map of future outputs.
+    future: O::FutureMap,
     /// The output storage.
     storage: O,
 }
@@ -320,6 +337,7 @@ impl<N: Network, O: OutputStorage<N>> OutputStore<N, O> {
             record: storage.record_map().clone(),
             record_nonce: storage.record_nonce_map().clone(),
             external_record: storage.external_record_map().clone(),
+            future: storage.future_map().clone(),
             storage,
         })
     }
@@ -333,6 +351,7 @@ impl<N: Network, O: OutputStorage<N>> OutputStore<N, O> {
             record: storage.record_map().clone(),
             record_nonce: storage.record_nonce_map().clone(),
             external_record: storage.external_record_map().clone(),
+            future: storage.future_map().clone(),
             storage,
         }
     }
@@ -475,6 +494,11 @@ impl<N: Network, O: OutputStorage<N>> OutputStore<N, O> {
     pub fn external_output_ids(&self) -> impl '_ + Iterator<Item = Cow<'_, Field<N>>> {
         self.external_record.keys_confirmed()
     }
+
+    /// Returns an iterator over the future output IDs, for all transition outputs that are future outputs.
+    pub fn future_output_ids(&self) -> impl '_ + Iterator<Item = Cow<'_, Field<N>>> {
+        self.future.keys_confirmed()
+    }
 }
 
 impl<N: Network, I: OutputStorage<N>> OutputStore<N, I> {
@@ -523,6 +547,15 @@ impl<N: Network, I: OutputStorage<N>> OutputStore<N, I> {
         self.record.iter_confirmed().flat_map(|(commitment, output)| match output {
             Cow::Borrowed((_, Some(record))) => Some((commitment, Cow::Borrowed(record))),
             Cow::Owned((_, Some(record))) => Some((commitment, Cow::Owned(record))),
+            _ => None,
+        })
+    }
+
+    /// Returns an iterator over the future outputs, for all transitions.
+    pub fn future_outputs(&self) -> impl '_ + Iterator<Item = Cow<'_, Future<N>>> {
+        self.future.values_confirmed().flat_map(|output| match output {
+            Cow::Borrowed(Some(output)) => Some(Cow::Borrowed(output)),
+            Cow::Owned(Some(output)) => Some(Cow::Owned(output)),
             _ => None,
         })
     }
