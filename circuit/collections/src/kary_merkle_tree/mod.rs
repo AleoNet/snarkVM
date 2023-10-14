@@ -13,7 +13,7 @@
 // limitations under the License.
 
 mod helpers;
-use helpers::{LeafHash, PathHash};
+pub use helpers::{LeafHash, PathHash};
 
 mod verify;
 

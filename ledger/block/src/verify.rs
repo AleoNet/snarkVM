@@ -16,8 +16,8 @@
 #![allow(clippy::type_complexity)]
 
 use super::*;
-use console::program::RATIFICATIONS_DEPTH;
 use ledger_coinbase::{CoinbasePuzzle, EpochChallenge};
+use synthesizer_program::FinalizeOperation;
 
 impl<N: Network> Block<N> {
     /// Ensures the block is correct.
@@ -29,6 +29,8 @@ impl<N: Network> Block<N> {
         current_puzzle: &CoinbasePuzzle<N>,
         current_epoch_challenge: &EpochChallenge<N>,
         current_timestamp: i64,
+        aborted_transaction_ids: Vec<N::TransactionID>,
+        ratified_finalize_operations: Vec<FinalizeOperation<N>>,
     ) -> Result<()> {
         // Ensure the block hash is correct.
         self.verify_hash(previous_block.height(), previous_block.hash())?;
@@ -85,14 +87,14 @@ impl<N: Network> Block<N> {
         self.verify_ratifications(expected_block_reward, expected_puzzle_reward)?;
 
         // Ensure the block transactions are correct.
-        self.verify_transactions()?;
+        self.verify_transactions(aborted_transaction_ids)?;
 
         // Set the expected previous state root.
         let expected_previous_state_root = current_state_root;
         // Compute the expected transactions root.
         let expected_transactions_root = self.compute_transactions_root()?;
         // Compute the expected finalize root.
-        let expected_finalize_root = self.compute_finalize_root()?;
+        let expected_finalize_root = self.compute_finalize_root(ratified_finalize_operations)?;
         // Compute the expected ratifications root.
         let expected_ratifications_root = self.compute_ratifications_root()?;
         // Compute the expected solutions root.
@@ -205,14 +207,10 @@ impl<N: Network> Block<N> {
             Authority::Beacon(signature) => {
                 // Retrieve the signer.
                 let signer = signature.to_address();
-                // Retrieve the first committee member.
-                let Some((first_member, _)) = current_committee.members().first() else {
-                    bail!("Failed to retrieve the first committee member");
-                };
-                // Ensure the block is signed by the first committee member.
+                // Ensure the block is signed by a committee member.
                 ensure!(
-                    signer == *first_member,
-                    "Beacon block {expected_height} has an invalid signer (found '{signer}', expected '{first_member}')",
+                    current_committee.members().contains_key(&signer),
+                    "Beacon block {expected_height} has a signer not in the committee (found '{signer}')",
                 );
                 // Ensure the signature is valid.
                 ensure!(
@@ -230,7 +228,12 @@ impl<N: Network> Block<N> {
                     subdag.leader_address()
                 );
                 // Ensure the transmission IDs from the subdag correspond to the block.
-                Self::check_subdag_transmissions(subdag, &self.coinbase, &self.transactions)?;
+                Self::check_subdag_transmissions(
+                    subdag,
+                    &self.solutions,
+                    &self.transactions,
+                    &self.aborted_transaction_ids,
+                )?;
             }
         }
 
@@ -253,14 +256,17 @@ impl<N: Network> Block<N> {
         // Ensure there are sufficient ratifications.
         ensure!(!self.ratifications.len() >= 2, "Block {height} must contain at least 2 ratifications");
 
+        // Initialize a ratifications iterator.
+        let mut ratifications_iter = self.ratifications.iter();
+
         // Retrieve the block reward from the first block ratification.
-        let block_reward = match self.ratifications[0] {
-            Ratify::BlockReward(block_reward) => block_reward,
+        let block_reward = match ratifications_iter.next() {
+            Some(Ratify::BlockReward(block_reward)) => *block_reward,
             _ => bail!("Block {height} is invalid - the first ratification must be a block reward"),
         };
         // Retrieve the puzzle reward from the second block ratification.
-        let puzzle_reward = match self.ratifications[1] {
-            Ratify::PuzzleReward(puzzle_reward) => puzzle_reward,
+        let puzzle_reward = match ratifications_iter.next() {
+            Some(Ratify::PuzzleReward(puzzle_reward)) => *puzzle_reward,
             _ => bail!("Block {height} is invalid - the second ratification must be a puzzle reward"),
         };
 
@@ -287,7 +293,8 @@ impl<N: Network> Block<N> {
         let height = self.height();
         let timestamp = self.timestamp();
 
-        let (combined_proof_target, expected_cumulative_proof_target, is_coinbase_target_reached) = match &self.coinbase
+        let (combined_proof_target, expected_cumulative_proof_target, is_coinbase_target_reached) = match &self
+            .solutions
         {
             Some(coinbase) => {
                 // Ensure the number of solutions is within the allowed range.
@@ -396,15 +403,29 @@ impl<N: Network> Block<N> {
     }
 
     /// Ensures the block transactions are correct.
-    fn verify_transactions(&self) -> Result<()> {
+    fn verify_transactions(&self, aborted_transaction_ids: Vec<N::TransactionID>) -> Result<()> {
         let height = self.height();
 
         // Ensure there are transactions.
         ensure!(!self.transactions.is_empty(), "Block {height} must contain at least 1 transaction");
 
         // Ensure the number of transactions is within the allowed range.
-        if self.transactions.len() > Transactions::<N>::MAX_TRANSACTIONS {
+        if self.transactions.len() + aborted_transaction_ids.len() > Transactions::<N>::MAX_TRANSACTIONS {
             bail!("Cannot validate a block with more than {} transactions", Transactions::<N>::MAX_TRANSACTIONS);
+        }
+
+        // Ensure the aborted transaction IDs match (up to the ordering).
+        if self.aborted_transaction_ids != aborted_transaction_ids {
+            // Find where the aborted transaction IDs differ.
+            let mut index = 0;
+            while index < self.aborted_transaction_ids.len() && index < aborted_transaction_ids.len() {
+                if self.aborted_transaction_ids[index] != aborted_transaction_ids[index] {
+                    break;
+                }
+                index += 1;
+            }
+            // Output the error.
+            bail!("Aborted transaction IDs do not match in block {height} at index {index}");
         }
 
         // Ensure there are no duplicate transaction IDs.
@@ -470,8 +491,8 @@ impl<N: Network> Block<N> {
     }
 
     /// Computes the finalize root for the block.
-    fn compute_finalize_root(&self) -> Result<Field<N>> {
-        match self.transactions.to_finalize_root() {
+    fn compute_finalize_root(&self, ratified_finalize_operations: Vec<FinalizeOperation<N>>) -> Result<Field<N>> {
+        match self.transactions.to_finalize_root(ratified_finalize_operations) {
             Ok(finalize_root) => Ok(finalize_root),
             Err(error) => bail!("Failed to compute the finalize root for block {} - {error}", self.height()),
         }
@@ -479,18 +500,15 @@ impl<N: Network> Block<N> {
 
     /// Computes the ratifications root for the block.
     fn compute_ratifications_root(&self) -> Result<Field<N>> {
-        let leaves =
-            self.ratifications.iter().map(|r| Ok(r.to_bytes_le()?.to_bits_le())).collect::<Result<Vec<_>, Error>>()?;
-
-        match N::merkle_tree_bhp::<RATIFICATIONS_DEPTH>(&leaves) {
-            Ok(ratifications_tree) => Ok(*ratifications_tree.root()),
+        match self.ratifications.to_ratifications_root() {
+            Ok(ratifications_root) => Ok(ratifications_root),
             Err(error) => bail!("Failed to compute the ratifications root for block {} - {error}", self.height()),
         }
     }
 
     /// Computes the solutions root for the block.
     fn compute_solutions_root(&self) -> Result<Field<N>> {
-        match self.coinbase {
+        match self.solutions {
             Some(ref coinbase) => coinbase.to_accumulator_point(),
             None => Ok(Field::zero()),
         }
@@ -509,14 +527,17 @@ impl<N: Network> Block<N> {
         subdag: &Subdag<N>,
         solutions: &Option<CoinbaseSolution<N>>,
         transactions: &Transactions<N>,
+        aborted_transaction_ids: &[N::TransactionID],
     ) -> Result<()> {
         // Prepare an iterator over the solution IDs.
-        let mut solutions = solutions.as_ref().map(|s| s.deref()).into_iter().flatten();
+        let mut solutions = solutions.as_ref().map(|s| s.deref()).into_iter().flatten().peekable();
         // Prepare an iterator over the transaction IDs.
-        let mut transaction_ids = transactions.transaction_ids();
+        let mut transaction_ids = transactions.transaction_ids().peekable();
 
-        // Initialize a list of rejected transmission IDs.
-        let mut rejected_transmission_ids = Vec::new();
+        // Initialize a list of candidate aborted solution IDs.
+        let mut candidate_aborted_solution_ids = Vec::new();
+        // Initialize a list of candidate aborted transaction IDs.
+        let mut candidate_aborted_transaction_ids = Vec::new();
 
         // Iterate over the transmission IDs.
         for transmission_id in subdag.transmission_ids() {
@@ -524,19 +545,25 @@ impl<N: Network> Block<N> {
             match transmission_id {
                 TransmissionID::Ratification => {}
                 TransmissionID::Solution(commitment) => {
-                    match solutions.next() {
+                    match solutions.peek() {
                         // Check the next solution matches the expected commitment.
-                        Some((_, solution)) if solution.commitment() == *commitment => {}
-                        // Otherwise, add the transmission ID to the rejected list.
-                        _ => rejected_transmission_ids.push(transmission_id),
+                        Some((_, solution)) if solution.commitment() == *commitment => {
+                            // Increment the solution iterator.
+                            solutions.next();
+                        }
+                        // Otherwise, add the solution ID to the aborted list.
+                        _ => candidate_aborted_solution_ids.push(commitment),
                     }
                 }
                 TransmissionID::Transaction(transaction_id) => {
-                    match transaction_ids.next() {
+                    match transaction_ids.peek() {
                         // Check the next transaction matches the expected transaction.
-                        Some(expected_id) if transaction_id == expected_id => {}
-                        // Otherwise, add the transmission ID to the rejected list.
-                        _ => rejected_transmission_ids.push(transmission_id),
+                        Some(expected_id) if transaction_id == *expected_id => {
+                            // Increment the transaction ID iterator.
+                            transaction_ids.next();
+                        }
+                        // Otherwise, add the transaction ID to the aborted list.
+                        _ => candidate_aborted_transaction_ids.push(*transaction_id),
                     }
                 }
             }
@@ -547,7 +574,13 @@ impl<N: Network> Block<N> {
         // Ensure there are no more transactions in the block.
         ensure!(transaction_ids.next().is_none(), "There exists more transactions than expected.");
 
-        // TODO (howardwu): Check that the rejected transmission IDs matches in Ratify::RejectedTransmissions.
+        // Ensure there are no candidate aborted solution IDs.
+        ensure!(candidate_aborted_solution_ids.is_empty(), "There exists aborted solutions in the block.");
+        // Ensure the aborted transaction IDs match.
+        ensure!(
+            aborted_transaction_ids == candidate_aborted_transaction_ids,
+            "A mismatch found was in the aborted transaction IDs of the block."
+        );
 
         Ok(())
     }
