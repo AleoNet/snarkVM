@@ -72,29 +72,36 @@ impl<E: Environment> Inject for Group<E> {
             }
         };
 
-        // Ensure `point_inv` is on the curve.
-        point_inv.enforce_on_curve();
-
         // Return the `point` as `point_inv * COFACTOR`.
         let point = point_inv.mul_by_cofactor();
 
-        if mode.is_public() {
-            // Inject the point as `Mode::Public`.
-            let public_point = {
-                // Initialize the (x, y) coordinates of the point as field elements.
-                let (x, y) = group.to_xy_coordinates();
-                // Inject the `(x, y)` coordinates as field elements.
-                Self { x: Field::new(mode, x), y: Field::new(mode, y) }
-            };
+        let point = if mode.is_public() {
+            // Retrieve the `(x, y)`-coordinates of the point as primitive field elements.
+            let (x, y) = group.to_xy_coordinates();
+            // Inject the x-coordinate with `Mode::Public`.
+            let x = Field::new(mode, x);
+            // Inject the y-coordinate with `Mode::Public`.
+            let y = Field::new(mode, y);
 
-            // Ensure the `point == public_point`.
-            E::assert_eq(&point, &public_point);
+            // Ensure the witnessed x-coordinate is equivalent to the recovered x-coordinate.
+            //
+            // Note: It is sufficient to check the x-coordinate only, since the `point` is derived
+            // using the doubling algorithm, which depends on both the x- and y-coordinates. Thus,
+            // when the point is subsequently enforced to be on the curve, the y-coordinate is
+            // implicitly checked to be equivalent to the recovered y-coordinate.
+            E::assert_eq(&x, &point.x);
 
             // Return the public point.
-            public_point
+            Self { x, y }
         } else {
             point
-        }
+        };
+
+        // Ensure `point` is on the curve.
+        point.enforce_on_curve();
+
+        // Return the point.
+        point
     }
 }
 

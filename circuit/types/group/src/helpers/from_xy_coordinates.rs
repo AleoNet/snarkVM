@@ -18,18 +18,34 @@ impl<E: Environment> Group<E> {
     /// Initializes an affine group element from a given x- and y-coordinate field element.
     /// For safety, the resulting point is always enforced to be on the curve and in the subgroup.
     pub fn from_xy_coordinates(x: Field<E>, y: Field<E>) -> Self {
-        // Recover point from the `(x, y)` coordinates as a witness.
-        //
-        // Note: We use the **unchecked** ('console::Group::from_xy_coordinates_unchecked') variant
-        // here so that the recovery does not halt in witness mode, and subsequently, the point is
-        // enforced to be on the curve by injecting with `circuit::Group::new`.
-        let point: Group<E> = witness!(|x, y| console::Group::from_xy_coordinates_unchecked(x, y));
+        // Inject `point_inv` from the `(x_inv, y_inv)` coordinates as field elements.
+        let point_inv = {
+            // Determine the witness mode.
+            let mode = witness_mode!(x, y);
+            // Recover the (console) point from the `(x, y)` coordinates.
+            //
+            // Note: We use the **unchecked** ('console::Group::from_xy_coordinates_unchecked') variant
+            // here so that the recovery does not halt, and subsequently, the point is enforced to be on the curve.
+            let console_group = console::Group::from_xy_coordinates(x.eject_value(), y.eject_value());
+            // Compute the `(x_inv, y_inv)` coordinates from `(point / COFACTOR)`.
+            let (x_inv, y_inv) = console_group.div_by_cofactor().to_xy_coordinates();
+            // Inject `point_inv` from the `(x_inv, y_inv)` coordinates as field elements.
+            Self { x: Field::new(mode, x_inv), y: Field::new(mode, y_inv) }
+        };
+
+        // Return the `point` as `point_inv * COFACTOR`.
+        let point = point_inv.mul_by_cofactor();
 
         // Ensure the given x-coordinate is equivalent to the witnessed x-coordinate.
+        //
+        // Note: It is sufficient to check the x-coordinate only, since the `point` is derived
+        // using the doubling algorithm, which depends on both the x- and y-coordinates. Thus,
+        // when the point is subsequently enforced to be on the curve, the y-coordinate is
+        // implicitly checked to be equivalent to the given y-coordinate.
         E::assert_eq(&x, &point.x);
 
-        // Ensure the given y-coordinate is equivalent to the witnessed y-coordinate.
-        E::assert_eq(&y, &point.y);
+        // Ensure `point` is on the curve.
+        point.enforce_on_curve();
 
         // Return the witnessed point.
         point
@@ -107,12 +123,12 @@ mod tests {
 
     #[test]
     fn test_from_xy_coordinates_public() {
-        check_from_xy_coordinates(Mode::Public, 4, 0, 14, 15);
+        check_from_xy_coordinates(Mode::Public, 4, 0, 14, 14);
     }
 
     #[test]
     fn test_from_xy_coordinates_private() {
-        check_from_xy_coordinates(Mode::Private, 4, 0, 14, 15);
+        check_from_xy_coordinates(Mode::Private, 4, 0, 14, 14);
     }
 
     #[test]

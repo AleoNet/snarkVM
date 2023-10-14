@@ -67,11 +67,11 @@ mod tests {
 
     #[test]
     fn test_from_x_coordinate_public() {
-        check_from_x_coordinate(Mode::Public, 4, 0, 15, 15);
+        check_from_x_coordinate(Mode::Public, 4, 0, 15, 14);
     }
 
     #[test]
     fn test_from_x_coordinate_private() {
-        check_from_x_coordinate(Mode::Private, 4, 0, 15, 15);
+        check_from_x_coordinate(Mode::Private, 4, 0, 15, 14);
     }
 }
