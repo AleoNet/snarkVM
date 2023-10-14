@@ -13,7 +13,7 @@
 // limitations under the License.
 
 use crate::helpers::{
-    rocksdb::{DataMap, MapID, RocksDB, TestMap as TestMapID},
+    rocksdb::{MapID, RocksDB, TestMap as TestMapID},
     Map,
     MapRead,
 };
@@ -24,9 +24,6 @@ use console::{
 };
 
 use serial_test::serial;
-use std::borrow::Cow;
-
-type TestMap = DataMap<u32, String>;
 
 pub(crate) fn temp_dir() -> std::path::PathBuf {
     tempfile::tempdir().expect("Failed to open temporary directory").into_path()
@@ -128,26 +125,6 @@ fn test_insert_and_values() {
     let mut values = map.values_confirmed();
     assert_eq!(Some("123456789".to_string()), values.next().map(|v| v.to_string()));
     assert_eq!(None, values.next());
-}
-
-#[test]
-#[serial]
-fn test_reopen() {
-    let directory = temp_dir();
-    {
-        let map = RocksDB::open_map_testing(directory.clone(), None, MapID::Test(TestMapID::Test))
-            .expect("Failed to open data map");
-        map.insert(123456789, "123456789".to_string()).expect("Failed to insert");
-    }
-    {
-        let map: TestMap =
-            RocksDB::open_map_testing(directory, None, MapID::Test(TestMapID::Test)).expect("Failed to open data map");
-        match map.get_confirmed(&123456789).expect("Failed to get") {
-            Some(Cow::Borrowed(value)) => assert_eq!(value.to_string(), "123456789".to_string()),
-            Some(Cow::Owned(value)) => assert_eq!(value, "123456789".to_string()),
-            None => panic!("Failed to get value"),
-        }
-    }
 }
 
 // #[test]

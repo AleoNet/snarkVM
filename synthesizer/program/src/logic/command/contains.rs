@@ -85,7 +85,7 @@ impl<N: Network> Contains<N> {
         let key = registers.load_plaintext(stack, &self.key)?;
 
         // Determine if the key exists in the mapping.
-        let contains_key = store.contains_key_speculative(stack.program_id(), &self.mapping, &key)?;
+        let contains_key = store.contains_key_speculative(*stack.program_id(), self.mapping, &key)?;
 
         // Assign the value to the destination register.
         registers.store(stack, &self.destination, Value::from(Literal::Boolean(Boolean::new(contains_key))))?;

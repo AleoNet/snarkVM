@@ -27,6 +27,7 @@ serial = [
   "synthesizer-program/serial",
   "synthesizer-snark/serial"
 ]
+test = [ ]
 
 [dependencies.console]
 package = "snarkvm-console"

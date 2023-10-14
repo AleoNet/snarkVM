@@ -30,7 +30,7 @@ impl<N: Network> FromBytes for ConfirmedTransaction<N> {
                 let finalize =
                     (0..num_finalize).map(|_| FromBytes::read_le(&mut reader)).collect::<Result<Vec<_>, _>>()?;
                 // Return the confirmed transaction.
-                Self::accepted_deploy(index, transaction, finalize).map_err(|e| error(e.to_string()))
+                Self::accepted_deploy(index, transaction, finalize).map_err(error)
             }
             1 => {
                 // Read the index.
@@ -43,7 +43,7 @@ impl<N: Network> FromBytes for ConfirmedTransaction<N> {
                 let finalize =
                     (0..num_finalize).map(|_| FromBytes::read_le(&mut reader)).collect::<Result<Vec<_>, _>>()?;
                 // Return the confirmed transaction.
-                Self::accepted_execute(index, transaction, finalize).map_err(|e| error(e.to_string()))
+                Self::accepted_execute(index, transaction, finalize).map_err(error)
             }
             2 => {
                 // Read the index.
@@ -52,8 +52,13 @@ impl<N: Network> FromBytes for ConfirmedTransaction<N> {
                 let transaction = Transaction::<N>::read_le(&mut reader)?;
                 // Read the rejected deployment.
                 let rejected = Rejected::<N>::read_le(&mut reader)?;
+                // Read the number of finalize operations.
+                let num_finalize = NumFinalizeSize::read_le(&mut reader)?;
+                // Read the finalize operations.
+                let finalize =
+                    (0..num_finalize).map(|_| FromBytes::read_le(&mut reader)).collect::<Result<Vec<_>, _>>()?;
                 // Return the confirmed transaction.
-                Self::rejected_deploy(index, transaction, rejected).map_err(|e| error(e.to_string()))
+                Self::rejected_deploy(index, transaction, rejected, finalize).map_err(error)
             }
             3 => {
                 // Read the index.
@@ -62,8 +67,13 @@ impl<N: Network> FromBytes for ConfirmedTransaction<N> {
                 let transaction = Transaction::<N>::read_le(&mut reader)?;
                 // Read the rejected execution.
                 let rejected = Rejected::<N>::read_le(&mut reader)?;
+                // Read the number of finalize operations.
+                let num_finalize = NumFinalizeSize::read_le(&mut reader)?;
+                // Read the finalize operations.
+                let finalize =
+                    (0..num_finalize).map(|_| FromBytes::read_le(&mut reader)).collect::<Result<Vec<_>, _>>()?;
                 // Return the confirmed transaction.
-                Self::rejected_execute(index, transaction, rejected).map_err(|e| error(e.to_string()))
+                Self::rejected_execute(index, transaction, rejected, finalize).map_err(error)
             }
             4.. => Err(error(format!("Failed to decode confirmed transaction variant {variant}"))),
         }
@@ -82,7 +92,7 @@ impl<N: Network> ToBytes for ConfirmedTransaction<N> {
                 // Write the transaction.
                 transaction.write_le(&mut writer)?;
                 // Write the number of finalize operations.
-                NumFinalizeSize::try_from(finalize.len()).map_err(|e| error(e.to_string()))?.write_le(&mut writer)?;
+                NumFinalizeSize::try_from(finalize.len()).map_err(error)?.write_le(&mut writer)?;
                 // Write the finalize operations.
                 finalize.iter().try_for_each(|finalize| finalize.write_le(&mut writer))
             }
@@ -94,11 +104,11 @@ impl<N: Network> ToBytes for ConfirmedTransaction<N> {
                 // Write the transaction.
                 transaction.write_le(&mut writer)?;
                 // Write the number of finalize operations.
-                NumFinalizeSize::try_from(finalize.len()).map_err(|e| error(e.to_string()))?.write_le(&mut writer)?;
+                NumFinalizeSize::try_from(finalize.len()).map_err(error)?.write_le(&mut writer)?;
                 // Write the finalize operations.
                 finalize.iter().try_for_each(|finalize| finalize.write_le(&mut writer))
             }
-            Self::RejectedDeploy(index, transaction, rejected) => {
+            Self::RejectedDeploy(index, transaction, rejected, finalize) => {
                 // Write the variant.
                 2u8.write_le(&mut writer)?;
                 // Write the index.
@@ -106,9 +116,13 @@ impl<N: Network> ToBytes for ConfirmedTransaction<N> {
                 // Write the transaction.
                 transaction.write_le(&mut writer)?;
                 // Write the rejected deployment.
-                rejected.write_le(&mut writer)
+                rejected.write_le(&mut writer)?;
+                // Write the number of finalize operations.
+                NumFinalizeSize::try_from(finalize.len()).map_err(error)?.write_le(&mut writer)?;
+                // Write the finalize operations.
+                finalize.iter().try_for_each(|finalize| finalize.write_le(&mut writer))
             }
-            Self::RejectedExecute(index, transaction, rejected) => {
+            Self::RejectedExecute(index, transaction, rejected, finalize) => {
                 // Write the variant.
                 3u8.write_le(&mut writer)?;
                 // Write the index.
@@ -116,7 +130,11 @@ impl<N: Network> ToBytes for ConfirmedTransaction<N> {
                 // Write the transaction.
                 transaction.write_le(&mut writer)?;
                 // Write the rejected execution.
-                rejected.write_le(&mut writer)
+                rejected.write_le(&mut writer)?;
+                // Write the number of finalize operations.
+                NumFinalizeSize::try_from(finalize.len()).map_err(error)?.write_le(&mut writer)?;
+                // Write the finalize operations.
+                finalize.iter().try_for_each(|finalize| finalize.write_le(&mut writer))
             }
         }
     }

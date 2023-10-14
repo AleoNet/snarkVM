@@ -37,22 +37,24 @@ impl<N: Network> Serialize for ConfirmedTransaction<N> {
                     object.serialize_field("finalize", finalize_operations)?;
                     object.end()
                 }
-                Self::RejectedDeploy(index, transaction, rejected_deployment) => {
-                    let mut object = serializer.serialize_struct("ConfirmedTransaction", 5)?;
+                Self::RejectedDeploy(index, transaction, rejected_deployment, finalize_operations) => {
+                    let mut object = serializer.serialize_struct("ConfirmedTransaction", 6)?;
                     object.serialize_field("status", "rejected")?;
                     object.serialize_field("type", "deploy")?;
                     object.serialize_field("index", index)?;
                     object.serialize_field("transaction", transaction)?;
                     object.serialize_field("rejected", &rejected_deployment)?;
+                    object.serialize_field("finalize", finalize_operations)?;
                     object.end()
                 }
-                Self::RejectedExecute(index, transaction, rejected_execution) => {
-                    let mut object = serializer.serialize_struct("ConfirmedTransaction", 5)?;
+                Self::RejectedExecute(index, transaction, rejected_execution, finalize_operations) => {
+                    let mut object = serializer.serialize_struct("ConfirmedTransaction", 6)?;
                     object.serialize_field("status", "rejected")?;
                     object.serialize_field("type", "execute")?;
                     object.serialize_field("index", index)?;
                     object.serialize_field("transaction", transaction)?;
                     object.serialize_field("rejected", &rejected_execution)?;
+                    object.serialize_field("finalize", finalize_operations)?;
                     object.end()
                 }
             },
@@ -95,14 +97,18 @@ impl<'de, N: Network> Deserialize<'de> for ConfirmedTransaction<N> {
                     (Some("rejected"), Some("deploy")) => {
                         // Parse the rejected deployment.
                         let rejected: Rejected<N> = DeserializeExt::take_from_value::<D>(&mut object, "rejected")?;
+                        // Parse the finalize operations.
+                        let finalize: Vec<_> = DeserializeExt::take_from_value::<D>(&mut object, "finalize")?;
                         // Return the rejected deploy transaction.
-                        Self::rejected_deploy(index, transaction, rejected).map_err(de::Error::custom)
+                        Self::rejected_deploy(index, transaction, rejected, finalize).map_err(de::Error::custom)
                     }
                     (Some("rejected"), Some("execute")) => {
                         // Parse the rejected execution.
                         let rejected: Rejected<N> = DeserializeExt::take_from_value::<D>(&mut object, "rejected")?;
+                        // Parse the finalize operations.
+                        let finalize: Vec<_> = DeserializeExt::take_from_value::<D>(&mut object, "finalize")?;
                         // Return the rejected execute transaction.
-                        Self::rejected_execute(index, transaction, rejected).map_err(de::Error::custom)
+                        Self::rejected_execute(index, transaction, rejected, finalize).map_err(de::Error::custom)
                     }
                     _ => Err(de::Error::custom("Invalid confirmed transaction type")),
                 }
