@@ -645,6 +645,16 @@ jobs:
           workspace_member: synthesizer/process
           cache_key: snarkvm-synthesizer-process-cache
 
+  synthesizer-process-with-rocksdb:
+    docker:
+      - image: cimg/rust:1.71.1
+    resource_class: 2xlarge
+    steps:
+      - run_serial:
+          flags: --features=rocks
+          workspace_member: synthesizer/process
+          cache_key: snarkvm-synthesizer-process-cache
+
   synthesizer-program:
     docker:
       - image: cimg/rust:1.71.1
@@ -862,6 +872,7 @@ workflows:
       - synthesizer
       - synthesizer-integration
       - synthesizer-process
+      - synthesizer-process-with-rocksdb
       - synthesizer-program
       - synthesizer-program-integration-keccak
       - synthesizer-program-integration-psd

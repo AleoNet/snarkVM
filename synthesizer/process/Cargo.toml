@@ -27,6 +27,7 @@ edition = "2021"
 default = [ "indexmap/rayon", "rayon" ]
 aleo-cli = [ ]
 async = [ "ledger-query/async" ]
+rocks = [ "ledger-store/rocks" ]
 serial = [
   "console/serial",
   "ledger-block/serial",
