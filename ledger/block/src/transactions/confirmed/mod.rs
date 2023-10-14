@@ -42,28 +42,52 @@ impl<N: Network> ConfirmedTransaction<N> {
         transaction: Transaction<N>,
         finalize_operations: Vec<FinalizeOperation<N>>,
     ) -> Result<Self> {
-        // Retrieve the program from the deployment, and ensure the transaction is a deploy transaction.
-        let program = match &transaction {
-            Transaction::Deploy(_, _, deployment, _) => deployment.program(),
+        // Retrieve the program and fee from the deployment transaction, and ensure the transaction is a deploy transaction.
+        let (program, fee) = match &transaction {
+            Transaction::Deploy(_, _, deployment, fee) => (deployment.program(), fee),
             Transaction::Execute(..) | Transaction::Fee(..) => {
                 bail!("Transaction '{}' is not a deploy transaction", transaction.id())
             }
         };
-        // Ensure the number of program mappings matches the number of finalize operations.
-        if program.mappings().len() != finalize_operations.len() {
-            bail!(
-                "The number of program mappings ({}) does not match the number of finalize operations ({})",
-                program.mappings().len(),
-                finalize_operations.len()
-            )
-        }
-        // Ensure the finalize operations contain the correct types.
-        for operation in finalize_operations.iter() {
-            // Ensure the finalize operation is an initialize mapping.
-            if !matches!(operation, FinalizeOperation::InitializeMapping(..)) {
-                bail!("Transaction '{}' (deploy) contains an invalid finalize operation type", transaction.id())
+
+        // Count the number of `InitializeMapping` and `UpdateKeyValue` finalize operations.
+        let (num_initialize_mappings, num_update_key_values) =
+            finalize_operations.iter().try_fold((0, 0), |(init, update), operation| match operation {
+                FinalizeOperation::InitializeMapping(..) => Ok((init + 1, update)),
+                FinalizeOperation::UpdateKeyValue(..) => Ok((init, update + 1)),
+                op => {
+                    bail!("Transaction '{}' (deploy) contains an invalid finalize operation ({op})", transaction.id())
+                }
+            })?;
+
+        // Perform safety checks on the finalize operations.
+        {
+            // Ensure the number of finalize operations matches the number of 'InitializeMapping' and 'UpdateKeyValue' finalize operations.
+            if num_initialize_mappings + num_update_key_values != finalize_operations.len() {
+                bail!(
+                    "Transaction '{}' (deploy) must contain '{}' operations",
+                    transaction.id(),
+                    finalize_operations.len()
+                );
+            }
+            // Ensure the number of program mappings matches the number of 'InitializeMapping' finalize operations.
+            if num_initialize_mappings != program.mappings().len() {
+                bail!(
+                    "Transaction '{}' (deploy) must contain '{}' 'InitializeMapping' operations (found '{num_initialize_mappings}')",
+                    transaction.id(),
+                    program.mappings().len(),
+                )
+            }
+            // Ensure the number of finalize operations matches the number of 'UpdateKeyValue' finalize operations.
+            if num_update_key_values != fee.num_finalize_operations() {
+                bail!(
+                    "Transaction '{}' (deploy) must contain {} 'UpdateKeyValue' operations (found '{num_update_key_values}')",
+                    transaction.id(),
+                    fee.num_finalize_operations()
+                );
             }
         }
+
         // Return the accepted deploy transaction.
         Ok(Self::AcceptedDeploy(index, transaction, finalize_operations))
     }
@@ -302,9 +326,23 @@ pub mod test_helpers {
     ) -> ConfirmedTransaction<CurrentNetwork> {
         // Sample a deploy transaction.
         let tx = crate::transaction::test_helpers::sample_deployment_transaction(is_fee_private, rng);
+
+        // Construct the finalize operations based on if the fee is public or private.
+        let finalize_operations = match is_fee_private {
+            true => vec![FinalizeOperation::InitializeMapping(Uniform::rand(rng))],
+            false => vec![
+                FinalizeOperation::InitializeMapping(Uniform::rand(rng)),
+                FinalizeOperation::UpdateKeyValue(
+                    Uniform::rand(rng),
+                    Uniform::rand(rng),
+                    Uniform::rand(rng),
+                    Uniform::rand(rng),
+                ),
+            ],
+        };
+
         // Return the confirmed transaction.
-        ConfirmedTransaction::accepted_deploy(index, tx, vec![FinalizeOperation::InitializeMapping(Uniform::rand(rng))])
-            .unwrap()
+        ConfirmedTransaction::accepted_deploy(index, tx, finalize_operations).unwrap()
     }
 
     /// Samples an accepted execute transaction at the given index.
