@@ -111,12 +111,12 @@ mod tests {
 
     #[test]
     fn test_is_equal_public() -> Result<()> {
-        check_is_equal(Mode::Public, 0, 0, 26, 35)
+        check_is_equal(Mode::Public, 9, 0, 26, 26)
     }
 
     #[test]
     fn test_is_equal_private() -> Result<()> {
-        check_is_equal(Mode::Private, 0, 0, 26, 35)
+        check_is_equal(Mode::Private, 0, 0, 26, 26)
     }
 
     #[test]
@@ -126,11 +126,11 @@ mod tests {
 
     #[test]
     fn test_is_not_equal_public() -> Result<()> {
-        check_is_not_equal(Mode::Public, 0, 0, 26, 35)
+        check_is_not_equal(Mode::Public, 0, 0, 26, 26)
     }
 
     #[test]
     fn test_is_not_equal_private() -> Result<()> {
-        check_is_not_equal(Mode::Private, 0, 0, 26, 35)
+        check_is_not_equal(Mode::Private, 0, 0, 26, 36)
     }
 }

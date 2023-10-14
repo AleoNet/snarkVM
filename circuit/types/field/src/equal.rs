@@ -13,7 +13,6 @@
 // limitations under the License.
 
 use super::*;
-use snarkvm_circuit_environment::Private;
 
 impl<E: Environment> Equal<Self> for Field<E> {
     type Output = Boolean<E>;
@@ -76,7 +75,6 @@ impl<E: Environment> Equal<Self> for Field<E> {
             // Since the specification implies that is_neq is either 0 or 1,
             // the circuit does not need a boolean constraint for is_neq, as mentioned above.
             _ => {
-
                 // Allocate a new R1CS field variable for the result.
                 // Its value is 1 if self and other are not equal, 0 if equal.
                 let is_neq = Boolean::from_variable(E::new_variable(Mode::Private, match is_neq_ejected {

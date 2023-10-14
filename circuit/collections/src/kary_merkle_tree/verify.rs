@@ -278,12 +278,12 @@ mod tests {
 
     #[test]
     fn test_verify_bhp512_public() -> Result<()> {
-        check_verify!(BHP1024, BHP512, Public, 10, 4, 1024, (9465, 0, 53876, 54097))
+        check_verify!(BHP1024, BHP512, Public, 10, 4, 1024, (9465, 0, 53876, 54056))
     }
 
     #[test]
     fn test_verify_bhp512_private() -> Result<()> {
-        check_verify!(BHP1024, BHP512, Private, 10, 4, 1024, (9465, 0, 53876, 54097))
+        check_verify!(BHP1024, BHP512, Private, 10, 4, 1024, (9465, 0, 53876, 54056))
     }
 
     #[test]
@@ -293,12 +293,12 @@ mod tests {
 
     #[test]
     fn test_verify_poseidon2_public() -> Result<()> {
-        check_verify!(Poseidon4, Poseidon2, Public, 10, 4, 4, (4843, 0, 14152, 14273))
+        check_verify!(Poseidon4, Poseidon2, Public, 10, 4, 4, (4843, 0, 14152, 14232))
     }
 
     #[test]
     fn test_verify_poseidon2_private() -> Result<()> {
-        check_verify!(Poseidon4, Poseidon2, Private, 10, 4, 4, (4843, 0, 14152, 14273))
+        check_verify!(Poseidon4, Poseidon2, Private, 10, 4, 4, (4843, 0, 14152, 14232))
     }
 
     #[test]
@@ -308,12 +308,12 @@ mod tests {
 
     #[test]
     fn test_verify_keccak256_public() -> Result<()> {
-        check_verify_keccak!(Keccak256, Keccak256, Public, 10, 4, 256, (7648, 0, 1696439, 1696559))
+        check_verify_keccak!(Keccak256, Keccak256, Public, 10, 4, 256, (7648, 0, 1696439, 1696519))
     }
 
     #[test]
     fn test_verify_keccak256_private() -> Result<()> {
-        check_verify_keccak!(Keccak256, Keccak256, Private, 10, 4, 256, (7648, 0, 1696439, 1696559))
+        check_verify_keccak!(Keccak256, Keccak256, Private, 10, 4, 256, (7648, 0, 1696439, 1696519))
     }
 
     #[test]
@@ -323,11 +323,11 @@ mod tests {
 
     #[test]
     fn test_verify_sha3_256_public() -> Result<()> {
-        check_verify_keccak!(Sha3_256, Sha3_256, Public, 10, 4, 256, (7648, 0, 1696439, 1696559))
+        check_verify_keccak!(Sha3_256, Sha3_256, Public, 10, 4, 256, (7648, 0, 1696439, 1696519))
     }
 
     #[test]
     fn test_verify_sha3_256_private() -> Result<()> {
-        check_verify_keccak!(Sha3_256, Sha3_256, Private, 10, 4, 256, (7648, 0, 1696439, 1696559))
+        check_verify_keccak!(Sha3_256, Sha3_256, Private, 10, 4, 256, (7648, 0, 1696439, 1696519))
     }
 }

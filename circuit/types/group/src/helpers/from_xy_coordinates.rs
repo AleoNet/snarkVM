@@ -35,7 +35,7 @@ impl<E: Environment> Group<E> {
         // but we will look into optimizing this later.
         E::assert_eq(&x, &point.x);
         E::assert_eq(&y, &point.y);
-        
+
         point
     }
 
