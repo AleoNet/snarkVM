@@ -1537,8 +1537,8 @@ mod sanity_checks {
         let assignment = get_assignment::<_, CurrentAleo>(stack, &private_key, function_name, &[r0, r1, r2], rng);
         assert_eq!(15, assignment.num_public());
         assert_eq!(54688, assignment.num_private());
-        assert_eq!(54747, assignment.num_constraints());
-        assert_eq!((88514, 130701, 83646), assignment.num_nonzeros());
+        assert_eq!(54731, assignment.num_constraints());
+        assert_eq!((88482, 130685, 83646), assignment.num_nonzeros());
     }
 
     #[test]
@@ -1565,8 +1565,8 @@ mod sanity_checks {
         let assignment = get_assignment::<_, CurrentAleo>(stack, &private_key, function_name, &[r0, r1], rng);
         assert_eq!(10, assignment.num_public());
         assert_eq!(17060, assignment.num_private());
-        assert_eq!(17079, assignment.num_constraints());
-        assert_eq!((31415, 45962, 24042), assignment.num_nonzeros());
+        assert_eq!(17068, assignment.num_constraints());
+        assert_eq!((31393, 45951, 24042), assignment.num_nonzeros());
     }
 
     #[test]
@@ -1598,8 +1598,8 @@ mod sanity_checks {
         let assignment = get_assignment::<_, CurrentAleo>(stack, &private_key, function_name, &[r0, r1, r2], rng);
         assert_eq!(13, assignment.num_public());
         assert_eq!(41236, assignment.num_private());
-        assert_eq!(41286, assignment.num_constraints());
-        assert_eq!((64445, 92929, 62380), assignment.num_nonzeros());
+        assert_eq!(41268, assignment.num_constraints());
+        assert_eq!((64409, 92911, 62380), assignment.num_nonzeros());
     }
 
     #[test]
@@ -1625,7 +1625,7 @@ mod sanity_checks {
         let assignment = get_assignment::<_, CurrentAleo>(stack, &private_key, function_name, &[r0, r1], rng);
         assert_eq!(10, assignment.num_public());
         assert_eq!(17051, assignment.num_private());
-        assert_eq!(17074, assignment.num_constraints());
-        assert_eq!((31285, 45446, 24030), assignment.num_nonzeros());
+        assert_eq!(17061, assignment.num_constraints());
+        assert_eq!((31259, 45433, 24030), assignment.num_nonzeros());
     }
 }

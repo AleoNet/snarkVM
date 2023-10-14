@@ -161,11 +161,11 @@ mod tests {
         );
         check_cast_lossy::<Address<Circuit>, console_root::types::Address<Testnet3>>(
             Mode::Public,
-            count_is!(277, 0, 396, 400),
+            count_is!(277, 0, 396, 399),
         );
         check_cast_lossy::<Address<Circuit>, console_root::types::Address<Testnet3>>(
             Mode::Private,
-            count_is!(277, 0, 396, 400),
+            count_is!(277, 0, 396, 399),
         );
     }
 
@@ -200,11 +200,11 @@ mod tests {
         );
         check_cast_lossy::<Group<Circuit>, console_root::types::Group<Testnet3>>(
             Mode::Public,
-            count_is!(277, 0, 396, 400),
+            count_is!(277, 0, 396, 399),
         );
         check_cast_lossy::<Group<Circuit>, console_root::types::Group<Testnet3>>(
             Mode::Private,
-            count_is!(277, 0, 396, 400),
+            count_is!(277, 0, 396, 399),
         );
     }
 
