@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use super::*;
 
@@ -20,10 +18,10 @@ impl<N: Network> FromBytes for StatePath<N> {
     /// Reads the path from a buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         // Read the version.
-        let version = u16::read_le(&mut reader)?;
+        let version = u8::read_le(&mut reader)?;
         // Ensure the version is valid.
-        if version != 0 {
-            return Err(error("Invalid block version"));
+        if version != 1 {
+            return Err(error("Invalid state path version"));
         }
 
         // Read the state path.
@@ -40,6 +38,8 @@ impl<N: Network> FromBytes for StatePath<N> {
         let transaction_id = FromBytes::read_le(&mut reader)?;
         let transaction_path = FromBytes::read_le(&mut reader)?;
         let transaction_leaf = FromBytes::read_le(&mut reader)?;
+        let transition_root = Field::read_le(&mut reader)?;
+        let tcm = FromBytes::read_le(&mut reader)?;
         let transition_path = FromBytes::read_le(&mut reader)?;
         let transition_leaf = FromBytes::read_le(&mut reader)?;
 
@@ -56,6 +56,8 @@ impl<N: Network> FromBytes for StatePath<N> {
             transaction_id,
             transaction_path,
             transaction_leaf,
+            transition_root,
+            tcm,
             transition_path,
             transition_leaf,
         ))
@@ -66,7 +68,7 @@ impl<N: Network> ToBytes for StatePath<N> {
     /// Writes the path to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Write the version.
-        0u16.write_le(&mut writer)?;
+        1u8.write_le(&mut writer)?;
 
         // Write the state path.
         self.global_state_root.write_le(&mut writer)?;
@@ -82,6 +84,8 @@ impl<N: Network> ToBytes for StatePath<N> {
         self.transaction_id.write_le(&mut writer)?;
         self.transaction_path.write_le(&mut writer)?;
         self.transaction_leaf.write_le(&mut writer)?;
+        self.transition_root.write_le(&mut writer)?;
+        self.tcm.write_le(&mut writer)?;
         self.transition_path.write_le(&mut writer)?;
         self.transition_leaf.write_le(&mut writer)
     }

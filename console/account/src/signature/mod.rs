@@ -1,22 +1,25 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
-
+mod bitwise;
 mod bytes;
+mod from_bits;
 mod parse;
 mod serialize;
+mod size_in_bits;
+mod to_bits;
+mod to_fields;
 mod verify;
 
 #[cfg(feature = "private_key")]
@@ -29,7 +32,7 @@ use crate::PrivateKey;
 
 use crate::address::Address;
 use snarkvm_console_network::prelude::*;
-use snarkvm_console_types::{Field, Scalar};
+use snarkvm_console_types::{Boolean, Field, Scalar};
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Signature<N: Network> {
@@ -74,6 +77,36 @@ impl<N: Network> Signature<N> {
     /// Returns the signer address.
     pub fn to_address(&self) -> Address<N> {
         self.compute_key.to_address()
+    }
+}
+
+impl<N: Network> TypeName for Signature<N> {
+    /// Returns the type name as a string.
+    #[inline]
+    fn type_name() -> &'static str {
+        "signature"
+    }
+}
+
+impl<N: Network> Signature<N> {
+    /// Initializes a `zero` signature.
+    #[cfg(any(test, feature = "test"))]
+    pub fn zero() -> Self {
+        Self::from((
+            Scalar::zero(),
+            Scalar::zero(),
+            ComputeKey::try_from((crate::Group::zero(), crate::Group::zero())).unwrap(),
+        ))
+    }
+
+    /// Initializes a "random" signature.
+    #[cfg(any(test, feature = "test"))]
+    pub fn rand<R: Rng>(rng: &mut R) -> Self {
+        Self::from((
+            Scalar::rand(rng),
+            Scalar::rand(rng),
+            ComputeKey::try_from((crate::Group::rand(rng), crate::Group::rand(rng))).unwrap(),
+        ))
     }
 }
 

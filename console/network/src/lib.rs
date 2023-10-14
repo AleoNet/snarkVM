@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #![forbid(unsafe_code)]
 #![allow(clippy::too_many_arguments)]
@@ -37,7 +35,8 @@ pub mod prelude {
 use crate::environment::prelude::*;
 use snarkvm_algorithms::{
     crypto_hash::PoseidonSponge,
-    snark::marlin::{CircuitProvingKey, CircuitVerifyingKey, MarlinHidingMode},
+    snark::varuna::{CircuitProvingKey, CircuitVerifyingKey, VarunaHidingMode},
+    srs::{UniversalProver, UniversalVerifier},
     AlgebraicSponge,
 };
 use snarkvm_console_algorithms::{Poseidon2, Poseidon4, BHP1024, BHP512};
@@ -54,14 +53,14 @@ pub type BHPMerkleTree<N, const DEPTH: u8> = MerkleTree<N, BHP1024<N>, BHP512<N>
 /// A helper type for the Poseidon Merkle tree.
 pub type PoseidonMerkleTree<N, const DEPTH: u8> = MerkleTree<N, Poseidon4<N>, Poseidon2<N>, DEPTH>;
 
-/// Helper types for the Marlin parameters.
+/// Helper types for the Varuna parameters.
 type Fq<N> = <<N as Environment>::PairingCurve as PairingEngine>::Fq;
 pub type FiatShamir<N> = PoseidonSponge<Fq<N>, 2, 1>;
 pub type FiatShamirParameters<N> = <FiatShamir<N> as AlgebraicSponge<Fq<N>, 2>>::Parameters;
 
-/// Helper types for the Marlin proving and verifying key.
-pub(crate) type MarlinProvingKey<N> = CircuitProvingKey<<N as Environment>::PairingCurve, MarlinHidingMode>;
-pub(crate) type MarlinVerifyingKey<N> = CircuitVerifyingKey<<N as Environment>::PairingCurve, MarlinHidingMode>;
+/// Helper types for the Varuna proving and verifying key.
+pub(crate) type VarunaProvingKey<N> = CircuitProvingKey<<N as Environment>::PairingCurve, VarunaHidingMode>;
+pub(crate) type VarunaVerifyingKey<N> = CircuitVerifyingKey<<N as Environment>::PairingCurve>;
 
 pub trait Network:
     'static
@@ -89,46 +88,73 @@ pub trait Network:
     const INCLUSION_FUNCTION_NAME: &'static str;
 
     /// The fixed timestamp of the genesis block.
-    const GENESIS_TIMESTAMP: i64 = 1663718400; // 2022-09-21 00:00:00 UTC
+    const GENESIS_TIMESTAMP: i64 = 1680307200; // 2023-04-01 00:00:00 UTC
     /// The genesis block coinbase target.
-    const GENESIS_COINBASE_TARGET: u64 = (1u64 << 10).saturating_sub(1); // 11 1111 1111
+    const GENESIS_COINBASE_TARGET: u64 = (1u64 << 12).saturating_sub(1); // 1111 1111 1111
     /// The genesis block proof target.
-    const GENESIS_PROOF_TARGET: u64 = 8; // 00 0000 1000
+    const GENESIS_PROOF_TARGET: u64 = 32; // 0000 0010 0000
 
     /// The starting supply of Aleo credits.
-    const STARTING_SUPPLY: u64 = 1_100_000_000_000_000; // 1.1B credits
+    const STARTING_SUPPLY: u64 = 1_500_000_000_000_000; // 1.5B credits
+    /// The cost in microcredits per byte for the deployment transaction.
+    const DEPLOYMENT_FEE_MULTIPLIER: u64 = 1_000; // 1 millicredit per byte
+    /// The maximum number of microcredits that can be spent as a fee.
+    const MAX_FEE: u64 = 1_000_000_000_000_000;
 
-    /// The anchor time per block in seconds, which must be greater than the round time per block.
+    /// The anchor height, defined as the expected number of blocks to reach the coinbase target.
+    const ANCHOR_HEIGHT: u32 = Self::ANCHOR_TIME as u32 / Self::BLOCK_TIME as u32;
+    /// The anchor time in seconds.
     const ANCHOR_TIME: u16 = 25;
+    /// The expected time per block in seconds.
+    const BLOCK_TIME: u16 = 10;
     /// The coinbase puzzle degree.
     const COINBASE_PUZZLE_DEGREE: u32 = (1 << 13) - 1; // 8,191
     /// The maximum number of prover solutions that can be included per block.
-    const MAX_PROVER_SOLUTIONS: usize = 1 << 20; // 1,048,576 prover solutions
-    /// The number of blocks per epoch (1 hour).
-    const NUM_BLOCKS_PER_EPOCH: u32 = 1 << 8; // 256 blocks == ~1 hour
+    const MAX_PROVER_SOLUTIONS: usize = 1 << 8; // 256 prover solutions
+    /// The number of blocks per epoch.
+    const NUM_BLOCKS_PER_EPOCH: u32 = 3600 / Self::BLOCK_TIME as u32; // 360 blocks == ~1 hour
 
-    /// The maximum recursive depth of a value and/or entry.
+    /// The maximum number of entries in data.
+    const MAX_DATA_ENTRIES: usize = 32;
+    /// The maximum recursive depth of an entry.
     /// Note: This value must be strictly less than u8::MAX.
     const MAX_DATA_DEPTH: usize = 32;
-    /// The maximum number of values and/or entries in data.
-    const MAX_DATA_ENTRIES: usize = 32;
     /// The maximum number of fields in data (must not exceed u16::MAX).
     #[allow(clippy::cast_possible_truncation)]
     const MAX_DATA_SIZE_IN_FIELDS: u32 = ((128 * 1024 * 8) / Field::<Self>::SIZE_IN_DATA_BITS) as u32;
 
+    /// The minimum number of entries in a struct.
+    const MIN_STRUCT_ENTRIES: usize = 1; // This ensures the struct is not empty.
+    /// The maximum number of entries in a struct.
+    const MAX_STRUCT_ENTRIES: usize = Self::MAX_DATA_ENTRIES;
+
+    /// The minimum number of elements in an array.
+    const MIN_ARRAY_ELEMENTS: usize = 1; // This ensures the array is not empty.
+    /// The maximum number of elements in an array.
+    const MAX_ARRAY_ELEMENTS: usize = Self::MAX_DATA_ENTRIES;
+
+    /// The minimum number of entries in a record.
+    const MIN_RECORD_ENTRIES: usize = 1; // This accounts for 'record.owner'.
+    /// The maximum number of entries in a record.
+    const MAX_RECORD_ENTRIES: usize = Self::MIN_RECORD_ENTRIES.saturating_add(Self::MAX_DATA_ENTRIES);
+
+    /// The maximum number of mappings in a program.
+    const MAX_MAPPINGS: usize = 31;
     /// The maximum number of functions in a program.
-    const MAX_FUNCTIONS: usize = 15;
+    const MAX_FUNCTIONS: usize = 31;
     /// The maximum number of operands in an instruction.
     const MAX_OPERANDS: usize = Self::MAX_INPUTS;
     /// The maximum number of instructions in a closure or function.
     const MAX_INSTRUCTIONS: usize = u16::MAX as usize;
     /// The maximum number of commands in finalize.
-    const MAX_COMMANDS: usize = u8::MAX as usize;
+    const MAX_COMMANDS: usize = u16::MAX as usize;
+    /// The maximum number of write commands in finalize.
+    const MAX_WRITES: u16 = 16;
 
     /// The maximum number of inputs per transition.
-    const MAX_INPUTS: usize = 8;
+    const MAX_INPUTS: usize = 16;
     /// The maximum number of outputs per transition.
-    const MAX_OUTPUTS: usize = 8;
+    const MAX_OUTPUTS: usize = 16;
 
     /// The state root type.
     type StateRoot: Bech32ID<Field<Self>>;
@@ -143,16 +169,16 @@ pub trait Network:
     fn genesis_bytes() -> &'static [u8];
 
     /// Returns the proving key for the given function name in `credits.aleo`.
-    fn get_credits_proving_key(function_name: String) -> Result<&'static Arc<MarlinProvingKey<Self>>>;
+    fn get_credits_proving_key(function_name: String) -> Result<&'static Arc<VarunaProvingKey<Self>>>;
 
     /// Returns the verifying key for the given function name in `credits.aleo`.
-    fn get_credits_verifying_key(function_name: String) -> Result<&'static Arc<MarlinVerifyingKey<Self>>>;
+    fn get_credits_verifying_key(function_name: String) -> Result<&'static Arc<VarunaVerifyingKey<Self>>>;
 
     /// Returns the `proving key` for the inclusion circuit.
-    fn inclusion_proving_key() -> &'static Arc<MarlinProvingKey<Self>>;
+    fn inclusion_proving_key() -> &'static Arc<VarunaProvingKey<Self>>;
 
     /// Returns the `verifying key` for the inclusion circuit.
-    fn inclusion_verifying_key() -> &'static Arc<MarlinVerifyingKey<Self>>;
+    fn inclusion_verifying_key() -> &'static Arc<VarunaVerifyingKey<Self>>;
 
     /// Returns the powers of `G`.
     fn g_powers() -> &'static Vec<Group<Self>>;
@@ -160,11 +186,14 @@ pub trait Network:
     /// Returns the scalar multiplication on the generator `G`.
     fn g_scalar_multiply(scalar: &Scalar<Self>) -> Group<Self>;
 
-    /// Returns the sponge parameters for Marlin.
-    fn marlin_fs_parameters() -> &'static FiatShamirParameters<Self>;
+    /// Returns the Varuna universal prover.
+    fn varuna_universal_prover() -> &'static UniversalProver<Self::PairingCurve>;
 
-    /// Returns the balance commitment domain as a constant field element.
-    fn bcm_domain() -> Field<Self>;
+    /// Returns the Varuna universal verifier.
+    fn varuna_universal_verifier() -> &'static UniversalVerifier<Self::PairingCurve>;
+
+    /// Returns the sponge parameters for Varuna.
+    fn varuna_fs_parameters() -> &'static FiatShamirParameters<Self>;
 
     /// Returns the encryption domain as a constant field element.
     fn encryption_domain() -> Field<Self>;
@@ -172,32 +201,44 @@ pub trait Network:
     /// Returns the graph key domain as a constant field element.
     fn graph_key_domain() -> Field<Self>;
 
-    /// Returns the randomizer domain as a constant field element.
-    fn randomizer_domain() -> Field<Self>;
-
-    /// Returns the balance commitment randomizer domain as a constant field element.
-    fn r_bcm_domain() -> Field<Self>;
-
     /// Returns the serial number domain as a constant field element.
     fn serial_number_domain() -> Field<Self>;
 
-    /// Returns a BHP commitment with an input hasher of 256-bits.
+    /// Returns a BHP commitment with an input hasher of 256-bits and randomizer.
     fn commit_bhp256(input: &[bool], randomizer: &Scalar<Self>) -> Result<Field<Self>>;
 
-    /// Returns a BHP commitment with an input hasher of 512-bits.
+    /// Returns a BHP commitment with an input hasher of 512-bits and randomizer.
     fn commit_bhp512(input: &[bool], randomizer: &Scalar<Self>) -> Result<Field<Self>>;
 
-    /// Returns a BHP commitment with an input hasher of 768-bits.
+    /// Returns a BHP commitment with an input hasher of 768-bits and randomizer.
     fn commit_bhp768(input: &[bool], randomizer: &Scalar<Self>) -> Result<Field<Self>>;
 
-    /// Returns a BHP commitment with an input hasher of 1024-bits.
+    /// Returns a BHP commitment with an input hasher of 1024-bits and randomizer.
     fn commit_bhp1024(input: &[bool], randomizer: &Scalar<Self>) -> Result<Field<Self>>;
 
     /// Returns a Pedersen commitment for the given (up to) 64-bit input and randomizer.
-    fn commit_ped64(input: &[bool], randomizer: &Scalar<Self>) -> Result<Group<Self>>;
+    fn commit_ped64(input: &[bool], randomizer: &Scalar<Self>) -> Result<Field<Self>>;
 
     /// Returns a Pedersen commitment for the given (up to) 128-bit input and randomizer.
-    fn commit_ped128(input: &[bool], randomizer: &Scalar<Self>) -> Result<Group<Self>>;
+    fn commit_ped128(input: &[bool], randomizer: &Scalar<Self>) -> Result<Field<Self>>;
+
+    /// Returns a BHP commitment with an input hasher of 256-bits and randomizer.
+    fn commit_to_group_bhp256(input: &[bool], randomizer: &Scalar<Self>) -> Result<Group<Self>>;
+
+    /// Returns a BHP commitment with an input hasher of 512-bits and randomizer.
+    fn commit_to_group_bhp512(input: &[bool], randomizer: &Scalar<Self>) -> Result<Group<Self>>;
+
+    /// Returns a BHP commitment with an input hasher of 768-bits and randomizer.
+    fn commit_to_group_bhp768(input: &[bool], randomizer: &Scalar<Self>) -> Result<Group<Self>>;
+
+    /// Returns a BHP commitment with an input hasher of 1024-bits and randomizer.
+    fn commit_to_group_bhp1024(input: &[bool], randomizer: &Scalar<Self>) -> Result<Group<Self>>;
+
+    /// Returns a Pedersen commitment for the given (up to) 64-bit input and randomizer.
+    fn commit_to_group_ped64(input: &[bool], randomizer: &Scalar<Self>) -> Result<Group<Self>>;
+
+    /// Returns a Pedersen commitment for the given (up to) 128-bit input and randomizer.
+    fn commit_to_group_ped128(input: &[bool], randomizer: &Scalar<Self>) -> Result<Group<Self>>;
 
     /// Returns the BHP hash with an input hasher of 256-bits.
     fn hash_bhp256(input: &[bool]) -> Result<Field<Self>>;
@@ -210,6 +251,15 @@ pub trait Network:
 
     /// Returns the BHP hash with an input hasher of 1024-bits.
     fn hash_bhp1024(input: &[bool]) -> Result<Field<Self>>;
+
+    /// Returns the Keccak hash with a 256-bit output.
+    fn hash_keccak256(input: &[bool]) -> Result<Vec<bool>>;
+
+    /// Returns the Keccak hash with a 384-bit output.
+    fn hash_keccak384(input: &[bool]) -> Result<Vec<bool>>;
+
+    /// Returns the Keccak hash with a 512-bit output.
+    fn hash_keccak512(input: &[bool]) -> Result<Vec<bool>>;
 
     /// Returns the Pedersen hash for a given (up to) 64-bit input.
     fn hash_ped64(input: &[bool]) -> Result<Field<Self>>;
@@ -226,6 +276,15 @@ pub trait Network:
     /// Returns the Poseidon hash with an input rate of 8.
     fn hash_psd8(input: &[Field<Self>]) -> Result<Field<Self>>;
 
+    /// Returns the SHA-3 hash with a 256-bit output.
+    fn hash_sha3_256(input: &[bool]) -> Result<Vec<bool>>;
+
+    /// Returns the SHA-3 hash with a 384-bit output.
+    fn hash_sha3_384(input: &[bool]) -> Result<Vec<bool>>;
+
+    /// Returns the SHA-3 hash with a 512-bit output.
+    fn hash_sha3_512(input: &[bool]) -> Result<Vec<bool>>;
+
     /// Returns the extended Poseidon hash with an input rate of 2.
     fn hash_many_psd2(input: &[Field<Self>], num_outputs: u16) -> Vec<Field<Self>>;
 
@@ -234,6 +293,24 @@ pub trait Network:
 
     /// Returns the extended Poseidon hash with an input rate of 8.
     fn hash_many_psd8(input: &[Field<Self>], num_outputs: u16) -> Vec<Field<Self>>;
+
+    /// Returns the BHP hash with an input hasher of 256-bits.
+    fn hash_to_group_bhp256(input: &[bool]) -> Result<Group<Self>>;
+
+    /// Returns the BHP hash with an input hasher of 512-bits.
+    fn hash_to_group_bhp512(input: &[bool]) -> Result<Group<Self>>;
+
+    /// Returns the BHP hash with an input hasher of 768-bits.
+    fn hash_to_group_bhp768(input: &[bool]) -> Result<Group<Self>>;
+
+    /// Returns the BHP hash with an input hasher of 1024-bits.
+    fn hash_to_group_bhp1024(input: &[bool]) -> Result<Group<Self>>;
+
+    /// Returns the Pedersen hash for a given (up to) 64-bit input.
+    fn hash_to_group_ped64(input: &[bool]) -> Result<Group<Self>>;
+
+    /// Returns the Pedersen hash for a given (up to) 128-bit input.
+    fn hash_to_group_ped128(input: &[bool]) -> Result<Group<Self>>;
 
     /// Returns the Poseidon hash with an input rate of 2 on the affine curve.
     fn hash_to_group_psd2(input: &[Field<Self>]) -> Result<Group<Self>>;

@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use super::*;
 
@@ -47,22 +45,27 @@ impl<N: Network> StatePath<N> {
     ///                                                               |
     ///                                                       transaction_leaf
     ///                                                              |
-    ///                                                      transition_path
-    ///                                                             |
-    ///                                                    transition_leaf
+    ///                                                      transition_id := Hash( transition_root || tcm )
+    ///                                                                                  |
+    ///                                                                           transition_path
+    ///                                                                                 |
+    ///                                                                          transition_leaf
     /// ```
     pub fn verify(&self, is_global: bool, local_state_root: Field<N>) -> Result<()> {
         // Ensure the transition leaf variant is 3 (Input::Record).
         ensure!(self.transition_leaf.variant() == 3, "Transition leaf variant must be 3 (Input::Record)");
         // Ensure the transition path is valid.
         ensure!(
-            N::verify_merkle_path_bhp(
-                &self.transition_path,
-                &self.transaction_leaf.id(),
-                &self.transition_leaf.to_bits_le()
-            ),
+            N::verify_merkle_path_bhp(&self.transition_path, &self.transition_root, &self.transition_leaf.to_bits_le()),
             "'{}' (an input or output ID) does not belong to '{}' (a function or transition)",
             self.transition_leaf.id(),
+            self.transaction_leaf.id()
+        );
+
+        // Ensure the transaction leaf is correct.
+        ensure!(
+            *self.transaction_leaf.id() == *N::hash_bhp512(&(*self.transition_root, self.tcm).to_bits_le())?,
+            "Transaction leaf id '{}' is incorrect. Double-check the tcm and transition root.",
             self.transaction_leaf.id()
         );
 
@@ -102,9 +105,8 @@ impl<N: Network> StatePath<N> {
                 self.block_hash
             );
             // Ensure the block hash is correct.
-            let preimage = (*self.previous_block_hash).to_bits_le().into_iter().chain(self.header_root.to_bits_le());
             ensure!(
-                *self.block_hash == N::hash_bhp1024(&preimage.collect::<Vec<_>>())?,
+                *self.block_hash == N::hash_bhp1024(&to_bits_le![(*self.previous_block_hash), self.header_root])?,
                 "Block hash '{}' is incorrect. Double-check the previous block hash and block header root.",
                 self.block_hash
             );
@@ -192,6 +194,8 @@ mod tests {
                 *state_path.transaction_id(),
                 state_path.transaction_path().clone(),
                 *state_path.transaction_leaf(),
+                *state_path.transition_root(),
+                *state_path.tcm(),
                 state_path.transition_path().clone(),
                 *state_path.transition_leaf(),
             )

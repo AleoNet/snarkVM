@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #[cfg(test)]
 use snarkvm_circuit_types::environment::assert_scope;
@@ -23,7 +21,7 @@ mod verify;
 use crate::{Identifier, Plaintext, ProgramID, Record, Value};
 use snarkvm_circuit_account::Signature;
 use snarkvm_circuit_network::Aleo;
-use snarkvm_circuit_types::{environment::prelude::*, Address, Boolean, Equal, Field, Group, Scalar, U16};
+use snarkvm_circuit_types::{environment::prelude::*, Address, Boolean, Field, Group, Scalar, U16};
 
 pub enum InputID<A: Aleo> {
     /// The hash of the constant input.
@@ -118,8 +116,8 @@ impl<A: Aleo> ToFields for InputID<A> {
 }
 
 pub struct Request<A: Aleo> {
-    /// The request caller.
-    caller: Address<A>,
+    /// The request signer.
+    signer: Address<A>,
     /// The network ID.
     network_id: U16<A>,
     /// The program ID.
@@ -212,7 +210,7 @@ impl<A: Aleo> Inject for Request<A> {
         };
 
         Self {
-            caller: Address::new(mode, *request.caller()),
+            signer: Address::new(mode, *request.signer()),
             network_id: U16::new(Mode::Constant, *request.network_id()),
             program_id: ProgramID::new(Mode::Constant, *request.program_id()),
             function_name: Identifier::new(Mode::Constant, *request.function_name()),
@@ -228,9 +226,9 @@ impl<A: Aleo> Inject for Request<A> {
 }
 
 impl<A: Aleo> Request<A> {
-    /// Returns the request caller.
-    pub const fn caller(&self) -> &Address<A> {
-        &self.caller
+    /// Returns the request signer.
+    pub const fn signer(&self) -> &Address<A> {
+        &self.signer
     }
 
     /// Returns the network ID.
@@ -290,7 +288,7 @@ impl<A: Aleo> Eject for Request<A> {
 
     /// Ejects the mode of the request.
     fn eject_mode(&self) -> Mode {
-        Mode::combine(self.caller.eject_mode(), [
+        Mode::combine(self.signer.eject_mode(), [
             self.network_id.eject_mode(),
             self.program_id.eject_mode(),
             self.function_name.eject_mode(),
@@ -307,7 +305,7 @@ impl<A: Aleo> Eject for Request<A> {
     /// Ejects the request as a primitive.
     fn eject_value(&self) -> Self::Primitive {
         Self::Primitive::from((
-            self.caller.eject_value(),
+            self.signer.eject_value(),
             self.network_id.eject_value(),
             self.program_id.eject_value(),
             self.function_name.eject_value(),

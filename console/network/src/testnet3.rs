@@ -1,27 +1,31 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use super::*;
 use snarkvm_console_algorithms::{
     Blake2Xs,
+    Keccak256,
+    Keccak384,
+    Keccak512,
     Pedersen128,
     Pedersen64,
     Poseidon2,
     Poseidon4,
     Poseidon8,
+    Sha3_256,
+    Sha3_384,
+    Sha3_512,
     BHP1024,
     BHP256,
     BHP512,
@@ -32,19 +36,13 @@ lazy_static! {
     /// The group bases for the Aleo signature and encryption schemes.
     pub static ref GENERATOR_G: Vec<Group<Testnet3>> = Testnet3::new_bases("AleoAccountEncryptionAndSignatureScheme0");
 
-    /// The Marlin sponge parameters.
-    pub static ref MARLIN_FS_PARAMETERS: FiatShamirParameters<Testnet3> = FiatShamir::<Testnet3>::sample_parameters();
+    /// The Varuna sponge parameters.
+    pub static ref VARUNA_FS_PARAMETERS: FiatShamirParameters<Testnet3> = FiatShamir::<Testnet3>::sample_parameters();
 
-    /// The balance commitment domain as a constant field element.
-    pub static ref BCM_DOMAIN: Field<Testnet3> = Field::<Testnet3>::new_domain_separator("AleoBalanceCommitment0");
     /// The encryption domain as a constant field element.
     pub static ref ENCRYPTION_DOMAIN: Field<Testnet3> = Field::<Testnet3>::new_domain_separator("AleoSymmetricEncryption0");
     /// The graph key domain as a constant field element.
     pub static ref GRAPH_KEY_DOMAIN: Field<Testnet3> = Field::<Testnet3>::new_domain_separator("AleoGraphKey0");
-    /// The randomizer domain as a constant field element.
-    pub static ref RANDOMIZER_DOMAIN: Field<Testnet3> = Field::<Testnet3>::new_domain_separator("AleoRandomizer0");
-    /// The balance commitment randomizer domain as a constant field element.
-    pub static ref R_BCM_DOMAIN: Field<Testnet3> = Field::<Testnet3>::new_domain_separator("AleoBalanceRandomizer0");
     /// The serial number domain as a constant field element.
     pub static ref SERIAL_NUMBER_DOMAIN: Field<Testnet3> = Field::<Testnet3>::new_domain_separator("AleoSerialNumber0");
 
@@ -69,17 +67,19 @@ lazy_static! {
     /// The Poseidon hash function, using a rate of 8.
     pub static ref POSEIDON_8: Poseidon8<Testnet3> = Poseidon8::<Testnet3>::setup("AleoPoseidon8").expect("Failed to setup Poseidon8");
 
-    pub static ref CREDITS_PROVING_KEYS: IndexMap<String, Arc<MarlinProvingKey<Console>>> = {
+    pub static ref CREDITS_PROVING_KEYS: IndexMap<String, Arc<VarunaProvingKey<Console>>> = {
         let mut map = IndexMap::new();
-        snarkvm_parameters::insert_credit_keys!(map, MarlinProvingKey<Console>, Prover);
+        snarkvm_parameters::insert_credit_keys!(map, VarunaProvingKey<Console>, Prover);
         map
     };
-    pub static ref CREDITS_VERIFYING_KEYS: IndexMap<String, Arc<MarlinVerifyingKey<Console>>> = {
+    pub static ref CREDITS_VERIFYING_KEYS: IndexMap<String, Arc<VarunaVerifyingKey<Console>>> = {
         let mut map = IndexMap::new();
-        snarkvm_parameters::insert_credit_keys!(map, MarlinVerifyingKey<Console>, Verifier);
+        snarkvm_parameters::insert_credit_keys!(map, VarunaVerifyingKey<Console>, Verifier);
         map
     };
 }
+
+pub const TRANSACTION_PREFIX: &str = "at";
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Testnet3;
@@ -125,7 +125,7 @@ impl Network for Testnet3 {
     /// The state root type.
     type StateRoot = AleoID<Field<Self>, { hrp2!("ar") }>;
     /// The transaction ID type.
-    type TransactionID = AleoID<Field<Self>, { hrp2!("at") }>;
+    type TransactionID = AleoID<Field<Self>, { hrp2!(TRANSACTION_PREFIX) }>;
     /// The transition ID type.
     type TransitionID = AleoID<Field<Self>, { hrp2!("as") }>;
 
@@ -144,38 +144,38 @@ impl Network for Testnet3 {
     }
 
     /// Returns the proving key for the given function name in `credits.aleo`.
-    fn get_credits_proving_key(function_name: String) -> Result<&'static Arc<MarlinProvingKey<Self>>> {
+    fn get_credits_proving_key(function_name: String) -> Result<&'static Arc<VarunaProvingKey<Self>>> {
         CREDITS_PROVING_KEYS
             .get(&function_name)
             .ok_or_else(|| anyhow!("Proving key for credits.aleo/{function_name}' not found"))
     }
 
     /// Returns the verifying key for the given function name in `credits.aleo`.
-    fn get_credits_verifying_key(function_name: String) -> Result<&'static Arc<MarlinVerifyingKey<Self>>> {
+    fn get_credits_verifying_key(function_name: String) -> Result<&'static Arc<VarunaVerifyingKey<Self>>> {
         CREDITS_VERIFYING_KEYS
             .get(&function_name)
             .ok_or_else(|| anyhow!("Verifying key for credits.aleo/{function_name}' not found"))
     }
 
     /// Returns the `proving key` for the inclusion circuit.
-    fn inclusion_proving_key() -> &'static Arc<MarlinProvingKey<Self>> {
-        static INSTANCE: OnceCell<Arc<MarlinProvingKey<Console>>> = OnceCell::new();
+    fn inclusion_proving_key() -> &'static Arc<VarunaProvingKey<Self>> {
+        static INSTANCE: OnceCell<Arc<VarunaProvingKey<Console>>> = OnceCell::new();
         INSTANCE.get_or_init(|| {
-            // Skipping the first 2 bytes, which is the encoded version.
+            // Skipping the first byte, which is the encoded version.
             Arc::new(
-                CircuitProvingKey::from_bytes_le(&snarkvm_parameters::testnet3::INCLUSION_PROVING_KEY[2..])
+                CircuitProvingKey::from_bytes_le(&snarkvm_parameters::testnet3::INCLUSION_PROVING_KEY[1..])
                     .expect("Failed to load inclusion proving key."),
             )
         })
     }
 
     /// Returns the `verifying key` for the inclusion circuit.
-    fn inclusion_verifying_key() -> &'static Arc<MarlinVerifyingKey<Self>> {
-        static INSTANCE: OnceCell<Arc<MarlinVerifyingKey<Console>>> = OnceCell::new();
+    fn inclusion_verifying_key() -> &'static Arc<VarunaVerifyingKey<Self>> {
+        static INSTANCE: OnceCell<Arc<VarunaVerifyingKey<Console>>> = OnceCell::new();
         INSTANCE.get_or_init(|| {
-            // Skipping the first 2 bytes, which is the encoded version.
+            // Skipping the first byte, which is the encoded version.
             Arc::new(
-                CircuitVerifyingKey::from_bytes_le(&snarkvm_parameters::testnet3::INCLUSION_VERIFYING_KEY[2..])
+                CircuitVerifyingKey::from_bytes_le(&snarkvm_parameters::testnet3::INCLUSION_VERIFYING_KEY[1..])
                     .expect("Failed to load inclusion verifying key."),
             )
         })
@@ -198,14 +198,31 @@ impl Network for Testnet3 {
             .sum()
     }
 
-    /// Returns the sponge parameters used for the sponge in the Marlin SNARK.
-    fn marlin_fs_parameters() -> &'static FiatShamirParameters<Self> {
-        &MARLIN_FS_PARAMETERS
+    /// Returns the Varuna universal prover.
+    fn varuna_universal_prover() -> &'static UniversalProver<Self::PairingCurve> {
+        static INSTANCE: OnceCell<UniversalProver<<Console as Environment>::PairingCurve>> = OnceCell::new();
+        INSTANCE.get_or_init(|| {
+            snarkvm_algorithms::polycommit::kzg10::UniversalParams::load()
+                .expect("Failed to load universal SRS (KZG10).")
+                .to_universal_prover()
+                .expect("Failed to convert universal SRS (KZG10) to the prover.")
+        })
     }
 
-    /// Returns the balance commitment domain as a constant field element.
-    fn bcm_domain() -> Field<Self> {
-        *BCM_DOMAIN
+    /// Returns the Varuna universal verifier.
+    fn varuna_universal_verifier() -> &'static UniversalVerifier<Self::PairingCurve> {
+        static INSTANCE: OnceCell<UniversalVerifier<<Console as Environment>::PairingCurve>> = OnceCell::new();
+        INSTANCE.get_or_init(|| {
+            snarkvm_algorithms::polycommit::kzg10::UniversalParams::load()
+                .expect("Failed to load universal SRS (KZG10).")
+                .to_universal_verifier()
+                .expect("Failed to convert universal SRS (KZG10) to the verifier.")
+        })
+    }
+
+    /// Returns the sponge parameters used for the sponge in the Varuna SNARK.
+    fn varuna_fs_parameters() -> &'static FiatShamirParameters<Self> {
+        &VARUNA_FS_PARAMETERS
     }
 
     /// Returns the encryption domain as a constant field element.
@@ -218,48 +235,68 @@ impl Network for Testnet3 {
         *GRAPH_KEY_DOMAIN
     }
 
-    /// Returns the randomizer domain as a constant field element.
-    fn randomizer_domain() -> Field<Self> {
-        *RANDOMIZER_DOMAIN
-    }
-
-    /// Returns the balance commitment randomizer domain as a constant field element.
-    fn r_bcm_domain() -> Field<Self> {
-        *R_BCM_DOMAIN
-    }
-
     /// Returns the serial number domain as a constant field element.
     fn serial_number_domain() -> Field<Self> {
         *SERIAL_NUMBER_DOMAIN
     }
 
-    /// Returns a BHP commitment with an input hasher of 256-bits.
+    /// Returns a BHP commitment with an input hasher of 256-bits and randomizer.
     fn commit_bhp256(input: &[bool], randomizer: &Scalar<Self>) -> Result<Field<Self>> {
         BHP_256.commit(input, randomizer)
     }
 
-    /// Returns a BHP commitment with an input hasher of 512-bits.
+    /// Returns a BHP commitment with an input hasher of 512-bits and randomizer.
     fn commit_bhp512(input: &[bool], randomizer: &Scalar<Self>) -> Result<Field<Self>> {
         BHP_512.commit(input, randomizer)
     }
 
-    /// Returns a BHP commitment with an input hasher of 768-bits.
+    /// Returns a BHP commitment with an input hasher of 768-bits and randomizer.
     fn commit_bhp768(input: &[bool], randomizer: &Scalar<Self>) -> Result<Field<Self>> {
         BHP_768.commit(input, randomizer)
     }
 
-    /// Returns a BHP commitment with an input hasher of 1024-bits.
+    /// Returns a BHP commitment with an input hasher of 1024-bits and randomizer.
     fn commit_bhp1024(input: &[bool], randomizer: &Scalar<Self>) -> Result<Field<Self>> {
         BHP_1024.commit(input, randomizer)
     }
 
     /// Returns a Pedersen commitment for the given (up to) 64-bit input and randomizer.
-    fn commit_ped64(input: &[bool], randomizer: &Scalar<Self>) -> Result<Group<Self>> {
+    fn commit_ped64(input: &[bool], randomizer: &Scalar<Self>) -> Result<Field<Self>> {
+        PEDERSEN_64.commit(input, randomizer)
+    }
+
+    /// Returns a Pedersen commitment for the given (up to) 128-bit input and randomizer.
+    fn commit_ped128(input: &[bool], randomizer: &Scalar<Self>) -> Result<Field<Self>> {
+        PEDERSEN_128.commit(input, randomizer)
+    }
+
+    /// Returns a BHP commitment with an input hasher of 256-bits and randomizer.
+    fn commit_to_group_bhp256(input: &[bool], randomizer: &Scalar<Self>) -> Result<Group<Self>> {
+        BHP_256.commit_uncompressed(input, randomizer)
+    }
+
+    /// Returns a BHP commitment with an input hasher of 512-bits and randomizer.
+    fn commit_to_group_bhp512(input: &[bool], randomizer: &Scalar<Self>) -> Result<Group<Self>> {
+        BHP_512.commit_uncompressed(input, randomizer)
+    }
+
+    /// Returns a BHP commitment with an input hasher of 768-bits and randomizer.
+    fn commit_to_group_bhp768(input: &[bool], randomizer: &Scalar<Self>) -> Result<Group<Self>> {
+        BHP_768.commit_uncompressed(input, randomizer)
+    }
+
+    /// Returns a BHP commitment with an input hasher of 1024-bits and randomizer.
+    fn commit_to_group_bhp1024(input: &[bool], randomizer: &Scalar<Self>) -> Result<Group<Self>> {
+        BHP_1024.commit_uncompressed(input, randomizer)
+    }
+
+    /// Returns a Pedersen commitment for the given (up to) 64-bit input and randomizer.
+    fn commit_to_group_ped64(input: &[bool], randomizer: &Scalar<Self>) -> Result<Group<Self>> {
         PEDERSEN_64.commit_uncompressed(input, randomizer)
     }
 
     /// Returns a Pedersen commitment for the given (up to) 128-bit input and randomizer.
-    fn commit_ped128(input: &[bool], randomizer: &Scalar<Self>) -> Result<Group<Self>> {
+    fn commit_to_group_ped128(input: &[bool], randomizer: &Scalar<Self>) -> Result<Group<Self>> {
         PEDERSEN_128.commit_uncompressed(input, randomizer)
     }
 
@@ -281,6 +318,21 @@ impl Network for Testnet3 {
     /// Returns the BHP hash with an input hasher of 1024-bits.
     fn hash_bhp1024(input: &[bool]) -> Result<Field<Self>> {
         BHP_1024.hash(input)
+    }
+
+    /// Returns the Keccak hash with a 256-bit output.
+    fn hash_keccak256(input: &[bool]) -> Result<Vec<bool>> {
+        Keccak256::default().hash(input)
+    }
+
+    /// Returns the Keccak hash with a 384-bit output.
+    fn hash_keccak384(input: &[bool]) -> Result<Vec<bool>> {
+        Keccak384::default().hash(input)
+    }
+
+    /// Returns the Keccak hash with a 512-bit output.
+    fn hash_keccak512(input: &[bool]) -> Result<Vec<bool>> {
+        Keccak512::default().hash(input)
     }
 
     /// Returns the Pedersen hash for a given (up to) 64-bit input.
@@ -308,6 +360,21 @@ impl Network for Testnet3 {
         POSEIDON_8.hash(input)
     }
 
+    /// Returns the SHA-3 hash with a 256-bit output.
+    fn hash_sha3_256(input: &[bool]) -> Result<Vec<bool>> {
+        Sha3_256::default().hash(input)
+    }
+
+    /// Returns the SHA-3 hash with a 384-bit output.
+    fn hash_sha3_384(input: &[bool]) -> Result<Vec<bool>> {
+        Sha3_384::default().hash(input)
+    }
+
+    /// Returns the SHA-3 hash with a 512-bit output.
+    fn hash_sha3_512(input: &[bool]) -> Result<Vec<bool>> {
+        Sha3_512::default().hash(input)
+    }
+
     /// Returns the extended Poseidon hash with an input rate of 2.
     fn hash_many_psd2(input: &[Field<Self>], num_outputs: u16) -> Vec<Field<Self>> {
         POSEIDON_2.hash_many(input, num_outputs)
@@ -321,6 +388,36 @@ impl Network for Testnet3 {
     /// Returns the extended Poseidon hash with an input rate of 8.
     fn hash_many_psd8(input: &[Field<Self>], num_outputs: u16) -> Vec<Field<Self>> {
         POSEIDON_8.hash_many(input, num_outputs)
+    }
+
+    /// Returns the BHP hash with an input hasher of 256-bits.
+    fn hash_to_group_bhp256(input: &[bool]) -> Result<Group<Self>> {
+        BHP_256.hash_uncompressed(input)
+    }
+
+    /// Returns the BHP hash with an input hasher of 512-bits.
+    fn hash_to_group_bhp512(input: &[bool]) -> Result<Group<Self>> {
+        BHP_512.hash_uncompressed(input)
+    }
+
+    /// Returns the BHP hash with an input hasher of 768-bits.
+    fn hash_to_group_bhp768(input: &[bool]) -> Result<Group<Self>> {
+        BHP_768.hash_uncompressed(input)
+    }
+
+    /// Returns the BHP hash with an input hasher of 1024-bits.
+    fn hash_to_group_bhp1024(input: &[bool]) -> Result<Group<Self>> {
+        BHP_1024.hash_uncompressed(input)
+    }
+
+    /// Returns the Pedersen hash for a given (up to) 64-bit input.
+    fn hash_to_group_ped64(input: &[bool]) -> Result<Group<Self>> {
+        PEDERSEN_64.hash_uncompressed(input)
+    }
+
+    /// Returns the Pedersen hash for a given (up to) 128-bit input.
+    fn hash_to_group_ped128(input: &[bool]) -> Result<Group<Self>> {
+        PEDERSEN_128.hash_uncompressed(input)
     }
 
     /// Returns the Poseidon hash with an input rate of 2 on the affine curve.

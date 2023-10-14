@@ -1,25 +1,27 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use super::*;
 
 impl<E: Environment, I: IntegerType> FromField for Integer<E, I> {
     type Field = Field<E>;
 
-    /// Initialize an integer from a field element.
+    /// Casts an integer from a base field.
+    ///
+    /// This method guarantees the following:
+    ///   1. If the field element is larger than the integer domain, then the operation will fail.
+    ///   2. If the field element is smaller than the integer domain, then the operation will succeed.
     fn from_field(field: &Self::Field) -> Result<Self> {
         // Note: We are reconstituting the integer from the base field.
         // This is safe as the number of bits in the integer is less than the base field modulus,
@@ -33,7 +35,7 @@ impl<E: Environment, I: IntegerType> FromField for Integer<E, I> {
         let (bits_le, zero_bits) = bits_le.split_at(Self::size_in_bits());
 
         // Ensure the unused upper bits are all zero.
-        ensure!(zero_bits.iter().all(|&bit| !bit), "Failed to convert integer to field: upper bits are not zero");
+        ensure!(zero_bits.iter().all(|&bit| !bit), "Failed to convert field to integer: upper bits are not zero");
 
         // Return the integer.
         Self::from_bits_le(bits_le)
@@ -59,6 +61,26 @@ mod tests {
             // Perform the operation.
             let candidate = Integer::from_field(&expected.to_field()?)?;
             assert_eq!(expected, candidate);
+
+            // Sample a random field.
+            let expected = Field::<CurrentEnvironment>::rand(&mut rng);
+            // Determine the integer domain.
+            let integer_max = match I::type_name() {
+                "u8" | "i8" => Field::<CurrentEnvironment>::from_u8(u8::MAX),
+                "u16" | "i16" => Field::<CurrentEnvironment>::from_u16(u16::MAX),
+                "u32" | "i32" => Field::<CurrentEnvironment>::from_u32(u32::MAX),
+                "u64" | "i64" => Field::<CurrentEnvironment>::from_u64(u64::MAX),
+                "u128" | "i128" => Field::<CurrentEnvironment>::from_u128(u128::MAX),
+                _ => panic!("Unsupported integer type."),
+            };
+            // Filter for field elements that exceed the integer domain.
+            if expected > integer_max {
+                // Perform the operation.
+                assert!(Integer::<_, I>::from_field(&expected).is_err());
+            } else {
+                // Perform the operation.
+                assert!(Integer::<_, I>::from_field(&expected).is_ok());
+            }
         }
         Ok(())
     }

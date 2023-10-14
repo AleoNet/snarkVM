@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use super::*;
 
@@ -34,27 +32,35 @@ impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> HashUncompres
         // The maximum number of input bits per iteration.
         let max_input_bits_per_iteration = num_hasher_bits - num_data_bits;
 
+        debug_assert!(num_data_bits < num_hasher_bits);
+        debug_assert_eq!(num_data_bits - 64, self.domain.len());
+
         // Initialize a variable to store the hash from the current iteration.
         let mut digest = Group::zero();
 
         // Compute the hash of the input.
         for (i, input_bits) in input.chunks(max_input_bits_per_iteration).enumerate() {
-            // Initialize a vector for the hash preimage.
-            let mut preimage = Vec::with_capacity(num_hasher_bits);
             // Determine if this is the first iteration.
-            match i == 0 {
+            let preimage = match i == 0 {
                 // Construct the first iteration as: [ 0...0 || DOMAIN || LENGTH(INPUT) || INPUT[0..BLOCK_SIZE] ].
                 true => {
+                    // Initialize a vector for the hash preimage.
+                    let mut preimage = Vec::with_capacity(num_hasher_bits);
                     preimage.extend(self.domain.clone());
-                    preimage.extend(U64::constant(console::U64::new(input.len() as u64)).to_bits_le());
+                    U64::constant(console::U64::new(input.len() as u64)).write_bits_le(&mut preimage);
                     preimage.extend_from_slice(input_bits);
+                    preimage
                 }
                 // Construct the subsequent iterations as: [ PREVIOUS_HASH[0..DATA_BITS] || INPUT[I * BLOCK_SIZE..(I + 1) * BLOCK_SIZE] ].
                 false => {
-                    preimage.extend(digest.to_x_coordinate().to_bits_le().into_iter().take(num_data_bits));
+                    // Initialize a vector for the hash preimage.
+                    let mut preimage = Vec::with_capacity(num_hasher_bits);
+                    digest.to_x_coordinate().write_bits_le(&mut preimage);
+                    preimage.truncate(num_data_bits);
                     preimage.extend_from_slice(input_bits);
+                    preimage
                 }
-            }
+            };
             // Hash the preimage for this iteration.
             digest = self.hasher.hash_uncompressed(&preimage);
         }
@@ -67,7 +73,7 @@ impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> HashUncompres
 mod tests {
     use super::*;
     use snarkvm_circuit_types::environment::Circuit;
-    use snarkvm_curves::ProjectiveCurve;
+    use snarkvm_curves::{AffineCurve, ProjectiveCurve};
     use snarkvm_utilities::{TestRng, Uniform};
 
     use anyhow::Result;
@@ -146,12 +152,12 @@ mod tests {
 
     #[test]
     fn test_hash_uncompressed_public() -> Result<()> {
-        check_hash_uncompressed::<32, 48>(Mode::Public, 470, 0, 8522, 8523)
+        check_hash_uncompressed::<32, 48>(Mode::Public, 470, 0, 8774, 8776)
     }
 
     #[test]
     fn test_hash_uncompressed_private() -> Result<()> {
-        check_hash_uncompressed::<32, 48>(Mode::Private, 470, 0, 8522, 8523)
+        check_hash_uncompressed::<32, 48>(Mode::Private, 470, 0, 8774, 8776)
     }
 
     #[test]
@@ -221,7 +227,7 @@ mod tests {
         let mut rng = TestRng::default();
         check_hash_uncompressed!(BHP1024, Public, 1043, (413, 0, 1775, 1775), &mut rng)?;
         check_hash_uncompressed!(BHP1024, Public, 1044, (413, 0, 1775, 1775), &mut rng)?;
-        check_hash_uncompressed!(BHP1024, Public, 1046, (418, 0, 2457, 2458), &mut rng)
+        check_hash_uncompressed!(BHP1024, Public, 1046, (418, 0, 2709, 2711), &mut rng)
     }
 
     #[test]
@@ -229,14 +235,14 @@ mod tests {
         let mut rng = TestRng::default();
         check_hash_uncompressed!(BHP1024, Private, 1043, (413, 0, 1775, 1775), &mut rng)?;
         check_hash_uncompressed!(BHP1024, Private, 1044, (413, 0, 1775, 1775), &mut rng)?;
-        check_hash_uncompressed!(BHP1024, Private, 1046, (418, 0, 2457, 2458), &mut rng)
+        check_hash_uncompressed!(BHP1024, Private, 1046, (418, 0, 2709, 2711), &mut rng)
     }
 
     #[test]
     fn test_hash_uncompressed_cost_comparison() -> Result<()> {
         // The cost to hash 512 bits for each BHP variant is:
         let mut rng = TestRng::default();
-        check_hash_uncompressed!(BHP256, Private, 512, (410, 0, 1547, 1548), &mut rng)?;
+        check_hash_uncompressed!(BHP256, Private, 512, (410, 0, 1799, 1801), &mut rng)?;
         check_hash_uncompressed!(BHP512, Private, 512, (409, 0, 880, 880), &mut rng)?;
         check_hash_uncompressed!(BHP768, Private, 512, (423, 0, 900, 900), &mut rng)?;
         check_hash_uncompressed!(BHP1024, Private, 512, (407, 0, 875, 875), &mut rng)

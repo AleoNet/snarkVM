@@ -1,30 +1,27 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use super::*;
 
 impl<N: Network> Parser for FinalizeType<N> {
-    /// Parses the string into a finalize type.
+    /// Parses a string into a finalize type.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
-        // Parse the mode from the string.
+        // Parse the mode from the string (ordering matters).
         alt((
-            map(pair(PlaintextType::parse, tag(".public")), |(plaintext_type, _)| Self::Public(plaintext_type)),
-            map(pair(Identifier::parse, tag(".record")), |(identifier, _)| Self::Record(identifier)),
-            map(pair(Locator::parse, tag(".record")), |(locator, _)| Self::ExternalRecord(locator)),
+            map(pair(Locator::parse, tag(".future")), |(locator, _)| Self::Future(locator)),
+            map(pair(PlaintextType::parse, tag(".public")), |(plaintext_type, _)| Self::Plaintext(plaintext_type)),
         ))(string)
     }
 }
@@ -32,7 +29,7 @@ impl<N: Network> Parser for FinalizeType<N> {
 impl<N: Network> FromStr for FinalizeType<N> {
     type Err = Error;
 
-    /// Returns the finalize type from a string literal.
+    /// Returns a finalize type from a string literal.
     fn from_str(string: &str) -> Result<Self> {
         match Self::parse(string) {
             Ok((remainder, object)) => {
@@ -57,9 +54,10 @@ impl<N: Network> Display for FinalizeType<N> {
     /// Prints the finalize type as a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         match self {
-            Self::Public(plaintext_type) => write!(f, "{plaintext_type}.public"),
-            Self::Record(identifier) => write!(f, "{identifier}.record"),
-            Self::ExternalRecord(locator) => write!(f, "{locator}.record"),
+            // Prints the plaintext type, i.e. signature
+            Self::Plaintext(plaintext_type) => write!(f, "{plaintext_type}.public"),
+            // Prints the future type, i.e. future
+            Self::Future(locator) => write!(f, "{locator}.future"),
         }
     }
 }
@@ -75,34 +73,20 @@ mod tests {
     fn test_parse() -> Result<()> {
         // Literal type.
         assert_eq!(
-            Ok(("", FinalizeType::<CurrentNetwork>::from_str("field.public")?)),
+            Ok(("", FinalizeType::<CurrentNetwork>::Plaintext(PlaintextType::from_str("field")?))),
             FinalizeType::<CurrentNetwork>::parse("field.public")
         );
 
         // Struct type.
         assert_eq!(
-            Ok(("", FinalizeType::<CurrentNetwork>::from_str("signature.public")?)),
+            Ok(("", FinalizeType::<CurrentNetwork>::Plaintext(PlaintextType::from_str("signature")?))),
             FinalizeType::<CurrentNetwork>::parse("signature.public")
         );
 
-        // Record type.
+        // Future type.
         assert_eq!(
-            Ok(("", FinalizeType::<CurrentNetwork>::from_str("token.record")?)),
-            FinalizeType::<CurrentNetwork>::parse("token.record")
-        );
-        assert_eq!(
-            FinalizeType::<CurrentNetwork>::Record(Identifier::from_str("message")?),
-            FinalizeType::<CurrentNetwork>::parse("message.record")?.1
-        );
-
-        // ExternalRecord type.
-        assert_eq!(
-            Ok(("", FinalizeType::<CurrentNetwork>::from_str("howard.aleo/message.record")?)),
-            FinalizeType::<CurrentNetwork>::parse("howard.aleo/message.record")
-        );
-        assert_eq!(
-            FinalizeType::<CurrentNetwork>::ExternalRecord(Locator::from_str("howard.aleo/message")?),
-            FinalizeType::<CurrentNetwork>::parse("howard.aleo/message.record")?.1
+            Ok(("", FinalizeType::<CurrentNetwork>::Future(Locator::from_str("credits.aleo/mint_public")?))),
+            FinalizeType::<CurrentNetwork>::parse("credits.aleo/mint_public.future")
         );
 
         Ok(())
@@ -110,13 +94,6 @@ mod tests {
 
     #[test]
     fn test_parse_fails() -> Result<()> {
-        // Literal type must contain visibility.
-        assert!(FinalizeType::<CurrentNetwork>::parse("field").is_err());
-        // Struct type must contain visibility.
-        assert!(FinalizeType::<CurrentNetwork>::parse("signature").is_err());
-        // Record type must contain record keyword.
-        assert!(FinalizeType::<CurrentNetwork>::parse("token").is_err());
-
         // Must be non-empty.
         assert!(FinalizeType::<CurrentNetwork>::parse("").is_err());
 
@@ -152,14 +129,10 @@ mod tests {
     #[test]
     fn test_display() -> Result<()> {
         assert_eq!(FinalizeType::<CurrentNetwork>::from_str("field.public")?.to_string(), "field.public");
-
         assert_eq!(FinalizeType::<CurrentNetwork>::from_str("signature.public")?.to_string(), "signature.public");
-
-        assert_eq!(FinalizeType::<CurrentNetwork>::from_str("token.record")?.to_string(), "token.record");
-
         assert_eq!(
-            FinalizeType::<CurrentNetwork>::from_str("howard.aleo/message.record")?.to_string(),
-            "howard.aleo/message.record"
+            FinalizeType::<CurrentNetwork>::from_str("credits.aleo/mint_public.future")?.to_string(),
+            "credits.aleo/mint_public.future"
         );
 
         Ok(())

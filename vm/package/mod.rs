@@ -1,22 +1,21 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 mod build;
 mod clean;
 mod deploy;
+mod execute;
 mod is_build_required;
 mod run;
 
@@ -24,22 +23,19 @@ pub use build::{BuildRequest, BuildResponse};
 pub use deploy::{DeployRequest, DeployResponse};
 
 use crate::{
-    file::{AVMFile, AleoFile, Manifest, ProverFile, VerifierFile, README},
-    prelude::{
-        Deserialize,
-        Deserializer,
-        Identifier,
-        Locator,
-        Network,
-        PrivateKey,
-        ProgramID,
-        Response,
-        Serialize,
-        SerializeStruct,
-        Serializer,
-        Value,
+    console::{
+        account::PrivateKey,
+        network::Network,
+        program::{Identifier, Locator, ProgramID, Response, Value},
     },
-    synthesizer::{CallOperator, Execution, Inclusion, Instruction, Process, Program, ProvingKey, VerifyingKey},
+    file::{AVMFile, AleoFile, Manifest, ProverFile, VerifierFile, README},
+    ledger::{block::Execution, query::Query, store::helpers::memory::BlockMemory},
+    prelude::{Deserialize, Deserializer, Serialize, SerializeStruct, Serializer},
+    synthesizer::{
+        process::{Assignments, CallMetrics, CallStack, Process, StackExecute},
+        program::{CallOperator, Instruction, Program},
+        snark::{ProvingKey, VerifyingKey},
+    },
 };
 
 use anyhow::{bail, ensure, Error, Result};
@@ -188,28 +184,21 @@ pub(crate) mod test_helpers {
         tempfile::tempdir().expect("Failed to open temporary directory").into_path()
     }
 
-    /// Samples a (temporary) package containing a main program.
-    pub(crate) fn sample_package() -> (PathBuf, Package<CurrentNetwork>) {
-        // Initialize a temporary directory.
-        let directory = temp_dir();
-
-        // Initialize the program ID.
-        let program_id = ProgramID::<CurrentNetwork>::from_str("token.aleo").unwrap();
-
+    /// Samples a (temporary) package containing a `token.aleo` program.
+    pub(crate) fn sample_token_package() -> (PathBuf, Package<CurrentNetwork>) {
         // Initialize the program.
-        let program_string = format!(
+        let program = Program::<CurrentNetwork>::from_str(
             "
-program {program_id};
+program token.aleo;
 
 record token:
     owner as address.private;
-    gates as u64.private;
     amount as u64.private;
 
-function mint:
+function initialize:
     input r0 as address.private;
     input r1 as u64.private;
-    cast r0 0u64 r1 into r2 as token.record;
+    cast r0 r1 into r2 as token.record;
     output r2 as token.record;
 
 function transfer:
@@ -217,80 +206,52 @@ function transfer:
     input r1 as address.private;
     input r2 as u64.private;
     sub r0.amount r2 into r3;
-    cast r1 0u64 r2 into r4 as token.record;
-    cast r0.owner r0.gates r3 into r5 as token.record;
+    cast r1 r2 into r4 as token.record;
+    cast r0.owner r3 into r5 as token.record;
     output r4 as token.record;
-    output r5 as token.record;"
-        );
-
-        // Write the program string to a file in the temporary directory.
-        let main_filepath = directory.join("main.aleo");
-        let mut file = File::create(main_filepath).unwrap();
-        file.write_all(program_string.as_bytes()).unwrap();
-
-        // Create the manifest file.
-        let _manifest_file = Manifest::create(&directory, &program_id).unwrap();
-
-        // Open the package at the temporary directory.
-        let package = Package::<Testnet3>::open(&directory).unwrap();
-        assert_eq!(package.program_id(), &program_id);
-
-        // Return the temporary directory and the package.
-        (directory, package)
-    }
-
-    /// Samples a (temporary) package containing a main program and an imported program.
-    pub(crate) fn sample_package_with_import() -> (PathBuf, Package<CurrentNetwork>) {
-        // Initialize a temporary directory.
-        let directory = temp_dir();
-
-        // Initialize the imported program ID.
-        let imported_program_id = ProgramID::<CurrentNetwork>::from_str("token.aleo").unwrap();
-        // Initialize the imported program.
-        let imported_program = Program::<CurrentNetwork>::from_str(&format!(
-            "
-program {imported_program_id};
-
-record token:
-    owner as address.private;
-    gates as u64.private;
-    amount as u64.private;
-
-function mint:
-    input r0 as address.private;
-    input r1 as u64.private;
-    cast r0 0u64 r1 into r2 as token.record;
-    output r2 as token.record;
-
-function transfer:
-    input r0 as token.record;
-    input r1 as address.private;
-    input r2 as u64.private;
-    sub r0.amount r2 into r3;
-    cast r1 0u64 r2 into r4 as token.record;
-    cast r0.owner r0.gates r3 into r5 as token.record;
-    output r4 as token.record;
-    output r5 as token.record;"
-        ))
+    output r5 as token.record;",
+        )
         .unwrap();
 
-        // Create the imports directory.
-        let imports_directory = directory.join("imports");
-        std::fs::create_dir_all(&imports_directory).unwrap();
+        // Sample the package using the program.
+        sample_package_with_program_and_imports(&program, &[])
+    }
 
-        // Write the imported program string to an imports file in the temporary directory.
-        let import_filepath = imports_directory.join(imported_program_id.to_string());
-        let mut file = File::create(import_filepath).unwrap();
-        file.write_all(imported_program.to_string().as_bytes()).unwrap();
+    /// Samples a (temporary) package containing a `wallet.aleo` program which imports `token.aleo`.
+    pub(crate) fn sample_wallet_package() -> (PathBuf, Package<CurrentNetwork>) {
+        // Initialize the imported program.
+        let imported_program = Program::<CurrentNetwork>::from_str(
+            "
+program token.aleo;
 
-        // Initialize the main program ID.
-        let main_program_id = ProgramID::<CurrentNetwork>::from_str("wallet.aleo").unwrap();
+record token:
+    owner as address.private;
+    amount as u64.private;
+
+function initialize:
+    input r0 as address.private;
+    input r1 as u64.private;
+    cast r0 r1 into r2 as token.record;
+    output r2 as token.record;
+
+function transfer:
+    input r0 as token.record;
+    input r1 as address.private;
+    input r2 as u64.private;
+    sub r0.amount r2 into r3;
+    cast r1 r2 into r4 as token.record;
+    cast r0.owner r3 into r5 as token.record;
+    output r4 as token.record;
+    output r5 as token.record;",
+        )
+        .unwrap();
+
         // Initialize the main program.
-        let main_program = Program::<CurrentNetwork>::from_str(&format!(
+        let main_program = Program::<CurrentNetwork>::from_str(
             "
 import token.aleo;
 
-program {main_program_id};
+program wallet.aleo;
 
 function transfer:
     input r0 as token.aleo/token.record;
@@ -298,21 +259,52 @@ function transfer:
     input r2 as u64.private;
     call token.aleo/transfer r0 r1 r2 into r3 r4;
     output r3 as token.aleo/token.record;
-    output r4 as token.aleo/token.record;"
-        ))
+    output r4 as token.aleo/token.record;",
+        )
         .unwrap();
 
-        // Write the main program string to a file in the temporary directory.
+        // Sample the package using the main program and imported program.
+        sample_package_with_program_and_imports(&main_program, &[imported_program])
+    }
+
+    /// Samples a (temporary) package using a main program and imported programs.
+    pub(crate) fn sample_package_with_program_and_imports(
+        main_program: &Program<CurrentNetwork>,
+        imported_programs: &[Program<CurrentNetwork>],
+    ) -> (PathBuf, Package<CurrentNetwork>) {
+        // Initialize a temporary directory.
+        let directory = temp_dir();
+
+        // If there are imports, create the imports directory.
+        if !imported_programs.is_empty() {
+            let imports_directory = directory.join("imports");
+            std::fs::create_dir_all(&imports_directory).unwrap();
+
+            // Add the imported programs.
+            for imported_program in imported_programs {
+                let imported_program_id = imported_program.id();
+
+                // Write the imported program string to an imports file in the temporary directory.
+                let import_filepath = imports_directory.join(imported_program_id.to_string());
+                let mut file = File::create(import_filepath).unwrap();
+                file.write_all(imported_program.to_string().as_bytes()).unwrap();
+            }
+        }
+
+        // Initialize the main program ID.
+        let main_program_id = main_program.id();
+
+        // Write the program string to a file in the temporary directory.
         let main_filepath = directory.join("main.aleo");
         let mut file = File::create(main_filepath).unwrap();
         file.write_all(main_program.to_string().as_bytes()).unwrap();
 
         // Create the manifest file.
-        let _manifest_file = Manifest::create(&directory, &main_program_id).unwrap();
+        let _manifest_file = Manifest::create(&directory, main_program_id).unwrap();
 
         // Open the package at the temporary directory.
         let package = Package::<Testnet3>::open(&directory).unwrap();
-        assert_eq!(package.program_id(), &main_program_id);
+        assert_eq!(package.program_id(), main_program_id);
 
         // Return the temporary directory and the package.
         (directory, package)
@@ -328,11 +320,11 @@ function transfer:
         match program_id.to_string().as_str() {
             "token.aleo" => {
                 // Sample a random private key.
-                let private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+                let private_key = crate::cli::helpers::dotenv_private_key().unwrap();
                 let caller = Address::try_from(&private_key).unwrap();
 
                 // Initialize the function name.
-                let function_name = Identifier::from_str("mint").unwrap();
+                let function_name = Identifier::from_str("initialize").unwrap();
 
                 // Initialize the function inputs.
                 let r0 = Value::from_str(&caller.to_string()).unwrap();
@@ -342,7 +334,7 @@ function transfer:
             }
             "wallet.aleo" => {
                 // Initialize caller 0.
-                let caller0_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+                let caller0_private_key = crate::cli::helpers::dotenv_private_key().unwrap();
                 let caller0 = Address::try_from(&caller0_private_key).unwrap();
 
                 // Initialize caller 1.
@@ -354,7 +346,7 @@ function transfer:
 
                 // Initialize the function inputs.
                 let r0 = Value::<CurrentNetwork>::from_str(&format!(
-                    "{{ owner: {caller0}.private, gates: 0u64.private, amount: 100u64.private, _nonce: 0group.public }}"
+                    "{{ owner: {caller0}.private, amount: 100u64.private, _nonce: 0group.public }}"
                 ))
                 .unwrap();
                 let r1 = Value::<CurrentNetwork>::from_str(&caller1.to_string()).unwrap();
@@ -369,10 +361,17 @@ function transfer:
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+    use crate::prelude::Testnet3;
+    use snarkvm_utilities::TestRng;
+
+    type CurrentAleo = snarkvm_circuit::network::AleoV0;
+    type CurrentNetwork = Testnet3;
+
     #[test]
     fn test_imports_directory() {
         // Samples a new package at a temporary directory.
-        let (directory, package) = crate::package::test_helpers::sample_package();
+        let (directory, package) = crate::package::test_helpers::sample_token_package();
 
         // Ensure the imports directory is correct.
         assert_eq!(package.imports_directory(), directory.join("imports"));
@@ -386,7 +385,7 @@ mod tests {
     #[test]
     fn test_imports_directory_with_an_import() {
         // Samples a new package with an import at a temporary directory.
-        let (directory, package) = crate::package::test_helpers::sample_package_with_import();
+        let (directory, package) = crate::package::test_helpers::sample_wallet_package();
 
         // Ensure the imports directory is correct.
         assert_eq!(package.imports_directory(), directory.join("imports"));
@@ -400,7 +399,7 @@ mod tests {
     #[test]
     fn test_build_directory() {
         // Samples a new package at a temporary directory.
-        let (directory, package) = crate::package::test_helpers::sample_package();
+        let (directory, package) = crate::package::test_helpers::sample_token_package();
 
         // Ensure the build directory is correct.
         assert_eq!(package.build_directory(), directory.join("build"));
@@ -414,10 +413,65 @@ mod tests {
     #[test]
     fn test_get_process() {
         // Samples a new package at a temporary directory.
-        let (directory, package) = crate::package::test_helpers::sample_package();
+        let (directory, package) = crate::package::test_helpers::sample_token_package();
 
         // Get the program process and check all instructions.
         assert!(package.get_process().is_ok());
+
+        // Proactively remove the temporary directory (to conserve space).
+        std::fs::remove_dir_all(directory).unwrap();
+    }
+
+    #[test]
+    fn test_package_run_and_execute_match() {
+        // Initialize the program.
+        let program = Program::<CurrentNetwork>::from_str(
+            "
+program foo.aleo;
+
+function bar:
+    input r0 as boolean.private;
+    assert.eq r0 false;",
+        )
+        .unwrap();
+
+        // Samples a new package at a temporary directory.
+        let (directory, package) = crate::package::test_helpers::sample_package_with_program_and_imports(&program, &[]);
+
+        // Ensure the build directory does *not* exist.
+        assert!(!package.build_directory().exists());
+        // Build the package.
+        package.build::<CurrentAleo>(None).unwrap();
+        // Ensure the build directory exists.
+        assert!(package.build_directory().exists());
+
+        // Initialize an RNG.
+        let rng = &mut TestRng::default();
+        // Sample the function inputs.
+        let private_key = PrivateKey::new(rng).unwrap();
+        let function_name = Identifier::from_str("bar").unwrap();
+        let inputs = vec![Value::from_str("true").unwrap()];
+
+        // Construct the endpoint.
+        let endpoint = "https://api.explorer.aleo.org/v1".to_string();
+
+        // Run the program function.
+        let run_result = package.run::<CurrentAleo, _>(&private_key, function_name, &inputs, rng).ok();
+
+        // Execute the program function.
+        let execute_result =
+            package.execute::<CurrentAleo, _>(endpoint, &private_key, function_name, &inputs, rng).ok();
+
+        match (run_result, execute_result) {
+            // If both results are `None`, then they both failed.
+            (None, None) => {}
+            // If both results are `Some`, then check that the responses match.
+            (Some((run_response, _)), Some((execute_response, _, _))) => {
+                assert_eq!(run_response, execute_response);
+            }
+            // Otherwise, the results do not match.
+            _ => panic!("Run and execute results do not match"),
+        }
 
         // Proactively remove the temporary directory (to conserve space).
         std::fs::remove_dir_all(directory).unwrap();

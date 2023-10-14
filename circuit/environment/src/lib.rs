@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #![forbid(unsafe_code)]
 #![allow(clippy::type_complexity)]
@@ -39,6 +37,8 @@ pub use traits::*;
 pub mod prelude {
     pub use crate::{
         count,
+        count_is,
+        count_less_than,
         output_mode,
         rename_selfs,
         traits::*,
@@ -68,8 +68,11 @@ pub mod prelude {
             Zero as _,
         },
         traits::{
-            integers::{CheckedPow, IntegerProperties, IntegerType, Magnitude, WrappingDiv, WrappingPow, WrappingRem},
             string_parser,
+            types::{
+                integer_magnitude::Magnitude,
+                integer_type::{CheckedPow, IntegerProperties, IntegerType, WrappingDiv, WrappingPow, WrappingRem},
+            },
             Double as _,
             FromBits as _,
             Inverse as _,
@@ -81,8 +84,7 @@ pub mod prelude {
         ParserResult,
         TypeName,
     };
-    pub use snarkvm_fields::{Field as _, PrimeField, Zero as _};
-    pub use snarkvm_utilities::ToBits as _;
+    pub use snarkvm_fields::{self, Field as _, PrimeField, Zero as _};
 
     #[cfg(debug_assertions)]
     pub use snarkvm_curves::AffineCurve as _;
@@ -122,6 +124,6 @@ pub mod prelude {
         multi::{many0, many1},
         sequence::{pair, terminated},
     };
-    pub use num_traits::{Inv, One as NumOne, Pow, Unsigned};
+    pub use num_traits::{self, Inv, One as NumOne, Pow, Unsigned};
     pub use once_cell::unsync::OnceCell;
 }

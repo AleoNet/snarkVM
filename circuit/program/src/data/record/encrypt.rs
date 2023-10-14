@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use super::*;
 
@@ -24,11 +22,13 @@ impl<A: Aleo> Record<A, Plaintext<A>> {
         // Compute the record view key.
         let record_view_key = ((*self.owner).to_group() * randomizer).to_x_coordinate();
         // Encrypt the record.
-        self.encrypt_symmetric(record_view_key)
+        self.encrypt_symmetric_unchecked(record_view_key)
     }
 
     /// Encrypts `self` under the given record view key.
-    pub fn encrypt_symmetric(&self, record_view_key: Field<A>) -> Record<A, Ciphertext<A>> {
+    /// Note: This method does not check that the record view key corresponds to the record owner.
+    /// Use `Self::encrypt` for the checked variant.
+    pub fn encrypt_symmetric_unchecked(&self, record_view_key: Field<A>) -> Record<A, Ciphertext<A>> {
         // Determine the number of randomizers needed to encrypt the record.
         let num_randomizers = self.num_randomizers();
         // Prepare a randomizer for each field element.
@@ -50,17 +50,6 @@ impl<A: Aleo> Record<A, Plaintext<A>> {
 
         // Increment the index if the owner is private.
         if owner.is_private().eject_value() {
-            index += 1;
-        }
-
-        // Encrypt the gates.
-        let gates = match self.gates.is_public().eject_value() {
-            true => self.gates.encrypt(&[]),
-            false => self.gates.encrypt(&[randomizers[index].clone()]),
-        };
-
-        // Increment the index if the gates is private.
-        if gates.is_private().eject_value() {
             index += 1;
         }
 
@@ -87,6 +76,6 @@ impl<A: Aleo> Record<A, Plaintext<A>> {
         }
 
         // Return the encrypted record.
-        Record { owner, gates, data: encrypted_data, nonce: self.nonce.clone() }
+        Record { owner, data: encrypted_data, nonce: self.nonce.clone() }
     }
 }

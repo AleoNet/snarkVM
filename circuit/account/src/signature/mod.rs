@@ -1,28 +1,30 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
-
+mod equal;
+mod helpers;
+mod ternary;
 mod verify;
 
 #[cfg(test)]
-use snarkvm_circuit_types::environment::assert_scope;
+use snarkvm_circuit_types::environment::{assert_count, assert_output_mode, assert_scope};
 
 use crate::ComputeKey;
 use snarkvm_circuit_network::Aleo;
 use snarkvm_circuit_types::{environment::prelude::*, Address, Boolean, Field, Scalar};
 
+#[derive(Clone)]
 pub struct Signature<A: Aleo> {
     /// The verifier challenge to check against.
     challenge: Scalar<A>,
@@ -78,6 +80,65 @@ impl<A: Aleo> Eject for Signature<A> {
     }
 }
 
+#[cfg(console)]
+impl<A: Aleo> Parser for Signature<A> {
+    /// Parses a string into a signature circuit.
+    #[inline]
+    fn parse(string: &str) -> ParserResult<Self> {
+        // Parse the signature from the string.
+        let (string, signature) = console::Signature::parse(string)?;
+        // Parse the mode from the string.
+        let (string, mode) = opt(pair(tag("."), Mode::parse))(string)?;
+
+        match mode {
+            Some((_, mode)) => Ok((string, Signature::new(mode, signature))),
+            None => Ok((string, Signature::new(Mode::Constant, signature))),
+        }
+    }
+}
+
+#[cfg(console)]
+impl<A: Aleo> FromStr for Signature<A> {
+    type Err = Error;
+
+    /// Parses a string into a signature.
+    #[inline]
+    fn from_str(string: &str) -> Result<Self> {
+        match Self::parse(string) {
+            Ok((remainder, object)) => {
+                // Ensure the remainder is empty.
+                ensure!(remainder.is_empty(), "Failed to parse string. Found invalid character in: \"{remainder}\"");
+                // Return the object.
+                Ok(object)
+            }
+            Err(error) => bail!("Failed to parse string. {error}"),
+        }
+    }
+}
+
+#[cfg(console)]
+impl<A: Aleo> TypeName for Signature<A> {
+    /// Returns the type name of the circuit as a string.
+    #[inline]
+    fn type_name() -> &'static str {
+        console::Signature::<A::Network>::type_name()
+    }
+}
+
+#[cfg(console)]
+impl<A: Aleo> Debug for Signature<A> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        Display::fmt(self, f)
+    }
+}
+
+#[cfg(console)]
+impl<A: Aleo> Display for Signature<A> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}.{}", self.eject_value(), self.eject_mode())
+    }
+}
+
 #[cfg(all(test, console))]
 mod tests {
     use super::*;
@@ -125,11 +186,11 @@ mod tests {
 
     #[test]
     fn test_signature_new_public() -> Result<()> {
-        check_new(Mode::Public, 9, 6, 621, 622)
+        check_new(Mode::Public, 9, 6, 873, 875)
     }
 
     #[test]
     fn test_signature_new_private() -> Result<()> {
-        check_new(Mode::Private, 9, 0, 623, 620)
+        check_new(Mode::Private, 9, 0, 875, 873)
     }
 }

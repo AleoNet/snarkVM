@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use super::*;
 
@@ -37,7 +35,6 @@ impl<'de, N: Network> Deserialize<'de> for FinalizeType<N> {
 }
 
 #[cfg(test)]
-#[allow(clippy::single_element_loop)]
 mod tests {
     use super::*;
     use snarkvm_console_network::Testnet3;
@@ -47,29 +44,31 @@ mod tests {
     /// Add test cases here to be checked for serialization.
     const TEST_CASES: &[&str] = &[
         // Literal
-        "address",
-        "boolean",
-        "field",
-        "group",
-        "i8",
-        "i16",
-        "i32",
-        "i64",
-        "i128",
-        "u8",
-        "u16",
-        "u32",
-        "u64",
-        "u128",
-        "scalar",
-        "string",
+        "address.public",
+        "boolean.public",
+        "field.public",
+        "group.public",
+        "i8.public",
+        "i16.public",
+        "i32.public",
+        "i64.public",
+        "i128.public",
+        "u8.public",
+        "u16.public",
+        "u32.public",
+        "u64.public",
+        "u128.public",
+        "scalar.public",
+        "string.public",
         // Struct
-        "signature",
-        "message",
-        "item",
-        "passport",
-        "object",
-        "array",
+        "signature.public",
+        "message.public",
+        "item.public",
+        "passport.public",
+        "object.public",
+        "array.public",
+        // Future
+        "credits.aleo/mint_public.future",
     ];
 
     fn check_serde_json<
@@ -105,24 +104,14 @@ mod tests {
     #[test]
     fn test_serde_json() {
         for case in TEST_CASES.iter() {
-            for mode in &["public"] {
-                check_serde_json(FinalizeType::<CurrentNetwork>::from_str(&format!("{case}.{mode}")).unwrap());
-            }
+            check_serde_json(FinalizeType::<CurrentNetwork>::from_str(case).unwrap());
         }
-        check_serde_json(FinalizeType::<CurrentNetwork>::from_str("token.record").unwrap());
-        check_serde_json(FinalizeType::<CurrentNetwork>::from_str("hello_world.record").unwrap());
-        check_serde_json(FinalizeType::<CurrentNetwork>::from_str("hello_world.aleo/new.record").unwrap());
     }
 
     #[test]
     fn test_bincode() {
         for case in TEST_CASES.iter() {
-            for mode in &["public"] {
-                check_bincode(FinalizeType::<CurrentNetwork>::from_str(&format!("{case}.{mode}")).unwrap());
-            }
+            check_bincode(FinalizeType::<CurrentNetwork>::from_str(case).unwrap());
         }
-        check_bincode(FinalizeType::<CurrentNetwork>::from_str("token.record").unwrap());
-        check_bincode(FinalizeType::<CurrentNetwork>::from_str("hello_world.record").unwrap());
-        check_bincode(FinalizeType::<CurrentNetwork>::from_str("hello_world.aleo/new.record").unwrap());
     }
 }

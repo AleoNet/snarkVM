@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use crate::{helpers::Constraint, Mode, *};
 
@@ -175,6 +173,8 @@ impl Environment for Circuit {
                         }
                     }
                 });
+            } else {
+                Self::halt("Tried to add a new constraint in witness mode")
             }
         })
     }
@@ -209,9 +209,9 @@ impl Environment for Circuit {
         CIRCUIT.with(|circuit| (**circuit).borrow().num_constraints())
     }
 
-    /// Returns the number of gates in the entire circuit.
-    fn num_gates() -> u64 {
-        CIRCUIT.with(|circuit| (**circuit).borrow().num_gates())
+    /// Returns the number of nonzeros in the entire circuit.
+    fn num_nonzeros() -> (u64, u64, u64) {
+        CIRCUIT.with(|circuit| (**circuit).borrow().num_nonzeros())
     }
 
     /// Returns the number of constants for the current scope.
@@ -234,9 +234,9 @@ impl Environment for Circuit {
         CIRCUIT.with(|circuit| (**circuit).borrow().num_constraints_in_scope())
     }
 
-    /// Returns the number of gates for the current scope.
-    fn num_gates_in_scope() -> u64 {
-        CIRCUIT.with(|circuit| (**circuit).borrow().num_gates_in_scope())
+    /// Returns the number of nonzeros for the current scope.
+    fn num_nonzeros_in_scope() -> (u64, u64, u64) {
+        CIRCUIT.with(|circuit| (**circuit).borrow().num_nonzeros_in_scope())
     }
 
     /// Halts the program from further synthesis, evaluation, and execution in the current environment.
@@ -271,6 +271,8 @@ impl Environment for Circuit {
     /// Returns the R1CS circuit, resetting the circuit.
     fn eject_r1cs_and_reset() -> R1CS<Self::BaseField> {
         CIRCUIT.with(|circuit| {
+            // Reset the witness mode.
+            IN_WITNESS.with(|in_witness| *(**in_witness).borrow_mut() = false);
             // Eject the R1CS instance.
             let r1cs = circuit.replace(R1CS::<<Self as Environment>::BaseField>::new());
             // Ensure the circuit is now empty.
@@ -288,6 +290,8 @@ impl Environment for Circuit {
     /// Returns the R1CS assignment of the circuit, resetting the circuit.
     fn eject_assignment_and_reset() -> Assignment<<Self::Network as console::Environment>::Field> {
         CIRCUIT.with(|circuit| {
+            // Reset the witness mode.
+            IN_WITNESS.with(|in_witness| *(**in_witness).borrow_mut() = false);
             // Eject the R1CS instance.
             let r1cs = circuit.replace(R1CS::<<Self as Environment>::BaseField>::new());
             assert_eq!(0, (**circuit).borrow().num_constants());
@@ -302,6 +306,8 @@ impl Environment for Circuit {
     /// Clears the circuit and initializes an empty environment.
     fn reset() {
         CIRCUIT.with(|circuit| {
+            // Reset the witness mode.
+            IN_WITNESS.with(|in_witness| *(**in_witness).borrow_mut() = false);
             *(**circuit).borrow_mut() = R1CS::<<Self as Environment>::BaseField>::new();
             assert_eq!(0, (**circuit).borrow().num_constants());
             assert_eq!(1, (**circuit).borrow().num_public());

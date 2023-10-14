@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use super::*;
 
@@ -36,8 +34,9 @@ impl<A: Aleo> Literal<A> {
             12 => Literal::U64(U64::from_bits_le(literal)),
             13 => Literal::U128(U128::from_bits_le(literal)),
             14 => Literal::Scalar(Scalar::from_bits_le(literal)),
-            15 => Literal::String(StringType::from_bits_le(literal)),
-            16.. => A::halt(format!("Failed to initialize literal variant {} from bits (LE)", variant.eject_value())),
+            15 => Literal::Signature(Box::new(Signature::from_bits_le(literal))),
+            16 => Literal::String(StringType::from_bits_le(literal)),
+            17.. => A::halt(format!("Failed to initialize literal variant {} from bits (LE)", variant.eject_value())),
         }
     }
 
@@ -60,8 +59,9 @@ impl<A: Aleo> Literal<A> {
             12 => Literal::U64(U64::from_bits_be(literal)),
             13 => Literal::U128(U128::from_bits_be(literal)),
             14 => Literal::Scalar(Scalar::from_bits_be(literal)),
-            15 => Literal::String(StringType::from_bits_be(literal)),
-            16.. => A::halt(format!("Failed to initialize literal variant {} from bits (BE))", variant.eject_value())),
+            15 => Literal::Signature(Box::new(Signature::from_bits_be(literal))),
+            16 => Literal::String(StringType::from_bits_be(literal)),
+            17.. => A::halt(format!("Failed to initialize literal variant {} from bits (BE))", variant.eject_value())),
         }
     }
 }
@@ -97,10 +97,7 @@ mod tests {
 
         for _ in 0..ITERATIONS {
             // Address
-            check_serialization(Literal::<Circuit>::Address(Address::new(
-                mode,
-                console::Address::new(Uniform::rand(rng)),
-            )));
+            check_serialization(Literal::<Circuit>::Address(Address::new(mode, console::Address::rand(rng))));
             // Boolean
             check_serialization(Literal::<Circuit>::Boolean(Boolean::new(mode, Uniform::rand(rng))));
             // Field
@@ -129,6 +126,8 @@ mod tests {
             check_serialization(Literal::<Circuit>::U128(U128::new(mode, Uniform::rand(rng))));
             // Scalar
             check_serialization(Literal::<Circuit>::Scalar(Scalar::new(mode, Uniform::rand(rng))));
+            // Signature
+            check_serialization(Literal::new(mode, console::Literal::sample(LiteralType::Signature, rng)));
             // String
             // Sample a random string. Take 1/4th to ensure we fit for all code points.
             let string = rng.next_string(Circuit::MAX_STRING_BYTES / 4, false);

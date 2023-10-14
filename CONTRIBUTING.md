@@ -4,7 +4,7 @@ Thank you for your interest in contributing to snarkVM! Below you can find some 
 
 ## Pull requests
 
-Please follow the instructions below when filing pull requests:
+Please follow the instructions below when filing a pull request:
 
 - ensure that your branch is forked from the current [master](https://github.com/AleoHQ/snarkVM/tree/master) branch
 - run `cargo fmt` before you commit; we use the `nightly` version of `rustfmt` to format the code, so you'll need to have the `nightly` toolchain installed on your machine; there's a [git hook](https://git-scm.com/docs/githooks) that ensures proper formatting before any commits can be made, and [`.rustfmt.toml`](https://github.com/AleoHQ/snarkVM/blob/master/.rustfmt.toml) specifies some of the formatting conventions
@@ -13,6 +13,9 @@ Please follow the instructions below when filing pull requests:
 ## Coding conventions
 
 snarkVM is a big project, so (non-)adherence to best practices related to performance can have a considerable impact; below are the rules we try to follow at all times in order to ensure high quality of the code:
+
+### Error handling
+- prefer the use of `checked_div` when dividing polynomials.
 
 ### Memory handling
 - if the final size is known, pre-allocate the collections (`Vec`, `HashMap` etc.) using `with_capacity` or `reserve` - this ensures that there are both fewer allocations (which involve system calls) and that the final allocated capacity is as close to the required size as possible

@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use super::*;
 
@@ -20,13 +18,13 @@ impl<E: Environment> ToBits for Address<E> {
     type Boolean = Boolean<E>;
 
     /// Outputs the little-endian bit representation of `self.x` *without* trailing zeros.
-    fn to_bits_le(&self) -> Vec<Self::Boolean> {
-        (&self).to_bits_le()
+    fn write_bits_le(&self, vec: &mut Vec<Self::Boolean>) {
+        (&self).write_bits_le(vec);
     }
 
     /// Outputs the big-endian bit representation of `self.x` *without* leading zeros.
-    fn to_bits_be(&self) -> Vec<Self::Boolean> {
-        (&self).to_bits_be()
+    fn write_bits_be(&self, vec: &mut Vec<Self::Boolean>) {
+        (&self).write_bits_be(vec);
     }
 }
 
@@ -34,13 +32,13 @@ impl<E: Environment> ToBits for &Address<E> {
     type Boolean = Boolean<E>;
 
     /// Outputs the little-endian bit representation of `self.x` *without* trailing zeros.
-    fn to_bits_le(&self) -> Vec<Self::Boolean> {
-        self.0.to_bits_le()
+    fn write_bits_le(&self, vec: &mut Vec<Self::Boolean>) {
+        self.0.write_bits_le(vec);
     }
 
     /// Outputs the big-endian bit representation of `self.x` *without* leading zeros.
-    fn to_bits_be(&self) -> Vec<Self::Boolean> {
-        self.0.to_bits_be()
+    fn write_bits_be(&self, vec: &mut Vec<Self::Boolean>) {
+        self.0.write_bits_be(vec);
     }
 }
 
@@ -104,12 +102,12 @@ mod tests {
 
     #[test]
     fn test_to_bits_le_public() {
-        check_to_bits_le(Mode::Public, 0, 0, 253, 254);
+        check_to_bits_le(Mode::Public, 0, 0, 505, 507);
     }
 
     #[test]
     fn test_to_bits_le_private() {
-        check_to_bits_le(Mode::Private, 0, 0, 253, 254);
+        check_to_bits_le(Mode::Private, 0, 0, 505, 507);
     }
 
     #[test]
@@ -119,11 +117,11 @@ mod tests {
 
     #[test]
     fn test_to_bits_be_public() {
-        check_to_bits_be(Mode::Public, 0, 0, 253, 254);
+        check_to_bits_be(Mode::Public, 0, 0, 505, 507);
     }
 
     #[test]
     fn test_to_bits_be_private() {
-        check_to_bits_be(Mode::Private, 0, 0, 253, 254);
+        check_to_bits_be(Mode::Private, 0, 0, 505, 507);
     }
 }

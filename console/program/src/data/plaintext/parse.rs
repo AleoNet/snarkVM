@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use super::*;
 
@@ -32,6 +30,8 @@ impl<N: Network> Parser for Plaintext<N> {
             let (string, _) = tag(":")(string)?;
             // Parse the plaintext from the string.
             let (string, plaintext) = Plaintext::parse(string)?;
+            // Parse the whitespace from the string.
+            let (string, _) = Sanitizer::parse_whitespaces(string)?;
             // Return the identifier and plaintext.
             Ok((string, (identifier, plaintext)))
         }
@@ -48,8 +48,8 @@ impl<N: Network> Parser for Plaintext<N> {
                 if has_duplicates(members.iter().map(|(name, ..)| name)) {
                     return Err(error("Duplicate member in struct"));
                 }
-                // Ensure the number of structs is within `N::MAX_DATA_ENTRIES`.
-                match members.len() <= N::MAX_DATA_ENTRIES {
+                // Ensure the number of structs is within the maximum limit.
+                match members.len() <= N::MAX_STRUCT_ENTRIES {
                     true => Ok(members),
                     false => Err(error(format!("Found a plaintext that exceeds size ({})", members.len()))),
                 }
@@ -62,6 +62,22 @@ impl<N: Network> Parser for Plaintext<N> {
             Ok((string, Plaintext::Struct(IndexMap::from_iter(members.into_iter()), Default::default())))
         }
 
+        /// Parses a plaintext as an array: `[plaintext_0, ..., plaintext_n]`.
+        fn parse_array<N: Network>(string: &str) -> ParserResult<Plaintext<N>> {
+            // Parse the whitespace and comments from the string.
+            let (string, _) = Sanitizer::parse(string)?;
+            // Parse the "[" from the string.
+            let (string, _) = tag("[")(string)?;
+            // Parse the members.
+            let (string, members) = separated_list1(tag(","), Plaintext::parse)(string)?;
+            // Parse the whitespace and comments from the string.
+            let (string, _) = Sanitizer::parse(string)?;
+            // Parse the ']' from the string.
+            let (string, _) = tag("]")(string)?;
+            // Output the plaintext.
+            Ok((string, Plaintext::Array(members, Default::default())))
+        }
+
         // Parse the whitespace from the string.
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
         // Parse to determine the plaintext (order matters).
@@ -70,6 +86,8 @@ impl<N: Network> Parser for Plaintext<N> {
             map(Literal::parse, |literal| Self::Literal(literal, Default::default())),
             // Parse a plaintext struct.
             parse_struct,
+            // Parse a plaintext array.
+            parse_array,
         ))(string)
     }
 }
@@ -131,7 +149,7 @@ impl<N: Network> Plaintext<N> {
                             // Print the member with a comma.
                             false => write!(f, "\n{:indent$}{name}: {literal},", "", indent = (depth + 1) * INDENT),
                         },
-                        Self::Struct(..) => {
+                        Self::Struct(..) | Self::Array(..) => {
                             // Print the member name.
                             write!(f, "\n{:indent$}{name}: ", "", indent = (depth + 1) * INDENT)?;
                             // Print the member.
@@ -140,6 +158,39 @@ impl<N: Network> Plaintext<N> {
                             match i == struct_.len() - 1 {
                                 // Print the last member without a comma.
                                 true => write!(f, "\n{:indent$}}}", "", indent = depth * INDENT),
+                                // Print the member with a comma.
+                                false => write!(f, ","),
+                            }
+                        }
+                    }
+                })
+            }
+            // Prints the array, i.e. [ 10u64, 198u64 ]
+            Self::Array(array, ..) => {
+                // Print the opening bracket.
+                write!(f, "[")?;
+                // Print the members.
+                array.iter().enumerate().try_for_each(|(i, plaintext)| {
+                    match plaintext {
+                        Self::Literal(literal, ..) => match i == array.len() - 1 {
+                            true => {
+                                // Print the last member without a comma.
+                                write!(f, "\n{:indent$}{literal}", "", indent = (depth + 1) * INDENT)?;
+                                // Print the closing bracket.
+                                write!(f, "\n{:indent$}]", "", indent = depth * INDENT)
+                            }
+                            // Print the member with a comma.
+                            false => write!(f, "\n{:indent$}{literal},", "", indent = (depth + 1) * INDENT),
+                        },
+                        Self::Struct(..) | Self::Array(..) => {
+                            // Print a newline.
+                            write!(f, "\n{:indent$}", "", indent = (depth + 1) * INDENT)?;
+                            // Print the member.
+                            plaintext.fmt_internal(f, depth + 1)?;
+                            // Print the closing brace.
+                            match i == array.len() - 1 {
+                                // Print the last member without a comma.
+                                true => write!(f, "\n{:indent$}]", "", indent = depth * INDENT),
                                 // Print the member with a comma.
                                 false => write!(f, ","),
                             }
@@ -283,6 +334,141 @@ mod tests {
   }
 }";
 
+        let (remainder, candidate) = Plaintext::<CurrentNetwork>::parse(expected).unwrap();
+        println!("\nExpected: {expected}\n\nFound: {candidate}\n");
+        assert_eq!(expected, candidate.to_string());
+        assert_eq!("", remainder);
+    }
+
+    #[test]
+    fn test_nested_structs3() {
+        let expected = r"{
+  c: {
+    a: 0u8,
+    b: 1u8
+  },
+  d: {
+    a: 0u8,
+    b: 1u8
+  }
+}";
+
+        let (remainder, candidate) = Plaintext::<CurrentNetwork>::parse(expected).unwrap();
+        println!("\nExpected: {expected}\n\nFound: {candidate}\n");
+        assert_eq!(expected, candidate.to_string());
+        assert_eq!("", remainder);
+    }
+
+    #[test]
+    fn test_array() {
+        // Test an array of literals.
+        let expected = r"[
+  1u8,
+  2u8,
+  3u8
+]";
+        let (remainder, candidate) = Plaintext::<CurrentNetwork>::parse(expected).unwrap();
+        println!("\nExpected: {expected}\n\nFound: {candidate}\n");
+        assert_eq!(expected, candidate.to_string());
+        assert_eq!("", remainder);
+
+        // Test an array of structs.
+        let expected = r"[
+  {
+    foo: 1u8,
+    bar: 2u8
+  },
+  {
+    foo: 3u8,
+    bar: 4u8
+  },
+  {
+    foo: 5u8,
+    bar: 6u8
+  }
+]";
+        let (remainder, candidate) = Plaintext::<CurrentNetwork>::parse(expected).unwrap();
+        println!("\nExpected: {expected}\n\nFound: {candidate}\n");
+        assert_eq!(expected, candidate.to_string());
+        assert_eq!("", remainder);
+    }
+
+    #[test]
+    fn test_struct_with_arrays() {
+        let expected = r"{
+  foo: [
+    1u8,
+    2u8,
+    3u8
+  ],
+  bar: [
+    4u8,
+    5u8,
+    6u8
+  ]
+}";
+        let (remainder, candidate) = Plaintext::<CurrentNetwork>::parse(expected).unwrap();
+        println!("\nExpected: {expected}\n\nFound: {candidate}\n");
+        assert_eq!(expected, candidate.to_string());
+        assert_eq!("", remainder);
+    }
+
+    #[test]
+    fn test_struct_with_array_of_structs() {
+        let expected = r"{
+  foo: [
+    {
+      foo: 1u8,
+      bar: 2u8
+    },
+    {
+      foo: 3u8,
+      bar: 4u8
+    },
+    {
+      foo: 5u8,
+      bar: 6u8
+    }
+  ],
+  bar: [
+    {
+      foo: [
+        1u8,
+        2u8,
+        3u8
+      ],
+      bar: [
+        4u8,
+        5u8,
+        6u8
+      ]
+    },
+    {
+      foo: [
+        7u8,
+        8u8,
+        9u8
+      ],
+      bar: [
+        10u8,
+        11u8,
+        12u8
+      ]
+    },
+    {
+      foo: [
+        13u8,
+        14u8,
+        15u8
+      ],
+      bar: [
+        16u8,
+        17u8,
+        18u8
+      ]
+    }
+  ]
+}";
         let (remainder, candidate) = Plaintext::<CurrentNetwork>::parse(expected).unwrap();
         println!("\nExpected: {expected}\n\nFound: {candidate}\n");
         assert_eq!(expected, candidate.to_string());

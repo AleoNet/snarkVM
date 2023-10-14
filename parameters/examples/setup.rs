@@ -1,27 +1,24 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use snarkvm_algorithms::crypto_hash::sha256::sha256;
 use snarkvm_circuit::Aleo;
-use snarkvm_console::network::{Network, Testnet3};
+use snarkvm_console::network::{prelude::ToBytes, Network, Testnet3};
 use snarkvm_synthesizer::{Process, Program};
 
 use anyhow::Result;
 use serde_json::{json, Value};
-use snarkvm_utilities::ToBytes;
 use std::{
     fs,
     fs::File,
@@ -47,12 +44,12 @@ fn write_remote(filename: &str, version: &str, bytes: &[u8]) -> Result<()> {
     Ok(())
 }
 
-// /// Writes the given bytes to the given filename.
-// fn write_local(filename: &str, bytes: &[u8]) -> Result<()> {
-//     let mut file = BufWriter::new(File::create(PathBuf::from(filename))?);
-//     file.write_all(bytes)?;
-//     Ok(())
-// }
+/// Writes the given bytes to the given filename.
+fn write_local(filename: &str, bytes: &[u8]) -> Result<()> {
+    let mut file = BufWriter::new(File::create(PathBuf::from(filename))?);
+    file.write_all(bytes)?;
+    Ok(())
+}
 
 /// Writes the given metadata as JSON to the given filename.
 fn write_metadata(filename: &str, metadata: &Value) -> Result<()> {
@@ -123,22 +120,16 @@ pub fn credits_program<N: Network, A: Aleo<Network = N>>() -> Result<()> {
         println!("{}", serde_json::to_string_pretty(&metadata)?);
         write_metadata(&format!("{function_name}.metadata"), &metadata)?;
         write_remote(&format!("{function_name}.prover"), &proving_key_checksum, &proving_key_bytes)?;
-        write_remote(&format!("{function_name}.verifier"), &verifying_key_checksum, &verifying_key_bytes)?;
+        write_local(&format!("{function_name}.verifier"), &verifying_key_bytes)?;
 
         commands.push(format!(
-            "snarkup upload \"{}\"",
+            "upload \"{}\"",
             versioned_filename(&format!("{function_name}.prover"), &proving_key_checksum)
-        ));
-        commands.push(format!(
-            "snarkup upload \"{}\"",
-            versioned_filename(&format!("{function_name}.verifier"), &verifying_key_checksum)
         ));
     }
 
     // Print the commands.
-    println!("\nNow, run the following commands:\n");
-    println!("snarkup remove provers");
-    println!("snarkup remove verifiers\n");
+    println!("\nNow, perform the following operations:\n");
     for command in commands {
         println!("{command}");
     }
@@ -151,8 +142,8 @@ pub fn credits_program<N: Network, A: Aleo<Network = N>>() -> Result<()> {
 /// `cargo run --example setup [variant]`
 pub fn main() -> Result<()> {
     let args: Vec<String> = std::env::args().collect();
-    if args.len() < 3 {
-        eprintln!("Invalid number of arguments. Given: {} - Required: 2", args.len() - 1);
+    if args.len() < 2 {
+        eprintln!("Invalid number of arguments. Given: {} - Required: 1", args.len() - 1);
         return Ok(());
     }
 

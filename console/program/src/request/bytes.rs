@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use super::*;
 
@@ -20,14 +18,14 @@ impl<N: Network> FromBytes for Request<N> {
     /// Reads the request from a buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         // Read the version.
-        let version = u16::read_le(&mut reader)?;
+        let version = u8::read_le(&mut reader)?;
         // Ensure the version is valid.
-        if version != 0 {
-            return Err(error("Invalid verifying key version"));
+        if version != 1 {
+            return Err(error("Invalid request version"));
         }
 
-        // Read the caller.
-        let caller = FromBytes::read_le(&mut reader)?;
+        // Read the signer.
+        let signer = FromBytes::read_le(&mut reader)?;
         // Read the network ID.
         let network_id = FromBytes::read_le(&mut reader)?;
         // Read the program ID.
@@ -54,7 +52,7 @@ impl<N: Network> FromBytes for Request<N> {
         let tcm = FromBytes::read_le(&mut reader)?;
 
         Ok(Self::from((
-            caller,
+            signer,
             network_id,
             program_id,
             function_name,
@@ -73,10 +71,10 @@ impl<N: Network> ToBytes for Request<N> {
     /// Writes the request to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Write the version.
-        0u16.write_le(&mut writer)?;
+        1u8.write_le(&mut writer)?;
 
-        // Write the caller.
-        self.caller.write_le(&mut writer)?;
+        // Write the signer.
+        self.signer.write_le(&mut writer)?;
         // Write the network ID.
         self.network_id.write_le(&mut writer)?;
         // Write the program ID.

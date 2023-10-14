@@ -1,43 +1,50 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #![forbid(unsafe_code)]
 
-pub use snarkvm_circuit_account as account;
-pub use snarkvm_circuit_account::*;
+pub use modules::*;
 
-pub use snarkvm_circuit_algorithms as algorithms;
-pub use snarkvm_circuit_algorithms::*;
+pub mod modules {
+    pub use snarkvm_circuit_account as account;
+    pub use snarkvm_circuit_account::*;
 
-pub use snarkvm_circuit_collections as collections;
-pub use snarkvm_circuit_collections::*;
+    pub use snarkvm_circuit_algorithms as algorithms;
+    pub use snarkvm_circuit_algorithms::*;
 
-pub use snarkvm_circuit_environment as environment;
-pub use snarkvm_circuit_environment::*;
+    pub use snarkvm_circuit_collections as collections;
+    pub use snarkvm_circuit_collections::*;
 
-pub use snarkvm_circuit_network as network;
-pub use snarkvm_circuit_network::*;
+    pub use snarkvm_circuit_environment as environment;
+    pub use snarkvm_circuit_environment::{Assignment, Circuit, Eject, Environment, Inject, Mode};
 
-pub use snarkvm_circuit_program as program;
-pub use snarkvm_circuit_program::*;
+    pub use snarkvm_circuit_network as network;
+    pub use snarkvm_circuit_network::*;
 
-pub use snarkvm_circuit_types as types;
-pub use snarkvm_circuit_types::*;
+    pub use snarkvm_circuit_program as program;
+    pub use snarkvm_circuit_program::*;
+
+    pub use snarkvm_circuit_types as types;
+    pub use snarkvm_circuit_types::*;
+}
+
+pub mod traits {
+    pub use snarkvm_circuit_algorithms::traits::*;
+    pub use snarkvm_circuit_environment::traits::*;
+}
 
 pub mod prelude {
-    pub use super::*;
-    pub use snarkvm_circuit_environment::*;
+    pub use crate::modules::*;
+    pub use snarkvm_circuit_environment::prelude::*;
 }

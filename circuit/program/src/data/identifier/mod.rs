@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #[cfg(test)]
 use snarkvm_circuit_types::environment::assert_scope;
@@ -45,6 +43,7 @@ impl<A: Aleo> Inject for Identifier<A> {
     type Primitive = console::Identifier<A::Network>;
 
     /// Initializes a new identifier from a string.
+    /// Note: Identifiers are always `Mode::Constant`.
     fn new(_: Mode, identifier: Self::Primitive) -> Self {
         // Convert the identifier to a string to check its validity.
         let identifier = identifier.to_string();
@@ -64,10 +63,8 @@ impl<A: Aleo> Eject for Identifier<A> {
 
     /// Ejects the mode of the identifier.
     fn eject_mode(&self) -> Mode {
-        match self.0.eject_mode() == Mode::Constant {
-            true => Mode::Constant,
-            false => A::halt("Identifier::eject_mode: Identifier mode is not constant."),
-        }
+        debug_assert!(self.0.eject_mode() == Mode::Constant, "Identifier::eject_mode - Mode must be 'Constant'");
+        Mode::Constant
     }
 
     /// Ejects the identifier as a string.
@@ -191,6 +188,14 @@ pub(crate) mod tests {
             true => Ok(string),
             false => bail!("Identifier exceeds the maximum capacity allowed"),
         }
+    }
+
+    /// Samples a random identifier as a string.
+    pub(crate) fn sample_lowercase_console_identifier_as_string<A: Aleo>() -> Result<String> {
+        // Sample a random identifier.
+        let string = sample_console_identifier_as_string::<A>()?;
+        // Return the identifier as lowercase.
+        Ok(string.to_lowercase())
     }
 
     #[test]

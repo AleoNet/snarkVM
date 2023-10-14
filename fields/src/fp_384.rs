@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use crate::{
     impl_add_sub_from_field_ref,
@@ -45,10 +43,11 @@ use std::{
     ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign},
     str::FromStr,
 };
+use zeroize::Zeroize;
 
 pub trait Fp384Parameters: FieldParameters<BigInteger = BigInteger> {}
 
-#[derive(Derivative)]
+#[derive(Derivative, Zeroize)]
 #[derivative(
     Default(bound = "P: Fp384Parameters"),
     Hash(bound = "P: Fp384Parameters"),
@@ -602,16 +601,16 @@ impl_add_sub_from_field_ref!(Fp384, Fp384Parameters);
 impl_mul_div_from_field_ref!(Fp384, Fp384Parameters);
 
 impl<P: Fp384Parameters> ToBits for Fp384<P> {
-    fn to_bits_le(&self) -> Vec<bool> {
-        let mut bits_vec = self.to_bigint().to_bits_le();
-        bits_vec.truncate(P::MODULUS_BITS as usize);
-        bits_vec
+    fn write_bits_le(&self, vec: &mut Vec<bool>) {
+        let initial_len = vec.len();
+        self.to_bigint().write_bits_le(vec);
+        vec.truncate(initial_len + P::MODULUS_BITS as usize);
     }
 
-    fn to_bits_be(&self) -> Vec<bool> {
-        let mut bits_vec = self.to_bits_le();
-        bits_vec.reverse();
-        bits_vec
+    fn write_bits_be(&self, vec: &mut Vec<bool>) {
+        let initial_len = vec.len();
+        self.write_bits_le(vec);
+        vec[initial_len..].reverse();
     }
 }
 

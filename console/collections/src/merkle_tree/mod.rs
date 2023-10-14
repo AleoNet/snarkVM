@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 mod helpers;
 pub use helpers::*;
@@ -26,6 +24,8 @@ mod tests;
 use snarkvm_console_types::prelude::*;
 
 use aleo_std::prelude::*;
+
+use std::collections::BTreeMap;
 
 #[cfg(not(feature = "serial"))]
 use rayon::prelude::*;
@@ -209,6 +209,225 @@ impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>
     }
 
     #[inline]
+    /// Updates the Merkle tree at the location of the given leaf index with the new leaf.
+    pub fn update(&mut self, leaf_index: usize, new_leaf: &LH::Leaf) -> Result<()> {
+        let timer = timer!("MerkleTree::update");
+
+        // Compute the updated Merkle tree with the new leaves.
+        let updated_tree = self.prepare_update(leaf_index, new_leaf)?;
+        // Update the tree at the very end, so the original tree is not altered in case of failure.
+        *self = updated_tree;
+
+        finish!(timer);
+        Ok(())
+    }
+
+    #[inline]
+    /// Returns a new Merkle tree with updates at the location of the given leaf index with the new leaf.
+    pub fn prepare_update(&self, leaf_index: usize, new_leaf: &LH::Leaf) -> Result<Self> {
+        let timer = timer!("MerkleTree::prepare_update");
+
+        // Check that the leaf index is within the bounds of the Merkle tree.
+        ensure!(
+            leaf_index < self.number_of_leaves,
+            "Leaf index must be less than the number of leaves in the Merkle tree {leaf_index} , {}",
+            self.number_of_leaves
+        );
+
+        // Allocate a vector to store the path hashes.
+        let mut path_hashes = Vec::with_capacity(DEPTH as usize);
+
+        // Compute and add the new leaf hash to the path hashes.
+        path_hashes.push(self.leaf_hasher.hash_leaf(new_leaf)?);
+        lap!(timer, "Hashed 1 new leaf");
+
+        // Compute the start index (on the left) for the leaf hashes level in the Merkle tree.
+        let start = match self.number_of_leaves.checked_next_power_of_two() {
+            Some(num_leaves) => num_leaves - 1,
+            None => bail!("Integer overflow when computing the Merkle tree start index"),
+        };
+
+        // Compute the new hashes for the path from the leaf to the root.
+        let mut index = start + leaf_index;
+        while let Some(parent) = parent(index) {
+            // Get the left and right child hashes of the parent.
+            let (left, right) = match is_left_child(index) {
+                true => (path_hashes.last().unwrap(), &self.tree[right_child(parent)]),
+                false => (&self.tree[left_child(parent)], path_hashes.last().unwrap()),
+            };
+            // Compute and add the new parent hash to the path hashes.
+            path_hashes.push(self.path_hasher.hash_children(left, right)?);
+            // Update the index to the parent.
+            index = parent;
+        }
+
+        // Compute the number of levels in the Merkle tree (i.e. log2(tree_size)).
+        let tree_depth = tree_depth::<DEPTH>(self.tree.len())?;
+        // Compute the padding depth.
+        let padding_depth = DEPTH - tree_depth;
+
+        // Update the root hash.
+        // This unwrap is safe, as the path hashes vector is guaranteed to have at least one element.
+        let mut root_hash = *path_hashes.last().unwrap();
+        for _ in 0..padding_depth {
+            // Update the root hash, by hashing the current root hash with the empty hash.
+            root_hash = self.path_hasher.hash_children(&root_hash, &self.empty_hash)?;
+        }
+        lap!(timer, "Hashed {} padding levels", padding_depth);
+
+        // Initialize the Merkle tree.
+        let mut tree = Vec::with_capacity(self.tree.len());
+        // Extend the new Merkle tree with the existing leaf hashes.
+        tree.extend(&self.tree);
+
+        // Update the rest of the tree with the new path hashes.
+        let mut index = Some(start + leaf_index);
+        for path_hash in path_hashes {
+            tree[index.unwrap()] = path_hash;
+            index = parent(index.unwrap());
+        }
+
+        finish!(timer);
+
+        Ok(Self {
+            leaf_hasher: self.leaf_hasher.clone(),
+            path_hasher: self.path_hasher.clone(),
+            root: root_hash,
+            tree,
+            empty_hash: self.empty_hash,
+            number_of_leaves: self.number_of_leaves,
+        })
+    }
+
+    #[inline]
+    /// Updates the Merkle tree at the location of the given leaf indices with the new leaves.
+    pub fn update_many(&mut self, updates: &BTreeMap<usize, LH::Leaf>) -> Result<()> {
+        let timer = timer!("MerkleTree::update_many");
+
+        // Check that there are updates to perform.
+        ensure!(!updates.is_empty(), "There must be at least one leaf to update in the Merkle tree");
+
+        // Check that the latest leaf index is less than number of leaves in the Merkle tree.
+        // Note: This unwrap is safe since updates is guaranteed to be non-empty.
+        ensure!(
+            *updates.last_key_value().unwrap().0 < self.number_of_leaves,
+            "Leaf index must be less than the number of leaves in the Merkle tree"
+        );
+
+        // Compute the start index (on the left) for the leaf hashes level in the Merkle tree.
+        let start = match self.number_of_leaves.checked_next_power_of_two() {
+            Some(num_leaves) => num_leaves - 1,
+            None => bail!("Integer overflow when computing the Merkle tree start index"),
+        };
+
+        // A helper to compute the leaf hash.
+        let hash_update = |(leaf_index, leaf): &(&usize, &LH::Leaf)| {
+            self.leaf_hasher.hash_leaf(leaf).map(|hash| (start + **leaf_index, hash))
+        };
+
+        // Hash the leaves and add them to the updated hashes.
+        let leaf_hashes: Vec<(usize, LH::Hash)> = match updates.len() {
+            0..=100 => updates.iter().map(|update| hash_update(&update)).collect::<Result<Vec<_>>>()?,
+            _ => cfg_iter!(updates).map(|update| hash_update(&update)).collect::<Result<Vec<_>>>()?,
+        };
+        lap!(timer, "Hashed {} new leaves", leaf_hashes.len());
+
+        // Store the updated hashes by level.
+        let mut updated_hashes = Vec::new();
+        updated_hashes.push(leaf_hashes);
+
+        // A helper function to compute the path hashes for a given level.
+        type Update<PH> = (usize, (<PH as PathHash>::Hash, <PH as PathHash>::Hash));
+        let compute_path_hashes = |inputs: &[Update<PH>]| match inputs.len() {
+            0..=100 => inputs
+                .iter()
+                .map(|(index, (left, right))| self.path_hasher.hash_children(left, right).map(|hash| (*index, hash)))
+                .collect::<Result<Vec<_>>>(),
+            _ => cfg_iter!(inputs)
+                .map(|(index, (left, right))| self.path_hasher.hash_children(left, right).map(|hash| (*index, hash)))
+                .collect::<Result<Vec<_>>>(),
+        };
+
+        // Compute the depth of the tree. This corresponds to the number of levels of hashes in the tree.
+        let tree_depth = tree_depth::<DEPTH>(self.tree.len())?;
+        // Allocate a vector to store the inputs to the path hasher.
+        let mut inputs = Vec::with_capacity(updated_hashes[0].len());
+        // For each level in the tree, compute the path hashes.
+        // In the first iteration, we compute the path hashes for the updated leaf hashes.
+        // In the subsequent iterations, we compute the path hashes for the updated path hashes, until we reach the root.
+        for level in 0..tree_depth as usize {
+            let mut current = 0;
+            while current < updated_hashes[level].len() {
+                let (current_leaf_index, current_leaf_hash) = updated_hashes[level][current];
+                // Get the sibling of the current leaf.
+                let sibling_leaf_index = match sibling(current_leaf_index) {
+                    Some(sibling_index) => sibling_index,
+                    // If there is no sibling, then we have reached the root.
+                    None => break,
+                };
+                // Check if the sibling hash is the next hash in the vector.
+                let sibling_is_next_hash = match current + 1 < updated_hashes[level].len() {
+                    true => updated_hashes[level][current + 1].0 == sibling_leaf_index,
+                    false => false,
+                };
+                // Get the sibling hash.
+                // Note: This algorithm assumes that the sibling hash is either the next hash in the vector,
+                // or in the original Merkle tree. Consequently, updates need to be provided in sequential order.
+                // This is enforced by the type of `updates: `BTreeMap<usize, LH::Leaf>`.
+                // If this assumption is violated, then the algorithm will compute incorrect path hashes in the Merkle tree.
+                let sibling_leaf_hash = match sibling_is_next_hash {
+                    true => updated_hashes[level][current + 1].1,
+                    false => self.tree[sibling_leaf_index],
+                };
+                // Order the current and sibling hashes.
+                let (left, right) = match is_left_child(current_leaf_index) {
+                    true => (current_leaf_hash, sibling_leaf_hash),
+                    false => (sibling_leaf_hash, current_leaf_hash),
+                };
+                // Compute the parent index.
+                // Note that this unwrap is safe, since we check that the `current_leaf_index` is not the root.
+                let parent_index = parent(current_leaf_index).unwrap();
+                // Add the parent hash to the updated hashes.
+                inputs.push((parent_index, (left, right)));
+                // Update the current index.
+                match sibling_is_next_hash {
+                    true => current += 2,
+                    false => current += 1,
+                }
+            }
+            // Compute the path hashes for the current level.
+            let path_hashes = compute_path_hashes(&inputs)?;
+            // Add the path hashes to the updated hashes.
+            updated_hashes.push(path_hashes);
+            // Clear the inputs.
+            inputs.clear();
+        }
+
+        // Compute the padding depth.
+        let padding_depth = DEPTH - tree_depth;
+
+        // Update the root hash.
+        // This unwrap is safe, as the updated hashes is guaranteed to have at least one element.
+        let mut root_hash = updated_hashes.last().unwrap()[0].1;
+        for _ in 0..padding_depth {
+            // Update the root hash, by hashing the current root hash with the empty hash.
+            root_hash = self.path_hasher.hash_children(&root_hash, &self.empty_hash)?;
+        }
+        lap!(timer, "Hashed {} padding levels", padding_depth);
+
+        // Update the root hash.
+        self.root = root_hash;
+
+        // Update the rest of the tree with the updated hashes.
+        for (index, hash) in updated_hashes.into_iter().flatten() {
+            self.tree[index] = hash;
+        }
+
+        finish!(timer);
+        Ok(())
+    }
+
+    #[inline]
     /// Returns a new Merkle tree with the last 'n' leaves removed from it.
     pub fn prepare_remove_last_n(&self, n: usize) -> Result<Self> {
         let timer = timer!("MerkleTree::prepare_remove_last_n");
@@ -317,6 +536,7 @@ impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>
             Some(num_leaves) => num_leaves - 1,
             None => bail!("Integer overflow when computing the Merkle tree start index"),
         };
+
         // Compute the absolute index of the leaf in the Merkle tree.
         let mut index = start + leaf_index;
         // Ensure the leaf index is valid.
@@ -502,28 +722,15 @@ impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>
 
 /// Returns the depth of the tree, given the size of the tree.
 #[inline]
-#[allow(clippy::cast_possible_truncation)]
 fn tree_depth<const DEPTH: u8>(tree_size: usize) -> Result<u8> {
     let tree_size = u64::try_from(tree_size)?;
-    // Ensure the tree size is less than 2^52 (for casting to an f64).
-    let tree_depth = match tree_size < 4503599627370496_u64 {
-        // Compute the log2 of the tree size.
-        true => (tree_size as f64).log2(),
-        false => bail!("Tree size must be less than 2^52"),
-    };
-    // Ensure the tree depth is within a u8 range.
-    match tree_depth <= u8::MAX as f64 {
-        true => {
-            // Convert the tree depth to a u8.
-            let tree_depth = tree_depth as u8;
-            // Ensure the tree depth is within the depth bound.
-            match tree_depth <= DEPTH {
-                // Return the tree depth.
-                true => Ok(tree_depth),
-                false => bail!("Merkle tree cannot exceed depth {DEPTH}: attempted to reach depth {tree_depth}"),
-            }
-        }
-        false => bail!("Merkle tree depth ({tree_depth}) exceeds maximum size ({})", u8::MAX),
+    // Since we only allow tree sizes up to u64::MAX, the maximum possible depth is 63.
+    let tree_depth = u8::try_from(tree_size.checked_ilog2().unwrap_or(0))?;
+    // Ensure the tree depth is within the depth bound.
+    match tree_depth <= DEPTH {
+        // Return the tree depth.
+        true => Ok(tree_depth),
+        false => bail!("Merkle tree cannot exceed depth {DEPTH}: attempted to reach depth {tree_depth}"),
     }
 }
 

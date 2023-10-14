@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use super::*;
 
@@ -25,7 +23,8 @@ impl<N: Network> FromBytes for Value<N> {
         let entry = match index {
             0 => Self::Plaintext(Plaintext::read_le(&mut reader)?),
             1 => Self::Record(Record::read_le(&mut reader)?),
-            2.. => return Err(error(format!("Failed to decode value variant {index}"))),
+            2 => Self::Future(Future::read_le(&mut reader)?),
+            3.. => return Err(error(format!("Failed to decode value variant {index}"))),
         };
         Ok(entry)
     }
@@ -43,6 +42,10 @@ impl<N: Network> ToBytes for Value<N> {
                 1u8.write_le(&mut writer)?;
                 record.write_le(&mut writer)
             }
+            Self::Future(future) => {
+                2u8.write_le(&mut writer)?;
+                future.write_le(&mut writer)
+            }
         }
     }
 }
@@ -58,7 +61,7 @@ mod tests {
     fn test_value_plaintext_bytes() -> Result<()> {
         // Construct a new plaintext value.
         let expected = Value::Plaintext(Plaintext::<CurrentNetwork>::from_str(
-            "{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah, gates: 5u64, token_amount: 100u64 }",
+            "{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah, token_amount: 100u64 }",
         )?);
 
         // Check the byte representation.
@@ -72,7 +75,7 @@ mod tests {
     fn test_value_record_bytes() -> Result<()> {
         // Construct a new record value.
         let expected = Value::Record(Record::<CurrentNetwork, Plaintext<CurrentNetwork>>::from_str(
-            "{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private, gates: 5u64.private, token_amount: 100u64.private, _nonce: 0group.public }",
+            "{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private, token_amount: 100u64.private, _nonce: 0group.public }",
         )?);
 
         // Check the byte representation.

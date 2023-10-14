@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use snarkvm_console_algorithms::{Poseidon, BHP};
 use snarkvm_console_types::prelude::*;
@@ -47,10 +45,11 @@ impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> PathHash for 
 
     /// Returns the hash of the given child nodes.
     fn hash_children(&self, left: &Self::Hash, right: &Self::Hash) -> Result<Self::Hash> {
+        let mut input = Vec::with_capacity(1 + <Self::Hash as SizeInBits>::size_in_bits() * 2);
         // Prepend the nodes with a `true` bit.
-        let mut input = vec![true];
-        input.extend(left.to_bits_le());
-        input.extend(right.to_bits_le());
+        input.push(true);
+        left.write_bits_le(&mut input);
+        right.write_bits_le(&mut input);
         // Hash the input.
         Hash::hash(self, &input)
     }
@@ -62,10 +61,8 @@ impl<E: Environment, const RATE: usize> PathHash for Poseidon<E, RATE> {
     /// Returns the hash of the given child nodes.
     fn hash_children(&self, left: &Self::Hash, right: &Self::Hash) -> Result<Self::Hash> {
         // Prepend the nodes with a `1field` byte.
-        let mut input = vec![Self::Hash::one()];
-        input.push(*left);
-        input.push(*right);
+        let input = &[Self::Hash::one(), *left, *right];
         // Hash the input.
-        Hash::hash(self, &input)
+        Hash::hash(self, input)
     }
 }

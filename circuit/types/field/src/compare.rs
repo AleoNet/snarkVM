@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use super::*;
 
@@ -28,9 +26,9 @@ impl<E: Environment> Compare<Field<E>> for Field<E> {
         // Case 2: Constant < Variable
         else if self.is_constant() {
             // See the `else` case below for the truth table and description of the logic.
-            self.to_bits_le().into_iter().zip_eq(other.to_bits_le()).fold(
+            self.eject_value().to_bits_le().into_iter().zip_eq(other.to_bits_le()).fold(
                 Boolean::constant(false),
-                |is_less_than, (this, that)| match this.eject_value() {
+                |is_less_than, (this, that)| match this {
                     true => that.bitand(&is_less_than),
                     false => that.bitor(&is_less_than),
                 },
@@ -39,9 +37,9 @@ impl<E: Environment> Compare<Field<E>> for Field<E> {
         // Case 3: Variable < Constant
         else if other.is_constant() {
             // See the `else` case below for the truth table and description of the logic.
-            self.to_bits_le().into_iter().zip_eq(other.to_bits_le()).fold(
+            self.to_bits_le().into_iter().zip_eq(other.eject_value().to_bits_le()).fold(
                 Boolean::constant(false),
-                |is_less_than, (this, that)| match that.eject_value() {
+                |is_less_than, (this, that)| match that {
                     true => (!this).bitor(is_less_than),
                     false => (!this).bitand(&is_less_than),
                 },
@@ -171,41 +169,41 @@ mod tests {
 
     #[test]
     fn test_constant_is_less_than_public() {
-        run_test(Mode::Constant, Mode::Public, 253, 0, 506, 507);
+        run_test(Mode::Constant, Mode::Public, 0, 0, 757, 759);
     }
 
     #[test]
     fn test_constant_is_less_than_private() {
-        run_test(Mode::Constant, Mode::Private, 253, 0, 506, 507);
+        run_test(Mode::Constant, Mode::Private, 0, 0, 757, 759);
     }
 
     #[test]
     fn test_public_is_less_than_constant() {
-        run_test(Mode::Public, Mode::Constant, 253, 0, 506, 507);
+        run_test(Mode::Public, Mode::Constant, 0, 0, 757, 759);
     }
 
     #[test]
     fn test_public_is_less_than_public() {
-        run_test(Mode::Public, Mode::Public, 0, 0, 1012, 1014);
+        run_test(Mode::Public, Mode::Public, 0, 0, 1516, 1520);
     }
 
     #[test]
     fn test_public_is_less_than_private() {
-        run_test(Mode::Public, Mode::Private, 0, 0, 1012, 1014);
+        run_test(Mode::Public, Mode::Private, 0, 0, 1516, 1520);
     }
 
     #[test]
     fn test_private_is_less_than_constant() {
-        run_test(Mode::Private, Mode::Constant, 253, 0, 506, 507);
+        run_test(Mode::Private, Mode::Constant, 0, 0, 757, 759);
     }
 
     #[test]
     fn test_private_is_less_than_public() {
-        run_test(Mode::Private, Mode::Public, 0, 0, 1012, 1014);
+        run_test(Mode::Private, Mode::Public, 0, 0, 1516, 1520);
     }
 
     #[test]
     fn test_private_is_less_than_private() {
-        run_test(Mode::Private, Mode::Private, 0, 0, 1012, 1014);
+        run_test(Mode::Private, Mode::Private, 0, 0, 1516, 1520);
     }
 }

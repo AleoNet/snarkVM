@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use super::*;
 
@@ -20,7 +18,12 @@ impl<N: Network> Parser for Value<N> {
     /// Parses a string into a value.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
-        alt((map(Plaintext::parse, Value::Plaintext), map(Record::parse, Value::Record)))(string)
+        // Note that the order of the parsers matters.
+        alt((
+            map(Future::parse, Value::Future),
+            map(Plaintext::parse, Value::Plaintext),
+            map(Record::parse, Value::Record),
+        ))(string)
     }
 }
 
@@ -55,6 +58,7 @@ impl<N: Network> Display for Value<N> {
         match self {
             Value::Plaintext(plaintext) => Display::fmt(plaintext, f),
             Value::Record(record) => Display::fmt(record, f),
+            Value::Future(future) => Display::fmt(future, f),
         }
     }
 }
@@ -71,7 +75,6 @@ mod tests {
         // Prepare the plaintext string.
         let string = r"{
   owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah,
-  gates: 5u64,
   token_amount: 100u64
 }";
         // Construct a new plaintext value.
@@ -85,13 +88,29 @@ mod tests {
         // Prepare the record string.
         let string = r"{
   owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private,
-  gates: 5u64.private,
   token_amount: 100u64.private,
   _nonce: 6122363155094913586073041054293642159180066699840940609722305038224296461351group.public
 }";
         // Construct a new record value.
         let expected = Value::<CurrentNetwork>::from_str(string).unwrap();
         assert!(matches!(expected, Value::Record(..)));
+        assert_eq!(string, format!("{expected}"));
+    }
+
+    #[test]
+    fn test_value_future_parse() {
+        // Prepare the future string.
+        let string = r"{
+  program_id: credits.aleo,
+  function_name: transfer_public_to_private,
+  arguments: [
+    aleo1g8qul5a44vk22u9uuvaewdcjw4v6xg8wx0llru39nnjn7eu08yrscxe4e2,
+    100000000u64
+  ]
+}";
+        // Construct a new future value.
+        let expected = Value::<CurrentNetwork>::from_str(string).unwrap();
+        assert!(matches!(expected, Value::Future(..)));
         assert_eq!(string, format!("{expected}"));
     }
 }

@@ -1,24 +1,22 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 mod entry;
 pub use entry::Entry;
 
 mod helpers;
-pub use helpers::{Balance, Owner};
+pub use helpers::Owner;
 
 mod bytes;
 mod decrypt;
@@ -36,10 +34,10 @@ mod to_bits;
 mod to_commitment;
 mod to_fields;
 
-use crate::{Ciphertext, Identifier, Literal, Plaintext, ProgramID};
+use crate::{Access, Ciphertext, Identifier, Literal, Plaintext, ProgramID};
 use snarkvm_console_account::{Address, PrivateKey, ViewKey};
 use snarkvm_console_network::prelude::*;
-use snarkvm_console_types::{Boolean, Field, Group, Scalar, U64};
+use snarkvm_console_types::{Boolean, Field, Group, Scalar};
 
 use indexmap::IndexMap;
 
@@ -48,8 +46,6 @@ use indexmap::IndexMap;
 pub struct Record<N: Network, Private: Visibility> {
     /// The owner of the program record.
     owner: Owner<N, Private>,
-    /// The Aleo balance (in gates) of the program record.
-    gates: Balance<N, Private>,
     /// The program data.
     data: IndexMap<Identifier<N>, Entry<N, Private>>,
     /// The nonce of the program record.
@@ -60,33 +56,31 @@ impl<N: Network, Private: Visibility> Record<N, Private> {
     /// Initializes a new record plaintext.
     pub fn from_plaintext(
         owner: Owner<N, Plaintext<N>>,
-        gates: Balance<N, Plaintext<N>>,
         data: IndexMap<Identifier<N>, Entry<N, Plaintext<N>>>,
         nonce: Group<N>,
     ) -> Result<Record<N, Plaintext<N>>> {
-        let reserved = [Identifier::from_str("owner")?, Identifier::from_str("gates")?];
+        let reserved = [Identifier::from_str("owner")?];
         // Ensure the members has no duplicate names.
         ensure!(!has_duplicates(data.keys().chain(reserved.iter())), "Found a duplicate entry name in a record");
-        // Ensure the number of structs is within `N::MAX_DATA_ENTRIES`.
+        // Ensure the number of entries is within the maximum limit.
         ensure!(data.len() <= N::MAX_DATA_ENTRIES, "Found a record that exceeds size ({})", data.len());
         // Return the record.
-        Ok(Record { owner, gates, data, nonce })
+        Ok(Record { owner, data, nonce })
     }
 
     /// Initializes a new record ciphertext.
     pub fn from_ciphertext(
         owner: Owner<N, Ciphertext<N>>,
-        gates: Balance<N, Ciphertext<N>>,
         data: IndexMap<Identifier<N>, Entry<N, Ciphertext<N>>>,
         nonce: Group<N>,
     ) -> Result<Record<N, Ciphertext<N>>> {
-        let reserved = [Identifier::from_str("owner")?, Identifier::from_str("gates")?];
+        let reserved = [Identifier::from_str("owner")?];
         // Ensure the members has no duplicate names.
         ensure!(!has_duplicates(data.keys().chain(reserved.iter())), "Found a duplicate entry name in a record");
-        // Ensure the number of structs is within `N::MAX_DATA_ENTRIES`.
+        // Ensure the number of entries is within the maximum limit.
         ensure!(data.len() <= N::MAX_DATA_ENTRIES, "Found a record that exceeds size ({})", data.len());
         // Return the record.
-        Ok(Record { owner, gates, data, nonce })
+        Ok(Record { owner, data, nonce })
     }
 }
 
@@ -94,11 +88,6 @@ impl<N: Network, Private: Visibility> Record<N, Private> {
     /// Returns the owner of the program record.
     pub const fn owner(&self) -> &Owner<N, Private> {
         &self.owner
-    }
-
-    /// Returns the gates of the program record.
-    pub const fn gates(&self) -> &Balance<N, Private> {
-        &self.gates
     }
 
     /// Returns the program data.
@@ -116,11 +105,6 @@ impl<N: Network, Private: Visibility> Record<N, Private> {
     /// Returns the owner of the program record, and consumes `self`.
     pub fn into_owner(self) -> Owner<N, Private> {
         self.owner
-    }
-
-    /// Returns the gates of the program record, and consumes `self`.
-    pub fn into_gates(self) -> Balance<N, Private> {
-        self.gates
     }
 
     /// Returns the program data, and consumes `self`.

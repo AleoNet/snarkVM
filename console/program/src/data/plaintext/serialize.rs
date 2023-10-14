@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use super::*;
 
@@ -43,45 +41,57 @@ mod tests {
 
     type CurrentNetwork = Testnet3;
 
-    const ITERATIONS: u64 = 1;
+    const ITERATIONS: u64 = 2;
 
     #[test]
     fn test_serde_json() -> Result<()> {
-        for _ in 0..ITERATIONS {
-            // Sample a new plaintext.
-            let expected = Plaintext::<CurrentNetwork>::from_str(
-                "{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah, gates: 5u64, token_amount: 100u64 }",
-            )?;
+        fn run_test(expected: Plaintext<CurrentNetwork>) {
+            for _ in 0..ITERATIONS {
+                // Serialize
+                let expected_string = &expected.to_string();
+                let candidate_string = serde_json::to_string(&expected).unwrap();
+                assert_eq!(expected_string, serde_json::Value::from_str(&candidate_string).unwrap().as_str().unwrap());
 
-            // Serialize
-            let expected_string = &expected.to_string();
-            let candidate_string = serde_json::to_string(&expected)?;
-            assert_eq!(expected_string, serde_json::Value::from_str(&candidate_string)?.as_str().unwrap());
-
-            // Deserialize
-            assert_eq!(expected, Plaintext::from_str(expected_string)?);
-            assert_eq!(expected, serde_json::from_str(&candidate_string)?);
+                // Deserialize
+                assert_eq!(expected, Plaintext::from_str(expected_string).unwrap());
+                assert_eq!(expected, serde_json::from_str(&candidate_string).unwrap());
+            }
         }
+
+        // Test struct.
+        run_test(Plaintext::<CurrentNetwork>::from_str(
+            "{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah, token_amount: 100u64 }",
+        )?);
+
+        // Test array.
+        run_test(Plaintext::<CurrentNetwork>::from_str("[ 0field, 1field, 2field, 3field, 4field ]")?);
+
         Ok(())
     }
 
     #[test]
     fn test_bincode() -> Result<()> {
-        for _ in 0..ITERATIONS {
-            // Sample a new plaintext.
-            let expected = Plaintext::<CurrentNetwork>::from_str(
-                "{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah, gates: 5u64, token_amount: 100u64 }",
-            )?;
+        fn run_test(expected: Plaintext<CurrentNetwork>) {
+            for _ in 0..ITERATIONS {
+                // Serialize
+                let expected_bytes = expected.to_bytes_le().unwrap();
+                let expected_bytes_with_size_encoding = bincode::serialize(&expected).unwrap();
+                assert_eq!(&expected_bytes[..], &expected_bytes_with_size_encoding[8..]);
 
-            // Serialize
-            let expected_bytes = expected.to_bytes_le()?;
-            let expected_bytes_with_size_encoding = bincode::serialize(&expected)?;
-            assert_eq!(&expected_bytes[..], &expected_bytes_with_size_encoding[8..]);
-
-            // Deserialize
-            assert_eq!(expected, Plaintext::read_le(&expected_bytes[..])?);
-            assert_eq!(expected, bincode::deserialize(&expected_bytes_with_size_encoding[..])?);
+                // Deserialize
+                assert_eq!(expected, Plaintext::read_le(&expected_bytes[..]).unwrap());
+                assert_eq!(expected, bincode::deserialize(&expected_bytes_with_size_encoding[..]).unwrap());
+            }
         }
+
+        // Test struct.
+        run_test(Plaintext::<CurrentNetwork>::from_str(
+            "{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah, token_amount: 100u64 }",
+        )?);
+
+        // Test array.
+        run_test(Plaintext::<CurrentNetwork>::from_str("[ 0field, 1field, 2field, 3field, 4field ]")?);
+
         Ok(())
     }
 }

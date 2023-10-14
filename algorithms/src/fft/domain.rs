@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 //! This module contains an `EvaluationDomain` abstraction for
 //! performing various kinds of polynomial arithmetic on top of
@@ -40,6 +38,8 @@ use snarkvm_utilities::{execute_with_max_available_threads, serialize::*};
 
 use rand::Rng;
 use std::{borrow::Cow, fmt};
+
+use anyhow::{ensure, Result};
 
 #[cfg(not(feature = "serial"))]
 use rayon::prelude::*;
@@ -92,7 +92,7 @@ pub struct EvaluationDomain<F: FftField> {
     pub group_gen: F,
     /// Inverse of the generator of the subgroup.
     pub group_gen_inv: F,
-    /// Multiplicative generator of the finite field.
+    /// Inverse of the multiplicative generator of the finite field.
     pub generator_inv: F,
 }
 
@@ -316,18 +316,18 @@ impl<F: FftField> EvaluationDomain<F> {
         cfg_iter_mut!(evals).for_each(|eval| *eval *= &i);
     }
 
-    /// Given an index which assumes the first elements of this domain are the elements of
-    /// another (sub)domain with size size_s,
-    /// this returns the actual index into this domain.
-    pub fn reindex_by_subdomain(&self, other: &Self, index: usize) -> usize {
-        assert!(self.size() >= other.size());
+    /// Given an index in the `other` subdomain, return an index into this domain `self`
+    /// This assumes the `other`'s elements are also `self`'s first elements
+    pub fn reindex_by_subdomain(&self, other: &Self, index: usize) -> Result<usize> {
+        ensure!(self.size() >= other.size(), "other.size() must be smaller than self.size()");
+
         // Let this subgroup be G, and the subgroup we're re-indexing by be S.
         // Since its a subgroup, the 0th element of S is at index 0 in G, the first element of S is at
         // index |G|/|S|, the second at 2*|G|/|S|, etc.
         // Thus for an index i that corresponds to S, the index in G is i*|G|/|S|
         let period = self.size() / other.size();
         if index < other.size() {
-            index * period
+            Ok(index * period)
         } else {
             // Let i now be the index of this element in G \ S
             // Let x be the number of elements in G \ S, for every element in S. Then x = (|G|/|S| - 1).
@@ -338,7 +338,7 @@ impl<F: FftField> EvaluationDomain<F> {
             // that will have appeared in G.
             let i = index - other.size();
             let x = period - 1;
-            i + (i / x) + 1
+            Ok(i + (i / x) + 1)
         }
     }
 

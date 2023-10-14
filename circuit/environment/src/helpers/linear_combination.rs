@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use crate::{Mode, *};
 use snarkvm_fields::PrimeField;
@@ -23,6 +21,16 @@ use core::{
 };
 use indexmap::{map::Entry, IndexMap};
 
+// Before high level program operations are converted into constraints, they are first tracked as linear combinations.
+// Each linear combination corresponds to a portion or all of a single row of an R1CS matrix, and consists of:
+// \begin{itemize}
+//     \item constant and variable terms, representing the constraint system at 'compile time'.
+//           It can be seen as a multivariate polynomial, a sum of monomials.
+//     \item value term, representing the value of the assigned linear combination at 'proving time'.
+//           Which means it is the fully assigned subset of a row of a matrix.
+// \end{itemize}
+// The constant and variable terms directly refer to how often the R1CS variables are invoked in a row.
+// A full R1CS row is "completed" when we introduce a multiplication between three non-const linear combinations (a*b=c).
 #[derive(Clone)]
 pub struct LinearCombination<F: PrimeField> {
     constant: F,
@@ -126,7 +134,17 @@ impl<F: PrimeField> LinearCombination<F> {
         &self.terms
     }
 
+    /// Returns the number of nonzeros in the linear combination.
+    pub(super) fn num_nonzeros(&self) -> u64 {
+        // Increment by one if the constant is nonzero.
+        match self.constant.is_zero() {
+            true => self.terms.len() as u64,
+            false => (self.terms.len() as u64).saturating_add(1),
+        }
+    }
+
     /// Returns the number of addition gates in the linear combination.
+    #[cfg(test)]
     pub(super) fn num_additions(&self) -> u64 {
         // Increment by one if the constant is nonzero and the number of terms is nonzero.
         match !self.constant.is_zero() && !self.terms.is_empty() {

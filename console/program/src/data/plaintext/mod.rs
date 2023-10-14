@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 mod bytes;
 mod encrypt;
@@ -27,7 +25,7 @@ mod size_in_fields;
 mod to_bits;
 mod to_fields;
 
-use crate::{Ciphertext, Identifier, Literal};
+use crate::{Access, Ciphertext, Identifier, Literal};
 use snarkvm_console_network::Network;
 use snarkvm_console_types::prelude::*;
 
@@ -40,6 +38,8 @@ pub enum Plaintext<N: Network> {
     Literal(Literal<N>, OnceCell<Vec<bool>>),
     /// A struct.
     Struct(IndexMap<Identifier<N>, Plaintext<N>>, OnceCell<Vec<bool>>),
+    /// An array.
+    Array(Vec<Plaintext<N>>, OnceCell<Vec<bool>>),
 }
 
 impl<N: Network> From<Literal<N>> for Plaintext<N> {
@@ -50,7 +50,7 @@ impl<N: Network> From<Literal<N>> for Plaintext<N> {
 }
 
 impl<N: Network> From<&Literal<N>> for Plaintext<N> {
-    /// Returns a new `Plaintext` from a `Literal`.
+    /// Returns a new `Plaintext` from a `&Literal`.
     fn from(literal: &Literal<N>) -> Self {
         Self::Literal(literal.clone(), OnceCell::new())
     }
@@ -68,16 +68,31 @@ mod tests {
 
     #[test]
     fn test_plaintext() -> Result<()> {
+        let run_test = |value: Plaintext<CurrentNetwork>| {
+            assert_eq!(
+                value.to_bits_le(),
+                Plaintext::<CurrentNetwork>::from_bits_le(&value.to_bits_le()).unwrap().to_bits_le()
+            );
+            assert_eq!(value, Plaintext::<CurrentNetwork>::from_fields(&value.to_fields().unwrap()).unwrap());
+            assert_eq!(value, Plaintext::<CurrentNetwork>::from_str(&value.to_string()).unwrap());
+            assert!(*value.is_equal(&value));
+            assert!(*!value.is_not_equal(&value));
+        };
+
         let mut rng = TestRng::default();
 
-        let value = Plaintext::<CurrentNetwork>::from_str("true")?;
-        assert_eq!(value.to_bits_le(), Plaintext::<CurrentNetwork>::from_bits_le(&value.to_bits_le())?.to_bits_le());
+        // Test booleans.
+        run_test(Plaintext::<CurrentNetwork>::from_str("true")?);
+        run_test(Plaintext::<CurrentNetwork>::from_str("false")?);
 
-        let value =
-            Plaintext::<CurrentNetwork>::Literal(Literal::Field(Field::new(Uniform::rand(&mut rng))), OnceCell::new());
-        assert_eq!(value.to_bits_le(), Plaintext::<CurrentNetwork>::from_bits_le(&value.to_bits_le())?.to_bits_le());
+        // Test a random field element.
+        run_test(Plaintext::<CurrentNetwork>::Literal(
+            Literal::Field(Field::new(Uniform::rand(&mut rng))),
+            OnceCell::new(),
+        ));
 
-        let value = Plaintext::<CurrentNetwork>::Struct(
+        // Test a random struct with literal members.
+        run_test(Plaintext::<CurrentNetwork>::Struct(
             IndexMap::from_iter(
                 vec![
                     (Identifier::from_str("a")?, Plaintext::<CurrentNetwork>::from_str("true")?),
@@ -92,10 +107,31 @@ mod tests {
                 .into_iter(),
             ),
             OnceCell::new(),
-        );
-        assert_eq!(value.to_bits_le(), Plaintext::<CurrentNetwork>::from_bits_le(&value.to_bits_le())?.to_bits_le());
+        ));
 
-        let value = Plaintext::<CurrentNetwork>::Struct(
+        // Test a random struct with array members.
+        run_test(Plaintext::<CurrentNetwork>::Struct(
+            IndexMap::from_iter(
+                vec![
+                    (Identifier::from_str("a")?, Plaintext::<CurrentNetwork>::from_str("true")?),
+                    (
+                        Identifier::from_str("b")?,
+                        Plaintext::<CurrentNetwork>::Array(
+                            vec![
+                                Plaintext::<CurrentNetwork>::from_str("true")?,
+                                Plaintext::<CurrentNetwork>::from_str("false")?,
+                            ],
+                            OnceCell::new(),
+                        ),
+                    ),
+                ]
+                .into_iter(),
+            ),
+            OnceCell::new(),
+        ));
+
+        // Test random deeply-nested struct.
+        run_test(Plaintext::<CurrentNetwork>::Struct(
             IndexMap::from_iter(
                 vec![
                     (Identifier::from_str("a")?, Plaintext::<CurrentNetwork>::from_str("true")?),
@@ -129,8 +165,11 @@ mod tests {
                                     ),
                                     (
                                         Identifier::from_str("g")?,
-                                        Plaintext::<CurrentNetwork>::Literal(
-                                            Literal::Field(Field::new(Uniform::rand(&mut rng))),
+                                        Plaintext::Array(
+                                            vec![
+                                                Plaintext::<CurrentNetwork>::from_str("true")?,
+                                                Plaintext::<CurrentNetwork>::from_str("false")?,
+                                            ],
                                             OnceCell::new(),
                                         ),
                                     ),
@@ -151,8 +190,42 @@ mod tests {
                 .into_iter(),
             ),
             OnceCell::new(),
-        );
-        assert_eq!(value.to_bits_le(), Plaintext::<CurrentNetwork>::from_bits_le(&value.to_bits_le())?.to_bits_le());
+        ));
+
+        // Test an array of literals.
+        run_test(Plaintext::<CurrentNetwork>::Array(
+            vec![
+                Plaintext::<CurrentNetwork>::from_str("0field")?,
+                Plaintext::<CurrentNetwork>::from_str("1field")?,
+                Plaintext::<CurrentNetwork>::from_str("2field")?,
+                Plaintext::<CurrentNetwork>::from_str("3field")?,
+                Plaintext::<CurrentNetwork>::from_str("4field")?,
+            ],
+            OnceCell::new(),
+        ));
+
+        // Test an array of structs.
+        run_test(Plaintext::<CurrentNetwork>::Array(
+            vec![
+                Plaintext::<CurrentNetwork>::from_str("{ x: 0field, y: 1field }")?,
+                Plaintext::<CurrentNetwork>::from_str("{ x: 2field, y: 3field }")?,
+                Plaintext::<CurrentNetwork>::from_str("{ x: 4field, y: 5field }")?,
+                Plaintext::<CurrentNetwork>::from_str("{ x: 6field, y: 7field }")?,
+                Plaintext::<CurrentNetwork>::from_str("{ x: 8field, y: 9field }")?,
+            ],
+            OnceCell::new(),
+        ));
+
+        // Test a non-uniform array.
+        run_test(Plaintext::<CurrentNetwork>::Array(
+            vec![
+                Plaintext::<CurrentNetwork>::from_str("true")?,
+                Plaintext::<CurrentNetwork>::from_str("1field")?,
+                Plaintext::<CurrentNetwork>::from_str("{ x: 4field, y: 1u8 }")?,
+            ],
+            OnceCell::new(),
+        ));
+
         Ok(())
     }
 }

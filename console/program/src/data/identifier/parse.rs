@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use super::*;
 
@@ -72,14 +70,8 @@ impl<N: Network> Debug for Identifier<N> {
 impl<N: Network> Display for Identifier<N> {
     /// Prints the identifier as a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        // Convert the identifier to bits.
-        let bits_le = self.0.to_bits_le();
-
-        // Convert the bits to bytes.
-        let bytes = bits_le
-            .chunks(8)
-            .map(|byte| u8::from_bits_le(byte).map_err(|_| fmt::Error))
-            .collect::<Result<Vec<u8>, _>>()?;
+        // Convert the identifier to bytes.
+        let bytes = self.0.to_bytes_le().map_err(|_| fmt::Error)?;
 
         // Parse the bytes as a UTF-8 string.
         let string = String::from_utf8(bytes).map_err(|_| fmt::Error)?;
@@ -100,7 +92,7 @@ impl<N: Network> Display for Identifier<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::data::identifier::tests::sample_identifier_as_string;
+    use crate::data::identifier::tests::{sample_identifier, sample_identifier_as_string};
     use snarkvm_console_network::Testnet3;
 
     type CurrentNetwork = Testnet3;
@@ -226,6 +218,23 @@ mod tests {
     fn test_display() -> Result<()> {
         let identifier = Identifier::<CurrentNetwork>::from_str("foo_bar")?;
         assert_eq!("foo_bar", format!("{identifier}"));
+        Ok(())
+    }
+
+    #[test]
+    fn test_proxy_bits_equivalence() -> Result<()> {
+        let mut rng = TestRng::default();
+        let identifier: Identifier<CurrentNetwork> = sample_identifier(&mut rng)?;
+
+        // Direct conversion to bytes.
+        let bytes1 = identifier.0.to_bytes_le()?;
+
+        // Combined conversion via bits.
+        let bits_le = identifier.0.to_bits_le();
+        let bytes2 = bits_le.chunks(8).map(u8::from_bits_le).collect::<Result<Vec<u8>, _>>()?;
+
+        assert_eq!(bytes1, bytes2);
+
         Ok(())
     }
 }

@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use crate::{Ciphertext, Entry, Literal, Plaintext, Visibility};
 use snarkvm_circuit_network::Aleo;
@@ -177,25 +175,23 @@ impl<A: Aleo> ToBits for Owner<A, Plaintext<A>> {
     type Boolean = Boolean<A>;
 
     /// Returns `self` as a boolean vector in little-endian order.
-    fn to_bits_le(&self) -> Vec<Boolean<A>> {
-        let mut bits_le = vec![self.is_private()];
+    fn write_bits_le(&self, vec: &mut Vec<Boolean<A>>) {
+        vec.push(self.is_private());
         match self {
-            Self::Public(public) => bits_le.extend(public.to_bits_le()),
-            Self::Private(Plaintext::Literal(Literal::Address(address), ..)) => bits_le.extend(address.to_bits_le()),
+            Self::Public(public) => public.write_bits_le(vec),
+            Self::Private(Plaintext::Literal(Literal::Address(address), ..)) => address.write_bits_le(vec),
             _ => A::halt("Internal error: plaintext to_bits_le corrupted in record owner"),
-        }
-        bits_le
+        };
     }
 
     /// Returns `self` as a boolean vector in big-endian order.
-    fn to_bits_be(&self) -> Vec<Boolean<A>> {
-        let mut bits_be = vec![self.is_private()];
+    fn write_bits_be(&self, vec: &mut Vec<Boolean<A>>) {
+        vec.push(self.is_private());
         match self {
-            Self::Public(public) => bits_be.extend(public.to_bits_be()),
-            Self::Private(Plaintext::Literal(Literal::Address(address), ..)) => bits_be.extend(address.to_bits_be()),
+            Self::Public(public) => public.write_bits_be(vec),
+            Self::Private(Plaintext::Literal(Literal::Address(address), ..)) => address.write_bits_be(vec),
             _ => A::halt("Internal error: plaintext to_bits_be corrupted in record owner"),
-        }
-        bits_be
+        };
     }
 }
 
@@ -203,34 +199,32 @@ impl<A: Aleo> ToBits for Owner<A, Ciphertext<A>> {
     type Boolean = Boolean<A>;
 
     /// Returns `self` as a boolean vector in little-endian order.
-    fn to_bits_le(&self) -> Vec<Boolean<A>> {
-        let mut bits_le = vec![self.is_private()];
+    fn write_bits_le(&self, vec: &mut Vec<Boolean<A>>) {
+        vec.push(self.is_private());
         match self {
-            Self::Public(public) => bits_le.extend(public.to_bits_le()),
+            Self::Public(public) => public.write_bits_le(vec),
             Self::Private(ciphertext) => {
                 // Ensure there is exactly one field element in the ciphertext.
                 match ciphertext.len() == 1 {
-                    true => bits_le.extend(ciphertext[0].to_bits_le()),
+                    true => ciphertext[0].write_bits_le(vec),
                     false => A::halt("Internal error: ciphertext to_bits_le corrupted in record owner"),
                 }
             }
-        }
-        bits_le
+        };
     }
 
     /// Returns `self` as a boolean vector in big-endian order.
-    fn to_bits_be(&self) -> Vec<Boolean<A>> {
-        let mut bits_be = vec![self.is_private()];
+    fn write_bits_be(&self, vec: &mut Vec<Boolean<A>>) {
+        vec.push(self.is_private());
         match self {
-            Self::Public(public) => bits_be.extend(public.to_bits_be()),
+            Self::Public(public) => public.write_bits_be(vec),
             Self::Private(ciphertext) => {
                 // Ensure there is exactly one field element in the ciphertext.
                 match ciphertext.len() == 1 {
-                    true => bits_be.extend(ciphertext[0].to_bits_be()),
+                    true => ciphertext[0].write_bits_be(vec),
                     false => A::halt("Internal error: ciphertext to_bits_be corrupted in record owner"),
                 }
             }
-        }
-        bits_be
+        };
     }
 }

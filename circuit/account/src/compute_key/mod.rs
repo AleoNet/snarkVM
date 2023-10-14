@@ -1,29 +1,32 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
-
+mod equal;
+mod from;
 mod from_private_key;
+mod helpers;
+mod ternary;
 mod to_address;
 
 #[cfg(test)]
-use snarkvm_circuit_types::environment::assert_scope;
+use snarkvm_circuit_types::environment::{assert_count, assert_output_mode, assert_scope};
 
 use crate::PrivateKey;
 use snarkvm_circuit_network::Aleo;
-use snarkvm_circuit_types::{environment::prelude::*, Address, Group, Scalar};
+use snarkvm_circuit_types::{environment::prelude::*, Address, Boolean, Field, Group, Scalar};
 
+#[derive(Clone)]
 pub struct ComputeKey<A: Aleo> {
     /// The signature public key `pk_sig` := G^sk_sig.
     pk_sig: Group<A>,
@@ -43,10 +46,8 @@ impl<A: Aleo> Inject for ComputeKey<A> {
         let pk_sig = Group::new(mode, compute_key.pk_sig());
         // Inject `pr_sig`.
         let pr_sig = Group::new(mode, compute_key.pr_sig());
-        // Compute `sk_prf` := HashToScalar(G^sk_sig || G^r_sig).
-        let sk_prf = A::hash_to_scalar_psd4(&[pk_sig.to_x_coordinate(), pr_sig.to_x_coordinate()]);
         // Output the compute key.
-        Self { pk_sig, pr_sig, sk_prf }
+        Self::from((pk_sig, pr_sig))
     }
 }
 
@@ -129,11 +130,11 @@ pub(crate) mod tests {
 
     #[test]
     fn test_compute_key_new_public() -> Result<()> {
-        check_new(Mode::Public, 9, 4, 621, 622)
+        check_new(Mode::Public, 9, 4, 873, 875)
     }
 
     #[test]
     fn test_compute_key_new_private() -> Result<()> {
-        check_new(Mode::Private, 9, 0, 621, 620)
+        check_new(Mode::Private, 9, 0, 873, 873)
     }
 }

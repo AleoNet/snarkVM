@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #[macro_export]
 macro_rules! field {
@@ -110,14 +108,12 @@ macro_rules! sqrt_impl {
                 l_s.resize(l_s.len() + k_1 as usize, l_minus_one);
                 l_s.resize(l_s.len() + k_2 as usize, l);
 
-                let mut x_s: Vec<$Self> = Vec::with_capacity(k as usize);
                 let mut l_sum = 0;
-                l_s.iter().take((k as usize) - 1).for_each(|l| {
+                let x_s = l_s.iter().take((k as usize) - 1).map(|l| {
                     l_sum += l;
-                    let x = x.pow(BigInteger::from(2u64.pow((n - 1 - l_sum) as u32)));
-                    x_s.push(x);
+                    x.pow(BigInteger::from(2u64.pow((n - 1 - l_sum) as u32)))
                 });
-                x_s.push(x);
+                let x_s = x_s.chain(Some(x));
 
                 let find = |delta: $Self| -> u64 {
                     let mut mu = delta;
@@ -144,45 +140,47 @@ macro_rules! sqrt_impl {
                     s
                 };
 
-                let calc_kappa = |i: usize, j: usize, l_s: &[u64]| -> u64 {
+                let calculate_kappa = |i: usize, j: usize, l_s: &[u64]| -> u64 {
                     l_s.iter().take(j).sum::<u64>() + 1 + l_s.iter().skip(i + 1).sum::<u64>()
                 };
 
-                let calc_gamma = |i: usize, q_s: &[Vec<bool>], last: bool| -> $Self {
+                let calculate_gamma = |i: usize, q_s: &[u64], last: bool| -> $Self {
                     let mut gamma = $Self::one();
                     if i != 0 {
-                        q_s.iter().zip(l_s.iter()).enumerate().for_each(|(j, (q_bits, l))| {
-                            let mut kappa = calc_kappa(i, j, &l_s);
+                        q_s.iter().zip(l_s.iter()).enumerate().for_each(|(j, (q, l))| {
+                            let mut kappa = calculate_kappa(i, j, &l_s);
                             if last {
                                 kappa -= 1;
                             }
-                            q_bits.iter().enumerate().take(*l as usize).for_each(|(k, bit)| {
-                                if *bit {
+                            let mut value = *q;
+                            (0..*l as usize).for_each(|k| {
+                                let bit = value & 1 == 1;
+                                if bit {
                                     gamma *= $Self($P::POWERS_OF_ROOTS_OF_UNITY[(kappa as usize) + k], PhantomData);
                                 }
+                                value = value.wrapping_shr(1u32);
                             });
                         });
                     }
                     gamma
                 };
 
-                let mut q_s = Vec::<Vec<bool>>::with_capacity(k as usize);
+                let mut q_s = Vec::<u64>::with_capacity(k as usize);
                 let two_to_n_minus_l = 2u64.pow((n - l) as u32);
                 let two_to_n_minus_l_minus_one = 2u64.pow((n - l_minus_one) as u32);
-                x_s.iter().enumerate().for_each(|(i, x)| {
+                x_s.enumerate().for_each(|(i, x)| {
                     // Calculate g^t.
                     // This algorithm deviates from the standard description in the paper, and is
                     // explained in detail in page 6, in section 2.1.
-                    let gamma = calc_gamma(i, &q_s, false);
-                    let alpha = *x * gamma;
+                    let gamma = calculate_gamma(i, &q_s, false);
+                    let alpha = x * gamma;
                     q_s.push(
-                        (eval(alpha) / if i < k_1 as usize { two_to_n_minus_l_minus_one } else { two_to_n_minus_l })
-                            .to_bits_le(),
+                        eval(alpha) / if i < k_1 as usize { two_to_n_minus_l_minus_one } else { two_to_n_minus_l },
                     );
                 });
 
                 // Calculate g^{t/2}.
-                let gamma = calc_gamma(k as usize, &q_s, true);
+                let gamma = calculate_gamma(k as usize, &q_s, true);
                 Some(*$self * v * gamma)
             }
         }

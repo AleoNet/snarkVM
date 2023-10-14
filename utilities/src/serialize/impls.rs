@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 pub use crate::{
     io::{self, Read, Write},
@@ -413,7 +411,7 @@ impl<T: Valid> Valid for Vec<T> {
     where
         Self: 'a,
     {
-        T::batch_check(batch.flat_map(|v| v.iter()))
+        T::batch_check(batch.flatten())
     }
 }
 
@@ -437,11 +435,65 @@ impl<T: CanonicalDeserialize> CanonicalDeserialize for Vec<T> {
     }
 }
 
+impl<T: CanonicalDeserialize + std::fmt::Debug> CanonicalDeserialize for [T; 32] {
+    #[inline]
+    fn deserialize_with_mode<R: Read>(
+        mut reader: R,
+        compress: Compress,
+        validate: Validate,
+    ) -> Result<Self, SerializationError> {
+        let values = [(); 32].map(|_| T::deserialize_with_mode(&mut reader, compress, Validate::No));
+
+        // check that each value is error free
+        if values.iter().any(|value| value.is_err()) {
+            return Err(SerializationError::InvalidData);
+        }
+
+        let values = values.map(|r| r.unwrap());
+
+        if let Validate::Yes = validate {
+            T::batch_check(values.iter())?
+        }
+
+        Ok(values)
+    }
+}
+
+impl<T: Valid> Valid for [T; 32] {
+    #[inline]
+    fn check(&self) -> Result<(), SerializationError> {
+        T::batch_check(self.iter())
+    }
+
+    #[inline]
+    fn batch_check<'a>(batch: impl Iterator<Item = &'a Self> + Send) -> Result<(), SerializationError>
+    where
+        Self: 'a,
+    {
+        T::batch_check(batch.flatten())
+    }
+}
+
 impl<T: CanonicalSerialize> CanonicalSerialize for [T] {
     #[inline]
     fn serialize_with_mode<W: Write>(&self, mut writer: W, compress: Compress) -> Result<(), SerializationError> {
         let len = self.len() as u64;
         len.serialize_with_mode(&mut writer, compress)?;
+        for item in self.iter() {
+            item.serialize_with_mode(&mut writer, compress)?;
+        }
+        Ok(())
+    }
+
+    #[inline]
+    fn serialized_size(&self, compress: Compress) -> usize {
+        8 + self.iter().map(|item| item.serialized_size(compress)).sum::<usize>()
+    }
+}
+
+impl<T: CanonicalSerialize> CanonicalSerialize for [T; 32] {
+    #[inline]
+    fn serialize_with_mode<W: Write>(&self, mut writer: W, compress: Compress) -> Result<(), SerializationError> {
         for item in self.iter() {
             item.serialize_with_mode(&mut writer, compress)?;
         }
@@ -578,6 +630,7 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::{deserialize_vec_without_len, serialize_vec_without_len, serialized_vec_size_without_len};
 
     fn test_serialize<T: PartialEq + std::fmt::Debug + CanonicalSerialize + CanonicalDeserialize>(data: T) {
         let combinations = [
@@ -588,8 +641,27 @@ mod test {
         ];
         for (compress, validate) in combinations {
             let mut serialized = vec![0; data.serialized_size(compress)];
-            data.serialize_with_mode(&mut &mut serialized[..], compress).unwrap();
-            let de = T::deserialize_with_mode(&mut &serialized[..], compress, validate).unwrap();
+            data.serialize_with_mode(&mut serialized[..], compress).unwrap();
+            let de = T::deserialize_with_mode(&serialized[..], compress, validate).unwrap();
+            assert_eq!(data, de);
+        }
+    }
+
+    fn test_serialize_without_len<T: PartialEq + std::fmt::Debug + CanonicalSerialize + CanonicalDeserialize>(
+        data: Vec<T>,
+    ) {
+        let combinations = [
+            (Compress::No, Validate::No),
+            (Compress::Yes, Validate::No),
+            (Compress::No, Validate::Yes),
+            (Compress::Yes, Validate::Yes),
+        ];
+        for (compress, validate) in combinations {
+            let len = serialized_vec_size_without_len(&data, compress);
+            let mut serialized = vec![0; len];
+            serialize_vec_without_len(data.iter(), serialized.as_mut_slice(), compress).unwrap();
+            let elements = if len > 0 { len / CanonicalSerialize::serialized_size(&data[0], compress) } else { 0 };
+            let de = deserialize_vec_without_len(serialized.as_slice(), compress, validate, elements).unwrap();
             assert_eq!(data, de);
         }
     }
@@ -618,6 +690,12 @@ mod test {
     fn test_vec() {
         test_serialize(vec![1u64, 2, 3, 4, 5]);
         test_serialize(Vec::<u64>::new());
+    }
+
+    #[test]
+    fn test_vec_without_len() {
+        test_serialize_without_len(vec![1u64, 2, 3, 4, 5]);
+        test_serialize_without_len(Vec::<u64>::new());
     }
 
     #[test]

@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use super::*;
 
@@ -23,12 +21,10 @@ impl<N: Network> FromBytes for RecordType<N> {
         let name = Identifier::read_le(&mut reader)?;
         // Read the visibility for the owner.
         let owner = PublicOrPrivate::read_le(&mut reader)?;
-        // Read the visibility for the gates.
-        let gates = PublicOrPrivate::read_le(&mut reader)?;
 
         // Read the number of entries.
         let num_entries = u16::read_le(&mut reader)?;
-        // Ensure the number of entries is within `N::MAX_DATA_ENTRIES`.
+        // Ensure the number of entries is within the maximum limit.
         if num_entries as usize > N::MAX_DATA_ENTRIES {
             return Err(error(format!(
                 "RecordType exceeds size: expected <= {}, found {num_entries}",
@@ -49,27 +45,24 @@ impl<N: Network> FromBytes for RecordType<N> {
         }
 
         // Prepare the reserved entry names.
-        let reserved = [
-            Identifier::from_str("owner").map_err(|e| error(e.to_string()))?,
-            Identifier::from_str("gates").map_err(|e| error(e.to_string()))?,
-        ];
+        let reserved = [Identifier::from_str("owner").map_err(|e| error(e.to_string()))?];
         // Ensure the entries has no duplicate names.
         if has_duplicates(entries.iter().map(|(identifier, _)| identifier).chain(reserved.iter())) {
             return Err(error(format!("Duplicate entry type found in record '{name}'")));
         }
-        // Ensure the number of members is within `N::MAX_DATA_ENTRIES`.
+        // Ensure the number of members is within the maximum limit.
         if entries.len() > N::MAX_DATA_ENTRIES {
             return Err(error("Failed to parse record: too many entries"));
         }
 
-        Ok(Self { name, owner, gates, entries })
+        Ok(Self { name, owner, entries })
     }
 }
 
 impl<N: Network> ToBytes for RecordType<N> {
     /// Writes the record type to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        // Ensure the number of entries is within `N::MAX_DATA_ENTRIES`.
+        // Ensure the number of entries is within the maximum limit.
         if self.entries.len() > N::MAX_DATA_ENTRIES {
             return Err(error("Failed to serialize record: too many entries"));
         }
@@ -78,8 +71,6 @@ impl<N: Network> ToBytes for RecordType<N> {
         self.name.write_le(&mut writer)?;
         // Write the visibility for the owner.
         self.owner.write_le(&mut writer)?;
-        // Write the visibility for the gates.
-        self.gates.write_le(&mut writer)?;
 
         // Write the number of entries.
         u16::try_from(self.entries.len()).or_halt_with::<N>("Record length exceeds u16").write_le(&mut writer)?;
@@ -104,7 +95,7 @@ mod tests {
     #[test]
     fn test_bytes() -> Result<()> {
         let expected = RecordType::<CurrentNetwork>::from_str(
-            "record message:\n    owner as address.public;\n    gates as u64.private;\n    first as field.constant;\n    second as field.public;",
+            "record message:\n    owner as address.public;\n    first as field.constant;\n    second as field.public;",
         )?;
         let candidate = RecordType::from_bytes_le(&expected.to_bytes_le().unwrap()).unwrap();
         assert_eq!(expected, candidate);

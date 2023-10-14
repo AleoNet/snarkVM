@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use super::*;
 
@@ -24,7 +22,7 @@ impl<N: Network> Serialize for Request<N> {
         match serializer.is_human_readable() {
             true => {
                 let mut transition = serializer.serialize_struct("Request", 9)?;
-                transition.serialize_field("caller", &self.caller)?;
+                transition.serialize_field("signer", &self.signer)?;
                 transition.serialize_field("network", &self.network_id)?;
                 transition.serialize_field("program", &self.program_id)?;
                 transition.serialize_field("function", &self.function_name)?;
@@ -51,8 +49,8 @@ impl<'de, N: Network> Deserialize<'de> for Request<N> {
                 let mut request = serde_json::Value::deserialize(deserializer)?;
                 // Recover the request.
                 Ok(Self::from((
-                    // Retrieve the caller.
-                    DeserializeExt::take_from_value::<D>(&mut request, "caller")?,
+                    // Retrieve the signer.
+                    DeserializeExt::take_from_value::<D>(&mut request, "signer")?,
                     // Retrieve the network ID.
                     DeserializeExt::take_from_value::<D>(&mut request, "network")?,
                     // Retrieve the program ID.

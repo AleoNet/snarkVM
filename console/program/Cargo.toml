@@ -1,9 +1,9 @@
 [package]
 name = "snarkvm-console-program"
-version = "0.9.16"
+version = "0.15.4"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Program operations for a decentralized virtual machine"
-license = "GPL-3.0"
+license = "Apache-2.0"
 edition = "2021"
 
 [features]
@@ -12,23 +12,27 @@ test = [ ]
 
 [dependencies.snarkvm-console-account]
 path = "../account"
-version = "0.9.16"
+version = "=0.15.4"
+
+[dependencies.snarkvm-console-algorithms]
+path = "../algorithms"
+version = "=0.15.4"
 
 [dependencies.snarkvm-console-collections]
 path = "../collections"
-version = "0.9.16"
+version = "=0.15.4"
 
 [dependencies.snarkvm-console-network]
 path = "../network"
-version = "0.9.16"
+version = "=0.15.4"
 
 [dependencies.snarkvm-console-types]
 path = "../types"
-version = "0.9.16"
+version = "=0.15.4"
 
 [dependencies.snarkvm-utilities]
 path = "../../utilities"
-version = "0.9.16"
+version = "=0.15.4"
 
 [dependencies.enum_index]
 version = "0.2"
@@ -37,16 +41,19 @@ version = "0.2"
 version = "0.2"
 
 [dependencies.indexmap]
-version = "1.9"
+version = "2.0"
 
 [dependencies.num-derive]
-version = "0.3"
+version = "0.4"
 
 [dependencies.num-traits]
 version = "0.2"
 
 [dependencies.once_cell]
-version = "1.17.1"
+version = "1.18.0"
+
+[dependencies.paste]
+version = "1.0"
 
 [dependencies.serde_json]
 version = "1.0"

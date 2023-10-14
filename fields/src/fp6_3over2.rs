@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use crate::{Field, Fp2, Fp2Parameters, One, Zero};
 use snarkvm_utilities::{
@@ -476,20 +474,16 @@ impl<P: Fp6Parameters> From<u8> for Fp6<P> {
 }
 
 impl<P: Fp6Parameters> ToBits for Fp6<P> {
-    fn to_bits_le(&self) -> Vec<bool> {
-        let mut res = vec![];
-        res.extend_from_slice(&self.c0.to_bits_le());
-        res.extend_from_slice(&self.c1.to_bits_le());
-        res.extend_from_slice(&self.c2.to_bits_le());
-        res
+    fn write_bits_le(&self, vec: &mut Vec<bool>) {
+        self.c0.write_bits_le(vec);
+        self.c1.write_bits_le(vec);
+        self.c2.write_bits_le(vec);
     }
 
-    fn to_bits_be(&self) -> Vec<bool> {
-        let mut res = vec![];
-        res.extend_from_slice(&self.c0.to_bits_be());
-        res.extend_from_slice(&self.c1.to_bits_be());
-        res.extend_from_slice(&self.c2.to_bits_be());
-        res
+    fn write_bits_be(&self, vec: &mut Vec<bool>) {
+        self.c0.write_bits_be(vec);
+        self.c1.write_bits_be(vec);
+        self.c2.write_bits_be(vec);
     }
 }
 

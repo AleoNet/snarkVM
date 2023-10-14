@@ -8,6 +8,9 @@
 *.usrs
 !**/powers-of-beta-15.usrs*
 !**/shifted-powers-of-beta-15.usrs*
+!**/powers-of-beta-16.usrs*
+!**/shifted-powers-of-beta-16.usrs*
 !**/powers-of-beta-gamma.usrs
 !**/beta-h.usrs
 !**/neg-powers-of-beta.usrs
+**/proptest-regressions/

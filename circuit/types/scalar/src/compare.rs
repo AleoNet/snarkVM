@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use super::*;
 
@@ -27,9 +25,9 @@ impl<E: Environment> Compare<Scalar<E>> for Scalar<E> {
         }
         // Case 2: Constant < Variable | Variable < Constant | Variable < Variable
         else {
-            // If all scalar field elements are less than (MODULUS - 1)/2 on the base field,
+            // If all scalar field elements are less than or equal to (MODULUS - 1)/2 on the base field,
             // we can perform an optimized check for `is_less_than` by casting the scalars onto the base field.
-            debug_assert!(E::ScalarField::modulus() < E::BaseField::modulus_minus_one_div_two());
+            debug_assert!((-E::ScalarField::one()).to_bigint() <= E::BaseField::modulus_minus_one_div_two());
 
             // Intuition: Check the parity of 2 * (`self` - `other`) mod MODULUS.
             //   - If `self` < `other`, then 2 * (`self` - `other`) mod MODULUS is odd.
@@ -101,41 +99,41 @@ mod tests {
 
     #[test]
     fn test_constant_is_less_than_public() {
-        check_is_less_than(Mode::Constant, Mode::Public, 0, 0, 253, 254);
+        check_is_less_than(Mode::Constant, Mode::Public, 0, 0, 505, 507);
     }
 
     #[test]
     fn test_constant_is_less_than_private() {
-        check_is_less_than(Mode::Constant, Mode::Private, 0, 0, 253, 254);
+        check_is_less_than(Mode::Constant, Mode::Private, 0, 0, 505, 507);
     }
 
     #[test]
     fn test_public_is_less_than_constant() {
-        check_is_less_than(Mode::Public, Mode::Constant, 0, 0, 253, 254);
+        check_is_less_than(Mode::Public, Mode::Constant, 0, 0, 505, 507);
     }
 
     #[test]
     fn test_public_is_less_than_public() {
-        check_is_less_than(Mode::Public, Mode::Public, 0, 0, 253, 254);
+        check_is_less_than(Mode::Public, Mode::Public, 0, 0, 505, 507);
     }
 
     #[test]
     fn test_public_is_less_than_private() {
-        check_is_less_than(Mode::Public, Mode::Private, 0, 0, 253, 254);
+        check_is_less_than(Mode::Public, Mode::Private, 0, 0, 505, 507);
     }
 
     #[test]
     fn test_private_is_less_than_constant() {
-        check_is_less_than(Mode::Private, Mode::Constant, 0, 0, 253, 254);
+        check_is_less_than(Mode::Private, Mode::Constant, 0, 0, 505, 507);
     }
 
     #[test]
     fn test_private_is_less_than_public() {
-        check_is_less_than(Mode::Private, Mode::Public, 0, 0, 253, 254);
+        check_is_less_than(Mode::Private, Mode::Public, 0, 0, 505, 507);
     }
 
     #[test]
     fn test_private_is_less_than_private() {
-        check_is_less_than(Mode::Private, Mode::Private, 0, 0, 253, 254);
+        check_is_less_than(Mode::Private, Mode::Private, 0, 0, 505, 507);
     }
 }

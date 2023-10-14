@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use smallvec::SmallVec;
 use snarkvm_fields::{PrimeField, ToConstraintField};
@@ -47,9 +45,9 @@ pub trait AlgebraicSponge<F: PrimeField, const RATE: usize>: Clone + Debug {
     /// Takes in bytes.
     fn absorb_bytes(&mut self, elements: &[u8]) {
         let capacity = F::size_in_bits() - 1;
-        let mut bits = Vec::<bool>::new();
+        let mut bits = Vec::<bool>::with_capacity(elements.len() * 8);
         for elem in elements {
-            bits.append(&mut vec![
+            bits.extend_from_slice(&[
                 elem & 128 != 0,
                 elem & 64 != 0,
                 elem & 32 != 0,
@@ -99,13 +97,16 @@ pub enum DuplexSpongeMode {
 }
 
 pub(crate) mod nonnative_params {
-    /// A macro for computing ceil(log2(x))+1 for a field element x
+    /// A macro for computing ceil(log2(x))+1 for a field element x. The num_bits
+    /// param is expected to be a vector to which the BE bits can be written; it is
+    /// not created here, as reusing it allows us to avoid a lot of allocations.
     #[macro_export]
     macro_rules! overhead {
-        ($x:expr) => {{
+        ($x:expr, $num_bits:expr) => {{
             use snarkvm_utilities::ToBits;
             let num = $x;
-            let num_bits = num.to_bigint().to_bits_be();
+            let num_bits = $num_bits;
+            num.to_bigint().write_bits_be(num_bits);
             let mut skipped_bits = 0;
             for b in num_bits.iter() {
                 if *b == false {
@@ -122,7 +123,12 @@ pub(crate) mod nonnative_params {
                 }
             }
 
-            if is_power_of_2 { num_bits.len() - skipped_bits } else { num_bits.len() - skipped_bits + 1 }
+            let result = if is_power_of_2 { num_bits.len() - skipped_bits } else { num_bits.len() - skipped_bits + 1 };
+
+            // Clear the reusable vector for bits.
+            num_bits.clear();
+
+            result
         }};
     }
 

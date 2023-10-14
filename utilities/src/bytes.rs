@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use crate::{
     error,
@@ -27,6 +25,8 @@ use serde::{
     Deserializer,
     Serializer,
 };
+use smol_str::SmolStr;
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
 
 /// Takes as input a sequence of structs, and converts them to a series of little-endian bytes.
 /// All traits that implement `ToBytes` can be automatically converted to bytes in this manner.
@@ -34,6 +34,7 @@ use serde::{
 macro_rules! to_bytes_le {
     ($($x:expr),*) => ({
         let mut buffer = $crate::vec![];
+        buffer.reserve(64);
         {$crate::push_bytes_to_vec!(buffer, $($x),*)}.map(|_| buffer)
     });
 }
@@ -160,12 +161,12 @@ impl<'de, T: FromBytes> FromBytesDeserializer<T> {
     }
 }
 
-pub struct FromBytesVisitor<'a>(&'a mut Vec<u8>, String, Option<usize>);
+pub struct FromBytesVisitor<'a>(&'a mut Vec<u8>, SmolStr, Option<usize>);
 
 impl<'a> FromBytesVisitor<'a> {
     /// Initializes a new `FromBytesVisitor` with the given `buffer` and `name`.
     pub fn new(buffer: &'a mut Vec<u8>, name: &str) -> Self {
-        Self(buffer, name.to_string(), None)
+        Self(buffer, SmolStr::new(name), None)
     }
 }
 
@@ -287,6 +288,41 @@ impl FromBytes for bool {
             Ok(_) => Err(error("FromBytes::read failed")),
             Err(err) => Err(err),
         }
+    }
+}
+
+impl ToBytes for SocketAddr {
+    #[inline]
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        // Write the IP address.
+        match self.ip() {
+            IpAddr::V4(ipv4) => {
+                0u8.write_le(&mut writer)?;
+                u32::from(ipv4).write_le(&mut writer)?;
+            }
+            IpAddr::V6(ipv6) => {
+                1u8.write_le(&mut writer)?;
+                u128::from(ipv6).write_le(&mut writer)?;
+            }
+        }
+        // Write the port.
+        self.port().write_le(&mut writer)?;
+        Ok(())
+    }
+}
+
+impl FromBytes for SocketAddr {
+    #[inline]
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        // Read the IP address.
+        let ip = match u8::read_le(&mut reader)? {
+            0 => IpAddr::V4(Ipv4Addr::from(u32::read_le(&mut reader)?)),
+            1 => IpAddr::V6(Ipv6Addr::from(u128::read_le(&mut reader)?)),
+            _ => return Err(error("Invalid IP address")),
+        };
+        // Read the port.
+        let port = u16::read_le(&mut reader)?;
+        Ok(SocketAddr::new(ip, port))
     }
 }
 
@@ -501,6 +537,35 @@ mod test {
             let recovered_bytes = bytes_from_bits_le(&bits);
 
             assert_eq!(given_bytes.to_vec(), recovered_bytes);
+        }
+    }
+
+    #[test]
+    fn test_socketaddr_bytes() {
+        fn random_ipv4_address(rng: &mut TestRng) -> Ipv4Addr {
+            Ipv4Addr::new(rng.gen(), rng.gen(), rng.gen(), rng.gen())
+        }
+
+        fn random_ipv6_address(rng: &mut TestRng) -> Ipv6Addr {
+            Ipv6Addr::new(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen())
+        }
+
+        fn random_port(rng: &mut TestRng) -> u16 {
+            rng.gen_range(1025..=65535) // excluding well-known ports
+        }
+
+        let rng = &mut TestRng::default();
+
+        for _ in 0..1_000_000 {
+            let ipv4 = SocketAddr::new(IpAddr::V4(random_ipv4_address(rng)), random_port(rng));
+            let bytes = ipv4.to_bytes_le().unwrap();
+            let ipv4_2 = SocketAddr::read_le(&bytes[..]).unwrap();
+            assert_eq!(ipv4, ipv4_2);
+
+            let ipv6 = SocketAddr::new(IpAddr::V6(random_ipv6_address(rng)), random_port(rng));
+            let bytes = ipv6.to_bytes_le().unwrap();
+            let ipv6_2 = SocketAddr::read_le(&bytes[..]).unwrap();
+            assert_eq!(ipv6, ipv6_2);
         }
     }
 }

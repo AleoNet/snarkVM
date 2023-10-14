@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use crate::{nonnative_params::*, AlgebraicSponge, DuplexSpongeMode};
 use snarkvm_fields::{FieldParameters, PoseidonParameters, PrimeField, ToConstraintField};
@@ -113,6 +111,8 @@ pub struct PoseidonSponge<F: PrimeField, const RATE: usize, const CAPACITY: usiz
     state: State<F, RATE, CAPACITY>,
     /// Current mode (whether its absorbing or squeezing)
     pub mode: DuplexSpongeMode,
+    /// A persistent lookup table used when compressing elements.
+    adjustment_factor_lookup_table: Arc<[F]>,
 }
 
 impl<F: PrimeField, const RATE: usize> AlgebraicSponge<F, RATE> for PoseidonSponge<F, RATE, 1> {
@@ -127,6 +127,18 @@ impl<F: PrimeField, const RATE: usize> AlgebraicSponge<F, RATE> for PoseidonSpon
             parameters: parameters.clone(),
             state: State::default(),
             mode: DuplexSpongeMode::Absorbing { next_absorb_index: 0 },
+            adjustment_factor_lookup_table: {
+                let capacity = F::size_in_bits() - 1;
+                let mut table = Vec::<F>::with_capacity(capacity);
+
+                let mut cur = F::one();
+                for _ in 0..capacity {
+                    table.push(cur);
+                    cur.double_in_place();
+                }
+
+                table.into()
+            },
         }
     }
 
@@ -320,23 +332,14 @@ impl<F: PrimeField, const RATE: usize> PoseidonSponge<F, RATE, 1> {
 
     /// Compress every two elements if possible.
     /// Provides a vector of (limb, num_of_additions), both of which are F.
-    pub fn compress_elements<TargetField: PrimeField>(src_limbs: &[(F, F)], ty: OptimizationType) -> Vec<F> {
+    pub fn compress_elements<TargetField: PrimeField>(&self, src_limbs: &[(F, F)], ty: OptimizationType) -> Vec<F> {
         let capacity = F::size_in_bits() - 1;
         let mut dest_limbs = Vec::<F>::new();
 
         let params = get_params(TargetField::size_in_bits(), F::size_in_bits(), ty);
 
-        let adjustment_factor_lookup_table = {
-            let mut table = Vec::<F>::new();
-
-            let mut cur = F::one();
-            for _ in 1..=capacity {
-                table.push(cur);
-                cur.double_in_place();
-            }
-
-            table
-        };
+        // Prepare a reusable vector to be used in overhead calculation.
+        let mut num_bits = Vec::new();
 
         let mut i = 0;
         let src_len = src_limbs.len();
@@ -344,16 +347,16 @@ impl<F: PrimeField, const RATE: usize> PoseidonSponge<F, RATE, 1> {
             let first = &src_limbs[i];
             let second = if i + 1 < src_len { Some(&src_limbs[i + 1]) } else { None };
 
-            let first_max_bits_per_limb = params.bits_per_limb + crate::overhead!(first.1 + F::one());
+            let first_max_bits_per_limb = params.bits_per_limb + crate::overhead!(first.1 + F::one(), &mut num_bits);
             let second_max_bits_per_limb = if let Some(second) = second {
-                params.bits_per_limb + crate::overhead!(second.1 + F::one())
+                params.bits_per_limb + crate::overhead!(second.1 + F::one(), &mut num_bits)
             } else {
                 0
             };
 
             if let Some(second) = second {
                 if first_max_bits_per_limb + second_max_bits_per_limb <= capacity {
-                    let adjustment_factor = &adjustment_factor_lookup_table[second_max_bits_per_limb];
+                    let adjustment_factor = &self.adjustment_factor_lookup_table[second_max_bits_per_limb];
 
                     dest_limbs.push(first.0 * adjustment_factor + second.0);
                     i += 2;
@@ -386,16 +389,20 @@ impl<F: PrimeField, const RATE: usize> PoseidonSponge<F, RATE, 1> {
     ) -> SmallVec<[F; 10]> {
         let params = get_params(TargetField::size_in_bits(), F::size_in_bits(), optimization_type);
 
+        // Prepare a reusable vector for the BE bits.
+        let mut cur_bits = Vec::new();
         // Push the lower limbs first
         let mut limbs: SmallVec<[F; 10]> = SmallVec::new();
         let mut cur = *elem;
         for _ in 0..params.num_limbs {
-            let cur_bits = cur.to_bits_be(); // `to_bits` is big endian
+            cur.write_bits_be(&mut cur_bits); // `write_bits_be` is big endian
             let cur_mod_r =
                 <F as PrimeField>::BigInteger::from_bits_be(&cur_bits[cur_bits.len() - params.bits_per_limb..])
                     .unwrap(); // therefore, the lowest `bits_per_non_top_limb` bits is what we want.
             limbs.push(F::from_bigint(cur_mod_r).unwrap());
             cur.divn(params.bits_per_limb as u32);
+            // Clear the vector after every iteration so its allocation can be reused.
+            cur_bits.clear();
         }
 
         // then we reserve, so that the limbs are ``big limb first''
@@ -420,7 +427,7 @@ impl<F: PrimeField, const RATE: usize> PoseidonSponge<F, RATE, 1> {
             }
         }
 
-        let dest_limbs = Self::compress_elements::<TargetField>(&src_limbs, ty);
+        let dest_limbs = self.compress_elements::<TargetField>(&src_limbs, ty);
         self.absorb_native_field_elements(&dest_limbs);
     }
 

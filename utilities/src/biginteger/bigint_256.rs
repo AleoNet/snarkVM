@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use crate::{
     biginteger::BigInteger,
@@ -31,8 +29,9 @@ use rand::{
     distributions::{Distribution, Standard},
     Rng,
 };
+use zeroize::Zeroize;
 
-#[derive(Copy, Clone, PartialEq, Eq, Default, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, Default, Hash, Zeroize)]
 pub struct BigInteger256(pub [u64; 4]);
 
 impl BigInteger256 {
@@ -229,13 +228,13 @@ impl crate::biginteger::BigInteger for BigInteger256 {
 
 impl ToBits for BigInteger256 {
     #[doc = " Returns `self` as a boolean array in little-endian order, with trailing zeros."]
-    fn to_bits_le(&self) -> Vec<bool> {
-        BitIteratorLE::new(self).collect::<Vec<_>>()
+    fn write_bits_le(&self, vec: &mut Vec<bool>) {
+        vec.extend(BitIteratorLE::new(self));
     }
 
     #[doc = " Returns `self` as a boolean array in big-endian order, with leading zeros."]
-    fn to_bits_be(&self) -> Vec<bool> {
-        BitIteratorBE::new(self).collect::<Vec<_>>()
+    fn write_bits_be(&self, vec: &mut Vec<bool>) {
+        vec.extend(BitIteratorBE::new(self));
     }
 }
 
@@ -258,16 +257,27 @@ impl FromBits for BigInteger256 {
     #[doc = " Returns a `BigInteger` by parsing a slice of bits in big-endian format"]
     #[doc = " and transforms it into a slice of little-endian u64 elements."]
     fn from_bits_be(bits: &[bool]) -> Result<Self> {
-        let mut bits_reversed = bits.to_vec();
-        bits_reversed.reverse();
-        Self::from_bits_le(&bits_reversed)
+        let mut res = Self::default();
+        for (i, bits64) in bits.rchunks(64).enumerate() {
+            let mut acc: u64 = 0;
+            for bit in bits64.iter() {
+                acc <<= 1;
+                acc += *bit as u64;
+            }
+            res.0[i] = acc;
+        }
+        Ok(res)
     }
 }
 
 impl ToBytes for BigInteger256 {
     #[inline]
     fn write_le<W: Write>(&self, writer: W) -> IoResult<()> {
-        self.0.write_le(writer)
+        let mut arr = [0u8; 8 * 4];
+        for (i, num) in self.0.iter().enumerate() {
+            arr[i * 8..(i + 1) * 8].copy_from_slice(&num.to_le_bytes());
+        }
+        arr.write_le(writer)
     }
 }
 

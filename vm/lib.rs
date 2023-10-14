@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #![forbid(unsafe_code)]
 #![allow(clippy::module_inception)]
@@ -37,10 +35,10 @@ pub use snarkvm_console as console;
 pub use snarkvm_curves as curves;
 #[cfg(feature = "fields")]
 pub use snarkvm_fields as fields;
+#[cfg(feature = "ledger")]
+pub use snarkvm_ledger as ledger;
 #[cfg(feature = "parameters")]
 pub use snarkvm_parameters as parameters;
-#[cfg(feature = "r1cs")]
-pub use snarkvm_r1cs as r1cs;
 #[cfg(feature = "synthesizer")]
 pub use snarkvm_synthesizer as synthesizer;
 #[cfg(feature = "utilities")]
@@ -48,39 +46,11 @@ pub use snarkvm_utilities as utilities;
 #[cfg(feature = "wasm")]
 pub use snarkvm_wasm as wasm;
 
-pub mod errors {
-    #[cfg(feature = "algorithms")]
-    pub use crate::algorithms::errors::*;
-    #[cfg(feature = "curves")]
-    pub use crate::curves::errors::*;
-    #[cfg(feature = "fields")]
-    pub use crate::fields::errors::*;
-    #[cfg(feature = "parameters")]
-    pub use crate::parameters::errors::*;
-    #[cfg(feature = "r1cs")]
-    pub use crate::r1cs::errors::*;
-}
-
-pub mod traits {
-    #[cfg(feature = "algorithms")]
-    pub use crate::algorithms::traits::*;
-    #[cfg(feature = "curves")]
-    pub use crate::curves::traits::*;
-    #[cfg(feature = "fields")]
-    pub use crate::fields::traits::*;
-}
-
 pub mod prelude {
-    pub use crate::{errors::*, traits::*};
-
-    #[cfg(feature = "algorithms")]
-    pub use crate::algorithms::prelude::*;
     #[cfg(feature = "console")]
-    pub use crate::console::{account::*, network::*, prelude::*, program::*};
-    #[cfg(feature = "parameters")]
-    pub use crate::parameters::prelude::*;
+    pub use crate::console::{account::*, network::*, program::*};
+    #[cfg(feature = "ledger")]
+    pub use crate::ledger::*;
     #[cfg(feature = "synthesizer")]
-    pub use crate::synthesizer::*;
-    #[cfg(feature = "utilities")]
-    pub use crate::utilities::*;
+    pub use crate::synthesizer::prelude::*;
 }

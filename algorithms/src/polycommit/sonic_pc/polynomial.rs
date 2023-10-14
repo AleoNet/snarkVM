@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use super::PolynomialLabel;
 use crate::fft::{DensePolynomial, EvaluationDomain, Evaluations as EvaluationsOnDomain, Polynomial, SparsePolynomial};
@@ -81,12 +79,12 @@ impl<F: Field> core::ops::Deref for LabeledPolynomial<F> {
 impl<F: Field> LabeledPolynomial<F> {
     /// Construct a new labeled polynomial by consuming `polynomial`.
     pub fn new(
-        label: PolynomialLabel,
+        label: impl Into<PolynomialLabel>,
         polynomial: impl Into<Polynomial<'static, F>>,
-        degree_bound: Option<usize>,
-        hiding_bound: Option<usize>,
+        degree_bound: impl Into<Option<usize>>,
+        hiding_bound: impl Into<Option<usize>>,
     ) -> Self {
-        let info = PolynomialInfo::new(label, degree_bound, hiding_bound);
+        let info = PolynomialInfo::new(label.into(), degree_bound.into(), hiding_bound.into());
         Self { info, polynomial: polynomial.into() }
     }
 
@@ -97,6 +95,11 @@ impl<F: Field> LabeledPolynomial<F> {
     /// Return the label for `self`.
     pub fn label(&self) -> &str {
         &self.info.label
+    }
+
+    /// Return the label for `self`.
+    pub fn to_label(&self) -> String {
+        self.info.label.clone()
     }
 
     /// Retrieve the polynomial from `self`.

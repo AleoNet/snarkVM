@@ -1,27 +1,25 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use super::*;
 
 impl<A: Aleo> Request<A> {
-    /// Returns `true` if the input IDs are derived correctly, the input records all belong to the caller,
+    /// Returns `true` if the input IDs are derived correctly, the input records all belong to the signer,
     /// and the signature is valid.
     ///
     /// Verifies (challenge == challenge') && (address == address') && (serial_numbers == serial_numbers') where:
-    ///     challenge' := HashToScalar(r * G, pk_sig, pr_sig, caller, \[tvk, tcm, function ID, input IDs\])
+    ///     challenge' := HashToScalar(r * G, pk_sig, pr_sig, signer, \[tvk, tcm, function ID, input IDs\])
     pub fn verify(&self, input_types: &[console::ValueType<A::Network>], tpk: &Group<A>) -> Boolean<A> {
         // Compute the function ID as `Hash(network_id, program_id, function_name)`.
         let function_id = A::hash_bhp1024(
@@ -42,7 +40,7 @@ impl<A: Aleo> Request<A> {
             &self.input_ids,
             &self.inputs,
             input_types,
-            &self.caller,
+            &self.signer,
             &self.sk_tag,
             &self.tvk,
             &self.tcm,
@@ -58,8 +56,8 @@ impl<A: Aleo> Request<A> {
         let tvk_checks = {
             // Compute the transition public key `tpk` as `tsk * G`.
             let candidate_tpk = A::g_scalar_multiply(&self.tsk);
-            // Compute the transition view key `tvk` as `tsk * caller`.
-            let tvk = (self.caller.to_group() * &self.tsk).to_x_coordinate();
+            // Compute the transition view key `tvk` as `tsk * signer`.
+            let tvk = (self.signer.to_group() * &self.tsk).to_x_coordinate();
             // Compute the transition commitment as `Hash(tvk)`.
             let tcm = A::hash_psd2(&[tvk.clone()]);
 
@@ -84,7 +82,7 @@ impl<A: Aleo> Request<A> {
             // Construct the hash input as (r * G, pk_sig, pr_sig, address, message).
             let mut preimage = Vec::with_capacity(4 + message.len());
             preimage.extend([tpk, pk_sig, pr_sig].map(|point| point.to_x_coordinate()));
-            preimage.push(self.caller.to_field());
+            preimage.push(self.signer.to_field());
             preimage.extend_from_slice(&message);
 
             // Compute the candidate verifier challenge.
@@ -93,7 +91,7 @@ impl<A: Aleo> Request<A> {
             let candidate_address = self.signature.compute_key().to_address();
 
             // Return `true` if the challenge and address is valid.
-            self.signature.challenge().is_equal(&candidate_challenge) & self.caller.is_equal(&candidate_address)
+            self.signature.challenge().is_equal(&candidate_challenge) & self.signer.is_equal(&candidate_address)
         };
 
         // Verify the signature, inputs, and `tvk` are valid.
@@ -109,7 +107,7 @@ impl<A: Aleo> Request<A> {
         input_ids: &[InputID<A>],
         inputs: &[Value<A>],
         input_types: &[console::ValueType<A::Network>],
-        caller: &Address<A>,
+        signer: &Address<A>,
         sk_tag: &Field<A>,
         tvk: &Field<A>,
         tcm: &Field<A>,
@@ -146,7 +144,8 @@ impl<A: Aleo> Request<A> {
                         // Prepare the index as a constant field element.
                         let input_index = Field::constant(console::Field::from_u16(index as u16));
                         // Construct the preimage as `(function ID || input || tcm || index)`.
-                        let mut preimage = vec![function_id.clone()];
+                        let mut preimage = Vec::new();
+                        preimage.push(function_id.clone());
                         preimage.extend(input.to_fields());
                         preimage.push(tcm.clone());
                         preimage.push(input_index);
@@ -154,8 +153,9 @@ impl<A: Aleo> Request<A> {
                         // Ensure the expected hash matches the computed hash.
                         match &input {
                             Value::Plaintext(..) => input_hash.is_equal(&A::hash_psd8(&preimage)),
-                            // Ensure the input is not a record.
+                            // Ensure the input is not a record or future.
                             Value::Record(..) => A::halt("Expected a constant plaintext input, found a record input"),
+                            Value::Future(..) => A::halt("Expected a constant plaintext input, found a future input"),
                         }
                     }
                     // A public input is hashed (using `tcm`) to a field element.
@@ -168,7 +168,8 @@ impl<A: Aleo> Request<A> {
                         // Prepare the index as a constant field element.
                         let input_index = Field::constant(console::Field::from_u16(index as u16));
                         // Construct the preimage as `(function ID || input || tcm || index)`.
-                        let mut preimage = vec![function_id.clone()];
+                        let mut preimage = Vec::new();
+                        preimage.push(function_id.clone());
                         preimage.extend(input.to_fields());
                         preimage.push(tcm.clone());
                         preimage.push(input_index);
@@ -176,8 +177,9 @@ impl<A: Aleo> Request<A> {
                         // Ensure the expected hash matches the computed hash.
                         match &input {
                             Value::Plaintext(..) => input_hash.is_equal(&A::hash_psd8(&preimage)),
-                            // Ensure the input is not a record.
+                            // Ensure the input is not a record or future.
                             Value::Record(..) => A::halt("Expected a public plaintext input, found a record input"),
+                            Value::Future(..) => A::halt("Expected a public plaintext input, found a future input"),
                         }
                     }
                     // A private input is encrypted (using `tvk`) and hashed to a field element.
@@ -196,6 +198,7 @@ impl<A: Aleo> Request<A> {
                             Value::Plaintext(plaintext) => plaintext.encrypt_symmetric(input_view_key),
                             // Ensure the input is a plaintext.
                             Value::Record(..) => A::halt("Expected a private plaintext input, found a record input"),
+                            Value::Future(..) => A::halt("Expected a private plaintext input, found a future input"),
                         };
 
                         // Ensure the expected hash matches the computed hash.
@@ -208,6 +211,7 @@ impl<A: Aleo> Request<A> {
                             Value::Record(record) => record,
                             // Ensure the input is a record.
                             Value::Plaintext(..) => A::halt("Expected a record input, found a plaintext input"),
+                            Value::Future(..) => A::halt("Expected a record input, found a future input"),
                         };
                         // Retrieve the record name as a `Mode::Constant`.
                         let record_name = match input_type {
@@ -218,15 +222,17 @@ impl<A: Aleo> Request<A> {
                         // Compute the record commitment.
                         let candidate_commitment = record.to_commitment(program_id, &record_name);
                         // Compute the `candidate_serial_number` from `gamma`.
-                        let candidate_serial_number = Record::<A, Plaintext<A>>::serial_number_from_gamma(gamma, candidate_commitment.clone());
+                        let candidate_serial_number =
+                            Record::<A, Plaintext<A>>::serial_number_from_gamma(gamma, candidate_commitment.clone());
                         // Compute the tag.
-                        let candidate_tag = Record::<A, Plaintext<A>>::tag(sk_tag.clone(), candidate_commitment.clone());
+                        let candidate_tag =
+                            Record::<A, Plaintext<A>>::tag(sk_tag.clone(), candidate_commitment.clone());
 
                         if CREATE_MESSAGE {
                             // Ensure the signature is declared.
                             let signature = match signature {
                                 Some(signature) => signature,
-                                None => A::halt("Missing signature in logic to check input IDs")
+                                None => A::halt("Missing signature in logic to check input IDs"),
                             };
                             // Retrieve the challenge from the signature.
                             let challenge = signature.challenge();
@@ -249,10 +255,8 @@ impl<A: Aleo> Request<A> {
                             & commitment.is_equal(&candidate_commitment)
                             // Ensure the candidate tag matches the expected tag.
                             & tag.is_equal(&candidate_tag)
-                            // Ensure the record belongs to the caller.
-                            & record.owner().deref().is_equal(caller)
-                            // Ensure the record gates is less than or equal to 2^52.
-                            & !(**record.gates()).to_bits_le()[52..].iter().fold(Boolean::constant(false), |acc, bit| acc | bit)
+                            // Ensure the record belongs to the signer.
+                            & record.owner().deref().is_equal(signer)
                     }
                     // An external record input is hashed (using `tvk`) to a field element.
                     InputID::ExternalRecord(input_hash) => {
@@ -265,13 +269,17 @@ impl<A: Aleo> Request<A> {
                         let record = match &input {
                             Value::Record(record) => record,
                             // Ensure the input is a record.
-                            Value::Plaintext(..) => A::halt("Expected an external record input, found a plaintext input"),
+                            Value::Plaintext(..) => {
+                                A::halt("Expected an external record input, found a plaintext input")
+                            }
+                            Value::Future(..) => A::halt("Expected an external record input, found a future input"),
                         };
 
                         // Prepare the index as a constant field element.
                         let input_index = Field::constant(console::Field::from_u16(index as u16));
                         // Construct the preimage as `(function ID || input || tvk || index)`.
-                        let mut preimage = vec![function_id.clone()];
+                        let mut preimage = Vec::new();
+                        preimage.push(function_id.clone());
                         preimage.extend(record.to_fields());
                         preimage.push(tvk.clone());
                         preimage.push(input_index);
@@ -315,7 +323,7 @@ mod tests {
 
         for i in 0..ITERATIONS {
             // Sample a random private key and address.
-            let private_key = snarkvm_console_account::PrivateKey::<<Circuit as Environment>::Network>::new(rng)?;
+            let private_key = snarkvm_console_account::PrivateKey::new(rng)?;
             let address = snarkvm_console_account::Address::try_from(&private_key).unwrap();
 
             // Construct a program ID and function name.
@@ -323,9 +331,8 @@ mod tests {
             let function_name = console::Identifier::from_str("transfer")?;
 
             // Prepare a record belonging to the address.
-            let record_string = format!(
-                "{{ owner: {address}.private, gates: 5u64.private, token_amount: 100u64.private, _nonce: 0group.public }}"
-            );
+            let record_string =
+                format!("{{ owner: {address}.private, token_amount: 100u64.private, _nonce: 0group.public }}");
 
             // Construct the inputs.
             let input_constant =
@@ -377,7 +384,7 @@ mod tests {
                     request.input_ids(),
                     request.inputs(),
                     &input_types,
-                    request.caller(),
+                    request.signer(),
                     request.sk_tag(),
                     request.tvk(),
                     request.tcm(),
@@ -395,16 +402,16 @@ mod tests {
         // Note: This is correct. At this (high) level of a program, we override the default mode in the `Record` case,
         // based on the user-defined visibility in the record type. Thus, we have nonzero private and constraint values.
         // These bounds are determined experimentally.
-        check_verify(Mode::Constant, 46000, 0, 15100, 15100)
+        check_verify(Mode::Constant, 48000, 0, 18000, 18000)
     }
 
     #[test]
     fn test_sign_and_verify_public() -> Result<()> {
-        check_verify(Mode::Public, 41170, 0, 28119, 28153)
+        check_verify(Mode::Public, 41268, 0, 30403, 30447)
     }
 
     #[test]
     fn test_sign_and_verify_private() -> Result<()> {
-        check_verify(Mode::Private, 41170, 0, 28119, 28153)
+        check_verify(Mode::Private, 41268, 0, 30403, 30447)
     }
 }
