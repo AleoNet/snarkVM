@@ -122,12 +122,14 @@ impl Environment for Testnet3 {
 impl Network for Testnet3 {
     /// The block hash type.
     type BlockHash = AleoID<Field<Self>, { hrp2!("ab") }>;
+    /// The ratification ID type.
+    type RatificationID = AleoID<Field<Self>, { hrp2!("ar") }>;
     /// The state root type.
-    type StateRoot = AleoID<Field<Self>, { hrp2!("ar") }>;
+    type StateRoot = AleoID<Field<Self>, { hrp2!("sr") }>;
     /// The transaction ID type.
     type TransactionID = AleoID<Field<Self>, { hrp2!(TRANSACTION_PREFIX) }>;
     /// The transition ID type.
-    type TransitionID = AleoID<Field<Self>, { hrp2!("as") }>;
+    type TransitionID = AleoID<Field<Self>, { hrp2!("au") }>;
 
     /// The network edition.
     const EDITION: u16 = 0;

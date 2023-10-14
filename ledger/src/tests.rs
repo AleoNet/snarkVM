@@ -378,13 +378,13 @@ finalize failed_assert:
     if let Transaction::Execute(_, execution, fee) = failed_assert_transaction {
         let fee_transaction = Transaction::from_fee(fee.unwrap()).unwrap();
         let expected_confirmed_transaction =
-            ConfirmedTransaction::RejectedExecute(0, fee_transaction, Rejected::new_execution(execution));
+            ConfirmedTransaction::RejectedExecute(0, fee_transaction, Rejected::new_execution(execution), vec![]);
 
         assert_eq!(confirmed_transaction, &expected_confirmed_transaction);
     }
 
     // Check that the unconfirmed transaction ID of the rejected execution is correct.
-    assert_eq!(confirmed_transaction.unconfirmed_id().unwrap(), failed_assert_transaction_id);
+    assert_eq!(confirmed_transaction.to_unconfirmed_transaction_id().unwrap(), failed_assert_transaction_id);
 
     // Check that the next block is valid.
     ledger.check_next_block(&next_block).unwrap();

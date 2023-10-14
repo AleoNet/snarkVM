@@ -55,7 +55,7 @@ fn get_mapping_value<N: Network>(
     let mapping = Identifier::from_str(mapping)?;
     let key = Plaintext::from(key);
     // Retrieve the value from the finalize store.
-    match store.get_value_speculative(&program_id, &mapping, &key) {
+    match store.get_value_speculative(program_id, mapping, &key) {
         Ok(result) => Ok(result),
         Err(err) => bail!("Error getting value for program_id: {program_id}, mapping: {mapping}, key: {key}: {err}"),
     }
@@ -168,7 +168,7 @@ fn initialize_stakers<N: Network>(
         // Ensure that all mappings are initialized.
         if !finalize_store.contains_mapping_confirmed(program.id(), mapping.name())? {
             // Initialize the mappings for 'credits.aleo'.
-            finalize_store.initialize_mapping(program.id(), mapping.name())?;
+            finalize_store.initialize_mapping(*program.id(), *mapping.name())?;
         }
     }
 
@@ -187,7 +187,7 @@ fn initialize_stakers<N: Network>(
         // Add the balance directly to the finalize store.
         let key = Plaintext::from(Literal::Address(address));
         let value = Value::from(Literal::U64(U64::new(balance)));
-        finalize_store.insert_key_value(program.id(), &mapping, key, value)?;
+        finalize_store.insert_key_value(*program.id(), mapping, key, value)?;
         assert_eq!(balance, account_balance(finalize_store, &address).unwrap());
 
         // Store the validator or delegator.
@@ -1538,7 +1538,7 @@ mod sanity_checks {
         assert_eq!(15, assignment.num_public());
         assert_eq!(49675, assignment.num_private());
         assert_eq!(49730, assignment.num_constraints());
-        assert_eq!((82866, 122557, 76015), assignment.num_nonzeros());
+        assert_eq!((82610, 122551, 76009), assignment.num_nonzeros());
     }
 
     #[test]
@@ -1566,7 +1566,7 @@ mod sanity_checks {
         assert_eq!(10, assignment.num_public());
         assert_eq!(12047, assignment.num_private());
         assert_eq!(12062, assignment.num_constraints());
-        assert_eq!((25767, 37818, 16411), assignment.num_nonzeros());
+        assert_eq!((25765, 37816, 16409), assignment.num_nonzeros());
     }
 
     #[test]
@@ -1599,7 +1599,7 @@ mod sanity_checks {
         assert_eq!(13, assignment.num_public());
         assert_eq!(36223, assignment.num_private());
         assert_eq!(36269, assignment.num_constraints());
-        assert_eq!((58797, 84785, 54749), assignment.num_nonzeros());
+        assert_eq!((58543, 84781, 54745), assignment.num_nonzeros());
     }
 
     #[test]
@@ -1626,6 +1626,6 @@ mod sanity_checks {
         assert_eq!(10, assignment.num_public());
         assert_eq!(12038, assignment.num_private());
         assert_eq!(12057, assignment.num_constraints());
-        assert_eq!((25637, 37302, 16399), assignment.num_nonzeros());
+        assert_eq!((25635, 37300, 16397), assignment.num_nonzeros());
     }
 }
