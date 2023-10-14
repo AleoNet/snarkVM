@@ -13,7 +13,7 @@
 // limitations under the License.
 
 use super::*;
-use ledger_block::{ConfirmedTransaction, Rejected, Transactions};
+use ledger_block::{ConfirmedTransaction, Input, Rejected, Transactions, Transition};
 use ledger_coinbase::CoinbaseSolution;
 
 impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
@@ -204,9 +204,16 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             }
 
             // Ensure all transactions were processed.
-            if confirmed.len() != num_transactions {
+            if confirmed.len() + aborted.len() != num_transactions {
                 // Note: This will abort the entire atomic batch.
                 return Err("Not all transactions were processed in 'VM::atomic_speculate'".to_string());
+            }
+
+            /* Update the supply mapping */
+
+            if let Err(e) = Self::atomic_supply_update(store, &confirmed.iter().cloned().collect()) {
+                // Note: This will abort the entire atomic batch.
+                return Err(format!("Failed to update supply mapping - {e}"));
             }
 
             /* Perform the ratifications after finalize. */
@@ -419,6 +426,13 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 }
             }
 
+            /* Update the supply mapping */
+
+            if let Err(e) = Self::atomic_supply_update(store, transactions) {
+                // Note: This will abort the entire atomic batch.
+                return Err(format!("Failed to update supply mapping - {e}"));
+            }
+
             /* Perform the ratifications after finalize. */
 
             if let Err(e) = Self::atomic_post_ratify(store, state, post_ratifications, solutions) {
@@ -448,12 +462,19 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     ) -> Result<()> {
         // Construct the program ID.
         let program_id = ProgramID::from_str("credits.aleo")?;
+        // Construct the supply mapping name.
+        let supply_mapping = Identifier::from_str("supply")?;
         // Construct the committee mapping name.
         let committee_mapping = Identifier::from_str("committee")?;
         // Construct the bonded mapping name.
         let bonded_mapping = Identifier::from_str("bonded")?;
         // Construct the account mapping name.
         let account_mapping = Identifier::from_str("account")?;
+
+        // Retrieve the supply mapping from storage.
+        let current_supply_map = store.get_mapping_speculative(&program_id, &supply_mapping)?;
+        // Convert the supply mapping into the supply.
+        let mut supply = supply_map_into_supply(current_supply_map)?;
 
         // Iterate over the ratifications.
         for ratify in pre_ratifications {
@@ -473,6 +494,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     for (validator, (microcredits, _)) in committee.members() {
                         // Insert the validator into the stakers.
                         stakers.insert(*validator, (*validator, *microcredits));
+                        // Update the supply.
+                        supply.add_initial_committee_member(*microcredits)?;
                     }
 
                     // Construct the next committee map and next bonded map.
@@ -502,11 +525,19 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                         })));
                         // Update the public balance in finalize storage.
                         store.update_key_value(&program_id, &account_mapping, key, next_value)?;
+                        // Update the supply.
+                        supply.add_initial_public_balance(*amount)?;
                     }
                 }
                 Ratify::BlockReward(..) | Ratify::PuzzleReward(..) => continue,
             }
         }
+
+        // Construct the next supply mapping.
+        let next_supply_mapping = to_next_supply_mapping(&supply);
+        // Replace the supply mapping in storage.
+        store.replace_mapping(&program_id, &supply_mapping, next_supply_mapping)?;
+
         Ok(())
     }
 
@@ -520,12 +551,19 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     ) -> Result<()> {
         // Construct the program ID.
         let program_id = ProgramID::from_str("credits.aleo")?;
+        // Construct the supply mapping name.
+        let supply_mapping = Identifier::from_str("supply")?;
         // Construct the committee mapping name.
         let committee_mapping = Identifier::from_str("committee")?;
         // Construct the bonded mapping name.
         let bonded_mapping = Identifier::from_str("bonded")?;
         // Construct the account mapping name.
         let account_mapping = Identifier::from_str("account")?;
+
+        // Retrieve the supply mapping from storage.
+        let current_supply_map = store.get_mapping_speculative(&program_id, &supply_mapping)?;
+        // Concert the supply mapping into the supply.
+        let mut supply = supply_map_into_supply(current_supply_map)?;
 
         // Iterate over the ratifications.
         for ratify in post_ratifications {
@@ -543,6 +581,9 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
                     // Ensure the committee matches the bonded mapping.
                     ensure_stakers_matches(&current_committee, &current_stakers)?;
+
+                    // Update the supply.
+                    supply.block_reward(*block_reward)?;
 
                     // Compute the updated stakers, using the committee and block reward.
                     let next_stakers = staking_rewards(&current_stakers, &current_committee, *block_reward);
@@ -590,9 +631,99 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                         // Update the public balance in finalize storage.
                         store.update_key_value(&program_id, &account_mapping, key, next_value)?;
                     }
+                    // Update the supply.
+                    supply.puzzle_reward(*puzzle_reward)?;
                 }
             }
         }
+
+        // Construct the next supply mapping.
+        let next_supply_mapping = to_next_supply_mapping(&supply);
+        // Replace the supply mapping in storage.
+        store.replace_mapping(&program_id, &supply_mapping, next_supply_mapping)?;
+
+        Ok(())
+    }
+
+    // TODO (raychu86): Consider doing these updates directly in the finalize logic.
+    /// Performs the supply update after finalizing transactions.
+    fn atomic_supply_update(
+        store: &FinalizeStore<N, C::FinalizeStorage>,
+        transactions: &Transactions<N>,
+    ) -> Result<()> {
+        // Construct the program ID.
+        let program_id = ProgramID::from_str("credits.aleo")?;
+        // Construct the supply mapping name.
+        let supply_mapping = Identifier::from_str("supply")?;
+
+        // Retrieve the supply mapping from storage.
+        let current_supply_map = store.get_mapping_speculative(&program_id, &supply_mapping)?;
+        // Convert the supply mapping into the supply.
+        let mut supply = supply_map_into_supply(current_supply_map)?;
+
+        // Helper method to get the amount (in microcredits) from the transition input at the given index.
+        let input_amount = |transition: &Transition<N>, index: usize| -> Result<u64> {
+            match transition.inputs().get(index) {
+                Some(Input::Public(_, Some(Plaintext::Literal(Literal::U64(amount), _)))) => Ok(**amount),
+                _ => bail!("Failed to retrieve the amount (in microcredits) from the input"),
+            }
+        };
+
+        // Update the supply based on the transition types.
+        for transition in transactions.transitions() {
+            // If the transition is a `bond_public`, update the supply.
+            if transition.is_bond_public() {
+                // Retrieve the amount for the `bond_public` transition.
+                let amount = input_amount(transition, 1)?;
+                // Update the supply.
+                supply.bond_public(amount)?;
+
+            // If the transition is a `claim_unbond_public`, update the supply.
+            } else if transition.is_unbond_public() {
+                // Retrieve the amount for the `claim_unbond_public` transition.
+                let amount = input_amount(transition, 0)?;
+                // Update the supply.
+                supply.unbond_public(amount)?;
+
+            // If the transition is a `split`, update the supply.
+            } else if transition.is_split() {
+                supply.split()?;
+
+            // If the transition is a `transfer_public_to_private`, update the supply.
+            } else if transition.is_transfer_public_to_private() {
+                // Retrieve the amount for the `transfer_public_to_private` transition.
+                let amount = input_amount(transition, 1)?;
+                // Update the supply.
+                supply.transfer_public_to_private(amount)?;
+
+                // If the transition is a `transfer_private_to_public`, update the supply.
+            } else if transition.is_transfer_private_to_public() {
+                // Retrieve the amount for the `transfer_private_to_public` transition.
+                let amount = input_amount(transition, 2)?;
+                // Update the supply.
+                supply.transfer_private_to_public(amount)?;
+
+                // If the transition is a `fee_private`, update the supply.
+            } else if transition.is_fee_private() {
+                // Retrieve the amount for the `fee_private` transition.
+                let amount = input_amount(transition, 1)?;
+                // Update the supply.
+                supply.fee_private(amount)?;
+
+                // If the transition is a `fee_public`, update the supply.
+            } else if transition.is_fee_public() {
+                // Retrieve the amount for the `fee_public` transition.
+                let amount = input_amount(transition, 0)?;
+                // Update the supply.
+                supply.fee_public(amount)?;
+            }
+        }
+
+        // Construct the next supply mapping.
+        let next_supply_mapping = to_next_supply_mapping(&supply);
+        // Replace the supply mapping in storage.
+        store.replace_mapping(&program_id, &supply_mapping, next_supply_mapping)?;
+
         Ok(())
     }
 }
@@ -849,7 +980,7 @@ finalize transfer_public:
     fn test_finalize_duplicate_deployment() {
         let rng = &mut TestRng::default();
 
-        let vm = crate::vm::test_helpers::sample_vm();
+        let vm = test_helpers::sample_vm_with_genesis_block(rng);
 
         // Fetch a deployment transaction.
         let deployment_transaction = crate::vm::test_helpers::sample_deployment_transaction(rng);
@@ -1280,5 +1411,63 @@ finalize compute:
             .unwrap();
         let expected = Value::<CurrentNetwork>::from_str("3u8").unwrap();
         assert_eq!(value, expected);
+    }
+
+    #[test]
+    fn test_genesis_supply() {
+        let rng = &mut TestRng::default();
+
+        // Construct the program ID.
+        let program_id = ProgramID::from_str("credits.aleo").unwrap();
+
+        // Construct the supply mapping name.
+        let supply_mapping = Identifier::from_str("supply").unwrap();
+
+        // Initialize the vm.
+        let vm = test_helpers::sample_vm();
+
+        // Sample the genesis block.
+        let genesis = test_helpers::sample_genesis_block(rng);
+
+        // Retrieve the supply mapping from storage.
+        let current_supply_map =
+            vm.store.finalize_store().get_mapping_speculative(&program_id, &supply_mapping).unwrap();
+
+        // Convert the supply mapping into the supply.
+        let supply = supply_map_into_supply(current_supply_map).unwrap();
+
+        // Ensure that the supply is zero.
+        assert_eq!(supply.total(), 0);
+        assert_eq!(supply.private(), 0);
+        assert_eq!(supply.public(), 0);
+        assert_eq!(supply.staked(), 0);
+
+        // Add the genesis block to the VM.
+        vm.add_next_block(&genesis).unwrap();
+
+        // Retrieve the supply mapping from storage.
+        let current_supply_map =
+            vm.store.finalize_store().get_mapping_speculative(&program_id, &supply_mapping).unwrap();
+
+        // Convert the supply mapping into the supply.
+        let supply = supply_map_into_supply(current_supply_map).unwrap();
+
+        // Fetch the genesis ratification.
+        let Ratify::Genesis(committee, public_balances) = genesis.ratifications().iter().next().unwrap() else {
+            panic!("Expected genesis ratification");
+        };
+
+        // Calculate the expected stake.
+        let total_committee_stake = committee.total_stake();
+        let genesis_fees = genesis.transaction_fee_amounts().map(|amount| *(amount.unwrap())).sum::<u64>();
+        let total_private_balance =
+            Block::<CurrentNetwork>::NUM_GENESIS_TRANSACTIONS as u64 * ledger_committee::MIN_VALIDATOR_STAKE;
+        let total_public_balance = public_balances.values().sum::<u64>() - total_private_balance - genesis_fees;
+
+        // Ensure that the supply is updated with the genesis values.
+        assert_eq!(supply.total(), CurrentNetwork::STARTING_SUPPLY - genesis_fees);
+        assert_eq!(supply.private(), total_private_balance);
+        assert_eq!(supply.public(), total_public_balance);
+        assert_eq!(supply.staked(), total_committee_stake);
     }
 }

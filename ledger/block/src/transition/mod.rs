@@ -310,6 +310,44 @@ impl<N: Network> Transition<N> {
         self.program_id.to_string() == "credits.aleo" && self.function_name.to_string() == "unbond"
     }
 
+    /// Returns `true` if this is a `bond_public` transition.
+    #[inline]
+    pub fn is_bond_public(&self) -> bool {
+        self.inputs.len() == 2
+            && self.finalize.as_ref().map_or(false, |finalize| finalize.len() == 3)
+            && self.program_id.to_string() == "credits.aleo"
+            && self.function_name.to_string() == "bond_public"
+    }
+
+    /// Returns `true` if this is an `unbond_public` transition.
+    #[inline]
+    pub fn is_unbond_public(&self) -> bool {
+        self.inputs.len() == 1
+            && self.finalize.as_ref().map_or(false, |finalize| finalize.len() == 2)
+            && self.program_id.to_string() == "credits.aleo"
+            && self.function_name.to_string() == "unbond_public"
+    }
+
+    /// Returns `true` if this is a `transfer_public_to_private` transition.
+    #[inline]
+    pub fn is_transfer_public_to_private(&self) -> bool {
+        self.inputs.len() == 2
+            && self.outputs.len() == 1
+            && self.finalize.as_ref().map_or(false, |finalize| finalize.len() == 2)
+            && self.program_id.to_string() == "credits.aleo"
+            && self.function_name.to_string() == "transfer_public_to_private"
+    }
+
+    /// Returns `true` if this is a `transfer_private_to_public` transition.
+    #[inline]
+    pub fn is_transfer_private_to_public(&self) -> bool {
+        self.inputs.len() == 3
+            && self.outputs.len() == 1
+            && self.finalize.as_ref().map_or(false, |finalize| finalize.len() == 2)
+            && self.program_id.to_string() == "credits.aleo"
+            && self.function_name.to_string() == "transfer_private_to_public"
+    }
+
     /// Returns `true` if this is a `fee_private` transition.
     #[inline]
     pub fn is_fee_private(&self) -> bool {

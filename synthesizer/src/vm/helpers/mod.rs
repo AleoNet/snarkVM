@@ -22,3 +22,6 @@ mod macros;
 
 mod rewards;
 pub use rewards::*;
+
+mod supply;
+pub use supply::*;
