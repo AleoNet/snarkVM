@@ -33,6 +33,7 @@ use snarkvm_circuit_environment::{assert_count, assert_output_mode, assert_scope
 
 use console::AffineCurve;
 use snarkvm_circuit_environment::prelude::*;
+use snarkvm_circuit_environment::prelude::num_traits::zero;
 use snarkvm_circuit_types_boolean::Boolean;
 use snarkvm_circuit_types_field::Field;
 use snarkvm_circuit_types_scalar::Scalar;
@@ -61,40 +62,18 @@ impl<E: Environment> Inject for Group<E> {
     /// For safety, the resulting point is always enforced to be on the curve with constraints.
     /// regardless of whether the y-coordinate was recovered.
     fn new(mode: Mode, group: Self::Primitive) -> Self {
-        // Inject `point_inv` from the `(x_inv, y_inv)` coordinates as field elements.
-        let point_inv = {
-            // Compute the `(x_inv, y_inv)` coordinates from `(point / COFACTOR)`.
-            let (x_inv, y_inv) = group.div_by_cofactor().to_xy_coordinates();
-            // If the mode is `Public`, then allocate them privately, as we will allocate a `Public` point at the end.
-            match mode.is_public() {
-                true => Self { x: Field::new(Mode::Private, x_inv), y: Field::new(Mode::Private, y_inv) },
-                false => Self { x: Field::new(mode, x_inv), y: Field::new(mode, y_inv) },
-            }
-        };
 
-        // Ensure `point_inv` is on the curve.
-        point_inv.enforce_on_curve();
+        // TODO: check if `group` is in the group (in console-land, not circuit-land)
 
-        // Return the `point` as `point_inv * COFACTOR`.
-        let point = point_inv.mul_by_cofactor();
-
-        if mode.is_public() {
-            // Inject the point as `Mode::Public`.
-            let public_point = {
-                // Initialize the (x, y) coordinates of the point as field elements.
-                let (x, y) = group.to_xy_coordinates();
-                // Inject the `(x, y)` coordinates as field elements.
-                Self { x: Field::new(mode, x), y: Field::new(mode, y) }
-            };
-
-            // Ensure the `point == public_point`.
-            E::assert_eq(&point, &public_point);
-
-            // Return the public point.
-            public_point
-        } else {
-            point
-        }
+        // Allocate two new variables for the coordinates, with the mode and values given as inputs.
+        let x = Field::new(mode, group.to_x_coordinate());
+        let y = Field::new(mode, group.to_y_coordinate());
+        // Put the coordinates together into a point.
+        let point = Self {x, y};
+        // Enforce in the circuit that the point is in the group.
+        point.enforce_in_group();
+        // Return the point.
+        point
     }
 }
 
@@ -116,6 +95,36 @@ impl<E: Environment> Group<E> {
 
         // Ensure y^2 * (dx^2 - 1) = (ax^2 - 1).
         E::enforce(|| (first, second, third));
+    }
+}
+
+impl<E: Environment> Group<E> {
+    /// Enforce that self is in the group.
+    ///
+    /// Each point in the group is the quadruple of some point on the curve,
+    /// where 'quadruple' refers to the cofactor 4 of the curve.
+    /// Thus, to enforce that a given point is in the group,
+    /// there must exist some point on the curve such that 4 times the latter yields the former.
+    /// The point on the curve is existentially quantified,
+    /// so the constraints introduce new coordinate variables for that point.
+    pub fn enforce_in_group(&self) {
+        // Postulate a point on the curve.
+        // The coordinate values are irrelevant; we pick 0 for both.
+        let point_x = Field::new(Mode::Private, zero());
+        let point_y = Field::new(Mode::Private, zero());
+        let point = Self {x: point_x, y: point_y};
+        point.enforce_on_curve();
+
+        // Postulate another point that is double of the point on the curve above.
+        // The coordinate values are irrelevant; we pick 0 for both.
+        let double_point_x = Field::new(Mode::Private, zero());
+        let double_point_y = Field::new(Mode::Private, zero());
+        let double_point = Self {x: double_point_x, y: double_point_y};
+        point.enforce_double(&double_point);
+
+        // Enforce that the input point (self) is double the double of the point on the curve,
+        // i.e. that it is 4 (cofactor) times the postulated point on the curve.
+        double_point.enforce_double(self);
     }
 }
 
