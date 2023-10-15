@@ -90,17 +90,17 @@ mod tests {
 
     #[test]
     fn test_from_xy_coordinates_constant() {
-        check_from_xy_coordinates(Mode::Constant, 10, 0, 0, 0);
+        check_from_xy_coordinates(Mode::Constant, 8, 0, 0, 0);
     }
 
     #[test]
     fn test_from_xy_coordinates_public() {
-        check_from_xy_coordinates(Mode::Public, 4, 0, 14, 15);
+        check_from_xy_coordinates(Mode::Public, 4, 0, 12, 13);
     }
 
     #[test]
     fn test_from_xy_coordinates_private() {
-        check_from_xy_coordinates(Mode::Private, 4, 0, 14, 15);
+        check_from_xy_coordinates(Mode::Private, 4, 0, 12, 13);
     }
 
     #[test]
