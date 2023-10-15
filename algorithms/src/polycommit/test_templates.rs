@@ -95,9 +95,9 @@ pub fn bad_degree_bound_test<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>>() -
         let degree_info = DegreeInfo {
             max_degree,
             max_fft_size: supported_degree,
-            lagrange_sizes: None,
             degree_bounds: Some(degree_bounds),
             hiding_bound,
+            lagrange_sizes: None,
         };
         let universal_prover = &pp.to_universal_prover(degree_info).unwrap();
 
@@ -173,9 +173,9 @@ pub fn lagrange_test_template<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>>()
         let degree_info = DegreeInfo {
             max_degree,
             max_fft_size: supported_degree,
-            lagrange_sizes: Some(supported_lagrange_sizes),
             degree_bounds: Some(degree_bounds),
             hiding_bound,
+            lagrange_sizes: Some(supported_lagrange_sizes),
         };
         let universal_prover = &pp.to_universal_prover(degree_info).unwrap();
 
@@ -288,9 +288,9 @@ where
         let degree_info = DegreeInfo {
             max_degree,
             max_fft_size: supported_degree,
-            lagrange_sizes: None,
             degree_bounds: Some(degree_bounds),
             hiding_bound,
+            lagrange_sizes: None,
         };
         let universal_prover = &pp.to_universal_prover(degree_info).unwrap();
 
@@ -403,9 +403,9 @@ fn equation_test_template<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>>(
         let degree_info = DegreeInfo {
             max_degree,
             max_fft_size: supported_degree,
-            lagrange_sizes: None,
             degree_bounds: Some(degree_bounds),
             hiding_bound,
+            lagrange_sizes: None,
         };
         let universal_prover = &pp.to_universal_prover(degree_info).unwrap();
 

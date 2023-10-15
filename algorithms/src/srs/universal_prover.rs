@@ -23,11 +23,10 @@ use snarkvm_curves::PairingEngine;
 pub struct UniversalProver<E: PairingEngine> {
     /// The committer key for the underlying KZG10 scheme.
     pub committer_key: CommitterKey<E>,
-    /// Precomputed roots for calculating FFTs
+    /// The precomputed roots for calculating FFTs.
     pub fft_precomputation: FFTPrecomputation<E::Fr>,
-    /// Precomputed inverse roots for calculating inverse FFTs
+    /// The precomputed inverse roots for calculating inverse FFTs.
     pub ifft_precomputation: IFFTPrecomputation<E::Fr>,
     /// The maximum degree supported by the universal SRS.
     pub max_degree: usize,
-    pub _unused: Option<E>,
 }

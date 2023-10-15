@@ -202,11 +202,14 @@ impl Network for Testnet3 {
     }
 
     /// Returns the Varuna universal prover.
-    fn varuna_universal_prover(degree_info: DegreeInfo) -> UniversalProver<Self::PairingCurve> {
-        snarkvm_algorithms::polycommit::kzg10::UniversalParams::load()
-            .expect("Failed to load universal SRS (KZG10).")
-            .to_universal_prover(degree_info)
-            .expect("Failed to convert universal SRS (KZG10) to the prover.")
+    fn varuna_universal_prover(degree_info: DegreeInfo) -> &'static UniversalProver<Self::PairingCurve> {
+        static INSTANCE: OnceCell<UniversalProver<<Console as Environment>::PairingCurve>> = OnceCell::new();
+        INSTANCE.get_or_init(|| {
+            snarkvm_algorithms::polycommit::kzg10::UniversalParams::load()
+                .expect("Failed to load universal SRS (KZG10).")
+                .to_universal_prover(degree_info)
+                .expect("Failed to convert universal SRS (KZG10) to the prover.")
+        })
     }
 
     /// Returns the Varuna universal verifier.

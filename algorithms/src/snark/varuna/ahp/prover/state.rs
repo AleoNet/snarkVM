@@ -88,9 +88,9 @@ pub struct State<'a, F: PrimeField, SM: SNARKMode> {
     pub(in crate::snark) max_variable_domain: EvaluationDomain<F>,
     /// The total number of instances we're proving in the batch.
     pub(in crate::snark) total_instances: usize,
-    /// Precomputed roots for calculating FFTs
+    /// The precomputed roots for calculating FFTs.
     pub fft_precomputation: &'a FFTPrecomputation<F>,
-    /// Precomputed inverse roots for calculating inverse FFTs
+    /// The precomputed inverse roots for calculating inverse FFTs.
     pub ifft_precomputation: &'a IFFTPrecomputation<F>,
 }
 

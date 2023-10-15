@@ -16,33 +16,47 @@ use std::collections::HashSet;
 
 #[derive(Clone)]
 pub struct DegreeInfo {
-    /// max degree of the required SRS to commit to the polynomials
+    /// The maximum degree of the required SRS to commit to the polynomials.
     pub max_degree: usize,
-    /// max IOP poly degree used for (i)fft_precomputation
+    /// The maximum IOP poly degree used for (i)fft_precomputation.
     pub max_fft_size: usize,
-    /// degree bounds on IOP polynomials
+    /// TODO (howardwu): This should never be happening... Use a BTreeSet.
+    /// The degree bounds on IOP polynomials.
     pub degree_bounds: Option<HashSet<usize>>,
-    /// hiding bound for polynomial queries
+    /// The hiding bound for polynomial queries.
     pub hiding_bound: usize,
-    /// supported lagrange-basis SRS
+    /// The supported sizes for the lagrange-basis SRS.
     pub lagrange_sizes: Option<HashSet<usize>>,
 }
 
 impl DegreeInfo {
+    /// Initializes a new degree info.
+    pub const fn new(
+        max_degree: usize,
+        max_fft_size: usize,
+        degree_bounds: Option<HashSet<usize>>,
+        hiding_bound: usize,
+        lagrange_sizes: Option<HashSet<usize>>,
+    ) -> Self {
+        Self { max_degree, max_fft_size, degree_bounds, hiding_bound, lagrange_sizes }
+    }
+}
+
+impl DegreeInfo {
     pub fn union(self, other: &Self) -> Self {
-        let hiding_bound = self.hiding_bound.max(other.hiding_bound);
         let max_degree = self.max_degree.max(other.max_degree);
         let max_fft_size = self.max_fft_size.max(other.max_fft_size);
         let degree_bounds = match (&self.degree_bounds, &other.degree_bounds) {
             (Some(a), Some(b)) => Some(a | b),
-            (Some(a), None) | (None, Some(a)) => Some(&HashSet::new() | a),
+            (Some(a), None) | (None, Some(a)) => Some(a),
             (None, None) => None,
         };
+        let hiding_bound = self.hiding_bound.max(other.hiding_bound);
         let lagrange_sizes = match (&self.lagrange_sizes, &other.lagrange_sizes) {
             (Some(a), Some(b)) => Some(a | b),
-            (Some(a), None) | (None, Some(a)) => Some(&HashSet::new() | a),
+            (Some(a), None) | (None, Some(a)) => Some(a),
             (None, None) => None,
         };
-        Self { max_degree, max_fft_size, degree_bounds, lagrange_sizes, hiding_bound }
+        Self::new(max_degree, max_fft_size, degree_bounds, hiding_bound, lagrange_sizes)
     }
 }

@@ -41,12 +41,12 @@ pub struct CircuitInfo {
 
 impl CircuitInfo {
     /// The max degrees and bounds required to represent polynomials of this circuit.
-    pub fn degree_info<F: PrimeField, MM: SNARKMode>(&self) -> DegreeInfo {
-        let max_degree = self.max_degree::<F, MM>();
+    pub fn degree_info<F: PrimeField, SM: SNARKMode>(&self) -> DegreeInfo {
+        let max_degree = self.max_degree::<F, SM>();
         let max_fft_size = self.max_fft_size::<F>();
         let degree_bounds = Some(self.degree_bounds::<F>().into_iter().collect());
-        let hiding_bound = AHPForR1CS::<F, MM>::zk_bound().unwrap_or(0);
-        DegreeInfo { max_degree, max_fft_size, degree_bounds, hiding_bound, lagrange_sizes: None }
+        let hiding_bound = AHPForR1CS::<F, SM>::zk_bound().unwrap_or(0);
+        DegreeInfo::new(max_degree, max_fft_size, degree_bounds, hiding_bound, None)
     }
 
     /// The maximum degree of polynomial required to represent this index in the AHP.

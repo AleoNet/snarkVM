@@ -101,21 +101,17 @@ impl<E: PairingEngine> UniversalParams<E> {
     }
 
     pub fn to_universal_prover(&self, degree_info: DegreeInfo) -> Result<UniversalProver<E>> {
-        let max_degree = degree_info.max_degree;
-        let l_sizes = degree_info.lagrange_sizes.map(|mut s| s.drain().collect_vec());
-        let coefficient_support = degree_info.degree_bounds.map(|mut s| s.drain().collect_vec());
-        let hiding_bound = degree_info.hiding_bound;
-        let committer_key = self.to_committer_key(max_degree, l_sizes, coefficient_support, hiding_bound)?;
-
+        // Construct the committer key.
+        let committer_key = self.to_committer_key(&degree_info)?;
+        // Construct the FFT and iFFT precomputation.
         let (fft_precomputation, ifft_precomputation) =
             Self::fft_precomputation(degree_info.max_fft_size).ok_or(SerializationError::InvalidData)?;
-
+        // Return the universal prover.
         Ok(UniversalProver::<E> {
             committer_key,
             fft_precomputation,
             ifft_precomputation,
             max_degree: self.max_degree(),
-            _unused: None,
         })
     }
 
@@ -135,14 +131,20 @@ impl<E: PairingEngine> UniversalParams<E> {
 
     pub fn to_committer_key(
         &self,
-        supported_degree: usize,
-        supported_lagrange_sizes: Option<Vec<usize>>,
-        enforced_degree_bounds: Option<Vec<usize>>,
-        supported_hiding_bound: usize,
+        degree_info: &DegreeInfo,
     ) -> Result<CommitterKey<E>> {
         let trim_time = start_timer!(|| "Trimming public parameters");
-        let max_degree = self.max_degree(); // max degree of the entire SRS
 
+        // Retrieve the supported parameters from the degree information.
+        let supported_degree = degree_info.max_degree;
+        let supported_lagrange_sizes = degree_info.lagrange_sizes.map(|mut s| s.drain().collect_vec());
+        let enforced_degree_bounds = degree_info.degree_bounds.map(|mut s| s.drain().collect_vec());
+        let supported_hiding_bound = degree_info.hiding_bound;
+
+        // The maximum degree of the entire SRS.
+        let max_degree = self.max_degree();
+
+        // TODO (howardwu): This should never be happening... Use a BTreeSet.
         let enforced_degree_bounds = enforced_degree_bounds.map(|bounds| {
             let mut v = bounds.to_vec();
             v.sort_unstable();
@@ -238,9 +240,10 @@ impl<E: PairingEngine> UniversalParams<E> {
         Ok(ck)
     }
 
-    pub fn fft_precomputation(max_domain_size: usize) -> Option<(FFTPrecomputation<E::Fr>, IFFTPrecomputation<E::Fr>)> {
-        let largest_mul_domain = EvaluationDomain::new(max_domain_size)?;
-        let fft_precomputation = largest_mul_domain.precompute_fft();
+    /// Returns the FFT and iFFT precomputation for the largest supported domain.
+    fn fft_precomputation(max_domain_size: usize) -> Option<(FFTPrecomputation<E::Fr>, IFFTPrecomputation<E::Fr>)> {
+        let domain = EvaluationDomain::new(max_domain_size)?;
+        let fft_precomputation = domain.precompute_fft();
         let ifft_precomputation = fft_precomputation.to_ifft_precomputation();
         Some((fft_precomputation, ifft_precomputation))
     }

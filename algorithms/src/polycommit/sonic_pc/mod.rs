@@ -578,6 +578,7 @@ mod tests {
 
     use super::{CommitterKey, SonicKZG10};
     use crate::{crypto_hash::PoseidonSponge, polycommit::test_templates::*};
+    use crate::polycommit::kzg10::DegreeInfo;
     use snarkvm_curves::bls12_377::{Bls12_377, Fq};
     use snarkvm_utilities::{rand::TestRng, FromBytes, ToBytes};
 
@@ -596,6 +597,9 @@ mod tests {
 
         let pp = PC_Bls12_377::load_srs(max_degree).unwrap();
         let hiding_bound = 0;
+
+        DegreeInfo
+
         let ck = pp
             .to_committer_key(supported_degree, Some(vec![lagrange_size(supported_degree)]), None, hiding_bound)
             .unwrap();

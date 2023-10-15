@@ -62,7 +62,9 @@ impl<N: Network> ProvingKey<N> {
         assignments: &[(ProvingKey<N>, Vec<circuit::Assignment<N::Field>>)],
         rng: &mut R,
     ) -> Result<Proof<N>> {
-        ensure!(!assignments.is_empty());
+        // Ensure that the assignments are not empty.
+        ensure!(!assignments.is_empty(), "Cannot prove an empty batch");
+
         #[cfg(feature = "aleo-cli")]
         let timer = std::time::Instant::now();
 
@@ -73,14 +75,12 @@ impl<N: Network> ProvingKey<N> {
             .collect();
 
         // Retrieve the proving parameters.
-        let mut degree_info: Option<DegreeInfo> = None;
-        for (pk, _) in assignments {
-            let degree_info_i = pk.circuit.index_info.degree_info::<N::Field, varuna::VarunaHidingMode>();
-            degree_info = match degree_info {
-                Some(degree_info) => Some(degree_info.union(&degree_info_i)),
-                None => Some(degree_info_i),
-            };
-        }
+        let degree_info = assignments
+            .iter()
+            .map(|(pk, _)| pk.circuit.index_info.degree_info::<N::Field, varuna::VarunaHidingMode>())
+            .fold(None, |acc, degree_info_i| {
+                acc.map_or(Some(degree_info_i), |degree_info| Some(degree_info.union(&degree_info_i)))
+            });
         let universal_prover = N::varuna_universal_prover(degree_info.unwrap());
         let fiat_shamir = N::varuna_fs_parameters();
 
