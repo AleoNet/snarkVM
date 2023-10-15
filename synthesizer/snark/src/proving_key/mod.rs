@@ -20,7 +20,7 @@ mod serialize;
 
 use std::collections::BTreeMap;
 
-#[derive(Clone, Eq)]
+#[derive(Clone)]
 pub struct ProvingKey<N: Network> {
     /// The proving key for the function.
     proving_key: Arc<varuna::CircuitProvingKey<N::PairingCurve, varuna::VarunaHidingMode>>,
@@ -91,6 +91,8 @@ impl<N: Network> Deref for ProvingKey<N> {
         &self.proving_key
     }
 }
+
+impl<N: Network> Eq for ProvingKey<N> {}
 
 impl<N: Network> PartialEq for ProvingKey<N> {
     fn eq(&self, other: &Self) -> bool {
