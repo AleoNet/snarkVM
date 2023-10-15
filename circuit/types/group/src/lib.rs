@@ -108,14 +108,14 @@ impl<E: Environment> Group<E> {
 
         // For the internal variables of this circuit,
         // the mode is constant if the input point is constant, otherwise private.
-        let mode= if self.eject_mode().is_constant() { Mode::Constant } else {Mode::Private};
+        let mode = if self.eject_mode().is_constant() { Mode::Constant } else { Mode::Private };
 
         // Postulate a point (two new R1CS variables) on the curve,
         // whose witness is the witness of the input point divided by the cofactor.
         let point_witness = self_witness.div_by_cofactor();
         let point_x = Field::new(mode, point_witness.to_x_coordinate());
         let point_y = Field::new(mode, point_witness.to_y_coordinate());
-        let point = Self {x: point_x, y: point_y};
+        let point = Self { x: point_x, y: point_y };
         point.enforce_on_curve();
 
         // (For advanced users) The cofactor for this curve is `4`. Thus doubling is used to be performant.
