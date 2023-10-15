@@ -23,8 +23,6 @@ use crate::{
     srs::{UniversalProver, UniversalVerifier},
     AlgebraicSponge,
 };
-use anyhow::{bail, Result};
-use itertools::Itertools;
 use snarkvm_curves::{AffineCurve, PairingCurve, PairingEngine, ProjectiveCurve};
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField, Zero};
 use snarkvm_parameters::testnet3::PowersOfG;
@@ -37,7 +35,9 @@ use snarkvm_utilities::{
     ToBytes,
 };
 
+use anyhow::{bail, Result};
 use core::ops::{Add, AddAssign};
+use itertools::Itertools;
 use parking_lot::RwLock;
 use rand_core::RngCore;
 use std::{collections::BTreeMap, io, ops::Range, sync::Arc};

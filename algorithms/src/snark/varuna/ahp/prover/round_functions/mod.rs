@@ -161,9 +161,9 @@ impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
                 Ok((*circuit, assignments))
             })
             .collect::<Result<BTreeMap<&'a Circuit<F, SM>, Vec<prover::Assignments<F>>>, AHPError>>()?;
-        end_timer!(init_time);
 
         let state = prover::State::initialize(indices_and_assignments, fft_precomp, ifft_precomp)?;
+        end_timer!(init_time);
 
         Ok(state)
     }
