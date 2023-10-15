@@ -160,4 +160,52 @@ mod test {
         println!("\nShould not verify (i.e. verifier messages should print below):");
         assert!(!verifying_key.verify("test", &[one, one + one], &proof));
     }
+
+    #[test]
+    fn test_varuna_verify_public_input_size() {
+        /// Creates a simple circuit: a * b.
+        fn create_assignment() -> circuit::Assignment<<CurrentNetwork as console::prelude::Environment>::Field> {
+            use circuit::{environment::Mode, types::Field, Inject};
+
+            // Ensure the circuit environment is clean.
+            Circuit::reset();
+
+            // Inject a field element.
+            let console_field = console::types::Field::<CurrentNetwork>::one();
+            let circuit_field_0 = Field::<Circuit>::new(Mode::Private, console_field);
+
+            // Inject another field element.
+            let console_field = console_field.double();
+            let circuit_field_1 = Field::<Circuit>::new(Mode::Private, console_field);
+
+            // Multiply the two field elements.
+            let _circuit_field_2 = circuit_field_0 * circuit_field_1;
+
+            // Eject the assignment.
+            Circuit::eject_assignment_and_reset()
+        }
+
+        let assignment = create_assignment();
+        assert_eq!(assignment.num_public(), 1);
+        assert_eq!(assignment.num_private(), 3);
+
+        let srs = UniversalSRS::<CurrentNetwork>::load().unwrap();
+        let (proving_key, verifying_key) = srs.to_circuit_key("test", &assignment).unwrap();
+        println!("Called circuit setup");
+
+        let proof = proving_key.prove("test", &assignment, &mut TestRng::default()).unwrap();
+        println!("Called prover");
+
+        // Should pass.
+        let one = <Circuit as Environment>::BaseField::one();
+        assert!(verifying_key.verify("test", &[one], &proof));
+
+        // Should fail.
+        assert!(!verifying_key.verify("test", &[one, one], &proof));
+        assert!(!verifying_key.verify("test", &[one, one + one], &proof));
+        assert!(!verifying_key.verify("test", &[one, one, one], &proof));
+        assert!(!verifying_key.verify("test", &[one, one, one + one], &proof));
+
+        println!("Called verifier");
+    }
 }
