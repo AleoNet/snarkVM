@@ -76,7 +76,7 @@ impl<E: Environment> Inject for Group<E> {
 }
 
 impl<E: Environment> Group<E> {
-    /// Checks `(x, y)` is on the curve.
+    /// Enforces that `self` is on the curve.
     ///
     /// Ensure ax^2 + y^2 = 1 + dx^2y^2
     /// by checking that y^2 * (dx^2 - 1) = (ax^2 - 1)
@@ -97,14 +97,7 @@ impl<E: Environment> Group<E> {
 }
 
 impl<E: Environment> Group<E> {
-    /// Enforce that self is in the group.
-    ///
-    /// Each point in the group is the quadruple of some point on the curve,
-    /// where 'quadruple' refers to the cofactor 4 of the curve.
-    /// Thus, to enforce that a given point is in the group,
-    /// there must exist some point on the curve such that 4 times the latter yields the former.
-    /// The point on the curve is existentially quantified,
-    /// so the constraints introduce new coordinate variables for that point.
+    /// Enforces that `self` is on the curve and in the largest prime-order subgroup.
     pub fn enforce_in_group(&self) {
         // Postulate a point on the curve.
         // The coordinate values are irrelevant; we pick 0 for both.
@@ -112,6 +105,16 @@ impl<E: Environment> Group<E> {
         let point_y = Field::new(Mode::Private, zero());
         let point = Self { x: point_x, y: point_y };
         point.enforce_on_curve();
+
+        // (For advanced users) The cofactor for this curve is `4`. Thus doubling is used to be performant.
+        debug_assert!(E::Affine::cofactor().len() == 1 && E::Affine::cofactor()[0] == 4);
+
+        // Each point in the subgroup is the quadruple of some point on the curve,
+        // where 'quadruple' refers to the cofactor 4 of the curve.
+        // Thus, to enforce that a given point is in the group,
+        // there must exist some point on the curve such that 4 times the latter yields the former.
+        // The point on the curve is existentially quantified,
+        // so the constraints introduce new coordinate variables for that point.
 
         // Postulate another point that is double of the point on the curve above.
         // The coordinate values are irrelevant; we pick 0 for both.
