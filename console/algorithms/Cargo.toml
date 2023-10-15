@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-console-algorithms"
-version = "0.14.6"
+version = "0.15.4"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Console algorithms for a decentralized virtual machine"
 license = "Apache-2.0"
@@ -12,24 +12,29 @@ path = "benches/bhp.rs"
 harness = false
 
 [[bench]]
-name = "poseidon_sponge"
+name = "poseidon"
 path = "benches/poseidon.rs"
+harness = false
+
+[[bench]]
+name = "elligator2"
+path = "benches/elligator2.rs"
 harness = false
 
 [dependencies.snarkvm-console-types]
 path = "../types"
-version = "=0.14.6"
+version = "=0.15.4"
 default-features = false
 features = [ "field", "group", "integers", "scalar" ]
 
 [dependencies.snarkvm-fields]
 path = "../../fields"
-version = "=0.14.6"
+version = "=0.15.4"
 default-features = false
 
 [dependencies.snarkvm-utilities]
 path = "../../utilities"
-version = "=0.14.6"
+version = "=0.15.4"
 
 [dependencies.blake2s_simd]
 version = "1.0"

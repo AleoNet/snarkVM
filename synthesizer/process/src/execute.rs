@@ -37,8 +37,10 @@ impl<N: Network> Process<N> {
         let call_stack = CallStack::execute(authorization, trace.clone())?;
         lap!(timer, "Initialize call stack");
 
+        // Retrieve the stack.
+        let stack = self.get_stack(request.program_id())?;
         // Execute the circuit.
-        let response = self.get_stack(request.program_id())?.execute_function::<A>(call_stack)?;
+        let response = stack.execute_function::<A>(call_stack, None)?;
         lap!(timer, "Execute the function");
 
         // Extract the trace.
@@ -81,7 +83,13 @@ mod tests {
 
         // Initialize the authorization.
         let authorization = process
-            .authorize_fee_private(&private_key, credits, fee_in_microcredits, deployment_or_execution_id, rng)
+            .authorize_fee_private::<CurrentAleo, _>(
+                &private_key,
+                credits,
+                fee_in_microcredits,
+                deployment_or_execution_id,
+                rng,
+            )
             .unwrap();
         assert!(authorization.is_fee_private(), "Authorization must be for a call to 'credits.aleo/fee_private'");
 
@@ -114,16 +122,17 @@ mod tests {
         let deployment_or_execution_id = Field::rand(rng);
 
         // Compute the authorization.
-        let authorization =
-            process.authorize_fee_public(&private_key, fee_in_microcredits, deployment_or_execution_id, rng).unwrap();
+        let authorization = process
+            .authorize_fee_public::<CurrentAleo, _>(&private_key, fee_in_microcredits, deployment_or_execution_id, rng)
+            .unwrap();
         assert!(authorization.is_fee_public(), "Authorization must be for a call to 'credits.aleo/fee_public'");
 
         // Execute the authorization.
         let (response, trace) = process.execute::<CurrentAleo>(authorization).unwrap();
-        // Ensure the response has 0 outputs.
-        assert_eq!(response.outputs().len(), 0, "Execution of 'credits.aleo/fee_public' must contain 0 outputs");
-        // Ensure the response has 0 output IDs.
-        assert_eq!(response.output_ids().len(), 0, "Execution of 'credits.aleo/fee_public' must contain 0 output IDs");
+        // Ensure the response has 1 outputs.
+        assert_eq!(response.outputs().len(), 1, "Execution of 'credits.aleo/fee_public' must contain 1 output");
+        // Ensure the response has 1 output IDs.
+        assert_eq!(response.output_ids().len(), 1, "Execution of 'credits.aleo/fee_public' must contain 1 output ID");
         // Ensure the trace contains 1 transition.
         assert_eq!(trace.transitions().len(), 1, "Execution of 'credits.aleo/fee_public' must contain 1 transition");
 

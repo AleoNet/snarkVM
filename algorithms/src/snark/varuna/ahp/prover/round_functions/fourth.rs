@@ -25,6 +25,7 @@ use crate::{
         ahp::{indexer::CircuitInfo, verifier, AHPError, AHPForR1CS, CircuitId},
         matrices::MatrixEvals,
         prover,
+        selectors::apply_randomized_selector,
         witness_label,
         SNARKMode,
     },
@@ -47,7 +48,7 @@ type Apoly<F> = LabeledPolynomial<F>;
 type Bpoly<F> = LabeledPolynomial<F>;
 type Gpoly<F> = LabeledPolynomial<F>;
 
-impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
+impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
     /// Output the number of oracles sent by the prover in the fourth round.
     pub const fn num_fourth_round_oracles(circuits: usize) -> usize {
         circuits * 3
@@ -77,9 +78,9 @@ impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
     pub fn prover_fourth_round<'a, R: RngCore>(
         second_message: &verifier::SecondMessage<F>,
         third_message: &verifier::ThirdMessage<F>,
-        mut state: prover::State<'a, F, MM>,
+        mut state: prover::State<'a, F, SM>,
         _r: &mut R,
-    ) -> Result<(prover::FourthMessage<F>, prover::FourthOracles<F>, prover::State<'a, F, MM>), AHPError> {
+    ) -> Result<(prover::FourthMessage<F>, prover::FourthOracles<F>, prover::State<'a, F, SM>), AHPError> {
         let round_time = start_timer!(|| "AHP::Prover::FourthRound");
 
         let verifier::SecondMessage { alpha, .. } = second_message;
@@ -231,7 +232,7 @@ impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
 
         let combiner = F::one(); // We are applying combiners in the fifth round when summing the witnesses
         let (lhs, remainder) =
-            Self::apply_randomized_selector(&mut h, combiner, &max_non_zero_domain, &non_zero_domain, false)?;
+            apply_randomized_selector(&mut h, combiner, &max_non_zero_domain, &non_zero_domain, false)?;
         assert!(remainder.is_none());
 
         let g_label = format!("g_{label}");

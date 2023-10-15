@@ -31,8 +31,8 @@ impl<N: Network> Equal<Self> for Plaintext<N> {
         match (self, other) {
             (Self::Literal(a, _), Self::Literal(b, _)) => a.is_equal(b),
             (Self::Struct(a, _), Self::Struct(b, _)) => match a.len() == b.len() {
-                // Recursively check each member for equality.
                 true => {
+                    // Recursively check each member for equality.
                     Boolean::new(a.iter().zip_eq(b.iter()).all(|((name_a, plaintext_a), (name_b, plaintext_b))| {
                         *name_a.is_equal(name_b) && *plaintext_a.is_equal(plaintext_b)
                     }))
@@ -40,10 +40,12 @@ impl<N: Network> Equal<Self> for Plaintext<N> {
                 false => Boolean::new(false),
             },
             (Self::Array(a, _), Self::Array(b, _)) => match a.len() == b.len() {
-                // Recursively check each element for equality.
-                true => Boolean::new(
-                    a.iter().zip_eq(b.iter()).all(|(plaintext_a, plaintext_b)| *plaintext_a.is_equal(plaintext_b)),
-                ),
+                true => {
+                    // Recursively check each element for equality.
+                    Boolean::new(
+                        a.iter().zip_eq(b.iter()).all(|(plaintext_a, plaintext_b)| *plaintext_a.is_equal(plaintext_b)),
+                    )
+                }
                 false => Boolean::new(false),
             },
             (Self::Literal(..), _) | (Self::Struct(..), _) | (Self::Array(..), _) => Boolean::new(false),
@@ -55,8 +57,8 @@ impl<N: Network> Equal<Self> for Plaintext<N> {
         match (self, other) {
             (Self::Literal(a, _), Self::Literal(b, _)) => a.is_not_equal(b),
             (Self::Struct(a, _), Self::Struct(b, _)) => match a.len() == b.len() {
-                // Recursively check each member for equality.
                 true => {
+                    // Recursively check each member for equality.
                     Boolean::new(a.iter().zip_eq(b.iter()).any(|((name_a, plaintext_a), (name_b, plaintext_b))| {
                         *(name_a.is_not_equal(name_b) | plaintext_a.is_not_equal(plaintext_b))
                     }))
@@ -64,10 +66,14 @@ impl<N: Network> Equal<Self> for Plaintext<N> {
                 false => Boolean::new(true),
             },
             (Self::Array(a, _), Self::Array(b, _)) => match a.len() == b.len() {
-                // Recursively check each element for equality.
-                true => Boolean::new(
-                    a.iter().zip_eq(b.iter()).any(|(plaintext_a, plaintext_b)| *plaintext_a.is_not_equal(plaintext_b)),
-                ),
+                true => {
+                    // Recursively check each element for equality.
+                    Boolean::new(
+                        a.iter()
+                            .zip_eq(b.iter())
+                            .any(|(plaintext_a, plaintext_b)| *plaintext_a.is_not_equal(plaintext_b)),
+                    )
+                }
                 false => Boolean::new(true),
             },
             (Self::Literal(..), _) | (Self::Struct(..), _) | (Self::Array(..), _) => Boolean::new(true),

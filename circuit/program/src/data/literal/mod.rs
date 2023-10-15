@@ -12,7 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+pub use cast::Cast;
+pub use cast_lossy::CastLossy;
+
 mod cast;
+mod cast_lossy;
 mod equal;
 mod from_bits;
 mod size_in_bits;
@@ -21,11 +25,12 @@ mod to_fields;
 mod to_type;
 mod variant;
 
-use console::LiteralType;
-
 use snarkvm_circuit_account::Signature;
 use snarkvm_circuit_network::Aleo;
 use snarkvm_circuit_types::prelude::*;
+
+#[cfg(test)]
+use console::LiteralType;
 
 /// The literal enum represents all supported circuit types in snarkVM.
 #[derive(Clone)]

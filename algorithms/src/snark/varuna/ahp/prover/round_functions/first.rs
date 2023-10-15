@@ -39,10 +39,10 @@ use snarkvm_utilities::cfg_into_iter;
 #[cfg(not(feature = "serial"))]
 use rayon::prelude::*;
 
-impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
+impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
     /// Output the number of oracles sent by the prover in the first round.
     pub fn num_first_round_oracles(total_batch_size: usize) -> usize {
-        total_batch_size + (MM::ZK as usize)
+        total_batch_size + (SM::ZK as usize)
     }
 
     /// Output the degree bounds of oracles in the first round.
@@ -55,7 +55,7 @@ impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
                     .flat_map(move |i| [PolynomialInfo::new(witness_label(circuit_id, "w", i), None, Self::zk_bound())])
             })
             .collect::<Vec<_>>();
-        if MM::ZK {
+        if SM::ZK {
             polynomials.push(PolynomialInfo::new("mask_poly".to_string(), None, None));
         }
         polynomials.into_iter().map(|info| (info.label().into(), info)).collect()
@@ -63,9 +63,9 @@ impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
 
     /// Output the first round message and the next state.
     pub fn prover_first_round<'a, R: RngCore>(
-        mut state: prover::State<'a, F, MM>,
+        mut state: prover::State<'a, F, SM>,
         rng: &mut R,
-    ) -> Result<prover::State<'a, F, MM>, AHPError> {
+    ) -> Result<prover::State<'a, F, SM>, AHPError> {
         let round_time = start_timer!(|| "AHP::Prover::FirstRound");
         let fft_precomp = state.fft_precomputation;
         let ifft_precomp = state.ifft_precomputation;
@@ -97,7 +97,7 @@ impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
             let batches = batches.drain(0..state.batch_size).collect_vec();
             circuit_specific_batches.insert(circuit.id, batches);
         }
-        let mask_poly = MM::ZK.then(|| Self::calculate_mask_poly(state.max_variable_domain, rng));
+        let mask_poly = SM::ZK.then(|| Self::calculate_mask_poly(state.max_variable_domain, rng));
         let oracles = prover::FirstOracles { batches: circuit_specific_batches, mask_poly };
         assert!(oracles.matches_info(&Self::first_round_polynomial_info(
             state.circuit_specific_states.iter().map(|(c, s)| (&c.id, &s.batch_size))
@@ -108,7 +108,7 @@ impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
     }
 
     fn calculate_mask_poly<R: RngCore>(variable_domain: EvaluationDomain<F>, rng: &mut R) -> LabeledPolynomial<F> {
-        assert!(MM::ZK);
+        assert!(SM::ZK);
         let mask_poly_time = start_timer!(|| "Computing mask polynomial");
         // We'll use the masking technique from Lunar (https://eprint.iacr.org/2020/1069.pdf, pgs 20-22).
         let h_1_mask = DensePolynomial::rand(3, rng).coeffs; // selected arbitrarily.

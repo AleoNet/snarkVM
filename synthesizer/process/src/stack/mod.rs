@@ -43,6 +43,7 @@ use console::{
     program::{
         Entry,
         EntryType,
+        Future,
         Identifier,
         Literal,
         Locator,
@@ -81,6 +82,7 @@ pub enum CallStack<N: Network> {
     CheckDeployment(Vec<Request<N>>, PrivateKey<N>, Assignments<N>),
     Evaluate(Authorization<N>),
     Execute(Authorization<N>, Arc<RwLock<Trace<N>>>),
+    PackageRun(Vec<Request<N>>, PrivateKey<N>, Assignments<N>),
 }
 
 impl<N: Network> CallStack<N> {
@@ -114,15 +116,19 @@ impl<N: Network> CallStack<N> {
             CallStack::Execute(authorization, trace) => {
                 CallStack::Execute(authorization.replicate(), Arc::new(RwLock::new(trace.read().clone())))
             }
+            CallStack::PackageRun(requests, private_key, assignments) => {
+                CallStack::PackageRun(requests.clone(), *private_key, Arc::new(RwLock::new(assignments.read().clone())))
+            }
         }
     }
 
     /// Pushes the request to the stack.
     pub fn push(&mut self, request: Request<N>) -> Result<()> {
         match self {
-            CallStack::Authorize(requests, ..) => requests.push(request),
-            CallStack::Synthesize(requests, ..) => requests.push(request),
-            CallStack::CheckDeployment(requests, ..) => requests.push(request),
+            CallStack::Authorize(requests, ..)
+            | CallStack::Synthesize(requests, ..)
+            | CallStack::CheckDeployment(requests, ..)
+            | CallStack::PackageRun(requests, ..) => requests.push(request),
             CallStack::Evaluate(authorization) => authorization.push(request),
             CallStack::Execute(authorization, ..) => authorization.push(request),
         }
@@ -134,7 +140,8 @@ impl<N: Network> CallStack<N> {
         match self {
             CallStack::Authorize(requests, ..)
             | CallStack::Synthesize(requests, ..)
-            | CallStack::CheckDeployment(requests, ..) => {
+            | CallStack::CheckDeployment(requests, ..)
+            | CallStack::PackageRun(requests, ..) => {
                 requests.pop().ok_or_else(|| anyhow!("No more requests on the stack"))
             }
             CallStack::Evaluate(authorization) => authorization.next(),
@@ -147,7 +154,8 @@ impl<N: Network> CallStack<N> {
         match self {
             CallStack::Authorize(requests, ..)
             | CallStack::Synthesize(requests, ..)
-            | CallStack::CheckDeployment(requests, ..) => {
+            | CallStack::CheckDeployment(requests, ..)
+            | CallStack::PackageRun(requests, ..) => {
                 requests.last().cloned().ok_or_else(|| anyhow!("No more requests on the stack"))
             }
             CallStack::Evaluate(authorization) => authorization.peek_next(),
@@ -254,11 +262,13 @@ impl<N: Network> StackProgram<N> for Stack<N> {
     /// Returns the function with the given function name.
     #[inline]
     fn get_function(&self, function_name: &Identifier<N>) -> Result<Function<N>> {
-        // Ensure the function exists.
-        match self.program.contains_function(function_name) {
-            true => self.program.get_function(function_name),
-            false => bail!("Function '{function_name}' does not exist in program '{}'.", self.program.id()),
-        }
+        self.program.get_function(function_name)
+    }
+
+    /// Returns a reference to the function with the given function name.
+    #[inline]
+    fn get_function_ref(&self, function_name: &Identifier<N>) -> Result<&Function<N>> {
+        self.program.get_function_ref(function_name)
     }
 
     /// Returns the expected number of calls for the given function name.

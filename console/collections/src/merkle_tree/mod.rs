@@ -333,7 +333,8 @@ impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>
         lap!(timer, "Hashed {} new leaves", leaf_hashes.len());
 
         // Store the updated hashes by level.
-        let mut updated_hashes = vec![leaf_hashes];
+        let mut updated_hashes = Vec::new();
+        updated_hashes.push(leaf_hashes);
 
         // A helper function to compute the path hashes for a given level.
         type Update<PH> = (usize, (<PH as PathHash>::Hash, <PH as PathHash>::Hash));

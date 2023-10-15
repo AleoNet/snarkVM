@@ -33,8 +33,9 @@ impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> PathHash<E> f
 
     /// Returns the hash of the given child nodes.
     fn hash_children(&self, left: &Self::Hash, right: &Self::Hash) -> Self::Hash {
+        let mut input = Vec::new();
         // Prepend the nodes with a `true` bit.
-        let mut input = vec![Boolean::constant(true)];
+        input.push(Boolean::constant(true));
         left.write_bits_le(&mut input);
         right.write_bits_le(&mut input);
         // Hash the input.
@@ -48,11 +49,9 @@ impl<E: Environment, const RATE: usize> PathHash<E> for Poseidon<E, RATE> {
     /// Returns the hash of the given child nodes.
     fn hash_children(&self, left: &Self::Hash, right: &Self::Hash) -> Self::Hash {
         // Prepend the nodes with a `1field` byte.
-        let mut input = vec![Self::Hash::one()];
-        input.push(left.clone());
-        input.push(right.clone());
+        let input = &[Self::Hash::one(), left.clone(), right.clone()];
         // Hash the input.
-        Hash::hash(self, &input)
+        Hash::hash(self, input)
     }
 }
 

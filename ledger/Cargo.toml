@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-ledger"
-version = "0.14.6"
+version = "0.15.4"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "A node ledger for a decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -28,7 +28,11 @@ harness = false
 
 [features]
 default = [ "async", "indexmap/rayon", "rayon" ]
-async = [ "ledger-narwhal/async", "ledger-query/async", "synthesizer/async" ]
+async = [
+  "ledger-narwhal/async",
+  "ledger-query/async",
+  "synthesizer/async"
+]
 rocks = [ "ledger-store/rocks" ]
 serial = [
   "console/serial",
@@ -42,54 +46,57 @@ serial = [
   "synthesizer/serial"
 ]
 test = [ "ledger-block/test" ]
-test-helpers = [ "ledger-committee/test-helpers", "ledger-narwhal/test-helpers" ]
+test-helpers = [
+  "ledger-committee/test-helpers",
+  "ledger-narwhal/test-helpers"
+]
 timer = [ "aleo-std/timer" ]
 
 [dependencies.console]
 package = "snarkvm-console"
 path = "../console"
-version = "=0.14.6"
+version = "=0.15.4"
 
 [dependencies.ledger-authority]
 package = "snarkvm-ledger-authority"
 path = "./authority"
-version = "=0.14.6"
+version = "=0.15.4"
 
 [dependencies.ledger-block]
 package = "snarkvm-ledger-block"
 path = "./block"
-version = "=0.14.6"
+version = "=0.15.4"
 
 [dependencies.ledger-coinbase]
 package = "snarkvm-ledger-coinbase"
 path = "./coinbase"
-version = "=0.14.6"
+version = "=0.15.4"
 
 [dependencies.ledger-committee]
 package = "snarkvm-ledger-committee"
 path = "./committee"
-version = "=0.14.6"
+version = "=0.15.4"
 
 [dependencies.ledger-narwhal]
 package = "snarkvm-ledger-narwhal"
 path = "./narwhal"
-version = "=0.14.6"
+version = "=0.15.4"
 
 [dependencies.ledger-query]
 package = "snarkvm-ledger-query"
 path = "./query"
-version = "=0.14.6"
+version = "=0.15.4"
 features = [ "query" ]
 
 [dependencies.ledger-store]
 package = "snarkvm-ledger-store"
 path = "./store"
-version = "=0.14.6"
+version = "=0.15.4"
 
 [dependencies.synthesizer]
 package = "snarkvm-synthesizer"
 path = "../synthesizer"
-version = "=0.14.6"
+version = "=0.15.4"
 
 [dependencies.aleo-std]
 version = "0.1.18"

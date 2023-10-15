@@ -51,7 +51,7 @@ impl CircuitId {
 /// 2) `{a,b,c}` are the matrices defining the R1CS instance
 /// 3) `{a,b,c}_arith` are structs containing information about the arithmetized matrices
 #[derive(Clone, Debug)]
-pub struct Circuit<F: PrimeField, MM: SNARKMode> {
+pub struct Circuit<F: PrimeField, SM: SNARKMode> {
     /// Information about the indexed circuit.
     pub index_info: CircuitInfo,
 
@@ -67,30 +67,30 @@ pub struct Circuit<F: PrimeField, MM: SNARKMode> {
     pub b_arith: MatrixEvals<F>,
     pub c_arith: MatrixEvals<F>,
 
-    pub(crate) _mode: PhantomData<MM>,
+    pub(crate) _mode: PhantomData<SM>,
     pub(crate) id: CircuitId,
 }
 
-impl<F: PrimeField, MM: SNARKMode> Eq for Circuit<F, MM> {}
-impl<F: PrimeField, MM: SNARKMode> PartialEq for Circuit<F, MM> {
+impl<F: PrimeField, SM: SNARKMode> Eq for Circuit<F, SM> {}
+impl<F: PrimeField, SM: SNARKMode> PartialEq for Circuit<F, SM> {
     fn eq(&self, other: &Self) -> bool {
         self.id == other.id
     }
 }
 
-impl<F: PrimeField, MM: SNARKMode> Ord for Circuit<F, MM> {
+impl<F: PrimeField, SM: SNARKMode> Ord for Circuit<F, SM> {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.id.cmp(&other.id)
     }
 }
 
-impl<F: PrimeField, MM: SNARKMode> PartialOrd for Circuit<F, MM> {
+impl<F: PrimeField, SM: SNARKMode> PartialOrd for Circuit<F, SM> {
     fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl<F: PrimeField, MM: SNARKMode> Circuit<F, MM> {
+impl<F: PrimeField, SM: SNARKMode> Circuit<F, SM> {
     pub fn hash(
         index_info: &CircuitInfo,
         a: &Matrix<F>,
@@ -124,7 +124,7 @@ impl<F: PrimeField, MM: SNARKMode> Circuit<F, MM> {
     }
 }
 
-impl<F: PrimeField, MM: SNARKMode> CanonicalSerialize for Circuit<F, MM> {
+impl<F: PrimeField, SM: SNARKMode> CanonicalSerialize for Circuit<F, SM> {
     fn serialize_with_mode<W: Write>(&self, mut writer: W, compress: Compress) -> Result<(), SerializationError> {
         self.index_info.serialize_with_mode(&mut writer, compress)?;
         self.a.serialize_with_mode(&mut writer, compress)?;
@@ -148,7 +148,7 @@ impl<F: PrimeField, MM: SNARKMode> CanonicalSerialize for Circuit<F, MM> {
     }
 }
 
-impl<F: PrimeField, MM: SNARKMode> snarkvm_utilities::Valid for Circuit<F, MM> {
+impl<F: PrimeField, SM: SNARKMode> snarkvm_utilities::Valid for Circuit<F, SM> {
     fn check(&self) -> Result<(), SerializationError> {
         Ok(())
     }
@@ -158,13 +158,14 @@ impl<F: PrimeField, MM: SNARKMode> snarkvm_utilities::Valid for Circuit<F, MM> {
     }
 }
 
-impl<F: PrimeField, MM: SNARKMode> CanonicalDeserialize for Circuit<F, MM> {
+impl<F: PrimeField, SM: SNARKMode> CanonicalDeserialize for Circuit<F, SM> {
     fn deserialize_with_mode<R: Read>(
         mut reader: R,
         compress: Compress,
         validate: Validate,
     ) -> Result<Self, SerializationError> {
         let index_info: CircuitInfo = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
+
         let a = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
         let b = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
         let c = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;

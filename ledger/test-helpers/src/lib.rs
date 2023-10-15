@@ -27,6 +27,7 @@ use ledger_block::{
     Header,
     Input,
     Output,
+    Ratifications,
     Transaction,
     Transactions,
     Transition,
@@ -133,8 +134,8 @@ pub fn sample_deployment(rng: &mut TestRng) -> Deployment<CurrentNetwork> {
 program testing.aleo;
 
 mapping store:
-    key item as u32.public;
-    value object as u32.public;
+    key as u32.public;
+    value as u32.public;
 
 function compute:
     input r0 as u32.private;
@@ -196,8 +197,9 @@ pub fn sample_fee_private(deployment_or_execution_id: Field<CurrentNetwork>, rng
     // Initialize the process.
     let process = Process::load().unwrap();
     // Authorize the fee.
-    let authorization =
-        process.authorize_fee_private(&private_key, credits, fee, deployment_or_execution_id, rng).unwrap();
+    let authorization = process
+        .authorize_fee_private::<CurrentAleo, _>(&private_key, credits, fee, deployment_or_execution_id, rng)
+        .unwrap();
     // Construct the fee trace.
     let (_, mut trace) = process.execute::<CurrentAleo>(authorization).unwrap();
 
@@ -240,7 +242,8 @@ pub fn sample_fee_public(deployment_or_execution_id: Field<CurrentNetwork>, rng:
     // Initialize the process.
     let process = Process::load().unwrap();
     // Authorize the fee.
-    let authorization = process.authorize_fee_public(&private_key, fee, deployment_or_execution_id, rng).unwrap();
+    let authorization =
+        process.authorize_fee_public::<CurrentAleo, _>(&private_key, fee, deployment_or_execution_id, rng).unwrap();
     // Construct the fee trace.
     let (_, mut trace) = process.execute::<CurrentAleo>(authorization).unwrap();
 
@@ -392,13 +395,17 @@ fn sample_genesis_block_and_components_raw(
     // Prepare the transactions.
     let transactions = Transactions::from_iter([confirmed].into_iter());
 
+    // Construct the ratifications.
+    let ratifications = Ratifications::try_from(vec![]).unwrap();
+
     // Prepare the block header.
-    let header = Header::genesis(&transactions).unwrap();
+    let header = Header::genesis(&ratifications, &transactions, vec![]).unwrap();
     // Prepare the previous block hash.
     let previous_hash = <CurrentNetwork as Network>::BlockHash::default();
 
     // Construct the block.
-    let block = Block::new_beacon(&private_key, previous_hash, header, vec![], None, transactions, rng).unwrap();
+    let block =
+        Block::new_beacon(&private_key, previous_hash, header, ratifications, None, transactions, vec![], rng).unwrap();
     assert!(block.header().is_genesis(), "Failed to initialize a genesis block");
     // Return the block, transaction, and private key.
     (block, transaction, private_key)

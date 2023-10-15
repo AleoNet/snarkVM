@@ -89,11 +89,11 @@ pub trait Network:
     const INCLUSION_FUNCTION_NAME: &'static str;
 
     /// The fixed timestamp of the genesis block.
-    const GENESIS_TIMESTAMP: i64 = 1680307200; // 2023-04-01 00:00:00 UTC
+    const GENESIS_TIMESTAMP: i64 = 1696118400; // 2023-10-01 00:00:00 UTC
     /// The genesis block coinbase target.
-    const GENESIS_COINBASE_TARGET: u64 = (1u64 << 12).saturating_sub(1); // 1111 1111 1111
+    const GENESIS_COINBASE_TARGET: u64 = (1u64 << 32).saturating_sub(1);
     /// The genesis block proof target.
-    const GENESIS_PROOF_TARGET: u64 = 32; // 0000 0010 0000
+    const GENESIS_PROOF_TARGET: u64 = 1u64 << 25;
 
     /// The starting supply of Aleo credits.
     const STARTING_SUPPLY: u64 = 1_500_000_000_000_000; // 1.5B credits
@@ -107,13 +107,13 @@ pub trait Network:
     /// The anchor time in seconds.
     const ANCHOR_TIME: u16 = 25;
     /// The expected time per block in seconds.
-    const BLOCK_TIME: u16 = 5;
+    const BLOCK_TIME: u16 = 10;
     /// The coinbase puzzle degree.
     const COINBASE_PUZZLE_DEGREE: u32 = (1 << 13) - 1; // 8,191
     /// The maximum number of prover solutions that can be included per block.
     const MAX_PROVER_SOLUTIONS: usize = 1 << 8; // 256 prover solutions
     /// The number of blocks per epoch.
-    const NUM_BLOCKS_PER_EPOCH: u32 = 3600 / Self::BLOCK_TIME as u32; // 720 blocks == ~1 hour
+    const NUM_BLOCKS_PER_EPOCH: u32 = 3600 / Self::BLOCK_TIME as u32; // 360 blocks == ~1 hour
 
     /// The maximum number of entries in data.
     const MAX_DATA_ENTRIES: usize = 32;
@@ -161,6 +161,8 @@ pub trait Network:
     type StateRoot: Bech32ID<Field<Self>>;
     /// The block hash type.
     type BlockHash: Bech32ID<Field<Self>>;
+    /// The ratification ID type.
+    type RatificationID: Bech32ID<Field<Self>>;
     /// The transaction ID type.
     type TransactionID: Bech32ID<Field<Self>>;
     /// The transition ID type.

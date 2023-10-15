@@ -30,6 +30,49 @@ use std::str::FromStr;
 #[cfg(not(feature = "serial"))]
 use rayon::prelude::*;
 
+/// Returns the committee given the committee map from finalize storage.
+pub fn committee_map_into_committee<N: Network>(
+    starting_round: u64,
+    committee_map: Vec<(Plaintext<N>, Value<N>)>,
+) -> Result<Committee<N>> {
+    // Prepare the identifiers.
+    let microcredits_identifier = Identifier::from_str("microcredits")?;
+    let is_open_identifier = Identifier::from_str("is_open")?;
+
+    // Extract the committee members.
+    let committee_members = committee_map
+        .iter()
+        .map(|(key, value)| {
+            // Extract the address from the key.
+            let address = match key {
+                Plaintext::Literal(Literal::Address(address), _) => address,
+                _ => bail!("Invalid committee key (missing address) - {key}"),
+            };
+            // Extract the committee state from the value.
+            match value {
+                Value::Plaintext(Plaintext::Struct(state, _)) => {
+                    // Extract the microcredits from the value.
+                    let microcredits = match state.get(&microcredits_identifier) {
+                        Some(Plaintext::Literal(Literal::U64(microcredits), _)) => **microcredits,
+                        _ => bail!("Invalid committee state (missing microcredits) - {value}"),
+                    };
+                    // Extract the is_open flag from the value.
+                    let is_open = match state.get(&is_open_identifier) {
+                        Some(Plaintext::Literal(Literal::Boolean(is_open), _)) => **is_open,
+                        _ => bail!("Invalid committee state (missing boolean) - {value}"),
+                    };
+                    // Return the committee state.
+                    Ok((*address, (microcredits, is_open)))
+                }
+                _ => bail!("Invalid committee value (missing struct) - {value}"),
+            }
+        })
+        .collect::<Result<IndexMap<_, _>>>()?;
+
+    // Return the committee.
+    Committee::new(starting_round, committee_members)
+}
+
 /// Returns the stakers given the bonded map from finalize storage.
 pub fn bonded_map_into_stakers<N: Network>(
     bonded_map: Vec<(Plaintext<N>, Value<N>)>,
@@ -67,58 +110,6 @@ pub fn bonded_map_into_stakers<N: Network>(
 
     // Convert the bonded map into stakers.
     bonded_map.into_iter().map(|(key, value)| convert(key, value)).collect::<Result<IndexMap<_, _>>>()
-}
-
-/// Checks that the given committee from committee storage matches the given committee map from finalize storage.
-pub fn ensure_committee_matches<N: Network>(
-    committee: &Committee<N>,
-    committee_map: &[(Plaintext<N>, Value<N>)],
-) -> Result<()> {
-    // Prepare the identifiers.
-    let microcredits_identifier = Identifier::from_str("microcredits")?;
-    let is_open_identifier = Identifier::from_str("is_open")?;
-
-    // Extract the committee map.
-    let committee_map = committee_map
-        .iter()
-        .map(|(key, value)| {
-            // Extract the address from the key.
-            let address = match key {
-                Plaintext::Literal(Literal::Address(address), _) => address,
-                _ => bail!("Invalid committee key (missing address) - {key}"),
-            };
-            // Extract the committee state from the value.
-            match value {
-                Value::Plaintext(Plaintext::Struct(state, _)) => {
-                    // Extract the microcredits from the value.
-                    let microcredits = match state.get(&microcredits_identifier) {
-                        Some(Plaintext::Literal(Literal::U64(microcredits), _)) => **microcredits,
-                        _ => bail!("Invalid committee state (missing microcredits) - {value}"),
-                    };
-                    // Extract the is_open flag from the value.
-                    let is_open = match state.get(&is_open_identifier) {
-                        Some(Plaintext::Literal(Literal::Boolean(is_open), _)) => **is_open,
-                        _ => bail!("Invalid committee state (missing boolean) - {value}"),
-                    };
-                    // Return the committee state.
-                    Ok((address, (microcredits, is_open)))
-                }
-                _ => bail!("Invalid committee value (missing struct) - {value}"),
-            }
-        })
-        .collect::<Result<IndexMap<_, _>>>()?;
-
-    // Ensure the committee and committee map match.
-    ensure!(committee.members().len() == committee_map.len(), "Committee and committee map length do not match");
-
-    // Iterate over the committee and ensure the committee and committee map match.
-    for (address, (microcredits, is_open)) in committee.members() {
-        ensure!(committee_map.contains_key(&address), "Committee is missing an address");
-        let (candidate_microcredits, candidate_is_open) = committee_map.get(&address).unwrap();
-        ensure!(*microcredits == *candidate_microcredits, "Committee contains an incorrect 'microcredits' amount");
-        ensure!(*is_open == *candidate_is_open, "Committee contains an incorrect 'is_open' flag");
-    }
-    Ok(())
 }
 
 /// Checks that the given committee from committee storage matches the given stakers.
@@ -336,6 +327,24 @@ mod tests {
     }
 
     #[test]
+    fn test_committee_map_into_committee() {
+        let rng = &mut TestRng::default();
+
+        // Sample a committee.
+        let committee = ledger_committee::test_helpers::sample_committee_for_round_and_size(1, 100, rng);
+
+        // Initialize the committee map.
+        let committee_map = to_committee_map(committee.members());
+
+        // Start a timer.
+        let timer = std::time::Instant::now();
+        // Convert the committee map into a committee.
+        let candidate_committee = committee_map_into_committee(committee.starting_round(), committee_map).unwrap();
+        println!("committee_map_into_committee: {}ms", timer.elapsed().as_millis());
+        assert_eq!(candidate_committee, committee);
+    }
+
+    #[test]
     fn test_bonded_map_into_stakers() {
         let rng = &mut TestRng::default();
 
@@ -353,23 +362,6 @@ mod tests {
         println!("bonded_map_into_stakers: {}ms", timer.elapsed().as_millis());
         assert_eq!(candidate_stakers.len(), expected_stakers.len());
         assert_eq!(candidate_stakers, expected_stakers);
-    }
-
-    #[test]
-    fn test_ensure_committee_matches() {
-        let rng = &mut TestRng::default();
-
-        // Sample a committee.
-        let committee = ledger_committee::test_helpers::sample_committee(rng);
-        // Convert the committee into a committee map.
-        let committee_map = to_committee_map(committee.members());
-
-        // Start a timer.
-        let timer = std::time::Instant::now();
-        // Ensure the committee matches.
-        let result = ensure_committee_matches(&committee, &committee_map);
-        println!("ensure_committee_matches: {}ms", timer.elapsed().as_millis());
-        assert!(result.is_ok());
     }
 
     #[test]

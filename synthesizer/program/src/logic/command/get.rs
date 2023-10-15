@@ -84,9 +84,10 @@ impl<N: Network> Get<N> {
         let key = registers.load_plaintext(stack, &self.key)?;
 
         // Retrieve the value from storage as a literal.
-        let value = match store.get_value_speculative(stack.program_id(), &self.mapping, &key)? {
+        let value = match store.get_value_speculative(*stack.program_id(), self.mapping, &key)? {
             Some(Value::Plaintext(plaintext)) => Value::Plaintext(plaintext),
             Some(Value::Record(..)) => bail!("Cannot 'get' a 'record'"),
+            Some(Value::Future(..)) => bail!("Cannot 'get' a 'future'",),
             // If a key does not exist, then bail.
             None => bail!("Key '{}' does not exist in mapping '{}/{}'", key, stack.program_id(), self.mapping),
         };

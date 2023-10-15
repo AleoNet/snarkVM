@@ -379,8 +379,10 @@ impl<N: Network, const VARIANT: u8> Parser for HashInstruction<N, VARIANT> {
             let mut string = string;
 
             for _ in 0..num_operands {
+                // Parse the whitespace from the string.
+                let (next_string, _) = Sanitizer::parse_whitespaces(string)?;
                 // Parse the operand from the string.
-                let (next_string, operand) = Operand::parse(string)?;
+                let (next_string, operand) = Operand::parse(next_string)?;
                 // Update the string.
                 string = next_string;
                 // Push the operand.
@@ -392,8 +394,6 @@ impl<N: Network, const VARIANT: u8> Parser for HashInstruction<N, VARIANT> {
 
         // Parse the opcode from the string.
         let (string, _) = tag(*Self::opcode())(string)?;
-        // Parse the whitespace from the string.
-        let (string, _) = Sanitizer::parse_whitespaces(string)?;
         // Parse the operands from the string.
         let (string, operands) = parse_operands(string, expected_num_operands(VARIANT))?;
         // Parse the whitespace from the string.

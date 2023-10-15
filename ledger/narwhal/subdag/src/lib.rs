@@ -19,12 +19,15 @@ mod bytes;
 mod serialize;
 mod string;
 
-use console::{account::Address, prelude::*};
+use console::{account::Address, prelude::*, program::SUBDAG_CERTIFICATES_DEPTH, types::Field};
 use narwhal_batch_certificate::BatchCertificate;
 use narwhal_transmission_id::TransmissionID;
 
 use indexmap::IndexSet;
 use std::collections::BTreeMap;
+
+#[cfg(not(feature = "serial"))]
+use rayon::prelude::*;
 
 /// Returns `true` if the rounds are sequential.
 fn is_sequential<T>(map: &BTreeMap<u64, T>) -> bool {
@@ -84,8 +87,8 @@ impl<N: Network> Subdag<N> {
     pub fn from(subdag: BTreeMap<u64, IndexSet<BatchCertificate<N>>>) -> Result<Self> {
         // Ensure the subdag is not empty.
         ensure!(!subdag.is_empty(), "Subdag cannot be empty");
-        // Ensure the anchor round is odd.
-        ensure!(subdag.iter().next_back().map_or(0, |(r, _)| *r) % 2 == 1, "Anchor round must be odd");
+        // Ensure the anchor round is even.
+        ensure!(subdag.iter().next_back().map_or(0, |(r, _)| *r) % 2 == 0, "Anchor round must be even");
         // Ensure there is only one leader certificate.
         ensure!(subdag.iter().next_back().map_or(0, |(_, c)| c.len()) == 1, "Subdag cannot have multiple leaders");
         // Ensure the rounds are sequential.
@@ -101,6 +104,11 @@ impl<N: Network> Subdag<N> {
     /// Returns the anchor round.
     pub fn anchor_round(&self) -> u64 {
         self.subdag.iter().next_back().map_or(0, |(round, _)| *round)
+    }
+
+    /// Returns the certificate IDs of the subdag (from earliest round to latest round).
+    pub fn certificate_ids(&self) -> impl Iterator<Item = Field<N>> + '_ {
+        self.values().flatten().map(BatchCertificate::certificate_id)
     }
 
     /// Returns the leader certificate.
@@ -130,6 +138,24 @@ impl<N: Network> Subdag<N> {
     pub fn timestamp(&self) -> i64 {
         // Retrieve the median timestamp from the leader certificate.
         self.leader_certificate().median_timestamp()
+    }
+
+    /// Returns the subdag root of the transactions.
+    pub fn to_subdag_root(&self) -> Result<Field<N>> {
+        // Prepare the leaves.
+        let leaves = cfg_iter!(self.subdag)
+            .map(|(_, certificates)| {
+                certificates
+                    .iter()
+                    .flat_map(|certificate| certificate.certificate_id().to_bits_le())
+                    .collect::<Vec<_>>()
+            })
+            .collect::<Vec<_>>();
+
+        // Compute the subdag tree.
+        let tree = N::merkle_tree_bhp::<SUBDAG_CERTIFICATES_DEPTH>(&leaves)?;
+        // Return the subdag root.
+        Ok(*tree.root())
     }
 }
 
@@ -164,7 +190,7 @@ pub mod test_helpers {
         let starting_round = {
             loop {
                 let round = rng.gen_range(2..u64::MAX);
-                if round % 2 == 1 {
+                if round % 2 == 0 {
                     break round;
                 }
             }

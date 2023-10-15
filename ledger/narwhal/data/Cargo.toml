@@ -1,23 +1,23 @@
 [package]
 name = "snarkvm-ledger-narwhal-data"
-version = "0.14.6"
+version = "0.15.4"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "A batch certificate for a Narwhal-style memory pool in a decentralized virtual machine"
 homepage = "https://aleo.org"
 repository = "https://github.com/AleoHQ/snarkVM"
 keywords = [
-    "aleo",
-    "cryptography",
-    "blockchain",
-    "decentralized",
-    "zero-knowledge"
+  "aleo",
+  "cryptography",
+  "blockchain",
+  "decentralized",
+  "zero-knowledge"
 ]
 categories = [
-    "compilers",
-    "cryptography",
-    "mathematics",
-    "wasm",
-    "web-programming"
+  "compilers",
+  "cryptography",
+  "mathematics",
+  "wasm",
+  "web-programming"
 ]
 include = [ "Cargo.toml", "src", "README.md", "LICENSE.md" ]
 license = "Apache-2.0"
@@ -29,7 +29,7 @@ async = [ "tokio" ]
 [dependencies.console]
 package = "snarkvm-console"
 path = "../../../console"
-version = "=0.14.6"
+version = "=0.15.4"
 
 [dependencies.bytes]
 version = "1"

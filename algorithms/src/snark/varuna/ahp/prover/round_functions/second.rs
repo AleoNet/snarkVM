@@ -26,6 +26,7 @@ use crate::{
     snark::varuna::{
         ahp::{verifier, AHPForR1CS},
         prover,
+        selectors::apply_randomized_selector,
         witness_label,
         CircuitId,
         SNARKMode,
@@ -39,7 +40,7 @@ use snarkvm_utilities::{cfg_into_iter, cfg_iter_mut, cfg_reduce, ExecutionPool};
 #[cfg(not(feature = "serial"))]
 use rayon::prelude::*;
 
-impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
+impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
     /// Output the number of oracles sent by the prover in the second round.
     pub const fn num_second_round_oracles() -> usize {
         1
@@ -53,9 +54,9 @@ impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
     /// Output the second round message and the next state.
     pub fn prover_second_round<'a, R: RngCore>(
         verifier_message: &verifier::FirstMessage<F>,
-        mut state: prover::State<'a, F, MM>,
+        mut state: prover::State<'a, F, SM>,
         _r: &mut R,
-    ) -> Result<(prover::SecondOracles<F>, prover::State<'a, F, MM>)> {
+    ) -> Result<(prover::SecondOracles<F>, prover::State<'a, F, SM>)> {
         let round_time = start_timer!(|| "AHP::Prover::SecondRound");
 
         let zk_bound = Self::zk_bound();
@@ -77,7 +78,7 @@ impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
     }
 
     fn calculate_rowcheck_witness(
-        state: &mut prover::State<F, MM>,
+        state: &mut prover::State<F, SM>,
         batch_combiners: &BTreeMap<CircuitId, verifier::BatchCombiners<F>>,
     ) -> Result<DensePolynomial<F>> {
         let mut job_pool = ExecutionPool::with_capacity(state.circuit_specific_states.len());
@@ -117,7 +118,7 @@ impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
 
                     instance_lhs += &(&rowcheck * instance_combiner);
 
-                    let (h_0_i, remainder) = Self::apply_randomized_selector(
+                    let (h_0_i, remainder) = apply_randomized_selector(
                         &mut instance_lhs,
                         circuit_combiner,
                         &max_constraint_domain,

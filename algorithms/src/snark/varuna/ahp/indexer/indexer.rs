@@ -41,9 +41,9 @@ use snarkvm_utilities::println;
 
 use super::Matrix;
 
-impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
+impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
     /// Generate the index polynomials for this constraint system.
-    pub fn index<C: ConstraintSynthesizer<F>>(c: &C) -> Result<Circuit<F, MM>> {
+    pub fn index<C: ConstraintSynthesizer<F>>(c: &C) -> Result<Circuit<F, SM>> {
         let IndexerState { a, a_arith, b, b_arith, c, c_arith, index_info, id, .. } =
             Self::index_helper(c).map_err(|e| anyhow!("{e:?}"))?;
 
@@ -89,15 +89,15 @@ impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
         let padding_time = start_timer!(|| "Padding matrices");
         // Given that we only use the matrix for indexing, the values we choose for assignments don't matter
         let random_assignments = None;
-        MM::ZK.then(|| {
+        SM::ZK.then(|| {
             crate::snark::varuna::ahp::matrices::add_randomizing_variables::<_, _>(&mut ics, random_assignments)
         });
 
         crate::snark::varuna::ahp::matrices::pad_input_for_indexer_and_prover(&mut ics);
 
-        let a = ics.a_matrix();
-        let b = ics.b_matrix();
-        let c = ics.c_matrix();
+        let a = ics.a_matrix()?;
+        let b = ics.b_matrix()?;
+        let c = ics.c_matrix()?;
 
         end_timer!(padding_time);
 
@@ -162,7 +162,7 @@ impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
                 .try_into()
                 .unwrap();
 
-        let id = Circuit::<F, MM>::hash(&index_info, &a, &b, &c).unwrap();
+        let id = Circuit::<F, SM>::hash(&index_info, &a, &b, &c).unwrap();
 
         let result = Ok(IndexerState {
             a,

@@ -23,6 +23,9 @@ impl<N: Network, Instruction: InstructionTrait<N>> FromBytes for ClosureCore<N, 
 
         // Read the inputs.
         let num_inputs = u16::read_le(&mut reader)?;
+        if num_inputs > u16::try_from(N::MAX_INPUTS).map_err(error)? {
+            return Err(error(format!("Failed to deserialize a closure: too many inputs ({num_inputs})")));
+        }
         let mut inputs = Vec::with_capacity(num_inputs as usize);
         for _ in 0..num_inputs {
             inputs.push(Input::read_le(&mut reader)?);
@@ -30,7 +33,7 @@ impl<N: Network, Instruction: InstructionTrait<N>> FromBytes for ClosureCore<N, 
 
         // Read the instructions.
         let num_instructions = u32::read_le(&mut reader)?;
-        if num_instructions > u32::try_from(N::MAX_INSTRUCTIONS).map_err(|e| error(e.to_string()))? {
+        if num_instructions > u32::try_from(N::MAX_INSTRUCTIONS).map_err(error)? {
             return Err(error(format!("Failed to deserialize a closure: too many instructions ({num_instructions})")));
         }
         let mut instructions = Vec::with_capacity(num_instructions as usize);
@@ -40,6 +43,9 @@ impl<N: Network, Instruction: InstructionTrait<N>> FromBytes for ClosureCore<N, 
 
         // Read the outputs.
         let num_outputs = u16::read_le(&mut reader)?;
+        if num_outputs > u16::try_from(N::MAX_OUTPUTS).map_err(error)? {
+            return Err(error(format!("Failed to deserialize a closure: too many outputs ({num_outputs})")));
+        }
         let mut outputs = Vec::with_capacity(num_outputs as usize);
         for _ in 0..num_outputs {
             outputs.push(Output::read_le(&mut reader)?);
@@ -47,12 +53,9 @@ impl<N: Network, Instruction: InstructionTrait<N>> FromBytes for ClosureCore<N, 
 
         // Initialize a new closure.
         let mut closure = Self::new(name);
-        inputs.into_iter().try_for_each(|input| closure.add_input(input)).map_err(|e| error(e.to_string()))?;
-        instructions
-            .into_iter()
-            .try_for_each(|instruction| closure.add_instruction(instruction))
-            .map_err(|e| error(e.to_string()))?;
-        outputs.into_iter().try_for_each(|output| closure.add_output(output)).map_err(|e| error(e.to_string()))?;
+        inputs.into_iter().try_for_each(|input| closure.add_input(input)).map_err(error)?;
+        instructions.into_iter().try_for_each(|instruction| closure.add_instruction(instruction)).map_err(error)?;
+        outputs.into_iter().try_for_each(|output| closure.add_output(output)).map_err(error)?;
 
         Ok(closure)
     }
@@ -68,7 +71,7 @@ impl<N: Network, Instruction: InstructionTrait<N>> ToBytes for ClosureCore<N, In
         // Write the number of inputs for the closure.
         let num_inputs = self.inputs.len();
         match num_inputs <= N::MAX_INPUTS {
-            true => u16::try_from(num_inputs).map_err(|e| error(e.to_string()))?.write_le(&mut writer)?,
+            true => u16::try_from(num_inputs).map_err(error)?.write_le(&mut writer)?,
             false => return Err(error(format!("Failed to write {num_inputs} inputs as bytes"))),
         }
 
@@ -80,7 +83,7 @@ impl<N: Network, Instruction: InstructionTrait<N>> ToBytes for ClosureCore<N, In
         // Write the number of instructions for the closure.
         let num_instructions = self.instructions.len();
         match num_instructions <= N::MAX_INSTRUCTIONS {
-            true => u32::try_from(num_instructions).map_err(|e| error(e.to_string()))?.write_le(&mut writer)?,
+            true => u32::try_from(num_instructions).map_err(error)?.write_le(&mut writer)?,
             false => return Err(error(format!("Failed to write {num_instructions} instructions as bytes"))),
         }
 
@@ -92,7 +95,7 @@ impl<N: Network, Instruction: InstructionTrait<N>> ToBytes for ClosureCore<N, In
         // Write the number of outputs for the closure.
         let num_outputs = self.outputs.len();
         match num_outputs <= N::MAX_OUTPUTS {
-            true => u16::try_from(num_outputs).map_err(|e| error(e.to_string()))?.write_le(&mut writer)?,
+            true => u16::try_from(num_outputs).map_err(error)?.write_le(&mut writer)?,
             false => return Err(error(format!("Failed to write {num_outputs} outputs as bytes"))),
         }
 

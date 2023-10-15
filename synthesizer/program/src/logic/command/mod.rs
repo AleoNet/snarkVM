@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+mod await_;
+pub use await_::*;
+
 mod branch;
 pub use branch::*;
 
@@ -46,20 +49,22 @@ use crate::{
         StackMatches,
         StackProgram,
     },
-    FinalizeCommand,
+    CastType,
     FinalizeOperation,
     FinalizeRegistersState,
     Instruction,
 };
 use console::{
     network::prelude::*,
-    program::{Identifier, Register, RegisterType},
+    program::{Identifier, Register},
 };
 
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub enum Command<N: Network> {
     /// Evaluates the instruction.
     Instruction(Instruction<N>),
+    /// Awaits the result of a future.
+    Await(Await<N>),
     /// Returns true if the `key` operand is present in `mapping`, and stores the result into `destination`.
     Contains(Contains<N>),
     /// Gets the value stored at the `key` operand in `mapping` and stores the result into `destination`.
@@ -82,8 +87,6 @@ pub enum Command<N: Network> {
 }
 
 impl<N: Network> CommandTrait<N> for Command<N> {
-    type FinalizeCommand = FinalizeCommand<N>;
-
     /// Returns the destination registers of the command.
     #[inline]
     fn destinations(&self) -> Vec<Register<N>> {
@@ -93,11 +96,12 @@ impl<N: Network> CommandTrait<N> for Command<N> {
             Command::Get(get) => vec![get.destination().clone()],
             Command::GetOrUse(get_or_use) => vec![get_or_use.destination().clone()],
             Command::RandChaCha(rand_chacha) => vec![rand_chacha.destination().clone()],
-            Command::Remove(_)
-            | Command::Set(_)
+            Command::Await(_)
             | Command::BranchEq(_)
             | Command::BranchNeq(_)
-            | Command::Position(_) => vec![],
+            | Command::Position(_)
+            | Command::Remove(_)
+            | Command::Set(_) => vec![],
         }
     }
 
@@ -130,7 +134,7 @@ impl<N: Network> CommandTrait<N> for Command<N> {
 
     /// Returns `true` if the command is a cast to record instruction.
     fn is_cast_to_record(&self) -> bool {
-        matches!(self, Command::Instruction(Instruction::Cast(cast)) if !matches!(cast.register_type(), &RegisterType::Plaintext(_)))
+        matches!(self, Command::Instruction(Instruction::Cast(cast)) if matches!(cast.cast_type(), CastType::Record(_) | CastType::ExternalRecord(_)))
     }
 
     /// Returns `true` if the command is a write operation.
@@ -152,6 +156,8 @@ impl<N: Network> Command<N> {
         match self {
             // Finalize the instruction, and return no finalize operation.
             Command::Instruction(instruction) => instruction.finalize(stack, registers).map(|_| None),
+            // `await` commands are processed by the caller of this method.
+            Command::Await(_) => bail!("`await` commands cannot be finalized directly."),
             // Finalize the 'contains' command, and return no finalize operation.
             Command::Contains(contains) => contains.finalize(stack, store, registers).map(|_| None),
             // Finalize the 'get' command, and return no finalize operation.
@@ -164,9 +170,9 @@ impl<N: Network> Command<N> {
             Command::Remove(remove) => remove.finalize(stack, store, registers),
             // Finalize the 'set' command, and return the finalize operation.
             Command::Set(set) => set.finalize(stack, store, registers).map(Some),
-            // 'branch.eq' and 'branch.neq' instructions are processed by the caller of this method.
+            // 'branch.eq' and 'branch.neq' commands are processed by the caller of this method.
             Command::BranchEq(_) | Command::BranchNeq(_) => {
-                bail!("`branch` instructions cannot be finalized directly.")
+                bail!("`branch` commands cannot be finalized directly.")
             }
             // Finalize the `position` command, and return no finalize operation.
             Command::Position(position) => position.finalize().map(|_| None),
@@ -182,26 +188,28 @@ impl<N: Network> FromBytes for Command<N> {
         match variant {
             // Read the instruction.
             0 => Ok(Self::Instruction(Instruction::read_le(&mut reader)?)),
+            // Read the `await` operation.
+            1 => Ok(Self::Await(Await::read_le(&mut reader)?)),
             // Read the `contains` operation.
-            1 => Ok(Self::Contains(Contains::read_le(&mut reader)?)),
+            2 => Ok(Self::Contains(Contains::read_le(&mut reader)?)),
             // Read the `get` operation.
-            2 => Ok(Self::Get(Get::read_le(&mut reader)?)),
+            3 => Ok(Self::Get(Get::read_le(&mut reader)?)),
             // Read the `get.or_use` operation.
-            3 => Ok(Self::GetOrUse(GetOrUse::read_le(&mut reader)?)),
+            4 => Ok(Self::GetOrUse(GetOrUse::read_le(&mut reader)?)),
             // Read the `rand.chacha` operation.
-            4 => Ok(Self::RandChaCha(RandChaCha::read_le(&mut reader)?)),
+            5 => Ok(Self::RandChaCha(RandChaCha::read_le(&mut reader)?)),
             // Read the `remove` operation.
-            5 => Ok(Self::Remove(Remove::read_le(&mut reader)?)),
+            6 => Ok(Self::Remove(Remove::read_le(&mut reader)?)),
             // Read the `set` operation.
-            6 => Ok(Self::Set(Set::read_le(&mut reader)?)),
+            7 => Ok(Self::Set(Set::read_le(&mut reader)?)),
             // Read the `branch.eq` command.
-            7 => Ok(Self::BranchEq(BranchEq::read_le(&mut reader)?)),
+            8 => Ok(Self::BranchEq(BranchEq::read_le(&mut reader)?)),
             // Read the `branch.neq` command.
-            8 => Ok(Self::BranchNeq(BranchNeq::read_le(&mut reader)?)),
+            9 => Ok(Self::BranchNeq(BranchNeq::read_le(&mut reader)?)),
             // Read the `position` command.
-            9 => Ok(Self::Position(Position::read_le(&mut reader)?)),
+            10 => Ok(Self::Position(Position::read_le(&mut reader)?)),
             // Invalid variant.
-            10.. => Err(error(format!("Invalid command variant: {variant}"))),
+            11.. => Err(error(format!("Invalid command variant: {variant}"))),
         }
     }
 }
@@ -216,57 +224,63 @@ impl<N: Network> ToBytes for Command<N> {
                 // Write the instruction.
                 instruction.write_le(&mut writer)
             }
-            Self::Contains(contains) => {
+            Self::Await(await_) => {
                 // Write the variant.
                 1u8.write_le(&mut writer)?;
+                // Write the `await` operation.
+                await_.write_le(&mut writer)
+            }
+            Self::Contains(contains) => {
+                // Write the variant.
+                2u8.write_le(&mut writer)?;
                 // Write the `contains` operation.
                 contains.write_le(&mut writer)
             }
             Self::Get(get) => {
                 // Write the variant.
-                2u8.write_le(&mut writer)?;
+                3u8.write_le(&mut writer)?;
                 // Write the `get` operation.
                 get.write_le(&mut writer)
             }
             Self::GetOrUse(get_or_use) => {
                 // Write the variant.
-                3u8.write_le(&mut writer)?;
+                4u8.write_le(&mut writer)?;
                 // Write the defaulting `get` operation.
                 get_or_use.write_le(&mut writer)
             }
             Self::RandChaCha(rand_chacha) => {
                 // Write the variant.
-                4u8.write_le(&mut writer)?;
+                5u8.write_le(&mut writer)?;
                 // Write the `rand.chacha` operation.
                 rand_chacha.write_le(&mut writer)
             }
             Self::Remove(remove) => {
                 // Write the variant.
-                5u8.write_le(&mut writer)?;
+                6u8.write_le(&mut writer)?;
                 // Write the remove.
                 remove.write_le(&mut writer)
             }
             Self::Set(set) => {
                 // Write the variant.
-                6u8.write_le(&mut writer)?;
+                7u8.write_le(&mut writer)?;
                 // Write the set.
                 set.write_le(&mut writer)
             }
             Self::BranchEq(branch_eq) => {
                 // Write the variant.
-                7u8.write_le(&mut writer)?;
+                8u8.write_le(&mut writer)?;
                 // Write the `branch.eq` command.
                 branch_eq.write_le(&mut writer)
             }
             Self::BranchNeq(branch_neq) => {
                 // Write the variant.
-                8u8.write_le(&mut writer)?;
+                9u8.write_le(&mut writer)?;
                 // Write the `branch.neq` command.
                 branch_neq.write_le(&mut writer)
             }
             Self::Position(position) => {
                 // Write the variant.
-                9u8.write_le(&mut writer)?;
+                10u8.write_le(&mut writer)?;
                 // Write the position command.
                 position.write_le(&mut writer)
             }
@@ -281,6 +295,7 @@ impl<N: Network> Parser for Command<N> {
         // Parse the command.
         // Note that the order of the parsers is important.
         alt((
+            map(Await::parse, |await_| Self::Await(await_)),
             map(Contains::parse, |contains| Self::Contains(contains)),
             map(GetOrUse::parse, |get_or_use| Self::GetOrUse(get_or_use)),
             map(Get::parse, |get| Self::Get(get)),
@@ -325,6 +340,7 @@ impl<N: Network> Display for Command<N> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         match self {
             Self::Instruction(instruction) => Display::fmt(instruction, f),
+            Self::Await(await_) => Display::fmt(await_, f),
             Self::Contains(contains) => Display::fmt(contains, f),
             Self::Get(get) => Display::fmt(get, f),
             Self::GetOrUse(get_or_use) => Display::fmt(get_or_use, f),
@@ -360,6 +376,12 @@ mod tests {
         // Increment
         let expected = "increment object[r0] by r1;";
         Command::<CurrentNetwork>::parse(expected).unwrap_err();
+
+        // Await
+        let expected = "await r1;";
+        let command = Command::<CurrentNetwork>::parse(expected).unwrap().1;
+        let bytes = command.to_bytes_le().unwrap();
+        assert_eq!(command, Command::from_bytes_le(&bytes).unwrap());
 
         // Contains
         let expected = "contains object[r0] into r1;";

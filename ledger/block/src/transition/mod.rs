@@ -57,8 +57,6 @@ pub struct Transition<N: Network> {
     inputs: Vec<Input<N>>,
     /// The transition outputs.
     outputs: Vec<Output<N>>,
-    /// The inputs for finalize.
-    finalize: Option<Vec<Value<N>>>,
     /// The transition public key.
     tpk: Group<N>,
     /// The transition commitment.
@@ -73,7 +71,6 @@ impl<N: Network> Transition<N> {
         function_name: Identifier<N>,
         inputs: Vec<Input<N>>,
         outputs: Vec<Output<N>>,
-        finalize: Option<Vec<Value<N>>>,
         tpk: Group<N>,
         tcm: Field<N>,
     ) -> Result<Self> {
@@ -81,14 +78,13 @@ impl<N: Network> Transition<N> {
         let function_tree = Self::function_tree(&inputs, &outputs)?;
         let id = N::hash_bhp512(&(*function_tree.root(), tcm).to_bits_le())?;
         // Return the transition.
-        Ok(Self { id: id.into(), program_id, function_name, inputs, outputs, finalize, tpk, tcm })
+        Ok(Self { id: id.into(), program_id, function_name, inputs, outputs, tpk, tcm })
     }
 
     /// Initializes a new transition from a request and response.
     pub fn from(
         request: &Request<N>,
         response: &Response<N>,
-        finalize: Option<Vec<Value<N>>>,
         output_types: &[ValueType<N>],
         output_registers: &[Option<Register<N>>],
     ) -> Result<Self> {
@@ -229,7 +225,8 @@ impl<N: Network> Transition<N> {
                         // Construct the (console) output index as a field element.
                         let index = Field::from_u16(u16::try_from(num_inputs + index)?);
                         // Construct the preimage as `(function ID || output || tvk || index)`.
-                        let mut preimage = vec![function_id];
+                        let mut preimage = Vec::new();
+                        preimage.push(function_id);
                         preimage.extend(record.to_fields()?);
                         preimage.push(*request.tvk());
                         preimage.push(index);
@@ -239,6 +236,15 @@ impl<N: Network> Transition<N> {
                         ensure!(*hash == candidate_hash, "The output external hash is incorrect");
                         // Return the record output.
                         Ok(Output::ExternalRecord(*hash))
+                    }
+                    (OutputID::Future(output_hash), Value::Future(future)) => {
+                        // Construct the future output.
+                        let output = Output::Future(*output_hash, Some(future.clone()));
+                        // Ensure the output is valid.
+                        match output.verify(function_id, request.tcm(), num_inputs + index) {
+                            true => Ok(output),
+                            false => bail!("Malformed future transition output: '{output}'"),
+                        }
                     }
                     _ => bail!("Malformed response output: {output_id:?}, {output}"),
                 }
@@ -250,7 +256,7 @@ impl<N: Network> Transition<N> {
         // Retrieve the `tcm`.
         let tcm = *request.tcm();
         // Return the transition.
-        Self::new(program_id, function_name, inputs, outputs, finalize, tpk, tcm)
+        Self::new(program_id, function_name, inputs, outputs, tpk, tcm)
     }
 }
 
@@ -278,11 +284,6 @@ impl<N: Network> Transition<N> {
     /// Return the outputs.
     pub fn outputs(&self) -> &[Output<N>] {
         &self.outputs
-    }
-
-    /// Return the inputs for finalize, if they exist.
-    pub const fn finalize(&self) -> Option<&Vec<Value<N>>> {
-        self.finalize.as_ref()
     }
 
     /// Returns the transition public key.
@@ -314,7 +315,6 @@ impl<N: Network> Transition<N> {
     pub fn is_fee_private(&self) -> bool {
         self.inputs.len() == 3
             && self.outputs.len() == 1
-            && self.finalize.is_none()
             && self.program_id.to_string() == "credits.aleo"
             && self.function_name.to_string() == "fee_private"
     }
@@ -323,8 +323,7 @@ impl<N: Network> Transition<N> {
     #[inline]
     pub fn is_fee_public(&self) -> bool {
         self.inputs.len() == 2
-            && self.outputs.is_empty()
-            && self.finalize.as_ref().map_or(false, |finalize| finalize.len() == 2)
+            && self.outputs.len() == 1
             && self.program_id.to_string() == "credits.aleo"
             && self.function_name.to_string() == "fee_public"
     }
@@ -334,7 +333,6 @@ impl<N: Network> Transition<N> {
     pub fn is_split(&self) -> bool {
         self.inputs.len() == 2
             && self.outputs.len() == 2
-            && self.finalize.is_none()
             && self.program_id.to_string() == "credits.aleo"
             && self.function_name.to_string() == "split"
     }
@@ -360,6 +358,7 @@ impl<N: Network> Transition<N> {
             Output::Private(_, _) => false,
             Output::Record(output_cm, _, _) => output_cm == commitment,
             Output::ExternalRecord(_) => false,
+            Output::Future(_, _) => false,
         })
     }
 }
@@ -374,6 +373,7 @@ impl<N: Network> Transition<N> {
             Output::Record(output_cm, _, Some(record)) if output_cm == commitment => Some(record),
             Output::Record(_, _, _) => None,
             Output::ExternalRecord(_) => None,
+            Output::Future(_, _) => None,
         })
     }
 }
@@ -382,7 +382,7 @@ impl<N: Network> Transition<N> {
     /* Input */
 
     /// Returns the input IDs.
-    pub fn input_ids(&self) -> impl '_ + Iterator<Item = &Field<N>> {
+    pub fn input_ids(&self) -> impl '_ + ExactSizeIterator<Item = &Field<N>> {
         self.inputs.iter().map(Input::id)
     }
 
@@ -399,7 +399,7 @@ impl<N: Network> Transition<N> {
     /* Output */
 
     /// Returns the output IDs.
-    pub fn output_ids(&self) -> impl '_ + Iterator<Item = &Field<N>> {
+    pub fn output_ids(&self) -> impl '_ + ExactSizeIterator<Item = &Field<N>> {
         self.outputs.iter().map(Output::id)
     }
 
@@ -416,13 +416,6 @@ impl<N: Network> Transition<N> {
     /// Returns an iterator over the output records, as a tuple of `(commitment, record)`.
     pub fn records(&self) -> impl '_ + Iterator<Item = (&Field<N>, &Record<N, Ciphertext<N>>)> {
         self.outputs.iter().flat_map(Output::record)
-    }
-
-    /* Finalize */
-
-    /// Returns an iterator over the inputs for finalize, if they exist.
-    pub fn finalize_iter(&self) -> impl '_ + Iterator<Item = &Value<N>> {
-        self.finalize.iter().flatten()
     }
 }
 
@@ -464,13 +457,6 @@ impl<N: Network> Transition<N> {
     /// Returns the transition public key, and consumes `self`.
     pub fn into_tpk(self) -> Group<N> {
         self.tpk
-    }
-
-    /* Finalize */
-
-    /// Returns a consuming iterator over the inputs for finalize, if they exist.
-    pub fn into_finalize(self) -> impl Iterator<Item = Value<N>> {
-        self.finalize.into_iter().flatten()
     }
 }
 

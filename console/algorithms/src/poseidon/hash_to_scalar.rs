@@ -26,6 +26,6 @@ impl<E: Environment, const RATE: usize> HashToScalar for Poseidon<E, RATE> {
         let output = self.hash(input)?;
         // Convert the output to the scalar field,
         // truncating to the size in data bits (1 bit less than the MODULUS) of the scalar.
-        Self::Output::from_field_lossy(&output)
+        Ok(Self::Output::from_field_lossy(&output))
     }
 }

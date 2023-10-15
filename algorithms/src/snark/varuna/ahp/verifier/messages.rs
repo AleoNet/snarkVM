@@ -87,7 +87,7 @@ pub struct QuerySet<F: PrimeField> {
 }
 
 impl<F: PrimeField> QuerySet<F> {
-    pub fn new<MM: SNARKMode>(state: &super::State<F, MM>) -> Self {
+    pub fn new<SM: SNARKMode>(state: &super::State<F, SM>) -> Self {
         let alpha = state.second_round_message.as_ref().unwrap().alpha;
         let beta = state.third_round_message.unwrap().beta;
         let gamma = state.gamma.unwrap();
@@ -124,5 +124,23 @@ impl<F: PrimeField> QuerySet<F> {
         query_set.insert(("lineval_sumcheck".into(), self.lineval_sumcheck_query.clone()));
         query_set.insert(("matrix_sumcheck".into(), self.matrix_sumcheck_query.clone()));
         query_set
+    }
+}
+
+/// Helper struct to collect query points
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct QueryPoints<F: PrimeField> {
+    pub(crate) alpha: F,
+    pub(crate) beta: F,
+    pub(crate) gamma: F,
+}
+
+impl<F: PrimeField> QueryPoints<F> {
+    pub(crate) fn new(alpha: F, beta: F, gamma: F) -> Self {
+        Self { alpha, beta, gamma }
+    }
+
+    pub(crate) fn into_iter(self) -> impl IntoIterator<Item = F> {
+        [self.alpha, self.beta, self.gamma]
     }
 }
