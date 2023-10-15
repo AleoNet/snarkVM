@@ -577,8 +577,10 @@ mod tests {
     #![allow(non_camel_case_types)]
 
     use super::{CommitterKey, SonicKZG10};
-    use crate::{crypto_hash::PoseidonSponge, polycommit::test_templates::*};
-    use crate::polycommit::kzg10::DegreeInfo;
+    use crate::{
+        crypto_hash::PoseidonSponge,
+        polycommit::{kzg10::DegreeInfo, test_templates::*},
+    };
     use snarkvm_curves::bls12_377::{Bls12_377, Fq};
     use snarkvm_utilities::{rand::TestRng, FromBytes, ToBytes};
 
@@ -591,18 +593,15 @@ mod tests {
     fn test_committer_key_serialization() {
         let rng = &mut TestRng::default();
         let max_degree = rand::distributions::Uniform::from(8..=64).sample(rng);
-        let supported_degree = rand::distributions::Uniform::from(1..=max_degree).sample(rng);
-
-        let lagrange_size = |d: usize| if d.is_power_of_two() { d } else { d.next_power_of_two() >> 1 };
-
         let pp = PC_Bls12_377::load_srs(max_degree).unwrap();
+
+        let supported_degree = rand::distributions::Uniform::from(1..=max_degree).sample(rng);
         let hiding_bound = 0;
+        let lagrange_size = |d: usize| if d.is_power_of_two() { d } else { d.next_power_of_two() >> 1 };
+        let lagrange_sizes = Some([lagrange_size(supported_degree)].into_iter().collect());
+        let degree_info = DegreeInfo::new(supported_degree, supported_degree, None, hiding_bound, lagrange_sizes);
 
-        DegreeInfo
-
-        let ck = pp
-            .to_committer_key(supported_degree, Some(vec![lagrange_size(supported_degree)]), None, hiding_bound)
-            .unwrap();
+        let ck = pp.to_committer_key(&degree_info).unwrap();
 
         let ck_bytes = ck.to_bytes_le().unwrap();
         let ck_recovered: CommitterKey<Bls12_377> = FromBytes::read_le(&ck_bytes[..]).unwrap();

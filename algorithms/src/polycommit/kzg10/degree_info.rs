@@ -48,13 +48,13 @@ impl DegreeInfo {
         let max_fft_size = self.max_fft_size.max(other.max_fft_size);
         let degree_bounds = match (&self.degree_bounds, &other.degree_bounds) {
             (Some(a), Some(b)) => Some(a | b),
-            (Some(a), None) | (None, Some(a)) => Some(a),
+            (Some(a), None) | (None, Some(a)) => Some(a.clone()),
             (None, None) => None,
         };
         let hiding_bound = self.hiding_bound.max(other.hiding_bound);
         let lagrange_sizes = match (&self.lagrange_sizes, &other.lagrange_sizes) {
             (Some(a), Some(b)) => Some(a | b),
-            (Some(a), None) | (None, Some(a)) => Some(a),
+            (Some(a), None) | (None, Some(a)) => Some(a.clone()),
             (None, None) => None,
         };
         Self::new(max_degree, max_fft_size, degree_bounds, hiding_bound, lagrange_sizes)

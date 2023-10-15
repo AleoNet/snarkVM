@@ -129,16 +129,13 @@ impl<E: PairingEngine> UniversalParams<E> {
         })
     }
 
-    pub fn to_committer_key(
-        &self,
-        degree_info: &DegreeInfo,
-    ) -> Result<CommitterKey<E>> {
+    pub fn to_committer_key(&self, degree_info: &DegreeInfo) -> Result<CommitterKey<E>> {
         let trim_time = start_timer!(|| "Trimming public parameters");
 
         // Retrieve the supported parameters from the degree information.
         let supported_degree = degree_info.max_degree;
-        let supported_lagrange_sizes = degree_info.lagrange_sizes.map(|mut s| s.drain().collect_vec());
-        let enforced_degree_bounds = degree_info.degree_bounds.map(|mut s| s.drain().collect_vec());
+        let supported_lagrange_sizes = degree_info.lagrange_sizes.clone().map(|mut s| s.drain().collect_vec());
+        let enforced_degree_bounds = degree_info.degree_bounds.clone().map(|mut s| s.drain().collect_vec());
         let supported_hiding_bound = degree_info.hiding_bound;
 
         // The maximum degree of the entire SRS.
