@@ -159,33 +159,33 @@ mod tests {
     fn test_is_equal_constant() -> Result<()> {
         // Note: This is correct. At this (high) level of a program, we override the default mode in the `Record` case,
         // based on the user-defined visibility in the record type. Thus, we have nonzero private and constraint values.
-        check_is_equal(Mode::Constant, 7, 0, 33, 43)
+        check_is_equal(Mode::Constant, 17, 0, 23, 33)
     }
 
     #[test]
     fn test_is_equal_public() -> Result<()> {
-        check_is_equal(Mode::Public, 7, 0, 33, 43)
+        check_is_equal(Mode::Public, 17, 0, 23, 33)
     }
 
     #[test]
     fn test_is_equal_private() -> Result<()> {
-        check_is_equal(Mode::Private, 7, 0, 33, 43)
+        check_is_equal(Mode::Private, 17, 0, 23, 33)
     }
 
     #[test]
     fn test_is_not_equal_constant() -> Result<()> {
         // Note: This is correct. At this (high) level of a program, we override the default mode in the `Record` case,
         // based on the user-defined visibility in the record type. Thus, we have nonzero private and constraint values.
-        check_is_not_equal(Mode::Constant, 7, 0, 27, 37)
+        check_is_not_equal(Mode::Constant, 7, 0, 27, 27)
     }
 
     #[test]
     fn test_is_not_equal_public() -> Result<()> {
-        check_is_not_equal(Mode::Public, 7, 0, 27, 37)
+        check_is_not_equal(Mode::Public, 7, 0, 27, 27)
     }
 
     #[test]
     fn test_is_not_equal_private() -> Result<()> {
-        check_is_not_equal(Mode::Private, 7, 0, 27, 37)
+        check_is_not_equal(Mode::Private, 7, 0, 27, 27)
     }
 }

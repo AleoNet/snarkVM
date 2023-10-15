@@ -45,18 +45,7 @@ mod tests;
 use console::{
     account::{Address, GraphKey, PrivateKey, ViewKey},
     network::prelude::*,
-    program::{
-        Ciphertext,
-        Entry,
-        Identifier,
-        Literal,
-        Plaintext,
-        ProgramID,
-        Record,
-        StatePath,
-        Value,
-        RATIFICATIONS_DEPTH,
-    },
+    program::{Ciphertext, Entry, Identifier, Literal, Plaintext, ProgramID, Record, StatePath, Value},
     types::{Field, Group},
 };
 use ledger_authority::Authority;

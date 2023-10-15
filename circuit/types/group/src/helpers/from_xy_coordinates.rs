@@ -18,7 +18,7 @@ impl<E: Environment> Group<E> {
     /// Initializes an affine group element from a given x- and y-coordinate field element.
     /// For safety, the resulting point is always enforced to be on the curve and in the subgroup.
     pub fn from_xy_coordinates(x: Field<E>, y: Field<E>) -> Self {
-        let point = Self {x: x.into(), y: y.into()};
+        let point = Self { x, y };
         point.enforce_in_group();
         point
     }
@@ -95,12 +95,12 @@ mod tests {
 
     #[test]
     fn test_from_xy_coordinates_public() {
-        check_from_xy_coordinates(Mode::Public, 4, 0, 14, 13);
+        check_from_xy_coordinates(Mode::Public, 4, 0, 14, 15);
     }
 
     #[test]
     fn test_from_xy_coordinates_private() {
-        check_from_xy_coordinates(Mode::Private, 4, 0, 14, 13);
+        check_from_xy_coordinates(Mode::Private, 4, 0, 14, 15);
     }
 
     #[test]

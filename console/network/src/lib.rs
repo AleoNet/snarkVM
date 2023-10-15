@@ -88,11 +88,11 @@ pub trait Network:
     const INCLUSION_FUNCTION_NAME: &'static str;
 
     /// The fixed timestamp of the genesis block.
-    const GENESIS_TIMESTAMP: i64 = 1680307200; // 2023-04-01 00:00:00 UTC
+    const GENESIS_TIMESTAMP: i64 = 1696118400; // 2023-10-01 00:00:00 UTC
     /// The genesis block coinbase target.
-    const GENESIS_COINBASE_TARGET: u64 = (1u64 << 12).saturating_sub(1); // 1111 1111 1111
+    const GENESIS_COINBASE_TARGET: u64 = (1u64 << 32).saturating_sub(1);
     /// The genesis block proof target.
-    const GENESIS_PROOF_TARGET: u64 = 32; // 0000 0010 0000
+    const GENESIS_PROOF_TARGET: u64 = 1u64 << 25;
 
     /// The starting supply of Aleo credits.
     const STARTING_SUPPLY: u64 = 1_500_000_000_000_000; // 1.5B credits
@@ -160,6 +160,8 @@ pub trait Network:
     type StateRoot: Bech32ID<Field<Self>>;
     /// The block hash type.
     type BlockHash: Bech32ID<Field<Self>>;
+    /// The ratification ID type.
+    type RatificationID: Bech32ID<Field<Self>>;
     /// The transaction ID type.
     type TransactionID: Bech32ID<Field<Self>>;
     /// The transition ID type.

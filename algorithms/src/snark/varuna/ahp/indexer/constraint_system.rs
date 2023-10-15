@@ -19,6 +19,8 @@ use crate::{
 use snarkvm_fields::Field;
 use snarkvm_utilities::serialize::*;
 
+use anyhow::Result;
+
 /// Stores constraints during index generation.
 pub(crate) struct ConstraintSystem<F: Field> {
     pub(crate) a: Vec<Vec<(F, VarIndex)>>,
@@ -44,19 +46,19 @@ impl<F: Field> ConstraintSystem<F> {
 
     #[inline]
     /// Returns the sparse A matrix as Vec of rows, where each row is a Vec of assigned value and variable index
-    pub(crate) fn a_matrix(&self) -> Vec<Vec<(F, usize)>> {
+    pub(crate) fn a_matrix(&self) -> Result<Vec<Vec<(F, usize)>>> {
         to_matrix_helper(&self.a, self.num_public_variables)
     }
 
     #[inline]
     /// Returns the sparse B matrix as Vec of rows, where each row is a Vec of assigned value and variable index
-    pub(crate) fn b_matrix(&self) -> Vec<Vec<(F, usize)>> {
+    pub(crate) fn b_matrix(&self) -> Result<Vec<Vec<(F, usize)>>> {
         to_matrix_helper(&self.b, self.num_public_variables)
     }
 
     #[inline]
     /// Returns the sparse C matrix as Vec of rows, where each row is a Vec of assigned value and variable index
-    pub(crate) fn c_matrix(&self) -> Vec<Vec<(F, usize)>> {
+    pub(crate) fn c_matrix(&self) -> Result<Vec<Vec<(F, usize)>>> {
         to_matrix_helper(&self.c, self.num_public_variables)
     }
 

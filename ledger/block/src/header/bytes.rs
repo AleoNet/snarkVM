@@ -30,7 +30,7 @@ impl<N: Network> FromBytes for Header<N> {
         let transactions_root = Field::<N>::read_le(&mut reader)?;
         let finalize_root = Field::<N>::read_le(&mut reader)?;
         let ratifications_root = Field::<N>::read_le(&mut reader)?;
-        let coinbase_accumulator_point = Field::<N>::read_le(&mut reader)?;
+        let solutions_root = Field::<N>::read_le(&mut reader)?;
         let subdag_root = Field::<N>::read_le(&mut reader)?;
         let metadata = Metadata::read_le(&mut reader)?;
 
@@ -40,7 +40,7 @@ impl<N: Network> FromBytes for Header<N> {
             transactions_root,
             finalize_root,
             ratifications_root,
-            coinbase_accumulator_point,
+            solutions_root,
             subdag_root,
             metadata,
         )

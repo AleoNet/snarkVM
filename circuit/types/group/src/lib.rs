@@ -32,8 +32,7 @@ use console::{TestRng, Uniform};
 use snarkvm_circuit_environment::{assert_count, assert_output_mode, assert_scope, count, output_mode};
 
 use console::AffineCurve;
-use snarkvm_circuit_environment::prelude::*;
-use snarkvm_circuit_environment::prelude::num_traits::zero;
+use snarkvm_circuit_environment::prelude::{num_traits::zero, *};
 use snarkvm_circuit_types_boolean::Boolean;
 use snarkvm_circuit_types_field::Field;
 use snarkvm_circuit_types_scalar::Scalar;
@@ -62,14 +61,13 @@ impl<E: Environment> Inject for Group<E> {
     /// For safety, the resulting point is always enforced to be on the curve with constraints.
     /// regardless of whether the y-coordinate was recovered.
     fn new(mode: Mode, group: Self::Primitive) -> Self {
-
         // TODO: check if `group` is in the group (in console-land, not circuit-land)
 
         // Allocate two new variables for the coordinates, with the mode and values given as inputs.
         let x = Field::new(mode, group.to_x_coordinate());
         let y = Field::new(mode, group.to_y_coordinate());
         // Put the coordinates together into a point.
-        let point = Self {x, y};
+        let point = Self { x, y };
         // Enforce in the circuit that the point is in the group.
         point.enforce_in_group();
         // Return the point.
@@ -112,14 +110,14 @@ impl<E: Environment> Group<E> {
         // The coordinate values are irrelevant; we pick 0 for both.
         let point_x = Field::new(Mode::Private, zero());
         let point_y = Field::new(Mode::Private, zero());
-        let point = Self {x: point_x, y: point_y};
+        let point = Self { x: point_x, y: point_y };
         point.enforce_on_curve();
 
         // Postulate another point that is double of the point on the curve above.
         // The coordinate values are irrelevant; we pick 0 for both.
         let double_point_x = Field::new(Mode::Private, zero());
         let double_point_y = Field::new(Mode::Private, zero());
-        let double_point = Self {x: double_point_x, y: double_point_y};
+        let double_point = Self { x: double_point_x, y: double_point_y };
         point.enforce_double(&double_point);
 
         // Enforce that the input point (self) is double the double of the point on the curve,

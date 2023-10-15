@@ -93,7 +93,7 @@ impl<N: Network> GetOrUse<N> {
         let key = registers.load_plaintext(stack, &self.key)?;
 
         // Retrieve the value from storage as a literal.
-        let value = match store.get_value_speculative(stack.program_id(), &self.mapping, &key)? {
+        let value = match store.get_value_speculative(*stack.program_id(), self.mapping, &key)? {
             Some(Value::Plaintext(plaintext)) => Value::Plaintext(plaintext),
             Some(Value::Record(..)) => bail!("Cannot 'get.or_use' a 'record'"),
             Some(Value::Future(..)) => bail!("Cannot 'get.or_use' a 'future'"),
