@@ -12,22 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::{
-    snark::varuna::TestCircuit,
-    traits::{AlgebraicSponge, SNARK},
-};
-use std::collections::BTreeMap;
-
+#[cfg(any(test, feature = "test"))]
 mod varuna {
-    use super::*;
-    use crate::snark::varuna::{
-        mode::SNARKMode,
-        AHPForR1CS,
-        CircuitVerifyingKey,
-        VarunaHidingMode,
-        VarunaNonHidingMode,
-        VarunaSNARK,
+    use crate::{
+        snark::varuna::{
+            mode::SNARKMode,
+            test_circuit::TestCircuit,
+            AHPForR1CS,
+            CircuitVerifyingKey,
+            VarunaHidingMode,
+            VarunaNonHidingMode,
+            VarunaSNARK,
+        },
+        traits::{AlgebraicSponge, SNARK},
     };
+    use std::collections::BTreeMap;
+
     use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};
     use snarkvm_utilities::{
         rand::{TestRng, Uniform},
@@ -295,11 +295,18 @@ mod varuna {
     }
 }
 
+#[cfg(any(test, feature = "test"))]
 mod varuna_hiding {
-    use super::*;
     use crate::{
         crypto_hash::PoseidonSponge,
-        snark::varuna::{ahp::AHPForR1CS, CircuitVerifyingKey, VarunaHidingMode, VarunaSNARK},
+        snark::varuna::{
+            ahp::AHPForR1CS,
+            test_circuit::TestCircuit,
+            CircuitVerifyingKey,
+            VarunaHidingMode,
+            VarunaSNARK,
+        },
+        traits::{AlgebraicSponge, SNARK},
     };
     use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};
     use snarkvm_utilities::{
