@@ -492,10 +492,10 @@ impl<N: Network> Block<N> {
         // Initialize a list of already seen transmission IDs.
         let mut seen_transmission_ids = HashSet::new();
 
-        // Initialize a list of candidate aborted solution IDs.
-        let mut candidate_aborted_solution_ids = Vec::new();
-        // Initialize a list of candidate aborted transaction IDs.
-        let mut candidate_aborted_transaction_ids = Vec::new();
+        // Initialize a list of aborted or already-existing solution IDs.
+        let mut aborted_or_existing_solution_ids = Vec::new();
+        // Initialize a list of aborted or already-existing transaction IDs.
+        let mut aborted_or_existing_transaction_ids = Vec::new();
 
         // Iterate over the transmission IDs.
         for transmission_id in subdag.transmission_ids() {
@@ -514,8 +514,8 @@ impl<N: Network> Block<N> {
                             // Increment the solution iterator.
                             solutions.next();
                         }
-                        // Otherwise, add the solution ID to the aborted list.
-                        _ => candidate_aborted_solution_ids.push(commitment),
+                        // Otherwise, add the solution ID to the aborted or existing list.
+                        _ => aborted_or_existing_solution_ids.push(commitment),
                     }
                 }
                 TransmissionID::Transaction(transaction_id) => {
@@ -525,8 +525,8 @@ impl<N: Network> Block<N> {
                             // Increment the transaction ID iterator.
                             transaction_ids.next();
                         }
-                        // Otherwise, add the transaction ID to the aborted list.
-                        _ => candidate_aborted_transaction_ids.push(*transaction_id),
+                        // Otherwise, add the transaction ID to the aborted or existing list.
+                        _ => aborted_or_existing_transaction_ids.push(*transaction_id),
                     }
                 }
             }
@@ -537,15 +537,20 @@ impl<N: Network> Block<N> {
         // Ensure there are no more transactions in the block.
         ensure!(transaction_ids.next().is_none(), "There exists more transactions than expected.");
 
-        // Ensure there are no candidate aborted solution IDs.
-        ensure!(candidate_aborted_solution_ids.is_empty(), "There exists aborted solutions in the block.");
-        // Ensure the aborted transaction IDs match.
+        // Ensure there are no aborted or existing solution IDs.
         ensure!(
-            aborted_transaction_ids == candidate_aborted_transaction_ids,
-            "A mismatch found was in the aborted transaction IDs of the block (found '{}', expected '{}')",
-            candidate_aborted_transaction_ids.len(),
-            aborted_transaction_ids.len()
+            aborted_or_existing_solution_ids.is_empty(),
+            "There exists aborted or already-existing solutions in the block."
         );
+        // Ensure the aborted transaction IDs match.
+        for aborted_transaction_id in aborted_transaction_ids {
+            // If the aborted transaction ID is not found, throw an error.
+            if !aborted_or_existing_transaction_ids.contains(aborted_transaction_id) {
+                bail!(
+                    "Block contains an aborted transaction ID that is not found in the subdag (found '{aborted_transaction_id}')"
+                );
+            }
+        }
 
         Ok(())
     }
