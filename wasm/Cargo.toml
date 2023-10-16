@@ -26,34 +26,43 @@ edition = "2021"
 [lib]
 crate-type = [ "cdylib", "rlib" ]
 
+[dependencies.snarkvm-circuit-network]
+path = "../circuit/network"
+version = "=0.16.2"
+features = [ "wasm" ]
+optional = true
+
 [dependencies.snarkvm-console]
 path = "../console"
 version = "=0.16.2"
 features = [ "wasm" ]
 optional = true
-default-features = false
+
+[dependencies.snarkvm-curves]
+path = "../curves"
+version = "=0.16.2"
+optional = true
+
+[dependencies.snarkvm-fields]
+path = "../fields"
+version = "=0.16.2"
+optional = true
 
 [dependencies.snarkvm-ledger-block]
 path = "../ledger/block"
-version = "=0.15.4"
+version = "=0.16.2"
 features = [ "wasm" ]
 optional = true
 
 [dependencies.snarkvm-ledger-query]
 path = "../ledger/query"
-version = "=0.15.4"
+version = "=0.16.2"
 features = [ "async", "wasm" ]
 optional = true
 
 [dependencies.snarkvm-ledger-store]
 path = "../ledger/store"
-version = "=0.15.4"
-features = [ "wasm" ]
-optional = true
-
-[dependencies.snarkvm-circuit-network]
-path = "../circuit/network"
-version = "=0.15.4"
+version = "=0.16.2"
 features = [ "wasm" ]
 optional = true
 
@@ -80,19 +89,6 @@ version = "=0.16.2"
 features = [ "wasm" ]
 optional = true
 
-[dependencies.rand]
-version = "0.8"
-default-features = false
-
-[dependencies.serde]
-version = "1.0.188"
-default-features = false
-features = [ "derive" ]
-
-[dependencies.wasm-bindgen]
-version = "0.2"
-features = [ "serde-serialize" ]
-
 [dependencies.getrandom]
 version = "0.2"
 features = [ "js" ]
@@ -102,11 +98,11 @@ version = "0.3.37"
 
 [features]
 default = [ "full" ]
-full = [ "console", "curves", "fields", "ledger", "synthesizer", "utilities" ]
-console = [ "snarkvm-console/default" ]
+full = [ "circuit", "console", "curves", "fields", "ledger", "synthesizer", "utilities" ]
+circuit = [ "snarkvm-circuit-network" ]
+console = [ "snarkvm-console" ]
 curves = [ "snarkvm-curves" ]
 fields = [ "snarkvm-fields" ]
 ledger = [ "snarkvm-ledger-block", "snarkvm-ledger-query", "snarkvm-ledger-store" ]
-network = [ "snarkvm-circuit-network", "snarkvm-console/network" ]
 synthesizer = [ "snarkvm-synthesizer" ]
 utilities = [ "snarkvm-utilities" ]
