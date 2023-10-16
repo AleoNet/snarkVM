@@ -19,6 +19,8 @@ use super::*;
 use ledger_coinbase::{CoinbasePuzzle, EpochChallenge};
 use synthesizer_program::FinalizeOperation;
 
+use std::collections::HashSet;
+
 impl<N: Network> Block<N> {
     /// Ensures the block is correct.
     pub fn verify(
@@ -29,7 +31,6 @@ impl<N: Network> Block<N> {
         current_puzzle: &CoinbasePuzzle<N>,
         current_epoch_challenge: &EpochChallenge<N>,
         current_timestamp: i64,
-        aborted_transaction_ids: Vec<N::TransactionID>,
         ratified_finalize_operations: Vec<FinalizeOperation<N>>,
     ) -> Result<()> {
         // Ensure the block hash is correct.
@@ -55,7 +56,7 @@ impl<N: Network> Block<N> {
         self.verify_ratifications(expected_block_reward, expected_puzzle_reward)?;
 
         // Ensure the block transactions are correct.
-        self.verify_transactions(aborted_transaction_ids)?;
+        self.verify_transactions()?;
 
         // Set the expected previous state root.
         let expected_previous_state_root = current_state_root;
@@ -371,33 +372,19 @@ impl<N: Network> Block<N> {
     }
 
     /// Ensures the block transactions are correct.
-    fn verify_transactions(&self, aborted_transaction_ids: Vec<N::TransactionID>) -> Result<()> {
+    fn verify_transactions(&self) -> Result<()> {
         let height = self.height();
 
         // Ensure there are transactions.
         ensure!(!self.transactions.is_empty(), "Block {height} must contain at least 1 transaction");
 
         // Ensure the number of transactions is within the allowed range.
-        if self.transactions.len() + aborted_transaction_ids.len() > Transactions::<N>::MAX_TRANSACTIONS {
+        if self.transactions.len() + self.aborted_transaction_ids.len() > Transactions::<N>::MAX_TRANSACTIONS {
             bail!("Cannot validate a block with more than {} transactions", Transactions::<N>::MAX_TRANSACTIONS);
         }
 
-        // Ensure the aborted transaction IDs match (up to the ordering).
-        if self.aborted_transaction_ids != aborted_transaction_ids {
-            // Find where the aborted transaction IDs differ.
-            let mut index = 0;
-            while index < self.aborted_transaction_ids.len() && index < aborted_transaction_ids.len() {
-                if self.aborted_transaction_ids[index] != aborted_transaction_ids[index] {
-                    break;
-                }
-                index += 1;
-            }
-            // Output the error.
-            bail!("Aborted transaction IDs do not match in block {height} at index {index}");
-        }
-
         // Ensure there are no duplicate transaction IDs.
-        if has_duplicates(self.transaction_ids()) {
+        if has_duplicates(self.transaction_ids().chain(self.aborted_transaction_ids.iter())) {
             bail!("Found a duplicate transaction in block {height}");
         }
 
@@ -502,6 +489,9 @@ impl<N: Network> Block<N> {
         // Prepare an iterator over the transaction IDs.
         let mut transaction_ids = transactions.transaction_ids().peekable();
 
+        // Initialize a list of already seen transmission IDs.
+        let mut seen_transmission_ids = HashSet::new();
+
         // Initialize a list of candidate aborted solution IDs.
         let mut candidate_aborted_solution_ids = Vec::new();
         // Initialize a list of candidate aborted transaction IDs.
@@ -509,6 +499,11 @@ impl<N: Network> Block<N> {
 
         // Iterate over the transmission IDs.
         for transmission_id in subdag.transmission_ids() {
+            // If the transmission ID has already been seen, then continue.
+            if !seen_transmission_ids.insert(transmission_id) {
+                continue;
+            }
+
             // Process the transmission ID.
             match transmission_id {
                 TransmissionID::Ratification => {}
@@ -547,7 +542,9 @@ impl<N: Network> Block<N> {
         // Ensure the aborted transaction IDs match.
         ensure!(
             aborted_transaction_ids == candidate_aborted_transaction_ids,
-            "A mismatch found was in the aborted transaction IDs of the block."
+            "A mismatch found was in the aborted transaction IDs of the block (found '{}', expected '{}')",
+            candidate_aborted_transaction_ids.len(),
+            aborted_transaction_ids.len()
         );
 
         Ok(())
