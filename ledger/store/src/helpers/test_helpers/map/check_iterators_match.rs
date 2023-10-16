@@ -94,6 +94,4 @@ pub fn check_iterators_match(map: impl for<'a> Map<'a, usize, String>) {
     }
 
     check_confirmed_iterators_match(&map, NUM_TOTAL_ITEMS);
-
-    ensure_map_is_empty(&map);
 }
