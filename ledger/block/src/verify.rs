@@ -538,10 +538,7 @@ impl<N: Network> Block<N> {
         ensure!(transaction_ids.next().is_none(), "There exists more transactions than expected.");
 
         // Ensure there are no aborted or existing solution IDs.
-        ensure!(
-            aborted_or_existing_solution_ids.is_empty(),
-            "There exists aborted or already-existing solutions in the block."
-        );
+        ensure!(aborted_or_existing_solution_ids.is_empty(), "Block contains aborted or already-existing solutions.");
         // Ensure the aborted transaction IDs match.
         for aborted_transaction_id in aborted_transaction_ids {
             // If the aborted transaction ID is not found, throw an error.
