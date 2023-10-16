@@ -261,9 +261,6 @@ impl<N: Network> Trace<N> {
             bail!("Inclusion expected the global state root in the execution to *not* be zero")
         }
 
-        // Collect references to keys and assignments, potentially to be extended by the inclusion key and assignment
-        let mut proving_tasks = proving_tasks.iter().map(|(p, a)| (p, a.as_slice())).collect::<BTreeMap<_, _>>();
-
         // Initialize a vector for the batch inclusion assignments.
         let mut batch_inclusions = Vec::with_capacity(inclusion_assignments.len());
 
@@ -279,12 +276,20 @@ impl<N: Network> Trace<N> {
         // Fetch the inclusion proving key.
         let inclusion_proving_key = ProvingKey::<N>::new(N::inclusion_proving_key().clone());
 
-        if !batch_inclusions.is_empty() {
-            // Insert the inclusion proving key and assignments.
-            if proving_tasks.insert(&inclusion_proving_key, batch_inclusions.as_slice()).is_some() {
-                bail!("The inclusion proving key (and its instances) have already been inserted");
-            }
+        // Proving tasks should not contain inclusion_proving_key if we still have batch_inclusions to add
+        if !batch_inclusions.is_empty() && proving_tasks.contains_key(&inclusion_proving_key) {
+            bail!("The inclusion proving key (and its instances) have already been inserted");
         }
+
+        // Collect optional inclusion iter
+        let inclusion_iter =
+            (!batch_inclusions.is_empty()).then_some((&inclusion_proving_key, batch_inclusions.as_slice()));
+
+        // Collect references to keys and assignments
+        let proving_tasks = proving_tasks.iter().map(|(p, a)| (p, a.as_slice()));
+
+        // Optionally insert the inclusion proving key and assignments.
+        let proving_tasks = proving_tasks.chain(inclusion_iter.into_iter());
 
         // Compute the proof.
         let proof = ProvingKey::prove_batch(locator, proving_tasks, rng)?;

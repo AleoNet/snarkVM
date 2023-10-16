@@ -56,9 +56,9 @@ impl<N: Network> ProvingKey<N> {
 
     /// Returns a proof for the given batch of proving keys and assignments.
     #[allow(clippy::type_complexity)]
-    pub fn prove_batch<R: Rng + CryptoRng>(
+    pub fn prove_batch<'a, R: Rng + CryptoRng>(
         locator: &str,
-        assignments: BTreeMap<&ProvingKey<N>, &[circuit::Assignment<N::Field>]>,
+        assignments: impl Iterator<Item = (&'a ProvingKey<N>, &'a [circuit::Assignment<N::Field>])>,
         rng: &mut R,
     ) -> Result<Proof<N>> {
         #[cfg(feature = "aleo-cli")]
@@ -66,7 +66,6 @@ impl<N: Network> ProvingKey<N> {
 
         // Prepare the instances.
         let instances = assignments
-            .into_iter()
             .map(|(proving_key, assignments)| (proving_key.deref(), assignments))
             .collect::<BTreeMap<_, _>>();
 
