@@ -822,7 +822,7 @@ function fee_public:
     // Ensure the deployment or execution root is nonzero.
     assert.neq r2 0field;
     // Add the fee and priority fee amounts.
-    add r1 r2 into r3;
+    add r0 r1 into r3;
     // Decrement the balance of the sender publicly.
     async fee_public self.caller r3 into r4;
     // Output the finalize future.
