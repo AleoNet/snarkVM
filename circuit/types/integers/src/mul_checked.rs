@@ -141,9 +141,7 @@ impl<E: Environment, I: IntegerType> Integer<E, I> {
             let (product, z_1_upper_bits, z2) = Self::karatsuba_multiply(this, that);
 
             // Check that the upper bits of z1 are zero.
-            for bit in z_1_upper_bits.iter() {
-                E::assert_eq(bit, E::zero());
-            }
+            Boolean::assert_bits_are_zero(&z_1_upper_bits);
 
             // Check that `z2` is zero.
             E::assert_eq(&z2, E::zero());

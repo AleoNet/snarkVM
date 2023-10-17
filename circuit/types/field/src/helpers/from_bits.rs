@@ -28,10 +28,8 @@ impl<E: Environment> FromBits for Field<E> {
         // Ensure the list of booleans is within the allowed size in bits.
         let num_bits = bits_le.len();
         if num_bits > size_in_bits {
-            // Check if all excess bits are zero.
-            for bit in bits_le[size_in_bits..].iter() {
-                E::assert_eq(E::zero(), bit);
-            }
+            // Check that all excess bits are zero.
+            Boolean::assert_bits_are_zero(&bits_le[size_in_bits..])
         }
 
         // If `num_bits` is greater than `size_in_data_bits`, check it is less than `BaseField::MODULUS`.
