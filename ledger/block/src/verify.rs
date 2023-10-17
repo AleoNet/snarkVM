@@ -21,6 +21,9 @@ use synthesizer_program::FinalizeOperation;
 
 use std::collections::HashSet;
 
+#[cfg(not(feature = "serial"))]
+use rayon::prelude::*;
+
 impl<N: Network> Block<N> {
     /// Ensures the block is correct.
     pub fn verify(
@@ -486,8 +489,11 @@ impl<N: Network> Block<N> {
     ) -> Result<()> {
         // Prepare an iterator over the solution IDs.
         let mut solutions = solutions.as_ref().map(|s| s.deref()).into_iter().flatten().peekable();
-        // Prepare an iterator over the transaction IDs.
-        let mut transaction_ids = transactions.transaction_ids().peekable();
+        // Prepare an iterator over the unconfirmed transaction IDs.
+        let unconfirmed_transaction_ids = cfg_iter!(transactions)
+            .map(|confirmed| confirmed.to_unconfirmed_transaction_id())
+            .collect::<Result<Vec<_>>>()?;
+        let mut unconfirmed_transaction_ids = unconfirmed_transaction_ids.iter().peekable();
 
         // Initialize a list of already seen transmission IDs.
         let mut seen_transmission_ids = HashSet::new();
@@ -519,11 +525,11 @@ impl<N: Network> Block<N> {
                     }
                 }
                 TransmissionID::Transaction(transaction_id) => {
-                    match transaction_ids.peek() {
+                    match unconfirmed_transaction_ids.peek() {
                         // Check the next transaction matches the expected transaction.
                         Some(expected_id) if transaction_id == *expected_id => {
-                            // Increment the transaction ID iterator.
-                            transaction_ids.next();
+                            // Increment the unconfirmed transaction ID iterator.
+                            unconfirmed_transaction_ids.next();
                         }
                         // Otherwise, add the transaction ID to the aborted or existing list.
                         _ => aborted_or_existing_transaction_ids.push(*transaction_id),
@@ -535,7 +541,7 @@ impl<N: Network> Block<N> {
         // Ensure there are no more solutions in the block.
         ensure!(solutions.next().is_none(), "There exists more solutions than expected.");
         // Ensure there are no more transactions in the block.
-        ensure!(transaction_ids.next().is_none(), "There exists more transactions than expected.");
+        ensure!(unconfirmed_transaction_ids.next().is_none(), "There exists more transactions than expected.");
 
         // Ensure there are no aborted or existing solution IDs.
         ensure!(aborted_or_existing_solution_ids.is_empty(), "Block contains aborted or already-existing solutions.");
