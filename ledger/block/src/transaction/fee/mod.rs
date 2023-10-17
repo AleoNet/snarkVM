@@ -88,7 +88,18 @@ impl<N: Network> Fee<N> {
 
     /// Returns the amount (in microcredits).
     pub fn amount(&self) -> Result<U64<N>> {
-        // Determine the indexes for the base fee and priority fee.
+        // Retrieve the base fee amount.
+        let base_fee_amount = self.base_amount()?;
+
+        // Retrieve the priority fee amount.
+        let priority_fee_amount = self.priority_amount()?;
+
+        Ok(U64::new(base_fee_amount.saturating_add(*priority_fee_amount)))
+    }
+
+    /// Returns the base amount (in microcredits).
+    pub fn base_amount(&self) -> Result<U64<N>> {
+        // Determine the indexes for the base fee.
         // Note: Checking whether the `output` is a `Record` or `Future` is a faster way to determine if the fee is private or public respectively.
         let base_fee_index: usize = match self.transition.outputs().last() {
             Some(output) => match output {
@@ -98,20 +109,32 @@ impl<N: Network> Fee<N> {
             },
             None => bail!("Missing output in fee transition"),
         };
-        let priority_fee_index = base_fee_index.saturating_add(1);
 
         // Retrieve the base fee (in microcredits) as a plaintext value.
-        let base_fee = match self.transition.inputs().get(base_fee_index) {
-            Some(Input::Public(_, Some(Plaintext::Literal(Literal::U64(microcredits), _)))) => *microcredits,
+        match self.transition.inputs().get(base_fee_index) {
+            Some(Input::Public(_, Some(Plaintext::Literal(Literal::U64(microcredits), _)))) => Ok(*microcredits),
             _ => bail!("Failed to retrieve the base fee (in microcredits) from the fee transition"),
+        }
+    }
+
+    /// Returns the base amount (in microcredits).
+    pub fn priority_amount(&self) -> Result<U64<N>> {
+        // Determine the indexes for the priority fee.
+        // Note: Checking whether the `output` is a `Record` or `Future` is a faster way to determine if the fee is private or public respectively.
+        let priority_fee_index: usize = match self.transition.outputs().last() {
+            Some(output) => match output {
+                Output::Record(..) => 2,
+                Output::Future(..) => 1,
+                _ => bail!("Unexpected output in fee transition"),
+            },
+            None => bail!("Missing output in fee transition"),
         };
 
-        let priority_fee = match self.transition.inputs().get(priority_fee_index) {
-            Some(Input::Public(_, Some(Plaintext::Literal(Literal::U64(microcredits), _)))) => *microcredits,
+        // Retrieve the priority fee (in microcredits) as a plaintext value.
+        match self.transition.inputs().get(priority_fee_index) {
+            Some(Input::Public(_, Some(Plaintext::Literal(Literal::U64(microcredits), _)))) => Ok(*microcredits),
             _ => bail!("Failed to retrieve the priority fee (in microcredits) from the fee transition"),
-        };
-
-        Ok(U64::new(base_fee.saturating_add(*priority_fee)))
+        }
     }
 
     /// Returns the deployment or execution ID.
