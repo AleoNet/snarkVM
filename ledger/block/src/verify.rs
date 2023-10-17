@@ -19,9 +19,10 @@ use super::*;
 use ledger_coinbase::{CoinbasePuzzle, EpochChallenge};
 use synthesizer_program::FinalizeOperation;
 
+use std::collections::HashSet;
+
 #[cfg(not(feature = "serial"))]
 use rayon::prelude::*;
-use std::collections::HashSet;
 
 impl<N: Network> Block<N> {
     /// Ensures the block is correct.
