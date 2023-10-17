@@ -21,6 +21,11 @@ use tokio::task;
 
 const PREFIX: &str = "data";
 
+/// As a sanity check, we set a hardcoded upper-bound limit to the size of the data.
+/// This is to prevent a malicious node from sending us a huge data object that would
+/// cause us to run out of memory.
+const MAX_DATA_SIZE: u32 = 1024 * 1024 * 1024; // 1 GB
+
 /// This object enables deferred deserialization / ahead-of-time serialization for objects that
 /// take a while to deserialize / serialize, in order to allow these operations to be non-blocking.
 #[derive(Clone, PartialEq, Eq)]
@@ -100,8 +105,19 @@ impl<T: FromBytes + ToBytes + Serialize + Send + 'static> Display for Data<T> {
 impl<T: FromBytes + ToBytes + Send + 'static> FromBytes for Data<T> {
     /// Reads the data from the buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        // Read the version.
+        let version = u8::read_le(&mut reader)?;
+        // Ensure the version is valid.
+        if version != 1 {
+            return Err(error("Invalid data version"));
+        }
+
         // Read the number of bytes.
         let num_bytes = u32::read_le(&mut reader)?;
+        // Ensure the number of bytes is with safe bound limits.
+        if num_bytes > MAX_DATA_SIZE {
+            return Err(error(format!("Failed to deserialize data ({num_bytes} bytes)")));
+        }
         // Read the bytes.
         let bytes = (0..num_bytes).map(|_| u8::read_le(&mut reader)).collect::<IoResult<Vec<u8>>>()?;
         // Return the data.
@@ -112,20 +128,23 @@ impl<T: FromBytes + ToBytes + Send + 'static> FromBytes for Data<T> {
 impl<T: FromBytes + ToBytes + Send + 'static> ToBytes for Data<T> {
     /// Writes the data to the buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        // Write the version.
+        1u8.write_le(&mut writer)?;
+
         // Write the data.
         match self {
             Self::Object(object) => {
                 // FIXME(ljedrz): see if we can omit this intermediate allocation.
-                let mut intermediate = Vec::new();
-                object.write_le(&mut intermediate)?;
+                let mut buffer = Vec::new();
+                object.write_le(&mut buffer)?;
                 // Write the object.
-                (intermediate.len() as u32).write_le(&mut writer)?;
+                u32::try_from(buffer.len()).map_err(error)?.write_le(&mut writer)?;
                 // Write the object.
-                writer.write_all(&intermediate)
+                writer.write_all(&buffer)
             }
             Self::Buffer(buffer) => {
                 // Write the number of bytes.
-                u32::try_from(buffer.len()).map_err(|e| error(e.to_string()))?.write_le(&mut writer)?;
+                u32::try_from(buffer.len()).map_err(error)?.write_le(&mut writer)?;
                 // Write the bytes.
                 writer.write_all(buffer)
             }
