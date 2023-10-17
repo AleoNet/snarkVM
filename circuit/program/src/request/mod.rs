@@ -21,7 +21,7 @@ mod verify;
 use crate::{Identifier, Plaintext, ProgramID, Record, Value};
 use snarkvm_circuit_account::Signature;
 use snarkvm_circuit_network::Aleo;
-use snarkvm_circuit_types::{environment::prelude::*, Address, Boolean, Field, Group, Scalar, U16};
+use snarkvm_circuit_types::{environment::prelude::*, Address, Boolean, Field, Group, U16};
 
 pub enum InputID<A: Aleo> {
     /// The hash of the constant input.
@@ -134,8 +134,6 @@ pub struct Request<A: Aleo> {
     sk_tag: Field<A>,
     /// The transition view key.
     tvk: Field<A>,
-    /// The transition secret key.
-    tsk: Scalar<A>,
     /// The transition commitment.
     tcm: Field<A>,
 }
@@ -219,7 +217,6 @@ impl<A: Aleo> Inject for Request<A> {
             signature: Signature::new(mode, *request.signature()),
             sk_tag: Field::new(mode, *request.sk_tag()),
             tvk: Field::new(mode, *request.tvk()),
-            tsk: Scalar::new(mode, *request.tsk()),
             tcm,
         }
     }
@@ -271,11 +268,6 @@ impl<A: Aleo> Request<A> {
         &self.tvk
     }
 
-    /// Returns the transition secret key.
-    pub const fn tsk(&self) -> &Scalar<A> {
-        &self.tsk
-    }
-
     /// Returns the transition commitment.
     pub const fn tcm(&self) -> &Field<A> {
         &self.tcm
@@ -297,7 +289,6 @@ impl<A: Aleo> Eject for Request<A> {
             self.signature.eject_mode(),
             self.sk_tag.eject_mode(),
             self.tvk.eject_mode(),
-            self.tsk.eject_mode(),
             self.tcm.eject_mode(),
         ])
     }
@@ -314,7 +305,6 @@ impl<A: Aleo> Eject for Request<A> {
             self.signature.eject_value(),
             self.sk_tag.eject_value(),
             self.tvk.eject_value(),
-            self.tsk.eject_value(),
             self.tcm.eject_value(),
         ))
     }

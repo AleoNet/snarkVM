@@ -46,8 +46,6 @@ pub struct Request<N: Network> {
     sk_tag: Field<N>,
     /// The transition view key.
     tvk: Field<N>,
-    /// The transition secret key.
-    tsk: Scalar<N>,
     /// The transition commitment.
     tcm: Field<N>,
 }
@@ -63,13 +61,12 @@ impl<N: Network>
         Signature<N>,
         Field<N>,
         Field<N>,
-        Scalar<N>,
         Field<N>,
     )> for Request<N>
 {
     /// Note: See `Request::sign` to create the request. This method is used to eject from a circuit.
     fn from(
-        (signer, network_id, program_id, function_name, input_ids, inputs, signature, sk_tag, tvk, tsk, tcm): (
+        (signer, network_id, program_id, function_name, input_ids, inputs, signature, sk_tag, tvk, tcm): (
             Address<N>,
             U16<N>,
             ProgramID<N>,
@@ -79,7 +76,6 @@ impl<N: Network>
             Signature<N>,
             Field<N>,
             Field<N>,
-            Scalar<N>,
             Field<N>,
         ),
     ) -> Self {
@@ -87,7 +83,7 @@ impl<N: Network>
         if *network_id != N::ID {
             N::halt(format!("Invalid network ID. Expected {}, found {}", N::ID, *network_id))
         } else {
-            Self { signer, network_id, program_id, function_name, input_ids, inputs, signature, sk_tag, tvk, tsk, tcm }
+            Self { signer, network_id, program_id, function_name, input_ids, inputs, signature, sk_tag, tvk, tcm }
         }
     }
 }
@@ -148,11 +144,6 @@ impl<N: Network> Request<N> {
         let pk_sig = self.signature.compute_key().pk_sig();
         // Compute `tpk` as `(challenge * pk_sig) + (response * G)`, equivalent to `r * G`.
         (pk_sig * challenge) + N::g_scalar_multiply(&response)
-    }
-
-    /// Returns the transition secret key `tsk`.
-    pub const fn tsk(&self) -> &Scalar<N> {
-        &self.tsk
     }
 
     /// Returns the transition commitment `tcm`.

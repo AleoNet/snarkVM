@@ -190,11 +190,11 @@ mod tests {
             );
             check_cast::<Address<Circuit>, console_root::types::Address<Testnet3>>(
                 Mode::Public,
-                count_is!(4, 0, 15, 13),
+                count_is!(4, 0, 15, 15),
             );
             check_cast::<Address<Circuit>, console_root::types::Address<Testnet3>>(
                 Mode::Private,
-                count_is!(4, 0, 15, 13),
+                count_is!(4, 0, 15, 15),
             );
         }
 
@@ -206,11 +206,11 @@ mod tests {
             );
             check_cast::<Boolean<Circuit>, console_root::types::Boolean<Testnet3>>(
                 Mode::Public,
-                count_is!(16, 0, 5, 8),
+                count_is!(16, 0, 5, 6),
             );
             check_cast::<Boolean<Circuit>, console_root::types::Boolean<Testnet3>>(
                 Mode::Private,
-                count_is!(16, 0, 5, 8),
+                count_is!(16, 0, 5, 6),
             );
         }
 
@@ -227,8 +227,8 @@ mod tests {
                 Mode::Constant,
                 count_less_than!(11, 0, 0, 0),
             );
-            check_cast::<Group<Circuit>, console_root::types::Group<Testnet3>>(Mode::Public, count_is!(4, 0, 15, 13));
-            check_cast::<Group<Circuit>, console_root::types::Group<Testnet3>>(Mode::Private, count_is!(4, 0, 15, 13));
+            check_cast::<Group<Circuit>, console_root::types::Group<Testnet3>>(Mode::Public, count_is!(4, 0, 15, 15));
+            check_cast::<Group<Circuit>, console_root::types::Group<Testnet3>>(Mode::Private, count_is!(4, 0, 15, 15));
         }
 
         #[test]
@@ -330,11 +330,11 @@ mod tests {
             );
             check_cast::<Address<Circuit>, console_root::types::Address<Testnet3>>(
                 Mode::Public,
-                count_is!(4, 0, 15, 13),
+                count_is!(4, 0, 15, 15),
             );
             check_cast::<Address<Circuit>, console_root::types::Address<Testnet3>>(
                 Mode::Private,
-                count_is!(4, 0, 15, 13),
+                count_is!(4, 0, 15, 15),
             );
         }
 
@@ -346,11 +346,11 @@ mod tests {
             );
             check_cast::<Boolean<Circuit>, console_root::types::Boolean<Testnet3>>(
                 Mode::Public,
-                count_is!(32, 0, 5, 8),
+                count_is!(32, 0, 5, 6),
             );
             check_cast::<Boolean<Circuit>, console_root::types::Boolean<Testnet3>>(
                 Mode::Private,
-                count_is!(32, 0, 5, 8),
+                count_is!(32, 0, 5, 6),
             );
         }
 
@@ -367,8 +367,8 @@ mod tests {
                 Mode::Constant,
                 count_less_than!(11, 0, 0, 0),
             );
-            check_cast::<Group<Circuit>, console_root::types::Group<Testnet3>>(Mode::Public, count_is!(4, 0, 15, 13));
-            check_cast::<Group<Circuit>, console_root::types::Group<Testnet3>>(Mode::Private, count_is!(4, 0, 15, 13));
+            check_cast::<Group<Circuit>, console_root::types::Group<Testnet3>>(Mode::Public, count_is!(4, 0, 15, 15));
+            check_cast::<Group<Circuit>, console_root::types::Group<Testnet3>>(Mode::Private, count_is!(4, 0, 15, 15));
         }
 
         #[test]
@@ -470,11 +470,11 @@ mod tests {
             );
             check_cast::<Address<Circuit>, console_root::types::Address<Testnet3>>(
                 Mode::Public,
-                count_is!(4, 0, 15, 13),
+                count_is!(4, 0, 15, 15),
             );
             check_cast::<Address<Circuit>, console_root::types::Address<Testnet3>>(
                 Mode::Private,
-                count_is!(4, 0, 15, 13),
+                count_is!(4, 0, 15, 15),
             );
         }
 
@@ -486,11 +486,11 @@ mod tests {
             );
             check_cast::<Boolean<Circuit>, console_root::types::Boolean<Testnet3>>(
                 Mode::Public,
-                count_is!(64, 0, 5, 8),
+                count_is!(64, 0, 5, 6),
             );
             check_cast::<Boolean<Circuit>, console_root::types::Boolean<Testnet3>>(
                 Mode::Private,
-                count_is!(64, 0, 5, 8),
+                count_is!(64, 0, 5, 6),
             );
         }
 
@@ -507,8 +507,8 @@ mod tests {
                 Mode::Constant,
                 count_less_than!(11, 0, 0, 0),
             );
-            check_cast::<Group<Circuit>, console_root::types::Group<Testnet3>>(Mode::Public, count_is!(4, 0, 15, 13));
-            check_cast::<Group<Circuit>, console_root::types::Group<Testnet3>>(Mode::Private, count_is!(4, 0, 15, 13));
+            check_cast::<Group<Circuit>, console_root::types::Group<Testnet3>>(Mode::Public, count_is!(4, 0, 15, 15));
+            check_cast::<Group<Circuit>, console_root::types::Group<Testnet3>>(Mode::Private, count_is!(4, 0, 15, 15));
         }
 
         #[test]
@@ -610,11 +610,11 @@ mod tests {
             );
             check_cast::<Address<Circuit>, console_root::types::Address<Testnet3>>(
                 Mode::Public,
-                count_is!(4, 0, 15, 13),
+                count_is!(4, 0, 15, 15),
             );
             check_cast::<Address<Circuit>, console_root::types::Address<Testnet3>>(
                 Mode::Private,
-                count_is!(4, 0, 15, 13),
+                count_is!(4, 0, 15, 15),
             );
         }
 
@@ -626,11 +626,11 @@ mod tests {
             );
             check_cast::<Boolean<Circuit>, console_root::types::Boolean<Testnet3>>(
                 Mode::Public,
-                count_is!(128, 0, 5, 8),
+                count_is!(128, 0, 5, 6),
             );
             check_cast::<Boolean<Circuit>, console_root::types::Boolean<Testnet3>>(
                 Mode::Private,
-                count_is!(128, 0, 5, 8),
+                count_is!(128, 0, 5, 6),
             );
         }
 
@@ -647,8 +647,8 @@ mod tests {
                 Mode::Constant,
                 count_less_than!(11, 0, 0, 0),
             );
-            check_cast::<Group<Circuit>, console_root::types::Group<Testnet3>>(Mode::Public, count_is!(4, 0, 15, 13));
-            check_cast::<Group<Circuit>, console_root::types::Group<Testnet3>>(Mode::Private, count_is!(4, 0, 15, 13));
+            check_cast::<Group<Circuit>, console_root::types::Group<Testnet3>>(Mode::Public, count_is!(4, 0, 15, 15));
+            check_cast::<Group<Circuit>, console_root::types::Group<Testnet3>>(Mode::Private, count_is!(4, 0, 15, 15));
         }
 
         #[test]
@@ -750,11 +750,11 @@ mod tests {
             );
             check_cast::<Address<Circuit>, console_root::types::Address<Testnet3>>(
                 Mode::Public,
-                count_is!(4, 0, 15, 13),
+                count_is!(4, 0, 15, 15),
             );
             check_cast::<Address<Circuit>, console_root::types::Address<Testnet3>>(
                 Mode::Private,
-                count_is!(4, 0, 15, 13),
+                count_is!(4, 0, 15, 15),
             );
         }
 
@@ -766,11 +766,11 @@ mod tests {
             );
             check_cast::<Boolean<Circuit>, console_root::types::Boolean<Testnet3>>(
                 Mode::Public,
-                count_is!(256, 0, 5, 8),
+                count_is!(256, 0, 5, 6),
             );
             check_cast::<Boolean<Circuit>, console_root::types::Boolean<Testnet3>>(
                 Mode::Private,
-                count_is!(256, 0, 5, 8),
+                count_is!(256, 0, 5, 6),
             );
         }
 
@@ -787,8 +787,8 @@ mod tests {
                 Mode::Constant,
                 count_less_than!(11, 0, 0, 0),
             );
-            check_cast::<Group<Circuit>, console_root::types::Group<Testnet3>>(Mode::Public, count_is!(4, 0, 15, 13));
-            check_cast::<Group<Circuit>, console_root::types::Group<Testnet3>>(Mode::Private, count_is!(4, 0, 15, 13));
+            check_cast::<Group<Circuit>, console_root::types::Group<Testnet3>>(Mode::Public, count_is!(4, 0, 15, 15));
+            check_cast::<Group<Circuit>, console_root::types::Group<Testnet3>>(Mode::Private, count_is!(4, 0, 15, 15));
         }
 
         #[test]
@@ -886,11 +886,11 @@ mod tests {
             );
             check_cast::<Address<Circuit>, console_root::types::Address<Testnet3>>(
                 Mode::Public,
-                count_is!(4, 0, 15, 13),
+                count_is!(4, 0, 15, 15),
             );
             check_cast::<Address<Circuit>, console_root::types::Address<Testnet3>>(
                 Mode::Private,
-                count_is!(4, 0, 15, 13),
+                count_is!(4, 0, 15, 15),
             );
         }
 
@@ -902,11 +902,11 @@ mod tests {
             );
             check_cast::<Boolean<Circuit>, console_root::types::Boolean<Testnet3>>(
                 Mode::Public,
-                count_is!(16, 0, 5, 8),
+                count_is!(16, 0, 5, 6),
             );
             check_cast::<Boolean<Circuit>, console_root::types::Boolean<Testnet3>>(
                 Mode::Private,
-                count_is!(16, 0, 5, 8),
+                count_is!(16, 0, 5, 6),
             );
         }
 
@@ -923,8 +923,8 @@ mod tests {
                 Mode::Constant,
                 count_less_than!(11, 0, 0, 0),
             );
-            check_cast::<Group<Circuit>, console_root::types::Group<Testnet3>>(Mode::Public, count_is!(4, 0, 15, 13));
-            check_cast::<Group<Circuit>, console_root::types::Group<Testnet3>>(Mode::Private, count_is!(4, 0, 15, 13));
+            check_cast::<Group<Circuit>, console_root::types::Group<Testnet3>>(Mode::Public, count_is!(4, 0, 15, 15));
+            check_cast::<Group<Circuit>, console_root::types::Group<Testnet3>>(Mode::Private, count_is!(4, 0, 15, 15));
         }
 
         #[test]
@@ -1026,11 +1026,11 @@ mod tests {
             );
             check_cast::<Address<Circuit>, console_root::types::Address<Testnet3>>(
                 Mode::Public,
-                count_is!(4, 0, 15, 13),
+                count_is!(4, 0, 15, 15),
             );
             check_cast::<Address<Circuit>, console_root::types::Address<Testnet3>>(
                 Mode::Private,
-                count_is!(4, 0, 15, 13),
+                count_is!(4, 0, 15, 15),
             );
         }
 
@@ -1042,11 +1042,11 @@ mod tests {
             );
             check_cast::<Boolean<Circuit>, console_root::types::Boolean<Testnet3>>(
                 Mode::Public,
-                count_is!(32, 0, 5, 8),
+                count_is!(32, 0, 5, 6),
             );
             check_cast::<Boolean<Circuit>, console_root::types::Boolean<Testnet3>>(
                 Mode::Private,
-                count_is!(32, 0, 5, 8),
+                count_is!(32, 0, 5, 6),
             );
         }
 
@@ -1063,8 +1063,8 @@ mod tests {
                 Mode::Constant,
                 count_less_than!(11, 0, 0, 0),
             );
-            check_cast::<Group<Circuit>, console_root::types::Group<Testnet3>>(Mode::Public, count_is!(4, 0, 15, 13));
-            check_cast::<Group<Circuit>, console_root::types::Group<Testnet3>>(Mode::Private, count_is!(4, 0, 15, 13));
+            check_cast::<Group<Circuit>, console_root::types::Group<Testnet3>>(Mode::Public, count_is!(4, 0, 15, 15));
+            check_cast::<Group<Circuit>, console_root::types::Group<Testnet3>>(Mode::Private, count_is!(4, 0, 15, 15));
         }
 
         #[test]
@@ -1166,11 +1166,11 @@ mod tests {
             );
             check_cast::<Address<Circuit>, console_root::types::Address<Testnet3>>(
                 Mode::Public,
-                count_is!(4, 0, 15, 13),
+                count_is!(4, 0, 15, 15),
             );
             check_cast::<Address<Circuit>, console_root::types::Address<Testnet3>>(
                 Mode::Private,
-                count_is!(4, 0, 15, 13),
+                count_is!(4, 0, 15, 15),
             );
         }
 
@@ -1182,11 +1182,11 @@ mod tests {
             );
             check_cast::<Boolean<Circuit>, console_root::types::Boolean<Testnet3>>(
                 Mode::Public,
-                count_is!(64, 0, 5, 8),
+                count_is!(64, 0, 5, 6),
             );
             check_cast::<Boolean<Circuit>, console_root::types::Boolean<Testnet3>>(
                 Mode::Private,
-                count_is!(64, 0, 5, 8),
+                count_is!(64, 0, 5, 6),
             );
         }
 
@@ -1203,8 +1203,8 @@ mod tests {
                 Mode::Constant,
                 count_less_than!(11, 0, 0, 0),
             );
-            check_cast::<Group<Circuit>, console_root::types::Group<Testnet3>>(Mode::Public, count_is!(4, 0, 15, 13));
-            check_cast::<Group<Circuit>, console_root::types::Group<Testnet3>>(Mode::Private, count_is!(4, 0, 15, 13));
+            check_cast::<Group<Circuit>, console_root::types::Group<Testnet3>>(Mode::Public, count_is!(4, 0, 15, 15));
+            check_cast::<Group<Circuit>, console_root::types::Group<Testnet3>>(Mode::Private, count_is!(4, 0, 15, 15));
         }
 
         #[test]
@@ -1306,11 +1306,11 @@ mod tests {
             );
             check_cast::<Address<Circuit>, console_root::types::Address<Testnet3>>(
                 Mode::Public,
-                count_is!(4, 0, 15, 13),
+                count_is!(4, 0, 15, 15),
             );
             check_cast::<Address<Circuit>, console_root::types::Address<Testnet3>>(
                 Mode::Private,
-                count_is!(4, 0, 15, 13),
+                count_is!(4, 0, 15, 15),
             );
         }
 
@@ -1322,11 +1322,11 @@ mod tests {
             );
             check_cast::<Boolean<Circuit>, console_root::types::Boolean<Testnet3>>(
                 Mode::Public,
-                count_is!(128, 0, 5, 8),
+                count_is!(128, 0, 5, 6),
             );
             check_cast::<Boolean<Circuit>, console_root::types::Boolean<Testnet3>>(
                 Mode::Private,
-                count_is!(128, 0, 5, 8),
+                count_is!(128, 0, 5, 6),
             );
         }
 
@@ -1343,8 +1343,8 @@ mod tests {
                 Mode::Constant,
                 count_less_than!(11, 0, 0, 0),
             );
-            check_cast::<Group<Circuit>, console_root::types::Group<Testnet3>>(Mode::Public, count_is!(4, 0, 15, 13));
-            check_cast::<Group<Circuit>, console_root::types::Group<Testnet3>>(Mode::Private, count_is!(4, 0, 15, 13));
+            check_cast::<Group<Circuit>, console_root::types::Group<Testnet3>>(Mode::Public, count_is!(4, 0, 15, 15));
+            check_cast::<Group<Circuit>, console_root::types::Group<Testnet3>>(Mode::Private, count_is!(4, 0, 15, 15));
         }
 
         #[test]
@@ -1446,11 +1446,11 @@ mod tests {
             );
             check_cast::<Address<Circuit>, console_root::types::Address<Testnet3>>(
                 Mode::Public,
-                count_is!(4, 0, 15, 13),
+                count_is!(4, 0, 15, 15),
             );
             check_cast::<Address<Circuit>, console_root::types::Address<Testnet3>>(
                 Mode::Private,
-                count_is!(4, 0, 15, 13),
+                count_is!(4, 0, 15, 15),
             );
         }
 
@@ -1462,11 +1462,11 @@ mod tests {
             );
             check_cast::<Boolean<Circuit>, console_root::types::Boolean<Testnet3>>(
                 Mode::Public,
-                count_is!(256, 0, 5, 8),
+                count_is!(256, 0, 5, 6),
             );
             check_cast::<Boolean<Circuit>, console_root::types::Boolean<Testnet3>>(
                 Mode::Private,
-                count_is!(256, 0, 5, 8),
+                count_is!(256, 0, 5, 6),
             );
         }
 
@@ -1483,8 +1483,8 @@ mod tests {
                 Mode::Constant,
                 count_less_than!(11, 0, 0, 0),
             );
-            check_cast::<Group<Circuit>, console_root::types::Group<Testnet3>>(Mode::Public, count_is!(4, 0, 15, 13));
-            check_cast::<Group<Circuit>, console_root::types::Group<Testnet3>>(Mode::Private, count_is!(4, 0, 15, 13));
+            check_cast::<Group<Circuit>, console_root::types::Group<Testnet3>>(Mode::Public, count_is!(4, 0, 15, 15));
+            check_cast::<Group<Circuit>, console_root::types::Group<Testnet3>>(Mode::Private, count_is!(4, 0, 15, 15));
         }
 
         #[test]

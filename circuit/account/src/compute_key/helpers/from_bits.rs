@@ -105,12 +105,12 @@ mod tests {
 
     #[test]
     fn test_from_bits_le_public() {
-        check_from_bits_le(Mode::Public, 9, 0, 1379, 1379);
+        check_from_bits_le(Mode::Public, 9, 0, 1379, 1383);
     }
 
     #[test]
     fn test_from_bits_le_private() {
-        check_from_bits_le(Mode::Private, 9, 0, 1379, 1379);
+        check_from_bits_le(Mode::Private, 9, 0, 1379, 1383);
     }
 
     #[test]
@@ -120,11 +120,11 @@ mod tests {
 
     #[test]
     fn test_from_bits_be_public() {
-        check_from_bits_be(Mode::Public, 9, 0, 1379, 1379);
+        check_from_bits_be(Mode::Public, 9, 0, 1379, 1383);
     }
 
     #[test]
     fn test_from_bits_be_private() {
-        check_from_bits_be(Mode::Private, 9, 0, 1379, 1379);
+        check_from_bits_be(Mode::Private, 9, 0, 1379, 1383);
     }
 }

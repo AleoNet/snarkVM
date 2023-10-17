@@ -249,7 +249,7 @@ impl<N: Network> Transactions<N> {
 
     /// Returns an iterator over the finalize operations, for all transactions.
     pub fn finalize_operations(&self) -> impl '_ + Iterator<Item = &FinalizeOperation<N>> {
-        self.iter().flat_map(|tx| tx.finalize_operations()).flatten()
+        self.iter().flat_map(|tx| tx.finalize_operations())
     }
 }
 

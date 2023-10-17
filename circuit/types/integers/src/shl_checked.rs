@@ -66,7 +66,7 @@ impl<E: Environment, I: IntegerType, M: Magnitude> ShlChecked<Integer<E, M>> for
 
     #[inline]
     fn shl_checked(&self, rhs: &Integer<E, M>) -> Self::Output {
-        // Index of the first upper bit of rhs that we mask.
+        // Retrieve the index for the first upper bit from the RHS that we mask.
         let first_upper_bit_index = I::BITS.trailing_zeros() as usize;
         // Initialize a constant `two`.
         let two = Self::one() + Self::one();
@@ -181,7 +181,7 @@ impl<E: Environment, I: IntegerType> OutputMode<dyn Shl<Integer<E, I>, Output = 
 impl<E: Environment, I: IntegerType, M: Magnitude> Metrics<dyn ShlChecked<Integer<E, M>, Output = Integer<E, I>>>
     for Integer<E, I>
 {
-    type Case = (Mode, Mode);
+    type Case = (Mode, Mode, bool, bool);
 
     fn count(case: &Self::Case) -> Count {
         // A quick hack that matches `(u8 -> 0, u16 -> 1, u32 -> 2, u64 -> 3, u128 -> 4)`.
