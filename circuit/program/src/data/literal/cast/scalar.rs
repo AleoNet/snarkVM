@@ -118,8 +118,8 @@ mod tests {
             Mode::Constant,
             count_less_than!(11, 0, 0, 0),
         );
-        check_cast::<Address<Circuit>, console_root::types::Address<Testnet3>>(Mode::Public, count_is!(4, 0, 15, 15));
-        check_cast::<Address<Circuit>, console_root::types::Address<Testnet3>>(Mode::Private, count_is!(4, 0, 15, 15));
+        check_cast::<Address<Circuit>, console_root::types::Address<Testnet3>>(Mode::Public, count_is!(4, 0, 13, 13));
+        check_cast::<Address<Circuit>, console_root::types::Address<Testnet3>>(Mode::Private, count_is!(4, 0, 13, 13));
     }
 
     #[test]
@@ -142,8 +142,8 @@ mod tests {
             Mode::Constant,
             count_less_than!(11, 0, 0, 0),
         );
-        check_cast::<Group<Circuit>, console_root::types::Group<Testnet3>>(Mode::Public, count_is!(4, 0, 15, 15));
-        check_cast::<Group<Circuit>, console_root::types::Group<Testnet3>>(Mode::Private, count_is!(4, 0, 15, 15));
+        check_cast::<Group<Circuit>, console_root::types::Group<Testnet3>>(Mode::Public, count_is!(4, 0, 13, 13));
+        check_cast::<Group<Circuit>, console_root::types::Group<Testnet3>>(Mode::Private, count_is!(4, 0, 13, 13));
     }
 
     #[test]
