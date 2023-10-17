@@ -138,13 +138,13 @@ impl<T: FromBytes + ToBytes + Send + 'static> ToBytes for Data<T> {
                 let mut buffer = Vec::new();
                 object.write_le(&mut buffer)?;
                 // Write the object.
-                u32::try_from(buffer.len()).map_err(error)?.min(MAX_DATA_SIZE).write_le(&mut writer)?;
+                u32::try_from(buffer.len()).map_err(error)?.write_le(&mut writer)?;
                 // Write the object.
                 writer.write_all(&buffer)
             }
             Self::Buffer(buffer) => {
                 // Write the number of bytes.
-                u32::try_from(buffer.len()).map_err(error)?.min(MAX_DATA_SIZE).write_le(&mut writer)?;
+                u32::try_from(buffer.len()).map_err(error)?.write_le(&mut writer)?;
                 // Write the bytes.
                 writer.write_all(buffer)
             }
