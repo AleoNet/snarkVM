@@ -141,9 +141,7 @@ impl<E: Environment, I: IntegerType> Integer<E, I> {
             let (product, z_1_upper_bits, z2) = Self::karatsuba_multiply(this, that);
 
             // Check that the upper bits of z1 are zero.
-            for bit in z_1_upper_bits.iter() {
-                E::assert_eq(bit, E::zero());
-            }
+            Boolean::assert_bits_are_zero(&z_1_upper_bits);
 
             // Check that `z2` is zero.
             E::assert_eq(&z2, E::zero());
@@ -237,14 +235,14 @@ impl<E: Environment, I: IntegerType> Metrics<dyn MulChecked<Integer<E, I>, Outpu
                 // Signed case
                 true => match (case.0, case.1) {
                     (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
-                    (Mode::Constant, _) | (_, Mode::Constant) => Count::less_than(833, 0, 837, 908),
-                    (_, _) => Count::is(3 * I::BITS, 0, 1098, 1170),
+                    (Mode::Constant, _) | (_, Mode::Constant) => Count::less_than(833, 0, 837, 844),
+                    (_, _) => Count::is(3 * I::BITS, 0, 1098, 1106),
                 },
                 // Unsigned case
                 false => match (case.0, case.1) {
                     (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
-                    (Mode::Constant, _) | (_, Mode::Constant) => Count::less_than(193, 0, 193, 260),
-                    (_, _) => Count::is(0, 0, 196, 263),
+                    (Mode::Constant, _) | (_, Mode::Constant) => Count::less_than(193, 0, 193, 199),
+                    (_, _) => Count::is(0, 0, 196, 199),
                 },
             }
         } else {
