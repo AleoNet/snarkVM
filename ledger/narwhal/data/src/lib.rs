@@ -100,26 +100,12 @@ impl<T: FromBytes + ToBytes + Serialize + Send + 'static> Display for Data<T> {
 impl<T: FromBytes + ToBytes + Send + 'static> FromBytes for Data<T> {
     /// Reads the data from the buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        // Read the variant.
-        let variant = u8::read_le(&mut reader)?;
-        // Match the variant.
-        match variant {
-            0 => {
-                // Read the object.
-                let object = T::read_le(&mut reader)?;
-                // Return the object.
-                Ok(Self::Object(object))
-            }
-            1 => {
-                // Read the number of bytes.
-                let num_bytes = u32::read_le(&mut reader)?;
-                // Read the bytes.
-                let bytes = (0..num_bytes).map(|_| u8::read_le(&mut reader)).collect::<IoResult<Vec<u8>>>()?;
-                // Return the data.
-                Ok(Self::Buffer(Bytes::from(bytes)))
-            }
-            2.. => Err(error("Invalid data variant")),
-        }
+        // Read the number of bytes.
+        let num_bytes = u32::read_le(&mut reader)?;
+        // Read the bytes.
+        let bytes = (0..num_bytes).map(|_| u8::read_le(&mut reader)).collect::<IoResult<Vec<u8>>>()?;
+        // Return the data.
+        Ok(Self::Buffer(Bytes::from(bytes)))
     }
 }
 
@@ -129,14 +115,15 @@ impl<T: FromBytes + ToBytes + Send + 'static> ToBytes for Data<T> {
         // Write the data.
         match self {
             Self::Object(object) => {
-                // Write the variant.
-                0u8.write_le(&mut writer)?;
+                // FIXME(ljedrz): see if we can omit this intermediate allocation.
+                let mut intermediate = Vec::new();
+                object.write_le(&mut intermediate)?;
                 // Write the object.
-                object.write_le(&mut writer)
+                (intermediate.len() as u32).write_le(&mut writer)?;
+                // Write the object.
+                writer.write_all(&intermediate)
             }
             Self::Buffer(buffer) => {
-                // Write the variant.
-                1u8.write_le(&mut writer)?;
                 // Write the number of bytes.
                 u32::try_from(buffer.len()).map_err(|e| error(e.to_string()))?.write_le(&mut writer)?;
                 // Write the bytes.
