@@ -86,46 +86,46 @@ mod tests {
 
     #[test]
     fn test_poseidon2_hash_to_group_constant() -> Result<()> {
-        check_hash_to_group!(Poseidon2, Constant, 2, (553, 0, 0, 0))
+        check_hash_to_group!(Poseidon2, Constant, 2, (1059, 0, 0, 0))
     }
 
     #[test]
     fn test_poseidon2_hash_to_group_public() -> Result<()> {
-        check_hash_to_group!(Poseidon2, Public, 2, (529, 0, 1016, 1022))
+        check_hash_to_group!(Poseidon2, Public, 2, (529, 0, 2026, 2036))
     }
 
     #[test]
     fn test_poseidon2_hash_to_group_private() -> Result<()> {
-        check_hash_to_group!(Poseidon2, Private, 2, (529, 0, 1016, 1022))
+        check_hash_to_group!(Poseidon2, Private, 2, (529, 0, 2026, 2036))
     }
 
     #[test]
     fn test_poseidon4_hash_to_group_constant() -> Result<()> {
-        check_hash_to_group!(Poseidon4, Constant, 2, (553, 0, 0, 0))
+        check_hash_to_group!(Poseidon4, Constant, 2, (1059, 0, 0, 0))
     }
 
     #[test]
     fn test_poseidon4_hash_to_group_public() -> Result<()> {
-        check_hash_to_group!(Poseidon4, Public, 2, (529, 0, 1086, 1092))
+        check_hash_to_group!(Poseidon4, Public, 2, (529, 0, 2096, 2106))
     }
 
     #[test]
     fn test_poseidon4_hash_to_group_private() -> Result<()> {
-        check_hash_to_group!(Poseidon4, Private, 2, (529, 0, 1086, 1092))
+        check_hash_to_group!(Poseidon4, Private, 2, (529, 0, 2096, 2106))
     }
 
     #[test]
     fn test_poseidon8_hash_to_group_constant() -> Result<()> {
-        check_hash_to_group!(Poseidon8, Constant, 2, (553, 0, 0, 0))
+        check_hash_to_group!(Poseidon8, Constant, 2, (1059, 0, 0, 0))
     }
 
     #[test]
     fn test_poseidon8_hash_to_group_public() -> Result<()> {
-        check_hash_to_group!(Poseidon8, Public, 2, (529, 0, 1226, 1232))
+        check_hash_to_group!(Poseidon8, Public, 2, (529, 0, 2236, 2246))
     }
 
     #[test]
     fn test_poseidon8_hash_to_group_private() -> Result<()> {
-        check_hash_to_group!(Poseidon8, Private, 2, (529, 0, 1226, 1232))
+        check_hash_to_group!(Poseidon8, Private, 2, (529, 0, 2236, 2246))
     }
 }
