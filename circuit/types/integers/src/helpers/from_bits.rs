@@ -23,9 +23,7 @@ impl<E: Environment, I: IntegerType> FromBits for Integer<E, I> {
         let num_bits = bits_le.len() as u64;
         if num_bits > I::BITS {
             // Check that all excess bits are zero.
-            for bit in &bits_le[I::BITS as usize..] {
-                E::assert_eq(E::zero(), bit);
-            }
+            Boolean::assert_bits_are_zero(&bits_le[I::BITS as usize..])
         }
 
         // Construct the sanitized list of bits, resizing up if necessary.
@@ -86,7 +84,7 @@ mod tests {
                     true => assert_scope!(num_constants, num_public, num_private, num_constraints),
                     // `num_constraints` is incremented by one for each excess bit.
                     false => {
-                        assert_scope!(num_constants, num_public, num_private, num_constraints + i)
+                        assert_scope!(num_constants, num_public, num_private, if i == 0 { 0 } else { 1 })
                     }
                 };
             });
@@ -126,7 +124,7 @@ mod tests {
                     true => assert_scope!(num_constants, num_public, num_private, num_constraints),
                     // `num_constraints` is incremented by one for each excess bit.
                     false => {
-                        assert_scope!(num_constants, num_public, num_private, num_constraints + i)
+                        assert_scope!(num_constants, num_public, num_private, if i == 0 { 0 } else { 1 })
                     }
                 };
             });

@@ -30,17 +30,15 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         let timer = timer!("VM::speculate");
 
         // Performs a **dry-run** over the list of ratifications, solutions, and transactions.
-        let (confirmed_transactions, aborted_transaction_ids, ratified_finalize_operations) =
+        let (confirmed_transactions, aborted_transactions, ratified_finalize_operations) =
             self.atomic_speculate(state, ratifications, solutions, transactions)?;
 
         // Convert the aborted transactions into aborted transaction IDs.
-        let aborted_transaction_ids = aborted_transaction_ids
-            .into_iter()
-            .map(|(tx, error)| {
-                warn!("Speculation safely aborted a transaction - {error} ({})", tx.id());
-                tx.id()
-            })
-            .collect::<Vec<_>>();
+        let mut aborted_transaction_ids = Vec::with_capacity(aborted_transactions.len());
+        for (tx, error) in aborted_transactions {
+            warn!("Speculation safely aborted a transaction - {error} ({})", tx.id());
+            aborted_transaction_ids.push(tx.id());
+        }
 
         finish!(timer, "Finished dry-run of the transactions");
 

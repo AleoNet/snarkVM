@@ -79,9 +79,7 @@ impl<E: Environment, I: IntegerType, M: Magnitude> ShrChecked<Integer<E, M>> for
             let trailing_zeros_index = I::BITS.trailing_zeros() as usize;
 
             // Check that the upper bits of the RHS are nonzero.
-            for bit in &rhs.bits_le[trailing_zeros_index..] {
-                E::assert_eq(E::zero(), bit);
-            }
+            Boolean::assert_bits_are_zero(&rhs.bits_le[trailing_zeros_index..]);
 
             // Perform a wrapping shift right.
             self.shr_wrapped(rhs)

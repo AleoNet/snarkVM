@@ -39,6 +39,18 @@ pub struct Boolean<E: Environment>(LinearCombination<E::BaseField>);
 
 impl<E: Environment> BooleanTrait for Boolean<E> {}
 
+impl<E: Environment> Boolean<E> {
+    /// Initializes a boolean from a variable.
+    ///
+    /// Note: This method does **not** check the booleanity of the variable.
+    pub fn from_variable(var: Variable<E::BaseField>) -> Self {
+        // In debug-mode only, sanity check the booleanity of the variable.
+        debug_assert!(var.value().is_zero() || var.value().is_one(), "Boolean variable is not well-formed");
+        // Return the boolean.
+        Boolean(var.into())
+    }
+}
+
 #[cfg(console)]
 impl<E: Environment> Inject for Boolean<E> {
     type Primitive = bool;

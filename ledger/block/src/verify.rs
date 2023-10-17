@@ -19,6 +19,11 @@ use super::*;
 use ledger_coinbase::{CoinbasePuzzle, EpochChallenge};
 use synthesizer_program::FinalizeOperation;
 
+use std::collections::HashSet;
+
+#[cfg(not(feature = "serial"))]
+use rayon::prelude::*;
+
 impl<N: Network> Block<N> {
     /// Ensures the block is correct.
     pub fn verify(
@@ -29,7 +34,6 @@ impl<N: Network> Block<N> {
         current_puzzle: &CoinbasePuzzle<N>,
         current_epoch_challenge: &EpochChallenge<N>,
         current_timestamp: i64,
-        aborted_transaction_ids: Vec<N::TransactionID>,
         ratified_finalize_operations: Vec<FinalizeOperation<N>>,
     ) -> Result<()> {
         // Ensure the block hash is correct.
@@ -64,7 +68,7 @@ impl<N: Network> Block<N> {
         self.verify_ratifications(expected_block_reward, expected_puzzle_reward)?;
 
         // Ensure the block transactions are correct.
-        self.verify_transactions(aborted_transaction_ids)?;
+        self.verify_transactions()?;
 
         // Set the expected previous state root.
         let expected_previous_state_root = current_state_root;
@@ -380,33 +384,19 @@ impl<N: Network> Block<N> {
     }
 
     /// Ensures the block transactions are correct.
-    fn verify_transactions(&self, aborted_transaction_ids: Vec<N::TransactionID>) -> Result<()> {
+    fn verify_transactions(&self) -> Result<()> {
         let height = self.height();
 
         // Ensure there are transactions.
         ensure!(!self.transactions.is_empty(), "Block {height} must contain at least 1 transaction");
 
         // Ensure the number of transactions is within the allowed range.
-        if self.transactions.len() + aborted_transaction_ids.len() > Transactions::<N>::MAX_TRANSACTIONS {
+        if self.transactions.len() + self.aborted_transaction_ids.len() > Transactions::<N>::MAX_TRANSACTIONS {
             bail!("Cannot validate a block with more than {} transactions", Transactions::<N>::MAX_TRANSACTIONS);
         }
 
-        // Ensure the aborted transaction IDs match (up to the ordering).
-        if self.aborted_transaction_ids != aborted_transaction_ids {
-            // Find where the aborted transaction IDs differ.
-            let mut index = 0;
-            while index < self.aborted_transaction_ids.len() && index < aborted_transaction_ids.len() {
-                if self.aborted_transaction_ids[index] != aborted_transaction_ids[index] {
-                    break;
-                }
-                index += 1;
-            }
-            // Output the error.
-            bail!("Aborted transaction IDs do not match in block {height} at index {index}");
-        }
-
         // Ensure there are no duplicate transaction IDs.
-        if has_duplicates(self.transaction_ids()) {
+        if has_duplicates(self.transaction_ids().chain(self.aborted_transaction_ids.iter())) {
             bail!("Found a duplicate transaction in block {height}");
         }
 
@@ -508,16 +498,27 @@ impl<N: Network> Block<N> {
     ) -> Result<()> {
         // Prepare an iterator over the solution IDs.
         let mut solutions = solutions.as_ref().map(|s| s.deref()).into_iter().flatten().peekable();
-        // Prepare an iterator over the transaction IDs.
-        let mut transaction_ids = transactions.transaction_ids().peekable();
+        // Prepare an iterator over the unconfirmed transaction IDs.
+        let unconfirmed_transaction_ids = cfg_iter!(transactions)
+            .map(|confirmed| confirmed.to_unconfirmed_transaction_id())
+            .collect::<Result<Vec<_>>>()?;
+        let mut unconfirmed_transaction_ids = unconfirmed_transaction_ids.iter().peekable();
 
-        // Initialize a list of candidate aborted solution IDs.
-        let mut candidate_aborted_solution_ids = Vec::new();
-        // Initialize a list of candidate aborted transaction IDs.
-        let mut candidate_aborted_transaction_ids = Vec::new();
+        // Initialize a list of already seen transmission IDs.
+        let mut seen_transmission_ids = HashSet::new();
+
+        // Initialize a list of aborted or already-existing solution IDs.
+        let mut aborted_or_existing_solution_ids = Vec::new();
+        // Initialize a list of aborted or already-existing transaction IDs.
+        let mut aborted_or_existing_transaction_ids = Vec::new();
 
         // Iterate over the transmission IDs.
         for transmission_id in subdag.transmission_ids() {
+            // If the transmission ID has already been seen, then continue.
+            if !seen_transmission_ids.insert(transmission_id) {
+                continue;
+            }
+
             // Process the transmission ID.
             match transmission_id {
                 TransmissionID::Ratification => {}
@@ -528,19 +529,19 @@ impl<N: Network> Block<N> {
                             // Increment the solution iterator.
                             solutions.next();
                         }
-                        // Otherwise, add the solution ID to the aborted list.
-                        _ => candidate_aborted_solution_ids.push(commitment),
+                        // Otherwise, add the solution ID to the aborted or existing list.
+                        _ => aborted_or_existing_solution_ids.push(commitment),
                     }
                 }
                 TransmissionID::Transaction(transaction_id) => {
-                    match transaction_ids.peek() {
+                    match unconfirmed_transaction_ids.peek() {
                         // Check the next transaction matches the expected transaction.
                         Some(expected_id) if transaction_id == *expected_id => {
-                            // Increment the transaction ID iterator.
-                            transaction_ids.next();
+                            // Increment the unconfirmed transaction ID iterator.
+                            unconfirmed_transaction_ids.next();
                         }
-                        // Otherwise, add the transaction ID to the aborted list.
-                        _ => candidate_aborted_transaction_ids.push(*transaction_id),
+                        // Otherwise, add the transaction ID to the aborted or existing list.
+                        _ => aborted_or_existing_transaction_ids.push(*transaction_id),
                     }
                 }
             }
@@ -549,15 +550,19 @@ impl<N: Network> Block<N> {
         // Ensure there are no more solutions in the block.
         ensure!(solutions.next().is_none(), "There exists more solutions than expected.");
         // Ensure there are no more transactions in the block.
-        ensure!(transaction_ids.next().is_none(), "There exists more transactions than expected.");
+        ensure!(unconfirmed_transaction_ids.next().is_none(), "There exists more transactions than expected.");
 
-        // Ensure there are no candidate aborted solution IDs.
-        ensure!(candidate_aborted_solution_ids.is_empty(), "There exists aborted solutions in the block.");
+        // Ensure there are no aborted or existing solution IDs.
+        ensure!(aborted_or_existing_solution_ids.is_empty(), "Block contains aborted or already-existing solutions.");
         // Ensure the aborted transaction IDs match.
-        ensure!(
-            aborted_transaction_ids == candidate_aborted_transaction_ids,
-            "A mismatch found was in the aborted transaction IDs of the block."
-        );
+        for aborted_transaction_id in aborted_transaction_ids {
+            // If the aborted transaction ID is not found, throw an error.
+            if !aborted_or_existing_transaction_ids.contains(aborted_transaction_id) {
+                bail!(
+                    "Block contains an aborted transaction ID that is not found in the subdag (found '{aborted_transaction_id}')"
+                );
+            }
+        }
 
         Ok(())
     }

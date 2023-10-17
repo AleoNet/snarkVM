@@ -32,3 +32,11 @@ pub use check_iterators_match::*;
 
 mod check_remove_and_get_value_speculative;
 pub use check_remove_and_get_value_speculative::*;
+
+fn ensure_map_is_empty(map: &impl for<'a> crate::helpers::NestedMap<'a, usize, usize, String>) {
+    // Sanity check.
+    assert!(map.iter_pending().next().is_none());
+    assert!(map.iter_confirmed().next().is_none());
+    assert!(map.keys_confirmed().next().is_none());
+    assert!(map.values_confirmed().next().is_none());
+}
