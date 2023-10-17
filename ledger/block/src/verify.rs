@@ -32,12 +32,12 @@ impl<N: Network> Block<N> {
         current_epoch_challenge: &EpochChallenge<N>,
         current_timestamp: i64,
         ratified_finalize_operations: Vec<FinalizeOperation<N>>,
-    ) -> Result<()> {
+    ) -> Result<Vec<N::TransactionID>> {
         // Ensure the block hash is correct.
         self.verify_hash(previous_block.height(), previous_block.hash())?;
 
         // Ensure the block authority is correct.
-        let (expected_round, expected_height, expected_timestamp) =
+        let (expected_round, expected_height, expected_timestamp, expected_existing_transaction_ids) =
             self.verify_authority(previous_block.round(), previous_block.height(), current_committee)?;
 
         // Ensure the block solutions are correct.
@@ -89,7 +89,10 @@ impl<N: Network> Block<N> {
             expected_last_coinbase_timestamp,
             expected_timestamp,
             current_timestamp,
-        )
+        )?;
+
+        // Re
+        Ok(expected_existing_transaction_ids)
     }
 }
 
@@ -133,7 +136,7 @@ impl<N: Network> Block<N> {
         previous_round: u64,
         previous_height: u32,
         current_committee: &Committee<N>,
-    ) -> Result<(u64, u32, i64)> {
+    ) -> Result<(u64, u32, i64, Vec<N::TransactionID>)> {
         // Determine the expected height.
         let expected_height = previous_height.saturating_add(1);
         // Ensure the block type is correct.
@@ -172,7 +175,8 @@ impl<N: Network> Block<N> {
         );
 
         // Ensure the block authority is correct.
-        match &self.authority {
+        // Determine the transaction IDs expected to be in previous blocks.
+        let expected_existing_transaction_ids = match &self.authority {
             Authority::Beacon(signature) => {
                 // Retrieve the signer.
                 let signer = signature.to_address();
@@ -186,6 +190,8 @@ impl<N: Network> Block<N> {
                     signature.verify(&signer, &[*self.block_hash]),
                     "Signature is invalid in block {expected_height}"
                 );
+
+                vec![]
             }
             Authority::Quorum(subdag) => {
                 // Compute the expected leader.
@@ -202,9 +208,9 @@ impl<N: Network> Block<N> {
                     &self.solutions,
                     &self.transactions,
                     &self.aborted_transaction_ids,
-                )?;
+                )?
             }
-        }
+        };
 
         // Determine the expected timestamp.
         let expected_timestamp = match &self.authority {
@@ -215,7 +221,7 @@ impl<N: Network> Block<N> {
         };
 
         // Return success.
-        Ok((expected_round, expected_height, expected_timestamp))
+        Ok((expected_round, expected_height, expected_timestamp, expected_existing_transaction_ids))
     }
 
     /// Ensures the block ratifications are correct.
@@ -483,7 +489,7 @@ impl<N: Network> Block<N> {
         solutions: &Option<CoinbaseSolution<N>>,
         transactions: &Transactions<N>,
         aborted_transaction_ids: &[N::TransactionID],
-    ) -> Result<()> {
+    ) -> Result<Vec<N::TransactionID>> {
         // Prepare an iterator over the solution IDs.
         let mut solutions = solutions.as_ref().map(|s| s.deref()).into_iter().flatten().peekable();
         // Prepare an iterator over the unconfirmed transaction IDs.
@@ -551,6 +557,13 @@ impl<N: Network> Block<N> {
             }
         }
 
-        Ok(())
+        // Retrieve the transaction ids that should already exist in the ledger.
+        let existing_transaction_ids: Vec<_> = aborted_or_existing_transaction_ids
+            .iter()
+            .filter(|id| aborted_transaction_ids.contains(id))
+            .copied()
+            .collect();
+
+        Ok(existing_transaction_ids)
     }
 }
