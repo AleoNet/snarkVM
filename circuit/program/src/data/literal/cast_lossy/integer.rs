@@ -130,15 +130,15 @@ mod tests {
         fn test_i8_to_address() {
             check_cast_lossy::<Address<Circuit>, console_root::types::Address<Testnet3>>(
                 Mode::Constant,
-                count_less_than!(298, 0, 0, 0),
+                count_less_than!(551, 0, 0, 0),
             );
             check_cast_lossy::<Address<Circuit>, console_root::types::Address<Testnet3>>(
                 Mode::Public,
-                count_is!(277, 0, 396, 400),
+                count_is!(277, 0, 899, 904),
             );
             check_cast_lossy::<Address<Circuit>, console_root::types::Address<Testnet3>>(
                 Mode::Private,
-                count_is!(277, 0, 396, 400),
+                count_is!(277, 0, 899, 904),
             );
         }
 
@@ -178,15 +178,15 @@ mod tests {
         fn test_i8_to_group() {
             check_cast_lossy::<Group<Circuit>, console_root::types::Group<Testnet3>>(
                 Mode::Constant,
-                count_less_than!(298, 0, 0, 0),
+                count_less_than!(551, 0, 0, 0),
             );
             check_cast_lossy::<Group<Circuit>, console_root::types::Group<Testnet3>>(
                 Mode::Public,
-                count_is!(277, 0, 396, 400),
+                count_is!(277, 0, 899, 904),
             );
             check_cast_lossy::<Group<Circuit>, console_root::types::Group<Testnet3>>(
                 Mode::Private,
-                count_is!(277, 0, 396, 400),
+                count_is!(277, 0, 899, 904),
             );
         }
 
@@ -306,15 +306,15 @@ mod tests {
         fn test_i16_to_address() {
             check_cast_lossy::<Address<Circuit>, console_root::types::Address<Testnet3>>(
                 Mode::Constant,
-                count_less_than!(298, 0, 0, 0),
+                count_less_than!(551, 0, 0, 0),
             );
             check_cast_lossy::<Address<Circuit>, console_root::types::Address<Testnet3>>(
                 Mode::Public,
-                count_is!(277, 0, 396, 400),
+                count_is!(277, 0, 899, 904),
             );
             check_cast_lossy::<Address<Circuit>, console_root::types::Address<Testnet3>>(
                 Mode::Private,
-                count_is!(277, 0, 396, 400),
+                count_is!(277, 0, 899, 904),
             );
         }
 
@@ -354,15 +354,15 @@ mod tests {
         fn test_i16_to_group() {
             check_cast_lossy::<Group<Circuit>, console_root::types::Group<Testnet3>>(
                 Mode::Constant,
-                count_less_than!(298, 0, 0, 0),
+                count_less_than!(551, 0, 0, 0),
             );
             check_cast_lossy::<Group<Circuit>, console_root::types::Group<Testnet3>>(
                 Mode::Public,
-                count_is!(277, 0, 396, 400),
+                count_is!(277, 0, 899, 904),
             );
             check_cast_lossy::<Group<Circuit>, console_root::types::Group<Testnet3>>(
                 Mode::Private,
-                count_is!(277, 0, 396, 400),
+                count_is!(277, 0, 899, 904),
             );
         }
 
@@ -482,15 +482,15 @@ mod tests {
         fn test_i32_to_address() {
             check_cast_lossy::<Address<Circuit>, console_root::types::Address<Testnet3>>(
                 Mode::Constant,
-                count_less_than!(298, 0, 0, 0),
+                count_less_than!(551, 0, 0, 0),
             );
             check_cast_lossy::<Address<Circuit>, console_root::types::Address<Testnet3>>(
                 Mode::Public,
-                count_is!(277, 0, 396, 400),
+                count_is!(277, 0, 899, 904),
             );
             check_cast_lossy::<Address<Circuit>, console_root::types::Address<Testnet3>>(
                 Mode::Private,
-                count_is!(277, 0, 396, 400),
+                count_is!(277, 0, 899, 904),
             );
         }
 
@@ -530,15 +530,15 @@ mod tests {
         fn test_i32_to_group() {
             check_cast_lossy::<Group<Circuit>, console_root::types::Group<Testnet3>>(
                 Mode::Constant,
-                count_less_than!(298, 0, 0, 0),
+                count_less_than!(551, 0, 0, 0),
             );
             check_cast_lossy::<Group<Circuit>, console_root::types::Group<Testnet3>>(
                 Mode::Public,
-                count_is!(277, 0, 396, 400),
+                count_is!(277, 0, 899, 904),
             );
             check_cast_lossy::<Group<Circuit>, console_root::types::Group<Testnet3>>(
                 Mode::Private,
-                count_is!(277, 0, 396, 400),
+                count_is!(277, 0, 899, 904),
             );
         }
 
@@ -658,15 +658,15 @@ mod tests {
         fn test_i64_to_address() {
             check_cast_lossy::<Address<Circuit>, console_root::types::Address<Testnet3>>(
                 Mode::Constant,
-                count_less_than!(298, 0, 0, 0),
+                count_less_than!(551, 0, 0, 0),
             );
             check_cast_lossy::<Address<Circuit>, console_root::types::Address<Testnet3>>(
                 Mode::Public,
-                count_is!(277, 0, 396, 400),
+                count_is!(277, 0, 899, 904),
             );
             check_cast_lossy::<Address<Circuit>, console_root::types::Address<Testnet3>>(
                 Mode::Private,
-                count_is!(277, 0, 396, 400),
+                count_is!(277, 0, 899, 904),
             );
         }
 
@@ -706,15 +706,15 @@ mod tests {
         fn test_i64_to_group() {
             check_cast_lossy::<Group<Circuit>, console_root::types::Group<Testnet3>>(
                 Mode::Constant,
-                count_less_than!(298, 0, 0, 0),
+                count_less_than!(551, 0, 0, 0),
             );
             check_cast_lossy::<Group<Circuit>, console_root::types::Group<Testnet3>>(
                 Mode::Public,
-                count_is!(277, 0, 396, 400),
+                count_is!(277, 0, 899, 904),
             );
             check_cast_lossy::<Group<Circuit>, console_root::types::Group<Testnet3>>(
                 Mode::Private,
-                count_is!(277, 0, 396, 400),
+                count_is!(277, 0, 899, 904),
             );
         }
 
@@ -834,15 +834,15 @@ mod tests {
         fn test_i128_to_address() {
             check_cast_lossy::<Address<Circuit>, console_root::types::Address<Testnet3>>(
                 Mode::Constant,
-                count_less_than!(298, 0, 0, 0),
+                count_less_than!(551, 0, 0, 0),
             );
             check_cast_lossy::<Address<Circuit>, console_root::types::Address<Testnet3>>(
                 Mode::Public,
-                count_is!(277, 0, 396, 400),
+                count_is!(277, 0, 899, 904),
             );
             check_cast_lossy::<Address<Circuit>, console_root::types::Address<Testnet3>>(
                 Mode::Private,
-                count_is!(277, 0, 396, 400),
+                count_is!(277, 0, 899, 904),
             );
         }
 
@@ -882,15 +882,15 @@ mod tests {
         fn test_i128_to_group() {
             check_cast_lossy::<Group<Circuit>, console_root::types::Group<Testnet3>>(
                 Mode::Constant,
-                count_less_than!(298, 0, 0, 0),
+                count_less_than!(551, 0, 0, 0),
             );
             check_cast_lossy::<Group<Circuit>, console_root::types::Group<Testnet3>>(
                 Mode::Public,
-                count_is!(277, 0, 396, 400),
+                count_is!(277, 0, 899, 904),
             );
             check_cast_lossy::<Group<Circuit>, console_root::types::Group<Testnet3>>(
                 Mode::Private,
-                count_is!(277, 0, 396, 400),
+                count_is!(277, 0, 899, 904),
             );
         }
 
@@ -1006,15 +1006,15 @@ mod tests {
         fn test_u8_to_address() {
             check_cast_lossy::<Address<Circuit>, console_root::types::Address<Testnet3>>(
                 Mode::Constant,
-                count_less_than!(298, 0, 0, 0),
+                count_less_than!(551, 0, 0, 0),
             );
             check_cast_lossy::<Address<Circuit>, console_root::types::Address<Testnet3>>(
                 Mode::Public,
-                count_is!(277, 0, 396, 400),
+                count_is!(277, 0, 899, 904),
             );
             check_cast_lossy::<Address<Circuit>, console_root::types::Address<Testnet3>>(
                 Mode::Private,
-                count_is!(277, 0, 396, 400),
+                count_is!(277, 0, 899, 904),
             );
         }
 
@@ -1054,15 +1054,15 @@ mod tests {
         fn test_u8_to_group() {
             check_cast_lossy::<Group<Circuit>, console_root::types::Group<Testnet3>>(
                 Mode::Constant,
-                count_less_than!(298, 0, 0, 0),
+                count_less_than!(551, 0, 0, 0),
             );
             check_cast_lossy::<Group<Circuit>, console_root::types::Group<Testnet3>>(
                 Mode::Public,
-                count_is!(277, 0, 396, 400),
+                count_is!(277, 0, 899, 904),
             );
             check_cast_lossy::<Group<Circuit>, console_root::types::Group<Testnet3>>(
                 Mode::Private,
-                count_is!(277, 0, 396, 400),
+                count_is!(277, 0, 899, 904),
             );
         }
 
@@ -1182,15 +1182,15 @@ mod tests {
         fn test_u16_to_address() {
             check_cast_lossy::<Address<Circuit>, console_root::types::Address<Testnet3>>(
                 Mode::Constant,
-                count_less_than!(298, 0, 0, 0),
+                count_less_than!(551, 0, 0, 0),
             );
             check_cast_lossy::<Address<Circuit>, console_root::types::Address<Testnet3>>(
                 Mode::Public,
-                count_is!(277, 0, 396, 400),
+                count_is!(277, 0, 899, 904),
             );
             check_cast_lossy::<Address<Circuit>, console_root::types::Address<Testnet3>>(
                 Mode::Private,
-                count_is!(277, 0, 396, 400),
+                count_is!(277, 0, 899, 904),
             );
         }
 
@@ -1230,15 +1230,15 @@ mod tests {
         fn test_u16_to_group() {
             check_cast_lossy::<Group<Circuit>, console_root::types::Group<Testnet3>>(
                 Mode::Constant,
-                count_less_than!(298, 0, 0, 0),
+                count_less_than!(551, 0, 0, 0),
             );
             check_cast_lossy::<Group<Circuit>, console_root::types::Group<Testnet3>>(
                 Mode::Public,
-                count_is!(277, 0, 396, 400),
+                count_is!(277, 0, 899, 904),
             );
             check_cast_lossy::<Group<Circuit>, console_root::types::Group<Testnet3>>(
                 Mode::Private,
-                count_is!(277, 0, 396, 400),
+                count_is!(277, 0, 899, 904),
             );
         }
 
@@ -1358,15 +1358,15 @@ mod tests {
         fn test_u32_to_address() {
             check_cast_lossy::<Address<Circuit>, console_root::types::Address<Testnet3>>(
                 Mode::Constant,
-                count_less_than!(298, 0, 0, 0),
+                count_less_than!(551, 0, 0, 0),
             );
             check_cast_lossy::<Address<Circuit>, console_root::types::Address<Testnet3>>(
                 Mode::Public,
-                count_is!(277, 0, 396, 400),
+                count_is!(277, 0, 899, 904),
             );
             check_cast_lossy::<Address<Circuit>, console_root::types::Address<Testnet3>>(
                 Mode::Private,
-                count_is!(277, 0, 396, 400),
+                count_is!(277, 0, 899, 904),
             );
         }
 
@@ -1406,15 +1406,15 @@ mod tests {
         fn test_u32_to_group() {
             check_cast_lossy::<Group<Circuit>, console_root::types::Group<Testnet3>>(
                 Mode::Constant,
-                count_less_than!(298, 0, 0, 0),
+                count_less_than!(551, 0, 0, 0),
             );
             check_cast_lossy::<Group<Circuit>, console_root::types::Group<Testnet3>>(
                 Mode::Public,
-                count_is!(277, 0, 396, 400),
+                count_is!(277, 0, 899, 904),
             );
             check_cast_lossy::<Group<Circuit>, console_root::types::Group<Testnet3>>(
                 Mode::Private,
-                count_is!(277, 0, 396, 400),
+                count_is!(277, 0, 899, 904),
             );
         }
 
@@ -1534,15 +1534,15 @@ mod tests {
         fn test_u64_to_address() {
             check_cast_lossy::<Address<Circuit>, console_root::types::Address<Testnet3>>(
                 Mode::Constant,
-                count_less_than!(298, 0, 0, 0),
+                count_less_than!(551, 0, 0, 0),
             );
             check_cast_lossy::<Address<Circuit>, console_root::types::Address<Testnet3>>(
                 Mode::Public,
-                count_is!(277, 0, 396, 400),
+                count_is!(277, 0, 899, 904),
             );
             check_cast_lossy::<Address<Circuit>, console_root::types::Address<Testnet3>>(
                 Mode::Private,
-                count_is!(277, 0, 396, 400),
+                count_is!(277, 0, 899, 904),
             );
         }
 
@@ -1582,15 +1582,15 @@ mod tests {
         fn test_u64_to_group() {
             check_cast_lossy::<Group<Circuit>, console_root::types::Group<Testnet3>>(
                 Mode::Constant,
-                count_less_than!(298, 0, 0, 0),
+                count_less_than!(551, 0, 0, 0),
             );
             check_cast_lossy::<Group<Circuit>, console_root::types::Group<Testnet3>>(
                 Mode::Public,
-                count_is!(277, 0, 396, 400),
+                count_is!(277, 0, 899, 904),
             );
             check_cast_lossy::<Group<Circuit>, console_root::types::Group<Testnet3>>(
                 Mode::Private,
-                count_is!(277, 0, 396, 400),
+                count_is!(277, 0, 899, 904),
             );
         }
 
@@ -1710,15 +1710,15 @@ mod tests {
         fn test_u128_to_address() {
             check_cast_lossy::<Address<Circuit>, console_root::types::Address<Testnet3>>(
                 Mode::Constant,
-                count_less_than!(298, 0, 0, 0),
+                count_less_than!(551, 0, 0, 0),
             );
             check_cast_lossy::<Address<Circuit>, console_root::types::Address<Testnet3>>(
                 Mode::Public,
-                count_is!(277, 0, 396, 400),
+                count_is!(277, 0, 899, 904),
             );
             check_cast_lossy::<Address<Circuit>, console_root::types::Address<Testnet3>>(
                 Mode::Private,
-                count_is!(277, 0, 396, 400),
+                count_is!(277, 0, 899, 904),
             );
         }
 
@@ -1758,15 +1758,15 @@ mod tests {
         fn test_u128_to_group() {
             check_cast_lossy::<Group<Circuit>, console_root::types::Group<Testnet3>>(
                 Mode::Constant,
-                count_less_than!(298, 0, 0, 0),
+                count_less_than!(551, 0, 0, 0),
             );
             check_cast_lossy::<Group<Circuit>, console_root::types::Group<Testnet3>>(
                 Mode::Public,
-                count_is!(277, 0, 396, 400),
+                count_is!(277, 0, 899, 904),
             );
             check_cast_lossy::<Group<Circuit>, console_root::types::Group<Testnet3>>(
                 Mode::Private,
-                count_is!(277, 0, 396, 400),
+                count_is!(277, 0, 899, 904),
             );
         }
 

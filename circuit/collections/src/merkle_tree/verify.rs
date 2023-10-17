@@ -151,12 +151,12 @@ mod tests {
 
     #[test]
     fn test_verify_bhp512_public() -> Result<()> {
-        check_verify!(BHP1024, BHP512, Public, 32, 1024, (13501, 0, 61938, 62067))
+        check_verify!(BHP1024, BHP512, Public, 32, 1024, (13501, 0, 61938, 62066))
     }
 
     #[test]
     fn test_verify_bhp512_private() -> Result<()> {
-        check_verify!(BHP1024, BHP512, Private, 32, 1024, (13501, 0, 61938, 62067))
+        check_verify!(BHP1024, BHP512, Private, 32, 1024, (13501, 0, 61938, 62066))
     }
 
     #[test]
@@ -166,11 +166,11 @@ mod tests {
 
     #[test]
     fn test_verify_poseidon2_public() -> Result<()> {
-        check_verify!(Poseidon4, Poseidon2, Public, 32, 4, (33, 0, 18046, 18047))
+        check_verify!(Poseidon4, Poseidon2, Public, 32, 4, (33, 0, 18046, 18046))
     }
 
     #[test]
     fn test_verify_poseidon2_private() -> Result<()> {
-        check_verify!(Poseidon4, Poseidon2, Private, 32, 4, (33, 0, 18046, 18047))
+        check_verify!(Poseidon4, Poseidon2, Private, 32, 4, (33, 0, 18046, 18046))
     }
 }

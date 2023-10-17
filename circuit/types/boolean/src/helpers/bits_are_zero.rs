@@ -14,9 +14,14 @@
 
 use super::*;
 
-pub mod adder;
-pub mod bits_are_zero;
-pub mod comparator;
-pub mod from_bits;
-pub mod subtractor;
-pub mod to_bits;
+impl<E: Environment> Boolean<E> {
+    /// Asserts that all bits in `bits_le` are zero.
+    #[doc(hidden)]
+    pub fn assert_bits_are_zero(bits_le: &[Boolean<E>]) {
+        let mut sum = Self::constant(false).0;
+        for bit in bits_le {
+            sum += &**bit;
+        }
+        E::assert_eq(sum, E::zero());
+    }
+}

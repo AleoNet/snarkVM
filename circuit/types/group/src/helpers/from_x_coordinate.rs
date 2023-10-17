@@ -62,16 +62,16 @@ mod tests {
 
     #[test]
     fn test_from_x_coordinate_constant() {
-        check_from_x_coordinate(Mode::Constant, 11, 0, 0, 0);
+        check_from_x_coordinate(Mode::Constant, 9, 0, 0, 0);
     }
 
     #[test]
     fn test_from_x_coordinate_public() {
-        check_from_x_coordinate(Mode::Public, 4, 0, 15, 13);
+        check_from_x_coordinate(Mode::Public, 4, 0, 13, 13);
     }
 
     #[test]
     fn test_from_x_coordinate_private() {
-        check_from_x_coordinate(Mode::Private, 4, 0, 15, 13);
+        check_from_x_coordinate(Mode::Private, 4, 0, 13, 13);
     }
 }

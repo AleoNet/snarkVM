@@ -88,14 +88,14 @@ mod tests {
             Circuit::scope(&format!("Constant and Public Equals {i}"), || {
                 let equals = a.is_equal(&b);
                 assert!(!equals.eject_value());
-                assert_scope!(0, 0, 5, 7);
+                assert_scope!(0, 0, 5, 5);
             });
             Circuit::reset();
 
             Circuit::scope(&format!("Constant and Public Not Equals {i}"), || {
                 let equals = a.is_not_equal(&b);
                 assert!(equals.eject_value());
-                assert_scope!(0, 0, 5, 7);
+                assert_scope!(0, 0, 5, 5);
             });
             Circuit::reset();
         }
@@ -112,14 +112,14 @@ mod tests {
             Circuit::scope(&format!("Public and Constant Equals {i}"), || {
                 let equals = a.is_equal(&b);
                 assert!(!equals.eject_value());
-                assert_scope!(0, 0, 5, 7);
+                assert_scope!(0, 0, 5, 5);
             });
             Circuit::reset();
 
             Circuit::scope(&format!("Public and Constant Not Equals {i}"), || {
                 let equals = a.is_not_equal(&b);
                 assert!(equals.eject_value());
-                assert_scope!(0, 0, 5, 7);
+                assert_scope!(0, 0, 5, 5);
             });
             Circuit::reset();
         }
@@ -136,14 +136,14 @@ mod tests {
             Circuit::scope(&format!("Public Equals {i}"), || {
                 let equals = a.is_equal(&b);
                 assert!(!equals.eject_value());
-                assert_scope!(0, 0, 5, 7);
+                assert_scope!(0, 0, 5, 5);
             });
             Circuit::reset();
 
             Circuit::scope(&format!("Public Not Equals {i}"), || {
                 let equals = a.is_not_equal(&b);
                 assert!(equals.eject_value());
-                assert_scope!(0, 0, 5, 7);
+                assert_scope!(0, 0, 5, 5);
             });
             Circuit::reset();
         }
@@ -160,14 +160,14 @@ mod tests {
             Circuit::scope(&format!("Private Equals {i}"), || {
                 let equals = a.is_equal(&b);
                 assert!(!equals.eject_value());
-                assert_scope!(0, 0, 5, 7);
+                assert_scope!(0, 0, 5, 5);
             });
             Circuit::reset();
 
             Circuit::scope(&format!("Private Not Equals {i}"), || {
                 let equals = a.is_not_equal(&b);
                 assert!(equals.eject_value());
-                assert_scope!(0, 0, 5, 7);
+                assert_scope!(0, 0, 5, 5);
             });
             Circuit::reset();
         }

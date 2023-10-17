@@ -3016,6 +3016,7 @@ dependencies = [
  "snarkvm-ledger-narwhal",
  "snarkvm-ledger-query",
  "snarkvm-ledger-store",
+ "snarkvm-ledger-test-helpers",
  "snarkvm-synthesizer",
  "time",
  "tracing",
