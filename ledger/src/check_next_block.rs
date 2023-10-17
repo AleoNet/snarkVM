@@ -91,6 +91,10 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         // Speculate over the unconfirmed transactions.
         let (ratifications, confirmed_transactions, aborted_transaction_ids, ratified_finalize_operations) =
             self.vm.speculate(state, &candidate_ratifications, block.solutions(), unconfirmed_transactions.iter())?;
+        // Ensure there are no aborted transaction IDs from this speculation.
+        // Note: There should be no aborted transactions, because we are checking a block,
+        // where any aborted transactions should be in the aborted transaction ID list, not in transactions.
+        ensure!(aborted_transaction_ids.is_empty(), "Aborted transactions found in the block (from speculation)");
 
         // Ensure the ratifications after speculation match.
         if block.ratifications() != &ratifications {
@@ -109,7 +113,6 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             self.coinbase_puzzle(),
             &self.latest_epoch_challenge()?,
             OffsetDateTime::now_utc().unix_timestamp(),
-            aborted_transaction_ids,
             ratified_finalize_operations,
         )?;
 
