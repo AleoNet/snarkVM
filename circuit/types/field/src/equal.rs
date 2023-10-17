@@ -13,7 +13,6 @@
 // limitations under the License.
 
 use super::*;
-use snarkvm_circuit_environment::Private;
 
 impl<E: Environment> Equal<Self> for Field<E> {
     type Output = Boolean<E>;
@@ -36,61 +35,80 @@ impl<E: Environment> Equal<Self> for Field<E> {
     /// This method costs 2 constraints.
     ///
     fn is_not_equal(&self, other: &Self) -> Self::Output {
-        // In all cases, the witness ("ejected") value is calculated from the ejected values.
+        // Initialize a (console) boolean that is `true` if `this` and `that` are not equivalent.
         let is_neq_ejected = self.eject_value() != other.eject_value();
 
         match (self.is_constant(), other.is_constant()) {
-            // If both operands are constant, the result is also constant.
+            // If both operands are 'Constant', the result is also 'Constant'.
             (true, true) => Boolean::new(Mode::Constant, is_neq_ejected),
-
-            // Otherwise, we introduce a private field variable is_neq for the result,
-            // along with an auxiliary variable multiplier for the inverse of the difference between the operands,
-            // and enforce the following constraints:
-            // 1.  (self - other) (multiplier) = (is_neq)
-            // 2.  (self - other) (1 - is_neq) = (0)
-            // These constraints imply that is_neq is boolean, i.e. either 0 or 1 (see below);
-            // so we avoid creating is_neq as a Boolean, which would generate an unneeded boolean constraint.
-            //
-            // The specification of this circuit is the calculation of field inequality:
-            //   is_neq = [IF self = other THEN 0 ELSE 1]
-            // i.e. the result is_neq is 0 if the two operands are equal, 1 if they are not equal.
-            //
-            // The correctness of the circuit, i.e. its equivalence to the specification, is proved as follows.
-            //
-            // Soundness: the constraints imply the specification,
-            // i.e. every solution of the constraints corresponds to a correct computation of field inequality.
-            // - If self = other, constraint 1 implies is_neq = 0, consistently with the specification,
-            // - If self != other, constraint 2 implies (1 - is_neq) = 0, i.e. is_neq = 1, consistently with the specification.
-            //
-            // Completeness: the specification implies the constraints,
-            // i.e. the constraints are satisfiable for every correct computation of field inequality.
-            // - If self = other, constraint 2 reduces to 0 = 0.
-            //   The specification implies is_neq = 0, and constraint 1 reduces to 0 = 0,
-            //   regardless of the choice of multiplier.
-            // - If self != other, the specification implies is_neq = 1,
-            //   which reduces constraint 2 to 0 = 0 and constraint 1 to (self - other) (multiplier) = 1,
-            //   which is satisfied by choosing multiplier = 1 / (self - other),
-            //   which is well-defined because (self - other) != 0.
-            //
-            // Thus the circuit is equivalent to the specification.
-            // Since the specification implies that is_neq is either 0 or 1,
-            // the circuit does not need a boolean constraint for is_neq, as mentioned above.
             _ => {
+                // Inequality Enforcement
+                // ----------------------------------------------------------------
+                // Check 1:  (a - b) * multiplier = is_neq
+                // Check 2:  (a - b) * (1 - is_neq) = 0
+                //
+                //
+                // Case 1: a == b AND is_neq == 0 (honest)
+                // ----------------------------------------------------------------
+                // Check 1:  (a - b) * multiplier = 0
+                //                 0 * multiplier = 0
+                //                              0 = 0
+                // => The constraint is satisfied.
+                //
+                // Check 2:  (a - b) * (1 - 0) = 0
+                //                       0 * 1 = 0
+                //                           0 = 0
+                // => The constraint is satisfied.
+                //
+                //
+                // Case 2: a == b AND is_neq != 0 (dishonest)
+                // ----------------------------------------------------------------
+                // Check 1:  (a - b) * multiplier = is_neq
+                //                 0 * multiplier = is_neq
+                //                              0 = is_neq
+                // => As is_neq != 0, the constraint is not satisfied.
+                //
+                //
+                // Case 3: a != b AND is_neq != 1 (dishonest).
+                // ----------------------------------------------------------------
+                // Check 2:  (a - b) * (1 - is_neq) = 0
+                //                     (1 - is_neq) = 0
+                // => As is_neq != 1, the constraint is not satisfied.
+                //
+                //
+                // Case 4a: a != b AND is_neq == 1 AND multiplier = n [!= (a - b)^(-1)] (dishonest)
+                // ---------------------------------------------------------------------------------
+                // Check 1:  (a - b) * n = 1
+                // => As n != (a - b)^(-1), the constraint is not satisfied.
+                //
+                //
+                // Case 4b: a != b AND is_neq == 1 AND multiplier = (a - b)^(-1) (honest)
+                // ---------------------------------------------------------------------------------
+                // Check 1:  (a - b) * (a - b)^(-1) = 1
+                //                                1 = 1
+                // => The constraint is satisfied.
+                //
+                // Check 2:  (a - b) * (1 - 1) = 0
+                //                 (a - b) * 0 = 0
+                //                           0 = 0
+                // => The constraint is satisfied.
+                //
+                //
+                // Observe that in both of the honest cases, `is_neq` is always 0 or 1.
 
-                // Allocate a new R1CS field variable for the result.
-                // Its value is 1 if self and other are not equal, 0 if equal.
+                // Witness a boolean that is `true` if `this` and `that` are not equivalent.
                 let is_neq = Boolean::from_variable(E::new_variable(Mode::Private, match is_neq_ejected {
                     true => E::BaseField::one(),
                     false => E::BaseField::zero(),
                 }));
 
-                // Calculate a linear combination that is the difference of self and other.
+                // Compute `self` - `other`.
                 let delta = self - other;
 
-                // Introduce an internal variable multiplier (see constraints above).
-                // Its value is the inverse of self - other is they are not equal,
-                // otherwise its value is irrelevant to the satisfaction of the constraints,
-                // and we just pick 1 in that case.
+                // Assign the expected multiplier as a witness.
+                //
+                // Note: the inverse of `delta` is not guaranteed to exist, and if it does not,
+                // we pick 1 as the multiplier, as its value is irrelevant to satisfy the constraints.
                 let multiplier: Field<E> = witness!(|delta| {
                     match delta.inverse() {
                         Ok(inverse) => inverse,
@@ -98,16 +116,16 @@ impl<E: Environment> Equal<Self> for Field<E> {
                     }
                 });
 
-                // Calculate is_eq = 1 - is_neq.
+                // Negate `is_neq`.
                 let is_eq = !is_neq.clone();
 
-                // Enforce 1st constraint (see above).
+                // Check 1: (a - b) * multiplier = is_neq
                 E::enforce(|| (&delta, &multiplier, &is_neq));
 
-                // Enforce 2nd constraint (see above).
+                // Check 2: (a - b) * not(is_neq) = 0
                 E::enforce(|| (delta, is_eq, E::zero()));
 
-                // Return result.
+                // Return `is_neq`.
                 is_neq
             }
         }

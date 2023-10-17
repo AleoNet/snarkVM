@@ -184,6 +184,8 @@ impl<N: Network> Process<N> {
             // Note: This unwrap is safe, as we are processing transitions in post-order,
             // which implies that all child transition IDs have been added to `transition_map`.
             let transition: &&Transition<N> = transition_map.get(transition_id).unwrap();
+            // [Inputs] Extend the verifier inputs with the transition commitment of the external call.
+            inputs.extend([**transition.tcm()]);
             // [Inputs] Extend the verifier inputs with the input IDs of the external call.
             inputs.extend(transition.inputs().iter().flat_map(|input| input.verifier_inputs()));
             // [Inputs] Extend the verifier inputs with the output IDs of the external call.

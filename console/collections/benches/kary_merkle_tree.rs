@@ -25,8 +25,8 @@ use snarkvm_console_types::Field;
 
 use criterion::Criterion;
 
-const DEPTH: u8 = 10;
-const ARITY: u8 = 4;
+const DEPTH: u8 = 8;
+const ARITY: u8 = 8;
 
 /// Generates the specified number of random Merkle tree leaves.
 macro_rules! generate_leaves {

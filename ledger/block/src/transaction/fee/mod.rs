@@ -124,6 +124,15 @@ impl<N: Network> Fee<N> {
         }
     }
 
+    /// Returns the number of finalize operations.
+    pub fn num_finalize_operations(&self) -> usize {
+        // These values are empirically determined for performance.
+        match self.is_fee_public() {
+            true => 1,
+            false => 0,
+        }
+    }
+
     /// Returns the transition ID.
     pub fn transition_id(&self) -> &N::TransitionID {
         self.transition.id()

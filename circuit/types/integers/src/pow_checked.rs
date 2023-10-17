@@ -60,7 +60,7 @@ impl<E: Environment, I: IntegerType, M: Magnitude> PowChecked<Integer<E, M>> for
 
                 let result_times_self = if I::is_signed() {
                     // Multiply the absolute value of `self` and `other` in the base field.
-                    // Note that it is safe to use abs_wrapped since we want Integer::MIN to be interpreted as an unsigned number.
+                    // Note: it is safe to use `abs_wrapped` since we want `Integer::MIN` to be interpreted as an unsigned number.
                     let (product, overflow) = Self::mul_with_flags(&(&result).abs_wrapped(), &self.abs_wrapped());
 
                     // If the product should be positive, then it cannot exceed the signed maximum.
@@ -126,7 +126,7 @@ impl<E: Environment, I: IntegerType> Integer<E, I> {
             let z_1_upper_field = Field::from_bits_le(&z_1_upper_bits);
             // Compute whether the sum of z_1_field and z_2 is zero.
             let z_1_upper_field_plus_z_2 = &z_1_upper_field + &z2;
-            let flag = z_1_upper_field_plus_z_2.is_equal(&Field::zero());
+            let flag = z_1_upper_field_plus_z_2.is_not_equal(&Field::zero());
 
             // Return the product of `self` and `other` and the overflow flag.
             (product, flag)
@@ -139,7 +139,7 @@ impl<E: Environment, I: IntegerType> Integer<E, I> {
 impl<E: Environment, I: IntegerType, M: Magnitude> Metrics<dyn PowChecked<Integer<E, M>, Output = Integer<E, I>>>
     for Integer<E, I>
 {
-    type Case = (Mode, Mode);
+    type Case = (Mode, Mode, bool, bool);
 
     fn count(case: &Self::Case) -> Count {
         match (case.0, case.1) {

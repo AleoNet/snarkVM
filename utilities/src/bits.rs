@@ -117,6 +117,24 @@ to_bits_tuple!((C0, 0), (C1, 1), (C2, 2), (C3, 3), (C4, 4), (C5, 5), (C6, 6), (C
 to_bits_tuple!((C0, 0), (C1, 1), (C2, 2), (C3, 3), (C4, 4), (C5, 5), (C6, 6), (C7, 7), (C8, 8), (C9, 9), (C10, 10));
 
 /********************/
+/****** Boolean *****/
+/********************/
+
+impl ToBits for bool {
+    /// A helper method to return a concatenated list of little-endian bits.
+    #[inline]
+    fn write_bits_le(&self, vec: &mut Vec<bool>) {
+        vec.push(*self);
+    }
+
+    /// A helper method to return a concatenated list of big-endian bits.
+    #[inline]
+    fn write_bits_be(&self, vec: &mut Vec<bool>) {
+        vec.push(*self);
+    }
+}
+
+/********************/
 /***** Integers *****/
 /********************/
 

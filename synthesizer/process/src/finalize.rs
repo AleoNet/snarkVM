@@ -60,7 +60,7 @@ impl<N: Network> Process<N> {
             // Iterate over the mappings.
             for mapping in deployment.program().mappings().values() {
                 // Initialize the mapping.
-                finalize_operations.push(store.initialize_mapping(program_id, mapping.name())?);
+                finalize_operations.push(store.initialize_mapping(*program_id, *mapping.name())?);
             }
             finish!(timer, "Initialize the program mappings");
 

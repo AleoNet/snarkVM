@@ -55,7 +55,7 @@ fn get_mapping_value<N: Network>(
     let mapping = Identifier::from_str(mapping)?;
     let key = Plaintext::from(key);
     // Retrieve the value from the finalize store.
-    match store.get_value_speculative(&program_id, &mapping, &key) {
+    match store.get_value_speculative(program_id, mapping, &key) {
         Ok(result) => Ok(result),
         Err(err) => bail!("Error getting value for program_id: {program_id}, mapping: {mapping}, key: {key}: {err}"),
     }
@@ -168,7 +168,7 @@ fn initialize_stakers<N: Network>(
         // Ensure that all mappings are initialized.
         if !finalize_store.contains_mapping_confirmed(program.id(), mapping.name())? {
             // Initialize the mappings for 'credits.aleo'.
-            finalize_store.initialize_mapping(program.id(), mapping.name())?;
+            finalize_store.initialize_mapping(*program.id(), *mapping.name())?;
         }
     }
 
@@ -187,7 +187,7 @@ fn initialize_stakers<N: Network>(
         // Add the balance directly to the finalize store.
         let key = Plaintext::from(Literal::Address(address));
         let value = Value::from(Literal::U64(U64::new(balance)));
-        finalize_store.insert_key_value(program.id(), &mapping, key, value)?;
+        finalize_store.insert_key_value(*program.id(), mapping, key, value)?;
         assert_eq!(balance, account_balance(finalize_store, &address).unwrap());
 
         // Store the validator or delegator.
@@ -1536,9 +1536,9 @@ mod sanity_checks {
         // Compute the assignment.
         let assignment = get_assignment::<_, CurrentAleo>(stack, &private_key, function_name, &[r0, r1, r2], rng);
         assert_eq!(15, assignment.num_public());
-        assert_eq!(55698, assignment.num_private());
-        assert_eq!(55761, assignment.num_constraints());
-        assert_eq!((90368, 132045, 84980), assignment.num_nonzeros());
+        assert_eq!(50685, assignment.num_private());
+        assert_eq!(50731, assignment.num_constraints());
+        assert_eq!((98549, 109771, 77343), assignment.num_nonzeros());
     }
 
     #[test]
@@ -1564,9 +1564,9 @@ mod sanity_checks {
         // Compute the assignment.
         let assignment = get_assignment::<_, CurrentAleo>(stack, &private_key, function_name, &[r0, r1], rng);
         assert_eq!(10, assignment.num_public());
-        assert_eq!(17060, assignment.num_private());
-        assert_eq!(17079, assignment.num_constraints());
-        assert_eq!((31415, 45962, 24042), assignment.num_nonzeros());
+        assert_eq!(12047, assignment.num_private());
+        assert_eq!(12054, assignment.num_constraints());
+        assert_eq!((27252, 36305, 16409), assignment.num_nonzeros());
     }
 
     #[test]
@@ -1597,9 +1597,9 @@ mod sanity_checks {
         // Compute the assignment.
         let assignment = get_assignment::<_, CurrentAleo>(stack, &private_key, function_name, &[r0, r1, r2], rng);
         assert_eq!(13, assignment.num_public());
-        assert_eq!(42246, assignment.num_private());
-        assert_eq!(42300, assignment.num_constraints());
-        assert_eq!((66299, 94273, 63714), assignment.num_nonzeros());
+        assert_eq!(37233, assignment.num_private());
+        assert_eq!(37268, assignment.num_constraints());
+        assert_eq!((69687, 76790, 56079), assignment.num_nonzeros());
     }
 
     #[test]
@@ -1624,8 +1624,8 @@ mod sanity_checks {
         // Compute the assignment.
         let assignment = get_assignment::<_, CurrentAleo>(stack, &private_key, function_name, &[r0, r1], rng);
         assert_eq!(10, assignment.num_public());
-        assert_eq!(17051, assignment.num_private());
-        assert_eq!(17074, assignment.num_constraints());
-        assert_eq!((31285, 45446, 24030), assignment.num_nonzeros());
+        assert_eq!(12038, assignment.num_private());
+        assert_eq!(12047, assignment.num_constraints());
+        assert_eq!((27118, 35787, 16397), assignment.num_nonzeros());
     }
 }
