@@ -560,7 +560,7 @@ impl<N: Network> Block<N> {
         // Retrieve the transaction ids that should already exist in the ledger.
         let existing_transaction_ids: Vec<_> = aborted_or_existing_transaction_ids
             .iter()
-            .filter(|id| aborted_transaction_ids.contains(id))
+            .filter(|id| !aborted_transaction_ids.contains(id))
             .copied()
             .collect();
 
