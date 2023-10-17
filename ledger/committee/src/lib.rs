@@ -47,8 +47,6 @@ impl<N: Network> Committee<N> {
     /// The maximum number of members that may be in a committee.
     pub const MAX_COMMITTEE_SIZE: u16 = 200;
 
-    // members
-
     /// Initializes a new `Committee` instance.
     pub fn new_genesis(members: IndexMap<Address<N>, (u64, bool)>) -> Result<Self> {
         // Ensure there are exactly 4 members.
