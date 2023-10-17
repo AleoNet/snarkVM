@@ -3398,6 +3398,7 @@ dependencies = [
  "snarkvm-console",
  "snarkvm-curves",
  "snarkvm-fields",
+ "snarkvm-parameters",
  "snarkvm-synthesizer",
  "snarkvm-utilities",
  "wasm-bindgen",

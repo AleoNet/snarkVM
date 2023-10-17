@@ -93,15 +93,22 @@ optional = true
 version = "0.2"
 features = [ "js" ]
 
-[dev-dependencies.wasm-bindgen-test]
-version = "0.3.37"
-
 [dev-dependencies.snarkvm-algorithms]
 path = "../algorithms"
 features = [ "wasm" ]
 
 [dev-dependencies.snarkvm-circuit-network]
 path = "../circuit/network"
+
+[dev-dependencies.snarkvm-parameters]
+path = "../parameters"
+version = "=0.15.4"
+features = [ "wasm" ]
+
+[dev-dependencies.wasm-bindgen-test]
+version = "0.3.37"
+
+
 
 [features]
 default = [ "full" ]

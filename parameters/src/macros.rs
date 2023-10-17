@@ -334,6 +334,20 @@ macro_rules! impl_remote {
                 (expected_checksum, expected_size, filename)
             }
 
+            pub fn load_bytes() -> Result<Vec<u8>, $crate::errors::ParameterError> {
+
+                let (_, _, filename) = Self::extract_metadata();
+
+                impl_load_bytes_logic_remote!($remote_url, $local_dir, &filename, remote_fetch);
+            }
+
+            pub async fn load_bytes_async() -> Result<Vec<u8>, $crate::errors::ParameterError> {
+
+                let (_, _, filename) = Self::extract_metadata();
+
+                impl_load_bytes_logic_remote!($remote_url, $local_dir, &filename, remote_fetch_async, await);
+            }
+
             /// Ensure bytes match the expected checksum and size for the power degree.
             pub fn verify_bytes(buffer: &[u8]) -> Result<(), $crate::errors::ParameterError> {
                 let (expected_checksum, expected_size, _) = Self::extract_metadata();
@@ -350,20 +364,6 @@ macro_rules! impl_remote {
                 }
 
                 Ok(())
-            }
-
-            pub fn load_bytes() -> Result<Vec<u8>, $crate::errors::ParameterError> {
-
-                let (_, _, filename) = Self::extract_metadata();
-
-                impl_load_bytes_logic_remote!($remote_url, $local_dir, &filename, remote_fetch);
-            }
-
-            pub async fn load_bytes_async() -> Result<Vec<u8>, $crate::errors::ParameterError> {
-
-                let (_, _, filename) = Self::extract_metadata();
-
-                impl_load_bytes_logic_remote!($remote_url, $local_dir, &filename, remote_fetch_async, await);
             }
         }
 
@@ -400,7 +400,20 @@ macro_rules! impl_remote {
                 (expected_checksum, expected_size, filename)
             }
 
-            /// Ensure downloaded bytes are valid
+            pub fn load_bytes() -> Result<Vec<u8>, $crate::errors::ParameterError> {
+
+                let (_, _, filename) = Self::extract_metadata();
+
+                impl_load_bytes_logic_remote!($remote_url, $local_dir, &filename, remote_fetch);
+            }
+
+            pub async fn load_bytes_async() -> Result<Vec<u8>, $crate::errors::ParameterError> {
+                let (_, _, filename) = Self::extract_metadata();
+
+                impl_load_bytes_logic_remote!($remote_url, $local_dir, &filename, remote_fetch_async, await);
+            }
+
+            /// Ensure downloaded bytes are valid.
             pub fn verify_bytes(buffer: &[u8]) -> Result<(), $crate::errors::ParameterError> {
                 let (expected_checksum, expected_size, _) = Self::extract_metadata();
 
@@ -414,19 +427,6 @@ macro_rules! impl_remote {
                 }
 
                 Ok(())
-            }
-
-            pub fn load_bytes() -> Result<Vec<u8>, $crate::errors::ParameterError> {
-
-                let (_, _, filename) = Self::extract_metadata();
-
-                impl_load_bytes_logic_remote!($remote_url, $local_dir, &filename, remote_fetch);
-            }
-
-            pub async fn load_bytes_async() -> Result<Vec<u8>, $crate::errors::ParameterError> {
-                let (_, _, filename) = Self::extract_metadata();
-
-                impl_load_bytes_logic_remote!($remote_url, $local_dir, &filename, remote_fetch_async, await);
             }
         }
 

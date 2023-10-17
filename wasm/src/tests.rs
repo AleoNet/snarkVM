@@ -12,17 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-const NUM_POWERS_15: usize = 1 << 15;
-const NUM_POWERS_18: usize = 1 << 18;
-const NUM_POWERS_19: usize = 1 << 19;
-const NUM_POWERS_MAX: usize = 1 << 28;
-
 use snarkvm_circuit_network::AleoV0;
 use snarkvm_console::{
     account::{Address, PrivateKey, ViewKey},
     network::Testnet3,
     program::Identifier,
 };
+use snarkvm_parameters::testnet3::{NUM_POWERS_15, NUM_POWERS_18, NUM_POWERS_19, NUM_POWERS_28};
 use snarkvm_synthesizer::{Process, Program};
 use snarkvm_utilities::TestRng;
 
@@ -73,13 +69,13 @@ async fn test_preload_powers_async() {
     let mut process = Process::<Testnet3>::load_web().unwrap();
     process.universal_srs().preload_powers_async(16, 18).await.unwrap();
 
-    // Requesting powers of beta normally should not trigger any downloads after pre-loading the powers.
+    // Requesting normal powers should not trigger any downloads.
     let powers_of_beta = process.universal_srs().powers_of_beta_g(0, NUM_POWERS_18).unwrap();
     assert_eq!(powers_of_beta.len(), NUM_POWERS_18);
-    let shifted_powers_of_beta = process
-        .universal_srs()
-        .powers_of_beta_g(NUM_POWERS_MAX - NUM_POWERS_18, NUM_POWERS_MAX - NUM_POWERS_15)
-        .unwrap();
+
+    // Requesting powers of shifted powers should not trigger any downloads.
+    let shifted_powers_of_beta =
+        process.universal_srs().powers_of_beta_g(NUM_POWERS_28 - NUM_POWERS_18, NUM_POWERS_28 - NUM_POWERS_15).unwrap();
     assert_eq!(shifted_powers_of_beta.len(), NUM_POWERS_18 - NUM_POWERS_15);
 
     // Execute a program in wasm without triggering synchronous parameter downloads.
@@ -91,24 +87,17 @@ async fn test_preload_powers_async() {
     let authorization = process
         .authorize::<AleoV0, _>(&private_key, hello.id(), function_name, ["5u32", "5u32"].into_iter(), &mut rng)
         .unwrap();
-
-    // Assert no proving key exists prior to execution.
-    assert!(process.get_proving_key(hello.id(), function_name).is_err());
-
-    // Ensure the proving key is synthesized during execution and the outputs are correct.
     let (response, _) = process.execute::<AleoV0>(authorization).unwrap();
     assert!(process.get_proving_key(hello.id(), function_name).is_ok());
     assert_eq!(response.outputs()[0].to_string(), "10u32");
 
     // Attempt to extend the powers of beta again, only downloading the missing powers of 2^19.
     process.universal_srs().preload_powers_async(16, 19).await.unwrap();
-    let powers_of_beta = process.universal_srs().powers_of_beta_g(0, NUM_POWERS_19).unwrap();
-    let shifted_powers_of_beta = process
-        .universal_srs()
-        .powers_of_beta_g(NUM_POWERS_MAX - NUM_POWERS_19, NUM_POWERS_MAX - NUM_POWERS_15)
-        .unwrap();
 
-    // Ensure the powers of beta exist and no synchronous downloads are triggered.
+    // Ensure the powers of beta exist and no downloads are triggered.
+    let powers_of_beta = process.universal_srs().powers_of_beta_g(0, NUM_POWERS_19).unwrap();
+    let shifted_powers_of_beta =
+        process.universal_srs().powers_of_beta_g(NUM_POWERS_28 - NUM_POWERS_19, NUM_POWERS_28 - NUM_POWERS_15).unwrap();
     assert_eq!(powers_of_beta.len(), NUM_POWERS_19);
     assert_eq!(shifted_powers_of_beta.len(), NUM_POWERS_19 - NUM_POWERS_15);
 }

@@ -19,7 +19,7 @@ use crate::{
 };
 use snarkvm_curves::{AffineCurve, PairingCurve, PairingEngine, ProjectiveCurve};
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField, Zero};
-use snarkvm_parameters::testnet3::PowersOfG;
+use snarkvm_parameters::testnet3::{PowersOfG, NUM_POWERS_15, NUM_POWERS_16, NUM_POWERS_28};
 use snarkvm_utilities::{
     borrow::Cow,
     error,
@@ -34,11 +34,6 @@ use core::ops::{Add, AddAssign};
 use parking_lot::RwLock;
 use rand_core::RngCore;
 use std::{collections::BTreeMap, io, ops::Range, sync::Arc};
-
-const MAX_POWER_OF_TWO: usize = 28;
-const MAX_NUM_POWERS: usize = 1 << MAX_POWER_OF_TWO;
-const NUM_POWERS_15: usize = 1 << 15;
-const NUM_POWERS_16: usize = 1 << 16;
 
 /// `UniversalParams` are the universal parameters for the KZG10 scheme.
 #[derive(Clone, Debug)]
@@ -92,7 +87,7 @@ impl<E: PairingEngine> UniversalParams<E> {
             // If the last power is 2^16 download it locally and pop it off the list of powers to
             // download.
             if final_shifted_power == NUM_POWERS_16 {
-                self.download_powers_for((MAX_NUM_POWERS - NUM_POWERS_16)..(MAX_NUM_POWERS - NUM_POWERS_15))?;
+                self.download_powers_for((NUM_POWERS_28 - NUM_POWERS_16)..(NUM_POWERS_28 - NUM_POWERS_15))?;
                 powers.pop().unwrap();
             }
 
@@ -157,7 +152,7 @@ impl<E: PairingEngine> UniversalParams<E> {
         self.download_powers_for_async(&range).await?;
 
         // Then download shifted powers
-        self.download_powers_for_async(&((MAX_NUM_POWERS - range.end)..(MAX_NUM_POWERS - range.start))).await?;
+        self.download_powers_for_async(&((NUM_POWERS_28 - range.end)..(NUM_POWERS_28 - range.start))).await?;
 
         Ok(())
     }
