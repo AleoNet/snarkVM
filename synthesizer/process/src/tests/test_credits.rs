@@ -1596,19 +1596,11 @@ mod sanity_checks {
         let r3 = Value::<CurrentNetwork>::from_str(&Field::<CurrentNetwork>::rand(rng).to_string()).unwrap();
 
         // Compute the assignment.
-<<<<<<< HEAD
         let assignment = get_assignment::<_, CurrentAleo>(stack, &private_key, function_name, &[r0, r1, r2, r3], rng);
         assert_eq!(14, assignment.num_public());
-        assert_eq!(36835, assignment.num_private());
-        assert_eq!(36884, assignment.num_constraints());
-        assert_eq!((70346, 79264, 55292), assignment.num_nonzeros());
-=======
-        let assignment = get_assignment::<_, CurrentAleo>(stack, &private_key, function_name, &[r0, r1, r2], rng);
-        assert_eq!(13, assignment.num_public());
-        assert_eq!(37229, assignment.num_private());
-        assert_eq!(37266, assignment.num_constraints());
-        assert_eq!((69685, 76788, 56077), assignment.num_nonzeros());
->>>>>>> d691cefea1c39be7f9317113448e635b5f2fc669
+        assert_eq!(37840, assignment.num_private());
+        assert_eq!(37878, assignment.num_constraints());
+        assert_eq!((72163, 80588, 56623), assignment.num_nonzeros());
     }
 
     #[test]
@@ -1632,18 +1624,10 @@ mod sanity_checks {
         let r2 = Value::<CurrentNetwork>::from_str(&Field::<CurrentNetwork>::rand(rng).to_string()).unwrap();
 
         // Compute the assignment.
-<<<<<<< HEAD
         let assignment = get_assignment::<_, CurrentAleo>(stack, &private_key, function_name, &[r0, r1, r2], rng);
         assert_eq!(11, assignment.num_public());
-        assert_eq!(12650, assignment.num_private());
-        assert_eq!(12672, assignment.num_constraints());
-        assert_eq!((29621, 39600, 16944), assignment.num_nonzeros());
-=======
-        let assignment = get_assignment::<_, CurrentAleo>(stack, &private_key, function_name, &[r0, r1], rng);
-        assert_eq!(10, assignment.num_public());
-        assert_eq!(12034, assignment.num_private());
-        assert_eq!(12045, assignment.num_constraints());
-        assert_eq!((27116, 35785, 16395), assignment.num_nonzeros());
->>>>>>> d691cefea1c39be7f9317113448e635b5f2fc669
+        assert_eq!(12645, assignment.num_private());
+        assert_eq!(12657, assignment.num_constraints());
+        assert_eq!((29594, 39585, 16941), assignment.num_nonzeros());
     }
 }
