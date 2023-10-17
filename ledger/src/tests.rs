@@ -136,6 +136,7 @@ fn test_insufficient_fees() {
                 &private_key,
                 record_2.clone(),
                 10_000_000,
+                1_000,
                 execution.to_execution_id().unwrap(),
                 rng,
             )
@@ -147,7 +148,7 @@ fn test_insufficient_fees() {
         // Check that a transaction with insufficient fee will fail.
         let insufficient_fee_authorization = ledger
             .vm
-            .authorize_fee_private(&private_key, record_2.clone(), 1, execution.to_execution_id().unwrap(), rng)
+            .authorize_fee_private(&private_key, record_2.clone(), 1, 0, execution.to_execution_id().unwrap(), rng)
             .unwrap();
         let insufficient_fee = ledger.vm.execute_fee_authorization(insufficient_fee_authorization, None, rng).unwrap();
         let insufficient_fee_transaction =
@@ -180,7 +181,7 @@ finalize foo:
         let deployment = transaction.deployment().unwrap();
         let insufficient_fee_authorization = ledger
             .vm
-            .authorize_fee_private(&private_key, record_2, 1, deployment.to_deployment_id().unwrap(), rng)
+            .authorize_fee_private(&private_key, record_2, 1, 0, deployment.to_deployment_id().unwrap(), rng)
             .unwrap();
         let insufficient_fee = ledger.vm.execute_fee_authorization(insufficient_fee_authorization, None, rng).unwrap();
         let insufficient_fee_transaction =

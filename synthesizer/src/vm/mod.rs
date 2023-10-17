@@ -562,7 +562,7 @@ function compute:
 
                 // Authorize the fee.
                 let authorization = vm
-                    .authorize_fee_public(&caller_private_key, 100, execution.to_execution_id().unwrap(), rng)
+                    .authorize_fee_public(&caller_private_key, 100, 100, execution.to_execution_id().unwrap(), rng)
                     .unwrap();
                 // Compute the fee.
                 let fee = vm.execute_fee_authorization(authorization, None, rng).unwrap();
