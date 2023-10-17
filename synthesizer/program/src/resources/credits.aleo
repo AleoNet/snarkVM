@@ -787,21 +787,25 @@ function fee_private:
     input r0 as credits.record;
     // Input the amount.
     input r1 as u64.public;
+    // Input the priority fee amount.
+    input r2 as u64.public;
     // Input the deployment or execution root.
-    input r2 as field.public;
+    input r3 as field.public;
     // Ensure the amount is nonzero.
     assert.neq r1 0u64;
     // Ensure the deployment or execution root is nonzero.
-    assert.neq r2 0field;
+    assert.neq r3 0field;
+    // Add the fee and priority fee amounts.
+    add r1 r2 into r4;
     // Checks the given record has a sufficient amount.
     // This `sub` operation is safe, and the proof will fail
     // if an underflow occurs. The destination register `r3` holds
     // the change amount for the sender.
-    sub r0.microcredits r1 into r3;
+    sub r0.microcredits r4 into r5;
     // Construct a record with the change amount for the sender.
-    cast r0.owner r3 into r4 as credits.record;
+    cast r0.owner r5 into r6 as credits.record;
     // Output the sender's change record.
-    output r4 as credits.record;
+    output r6 as credits.record;
 
 /**********************************************************************************************************************/
 
@@ -809,21 +813,25 @@ function fee_private:
 function fee_public:
     // Input the amount.
     input r0 as u64.public;
+    // Input the priority fee amount.
+    input r1 as u64.public;
     // Input the deployment or execution root.
-    input r1 as field.public;
+    input r2 as field.public;
     // Ensure the amount is nonzero.
     assert.neq r0 0u64;
     // Ensure the deployment or execution root is nonzero.
-    assert.neq r1 0field;
+    assert.neq r2 0field;
+    // Add the fee and priority fee amounts.
+    add r1 r2 into r3;
     // Decrement the balance of the sender publicly.
-    async fee_public self.caller r0 into r2;
+    async fee_public self.caller r3 into r4;
     // Output the finalize future.
-    output r2 as credits.aleo/fee_public.future;
+    output r4 as credits.aleo/fee_public.future;
 
 finalize fee_public:
     // Input the sender's address.
     input r0 as address.public;
-    // Input the amount.
+    // Input the total fee amount.
     input r1 as u64.public;
     // Retrieve the balance of the sender.
     // If `account[r0]` does not exist, `fee_public` is reverted.
