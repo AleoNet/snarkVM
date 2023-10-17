@@ -12,7 +12,7 @@ outputs:
   execute:
     parent.aleo/foo:
       outputs:
-      - '{"type":"public","id":"1444107705320678862497122083758672335299105228200947342113823993733161250680field","value":"aleo18ruz9g9e0h5elul8a6j6c7fq68tey2u0jj4nwwza60xdgz5pgsysphw7zg"}'
+      - '{"type":"public","id":"2289465818952696893871478441544321507584149448701746210208386693335929733331field","value":"aleo16w8t56s7v6ud7vu33fr388ph0dq0c7yhp597cyjt88rr3nultcyqcyk9yy"}'
       - '{"type":"public","id":"7559709455224489102027191317638535668729648748642786204592894303802312565285field","value":"aleo1qr2ha4pfs5l28aze88yn6fhleeythklkczrule2v838uwj65n5gqxt9djx"}'
       - '{"type":"public","id":"3386671048315419571612162210626560184351583831974432673683170066362200712484field","value":"aleo1qr2ha4pfs5l28aze88yn6fhleeythklkczrule2v838uwj65n5gqxt9djx"}'
       - '{"type":"public","id":"377315782189483434546519951474821036179425135984541742851362035377982852007field","value":"aleo1qr2ha4pfs5l28aze88yn6fhleeythklkczrule2v838uwj65n5gqxt9djx"}'
@@ -26,8 +26,8 @@ additional:
 - child_outputs:
     child.aleo/foo:
       outputs:
-      - '{"type":"public","id":"8363398585592133310374674221813113336830066777719514690999328253714867689376field","value":"aleo18ruz9g9e0h5elul8a6j6c7fq68tey2u0jj4nwwza60xdgz5pgsysphw7zg"}'
-      - '{"type":"public","id":"6612444510863571982408163392566948751956145917301700683806749389005227190226field","value":"aleo1qr2ha4pfs5l28aze88yn6fhleeythklkczrule2v838uwj65n5gqxt9djx"}'
+      - '{"type":"public","id":"3882282618752036974934969484826516879330683099117232959634797112014684674825field","value":"aleo16w8t56s7v6ud7vu33fr388ph0dq0c7yhp597cyjt88rr3nultcyqcyk9yy"}'
+      - '{"type":"public","id":"2245370417659918073292113035287276968621110847825774631670430171539912604223field","value":"aleo1qr2ha4pfs5l28aze88yn6fhleeythklkczrule2v838uwj65n5gqxt9djx"}'
     credits.aleo/fee_private:
       outputs:
       - '{"type":"record","id":"6096150878850476541129811644951745974699013010023358435906734677207481005285field","checksum":"7033938536335627895694384787158726162462961311386456686800934060095992677695field","value":"record1qyqsqwc4f7k0rgqxdw0kurk84vhvp0sfh8yv875tqcmj4kehggpm02g2qyxx66trwfhkxun9v35hguerqqpqzqp0m34x9ttygvpepy58q3u08gxhmlz94lzydaemlewlc3d5hff9ztm9rj6fmxn5dd8dadruvr2sg8qjz86dhrz4x7ltvegdyvlwwk5quamj6sr"}'
