@@ -88,9 +88,9 @@ impl<N: Network> Fee<N> {
 
     /// Returns the amount (in microcredits).
     pub fn amount(&self) -> Result<U64<N>> {
-        // Determine the input index for the amount.
+        // Determine the indexes for the base fee and priority fee.
         // Note: Checking whether the `output` is a `Record` or `Future` is a faster way to determine if the fee is private or public respectively.
-        let input_index = match self.transition.outputs().last() {
+        let base_fee_index: usize = match self.transition.outputs().last() {
             Some(output) => match output {
                 Output::Record(..) => 1,
                 Output::Future(..) => 0,
@@ -98,11 +98,20 @@ impl<N: Network> Fee<N> {
             },
             None => bail!("Missing output in fee transition"),
         };
-        // Retrieve the amount (in microcredits) as a plaintext value.
-        match self.transition.inputs().get(input_index) {
-            Some(Input::Public(_, Some(Plaintext::Literal(Literal::U64(microcredits), _)))) => Ok(*microcredits),
-            _ => bail!("Failed to retrieve the fee (in microcredits) from the fee transition"),
-        }
+        let priority_fee_index = base_fee_index.saturating_add(1);
+
+        // Retrieve the base fee (in microcredits) as a plaintext value.
+        let base_fee = match self.transition.inputs().get(base_fee_index) {
+            Some(Input::Public(_, Some(Plaintext::Literal(Literal::U64(microcredits), _)))) => *microcredits,
+            _ => bail!("Failed to retrieve the base fee (in microcredits) from the fee transition"),
+        };
+
+        let priority_fee = match self.transition.inputs().get(priority_fee_index) {
+            Some(Input::Public(_, Some(Plaintext::Literal(Literal::U64(microcredits), _)))) => *microcredits,
+            _ => bail!("Failed to retrieve the priority fee (in microcredits) from the fee transition"),
+        };
+
+        Ok(U64::new(base_fee.saturating_add(*priority_fee)))
     }
 
     /// Returns the deployment or execution ID.
@@ -204,14 +213,16 @@ pub mod test_helpers {
         let credits = transaction.records().next().unwrap().1.clone();
         // Decrypt the record.
         let credits = credits.decrypt(&private_key.try_into().unwrap()).unwrap();
-        // Set the fee amount.
-        let fee = 10_000_000;
+        // Set the base fee amount.
+        let base_fee = 10_000_000;
+        // Set the priority fee amount.
+        let priority_fee = 1_000;
 
         // Initialize the process.
         let process = Process::load().unwrap();
         // Authorize the fee.
         let authorization = process
-            .authorize_fee_private::<CurrentAleo, _>(&private_key, credits, fee, deployment_or_execution_id, rng)
+            .authorize_fee_private::<CurrentAleo, _>(&private_key, credits, base_fee, priority_fee, deployment_or_execution_id, rng)
             .unwrap();
         // Construct the fee trace.
         let (_, mut trace) = process.execute::<CurrentAleo>(authorization).unwrap();
@@ -252,14 +263,16 @@ pub mod test_helpers {
     ) -> Fee<CurrentNetwork> {
         // Sample the genesis block and private key.
         let (block, _, private_key) = crate::test_helpers::sample_genesis_block_and_components(rng);
-        // Set the fee amount.
-        let fee = 10_000_000;
+        // Set the base fee amount.
+        let base_fee = 10_000_000;
+        // Set the priority fee amount.
+        let priority_fee = 1_000;
 
         // Initialize the process.
         let process = Process::load().unwrap();
         // Authorize the fee.
         let authorization =
-            process.authorize_fee_public::<CurrentAleo, _>(&private_key, fee, deployment_or_execution_id, rng).unwrap();
+            process.authorize_fee_public::<CurrentAleo, _>(&private_key, base_fee, priority_fee, deployment_or_execution_id, rng).unwrap();
         // Construct the fee trace.
         let (_, mut trace) = process.execute::<CurrentAleo>(authorization).unwrap();
 
