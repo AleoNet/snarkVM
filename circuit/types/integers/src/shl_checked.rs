@@ -137,7 +137,7 @@ impl<E: Environment, I: IntegerType, M: Magnitude> ShlChecked<Integer<E, M>> for
                     // we know that the operation will not overflow Integer::MAX or the field modulus.
                     let mut result = self.to_field();
                     for (i, bit) in rhs.bits_le[..first_upper_bit_index].iter().enumerate() {
-                        // In each iteration, multiple the result by 2^(1<<i), if the bit is set.
+                        // In each iteration, multiply the result by 2^(1<<i), if the bit is set.
                         // Note that instantiating the field from a u128 is safe since it is larger than all eligible integer types.
                         let constant = Field::constant(console::Field::from_u128(2u128.pow(1 << i)));
                         let product = &result * &constant;

@@ -95,10 +95,10 @@ impl<E: Environment, I: IntegerType, M: Magnitude> Metrics<dyn ShlWrapped<Intege
 
         match (case.0, case.1) {
             (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
-            (_, Mode::Constant) => Count::is(0, 0, 0, 0),
+            (_, Mode::Constant) => Count::less_than(2 * I::BITS + 3, 0, 0, 0),
             (Mode::Constant, _) => match 2 * I::BITS < E::BaseField::size_in_data_bits() as u64 {
-                true => Count::is(
-                    3 + index(I::BITS),
+                true => Count::less_than(
+                    (2 * I::BITS) + index(I::BITS) + 3,
                     0,
                     (2 * I::BITS) + index(I::BITS) + 2,
                     (2 * I::BITS) + index(I::BITS) + 3,
