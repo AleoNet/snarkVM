@@ -1536,9 +1536,9 @@ mod sanity_checks {
         // Compute the assignment.
         let assignment = get_assignment::<_, CurrentAleo>(stack, &private_key, function_name, &[r0, r1, r2], rng);
         assert_eq!(15, assignment.num_public());
-        assert_eq!(49675, assignment.num_private());
-        assert_eq!(49730, assignment.num_constraints());
-        assert_eq!((96721, 108440, 76009), assignment.num_nonzeros());
+        assert_eq!(50681, assignment.num_private());
+        assert_eq!(50729, assignment.num_constraints());
+        assert_eq!((98547, 109769, 77341), assignment.num_nonzeros());
     }
 
     #[test]
@@ -1564,9 +1564,9 @@ mod sanity_checks {
         // Compute the assignment.
         let assignment = get_assignment::<_, CurrentAleo>(stack, &private_key, function_name, &[r0, r1], rng);
         assert_eq!(10, assignment.num_public());
-        assert_eq!(12047, assignment.num_private());
-        assert_eq!(12062, assignment.num_constraints());
-        assert_eq!((27268, 36313, 16409), assignment.num_nonzeros());
+        assert_eq!(12043, assignment.num_private());
+        assert_eq!(12052, assignment.num_constraints());
+        assert_eq!((27250, 36303, 16407), assignment.num_nonzeros());
     }
 
     #[test]
@@ -1597,9 +1597,9 @@ mod sanity_checks {
         // Compute the assignment.
         let assignment = get_assignment::<_, CurrentAleo>(stack, &private_key, function_name, &[r0, r1, r2], rng);
         assert_eq!(13, assignment.num_public());
-        assert_eq!(36223, assignment.num_private());
-        assert_eq!(36269, assignment.num_constraints());
-        assert_eq!((67863, 75461, 54745), assignment.num_nonzeros());
+        assert_eq!(37229, assignment.num_private());
+        assert_eq!(37266, assignment.num_constraints());
+        assert_eq!((69685, 76788, 56077), assignment.num_nonzeros());
     }
 
     #[test]
@@ -1624,8 +1624,8 @@ mod sanity_checks {
         // Compute the assignment.
         let assignment = get_assignment::<_, CurrentAleo>(stack, &private_key, function_name, &[r0, r1], rng);
         assert_eq!(10, assignment.num_public());
-        assert_eq!(12038, assignment.num_private());
-        assert_eq!(12057, assignment.num_constraints());
-        assert_eq!((27138, 35797, 16397), assignment.num_nonzeros());
+        assert_eq!(12034, assignment.num_private());
+        assert_eq!(12045, assignment.num_constraints());
+        assert_eq!((27116, 35785, 16395), assignment.num_nonzeros());
     }
 }

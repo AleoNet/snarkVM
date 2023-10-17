@@ -186,7 +186,7 @@ mod tests {
 
     #[test]
     fn test_signature_new_public() -> Result<()> {
-        check_new(Mode::Public, 9, 6, 873, 875)
+        check_new(Mode::Public, 9, 6, 869, 873)
     }
 
     #[test]

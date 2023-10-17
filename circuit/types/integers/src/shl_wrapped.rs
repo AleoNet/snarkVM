@@ -24,7 +24,7 @@ impl<E: Environment, I: IntegerType, M: Magnitude> ShlWrapped<Integer<E, M>> for
             // Note: Casting `rhs` to a `u32` is safe since `Magnitude`s can only be `u8`, `u16`, or `u32`.
             witness!(|self, rhs| console::Integer::new(self.wrapping_shl(rhs.to_u32().unwrap())))
         } else {
-            // Index of the first upper bit of rhs that we mask.
+            // Retrieve the index for the first upper bit from the RHS that we mask.
             let first_upper_bit_index = I::BITS.trailing_zeros() as usize;
 
             // Perform the left shift operation by exponentiation and multiplication.
@@ -47,6 +47,22 @@ impl<E: Environment, I: IntegerType, M: Magnitude> ShlWrapped<Integer<E, M>> for
                 bits_le.truncate(I::BITS as usize);
 
                 Self { bits_le, phantom: Default::default() }
+            } else if 2 * I::BITS < E::BaseField::size_in_data_bits() as u64 {
+                // Calculate the result directly in the field.
+                // Since 2^{rhs} < Integer::MAX and 2 * I::BITS is less than E::BaseField::size in data bits,
+                // we know that the operation will not overflow Integer::MAX or the field modulus.
+                let mut result = self.to_field();
+                for (i, bit) in rhs.bits_le[..first_upper_bit_index].iter().enumerate() {
+                    // In each iteration, multiple the result by 2^(1<<i), if the bit is set.
+                    // Note that instantiating the field from a u128 is safe since it is larger than all eligible integer types.
+                    let constant = Field::constant(console::Field::from_u128(2u128.pow(1 << i)));
+                    let product = &result * &constant;
+                    result = Field::ternary(bit, &product, &result);
+                }
+                // Extract the bits of the result, including the carry bits.
+                let bits_le = result.to_lower_bits_le(2 * I::BITS as usize);
+                // Initialize the integer, ignoring the carry bits.
+                Self { bits_le: bits_le[..I::BITS as usize].to_vec(), phantom: Default::default() }
             } else {
                 // Calculate the value of the shift directly in the field.
                 // Since 2^{rhs} < Integer::MAX, we know that the operation will not overflow Integer::MAX or the field modulus.
@@ -77,24 +93,37 @@ impl<E: Environment, I: IntegerType, M: Magnitude> Metrics<dyn ShlWrapped<Intege
             None => E::halt(format!("Integer of {num_bits} bits is not supported")),
         };
 
-        match (case.0, case.1, case.2, case.3) {
-            (Mode::Constant, Mode::Constant, _, _) => Count::is(I::BITS, 0, 0, 0),
-            (_, Mode::Constant, _, _) => Count::is(0, 0, 0, 0),
-            (Mode::Constant, _, true, _) => {
-                Count::is(I::BITS + 5, 0, (I::BITS) + (I::BITS / 2) + (2 * index(I::BITS)), 13)
-            }
-            (Mode::Constant, _, false, _) => Count::is(
-                0,
-                0,
-                (2 * I::BITS) + (I::BITS / 2) + (2 * index(I::BITS)) + 5,
-                (2 * I::BITS) + (I::BITS / 2) + (2 * index(I::BITS)) + 7,
-            ),
-            (_, _, _, _) => Count::is(
-                0,
-                0,
-                (2 * I::BITS) + (I::BITS / 2) + (2 * index(I::BITS)) + 8,
-                (2 * I::BITS) + (I::BITS / 2) + (2 * index(I::BITS)) + 10,
-            ),
+        match (case.0, case.1) {
+            (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
+            (_, Mode::Constant) => Count::less_than(2 * I::BITS + 3, 0, 0, 0),
+            (Mode::Constant, _) => match 2 * I::BITS < E::BaseField::size_in_data_bits() as u64 {
+                true => Count::less_than(
+                    (2 * I::BITS) + index(I::BITS) + 3,
+                    0,
+                    (2 * I::BITS) + index(I::BITS) + 2,
+                    (2 * I::BITS) + index(I::BITS) + 3,
+                ),
+                false => Count::is(
+                    0,
+                    0,
+                    (2 * I::BITS) + (I::BITS / 2) + (2 * index(I::BITS)) + 5,
+                    (2 * I::BITS) + (I::BITS / 2) + (2 * index(I::BITS)) + 7,
+                ),
+            },
+            (_, _) => match 2 * I::BITS < E::BaseField::size_in_data_bits() as u64 {
+                true => Count::is(
+                    3 + index(I::BITS),
+                    0,
+                    (2 * I::BITS) + index(I::BITS) + 3,
+                    (2 * I::BITS) + index(I::BITS) + 4,
+                ),
+                false => Count::is(
+                    0,
+                    0,
+                    (2 * I::BITS) + (I::BITS / 2) + (2 * index(I::BITS)) + 8,
+                    (2 * I::BITS) + (I::BITS / 2) + (2 * index(I::BITS)) + 10,
+                ),
+            },
         }
     }
 }

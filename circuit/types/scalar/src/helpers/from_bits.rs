@@ -34,9 +34,7 @@ impl<E: Environment> FromBits for Scalar<E> {
         let num_bits = bits_le.len();
         if num_bits > size_in_bits {
             // Check that all excess bits are zero.
-            for bit in &bits_le[size_in_bits..] {
-                E::assert_eq(E::zero(), bit);
-            }
+            Boolean::assert_bits_are_zero(&bits_le[size_in_bits..]);
         }
 
         if num_bits > size_in_data_bits {
@@ -129,7 +127,12 @@ mod tests {
                     // `num_private` gets 1 free excess bit, then is incremented by one for each excess bit.
                     // `num_constraints` is incremented by one for each excess bit.
                     false => {
-                        assert_scope!(num_constants, num_public, num_private, num_constraints + i)
+                        assert_scope!(
+                            num_constants,
+                            num_public,
+                            num_private,
+                            num_constraints + if i == 0 { 0 } else { 1 }
+                        )
                     }
                 };
             });
@@ -165,7 +168,12 @@ mod tests {
                     // `num_private` gets 1 free excess bit, then is incremented by one for each excess bit.
                     // `num_constraints` is incremented by one for each excess bit.
                     false => {
-                        assert_scope!(num_constants, num_public, num_private, num_constraints + i)
+                        assert_scope!(
+                            num_constants,
+                            num_public,
+                            num_private,
+                            num_constraints + if i == 0 { 0 } else { 1 }
+                        )
                     }
                 };
             });
