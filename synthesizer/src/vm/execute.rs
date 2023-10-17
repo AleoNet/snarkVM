@@ -46,16 +46,25 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             true => {
                 // Compute the minimum execution cost.
                 let (minimum_execution_cost, (_, _)) = execution_cost(self, &execution)?;
-                // Determine the fee.
-                let Some(fee_amount) = minimum_execution_cost.checked_add(priority_fee_in_microcredits) else {
-                    bail!("Fee overflowed for an execution transaction")
-                };
                 // Compute the execution ID.
                 let execution_id = execution.to_execution_id()?;
                 // Authorize the fee.
                 let authorization = match fee_record {
-                    Some(record) => self.authorize_fee_private(private_key, record, fee_amount, execution_id, rng)?,
-                    None => self.authorize_fee_public(private_key, fee_amount, execution_id, rng)?,
+                    Some(record) => self.authorize_fee_private(
+                        private_key,
+                        record,
+                        minimum_execution_cost,
+                        priority_fee_in_microcredits,
+                        execution_id,
+                        rng,
+                    )?,
+                    None => self.authorize_fee_public(
+                        private_key,
+                        minimum_execution_cost,
+                        priority_fee_in_microcredits,
+                        execution_id,
+                        rng,
+                    )?,
                 };
                 // Execute the fee.
                 Some(self.execute_fee_authorization_raw(authorization, query, rng)?)
