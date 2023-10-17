@@ -74,9 +74,7 @@ impl<E: Environment, I: IntegerType, M: Magnitude> ShlChecked<Integer<E, M>> for
             true => {
                 if 3 * I::BITS < E::BaseField::size_in_data_bits() as u64 {
                     // Enforce that the upper bits of `rhs` are all zero.
-                    for bit in rhs.bits_le[first_upper_bit_index..].iter() {
-                        E::assert_eq(bit, E::zero());
-                    }
+                    Boolean::assert_bits_are_zero(&rhs.bits_le[first_upper_bit_index..]);
 
                     // Sign-extend `self` to 2 * I::BITS.
                     let mut bits_le = self.to_bits_le();
@@ -128,9 +126,7 @@ impl<E: Environment, I: IntegerType, M: Magnitude> ShlChecked<Integer<E, M>> for
             false => {
                 if 2 * I::BITS < E::BaseField::size_in_data_bits() as u64 {
                     // Enforce that the upper bits of `rhs` are all zero.
-                    for bit in rhs.bits_le[first_upper_bit_index..].iter() {
-                        E::assert_eq(bit, E::zero());
-                    }
+                    Boolean::assert_bits_are_zero(&rhs.bits_le[first_upper_bit_index..]);
 
                     // Calculate the result directly in the field.
                     // Since 2^{rhs} < Integer::MAX and 2 * I::BITS is less than E::BaseField::size in data bits,
@@ -148,9 +144,7 @@ impl<E: Environment, I: IntegerType, M: Magnitude> ShlChecked<Integer<E, M>> for
                     // Split the bits into the lower and upper bits.
                     let (lower_bits_le, upper_bits_le) = bits_le.split_at(I::BITS as usize);
                     // Ensure that the carry bits are all zero.
-                    for bit in upper_bits_le {
-                        E::assert_eq(bit, E::zero());
-                    }
+                    Boolean::assert_bits_are_zero(upper_bits_le);
                     // Initialize the integer from the lower bits
                     Self { bits_le: lower_bits_le.to_vec(), phantom: Default::default() }
                 } else {
