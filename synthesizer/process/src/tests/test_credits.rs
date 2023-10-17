@@ -1591,15 +1591,16 @@ mod sanity_checks {
             console::types::Group::<CurrentNetwork>::zero()
         ))
         .unwrap();
-        let r1 = Value::<CurrentNetwork>::from_str("1_500_000_000_000_000_u64").unwrap();
-        let r2 = Value::<CurrentNetwork>::from_str(&Field::<CurrentNetwork>::rand(rng).to_string()).unwrap();
+        let r1 = Value::<CurrentNetwork>::from_str("1_000_000_000_000_000_u64").unwrap();
+        let r2 = Value::<CurrentNetwork>::from_str("500_000_000_000_000_u64").unwrap();
+        let r3 = Value::<CurrentNetwork>::from_str(&Field::<CurrentNetwork>::rand(rng).to_string()).unwrap();
 
         // Compute the assignment.
-        let assignment = get_assignment::<_, CurrentAleo>(stack, &private_key, function_name, &[r0, r1, r2], rng);
-        assert_eq!(13, assignment.num_public());
-        assert_eq!(36223, assignment.num_private());
-        assert_eq!(36269, assignment.num_constraints());
-        assert_eq!((67863, 75461, 54745), assignment.num_nonzeros());
+        let assignment = get_assignment::<_, CurrentAleo>(stack, &private_key, function_name, &[r0, r1, r2, r3], rng);
+        assert_eq!(14, assignment.num_public());
+        assert_eq!(36835, assignment.num_private());
+        assert_eq!(36884, assignment.num_constraints());
+        assert_eq!((70346, 79264, 55292), assignment.num_nonzeros());
     }
 
     #[test]
@@ -1618,14 +1619,15 @@ mod sanity_checks {
         let function_name = Identifier::from_str("fee_public").unwrap();
 
         // Declare the inputs.
-        let r0 = Value::<CurrentNetwork>::from_str("1_500_000_000_000_000_u64").unwrap();
-        let r1 = Value::<CurrentNetwork>::from_str(&Field::<CurrentNetwork>::rand(rng).to_string()).unwrap();
+        let r0 = Value::<CurrentNetwork>::from_str("1_000_000_000_000_000_u64").unwrap();
+        let r1 = Value::<CurrentNetwork>::from_str("500_000_000_000_000_u64").unwrap();
+        let r2 = Value::<CurrentNetwork>::from_str(&Field::<CurrentNetwork>::rand(rng).to_string()).unwrap();
 
         // Compute the assignment.
-        let assignment = get_assignment::<_, CurrentAleo>(stack, &private_key, function_name, &[r0, r1], rng);
-        assert_eq!(10, assignment.num_public());
-        assert_eq!(12038, assignment.num_private());
-        assert_eq!(12057, assignment.num_constraints());
-        assert_eq!((27138, 35797, 16397), assignment.num_nonzeros());
+        let assignment = get_assignment::<_, CurrentAleo>(stack, &private_key, function_name, &[r0, r1, r2], rng);
+        assert_eq!(11, assignment.num_public());
+        assert_eq!(12650, assignment.num_private());
+        assert_eq!(12672, assignment.num_constraints());
+        assert_eq!((29621, 39600, 16944), assignment.num_nonzeros());
     }
 }
