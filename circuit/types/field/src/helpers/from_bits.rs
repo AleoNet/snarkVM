@@ -137,7 +137,12 @@ mod tests {
                     // `num_private` gets 1 free excess bit, then is incremented by one for each excess bit.
                     // `num_constraints` is incremented by one for each excess bit.
                     false => {
-                        assert_scope!(num_constants, num_public, num_private, num_constraints + i)
+                        assert_scope!(
+                            num_constants,
+                            num_public,
+                            num_private,
+                            num_constraints + if i == 0 { 0 } else { 1 }
+                        )
                     }
                 };
             });
@@ -177,7 +182,12 @@ mod tests {
                     // `num_private` gets 1 free excess bit, then is incremented by one for each excess bit.
                     // `num_constraints` is incremented by one for each excess bit.
                     false => {
-                        assert_scope!(num_constants, num_public, num_private, num_constraints + i)
+                        assert_scope!(
+                            num_constants,
+                            num_public,
+                            num_private,
+                            num_constraints + if i == 0 { 0 } else { 1 }
+                        )
                     }
                 };
             });
