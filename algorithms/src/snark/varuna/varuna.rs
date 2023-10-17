@@ -657,7 +657,7 @@ where
         let mut input_domains = BTreeMap::new();
         let mut circuit_infos = BTreeMap::new();
         let mut circuit_ids = Vec::with_capacity(keys_to_inputs.len());
-        for (vk, public_inputs_i) in keys_to_inputs.iter() {
+        for (&vk, &public_inputs_i) in keys_to_inputs.iter() {
             max_num_constraints = max_num_constraints.max(vk.circuit_info.num_constraints);
             max_num_variables = max_num_variables.max(vk.circuit_info.num_variables);
 
@@ -670,7 +670,13 @@ where
 
             let input_fields = public_inputs_i
                 .iter()
-                .map(|input| input.borrow().to_field_elements())
+                .map(|input| {
+                    let input = input.borrow().to_field_elements()?;
+                    if input.len() > input_domain.size() - 1 {
+                        bail!(SNARKError::PublicInputSizeMismatch);
+                    }
+                    Ok(input)
+                })
                 .collect::<Result<Vec<_>, _>>()?;
 
             let (padded_public_inputs_i, parsed_public_inputs_i): (Vec<_>, Vec<_>) = {

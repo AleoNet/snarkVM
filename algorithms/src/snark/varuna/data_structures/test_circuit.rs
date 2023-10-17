@@ -40,6 +40,11 @@ impl<F: Field> core::fmt::Debug for TestCircuit<F> {
 
 impl<ConstraintF: Field> ConstraintSynthesizer<ConstraintF> for TestCircuit<ConstraintF> {
     fn generate_constraints<CS: ConstraintSystem<ConstraintF>>(&self, cs: &mut CS) -> Result<(), SynthesisError> {
+        // Ensure the given `cs` is starting off clean.
+        assert_eq!(1, cs.num_public_variables());
+        assert_eq!(0, cs.num_private_variables());
+        assert_eq!(0, cs.num_constraints());
+
         let a = cs.alloc(|| "a", || self.a.ok_or(SynthesisError::AssignmentMissing))?;
         let b = cs.alloc(|| "b", || self.b.ok_or(SynthesisError::AssignmentMissing))?;
 

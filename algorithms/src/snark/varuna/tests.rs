@@ -76,7 +76,7 @@ mod varuna {
                         assert!($snark_inst::verify(universal_verifier, &fs_parameters, &index_vk, public_inputs, &proof).unwrap());
                         println!("Called verifier");
                         eprintln!("\nShould not verify (i.e. verifier messages should print below):");
-                        assert!(!$snark_inst::verify(universal_verifier, &fs_parameters, &index_vk, [random, random], &proof).unwrap());
+                        assert!(!$snark_inst::verify(universal_verifier, &fs_parameters, &index_vk, [random], &proof).unwrap());
                     }
 
                     for circuit_batch_size in (0..4).map(|i| 2usize.pow(i)) {

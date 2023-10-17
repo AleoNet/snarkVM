@@ -205,6 +205,7 @@ mod test {
         assert!(!verifying_key.verify("test", &[one, one + one], &proof));
         assert!(!verifying_key.verify("test", &[one, one, one], &proof));
         assert!(!verifying_key.verify("test", &[one, one, one + one], &proof));
+        assert!(!verifying_key.verify("test", &[one, one, one, one], &proof));
 
         println!("Called verifier");
     }
