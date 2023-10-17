@@ -143,8 +143,8 @@ impl<N: Network> Fee<N> {
         // Note: Checking whether the `output` is a `Record` or `Future` is a faster way to determine if the fee is private or public respectively.
         let input_index = match self.transition.outputs().last() {
             Some(output) => match output {
-                Output::Record(..) => 2,
-                Output::Future(..) => 1,
+                Output::Record(..) => 3,
+                Output::Future(..) => 2,
                 _ => bail!("Unexpected output in fee transition"),
             },
             None => bail!("Missing output in fee transition"),

@@ -77,7 +77,7 @@ pub fn sample_fee<N: Network, A: Aleo<Network = N>, B: BlockStorage<N>, P: Final
     let id = Field::rand(rng);
 
     // Authorize the fee.
-    let authorization = process.authorize_fee_public::<A, _>(&private_key, 100, 100, id, rng).unwrap();
+    let authorization = process.authorize_fee_public::<A, _>(&private_key, 100, 0, id, rng).unwrap();
     // Execute the fee.
     let (_, mut trace) = process.execute::<A>(authorization).unwrap();
     // Prepare the assignments.
