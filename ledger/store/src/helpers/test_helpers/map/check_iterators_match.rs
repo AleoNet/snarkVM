@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use super::ensure_map_is_empty;
 use crate::helpers::Map;
 
 fn check_pending_iterator(map: &impl for<'a> Map<'a, usize, String>, expected_length: usize) {
@@ -57,11 +58,7 @@ fn check_confirmed_iterators_match(map: &impl for<'a> Map<'a, usize, String>, ex
 }
 
 pub fn check_iterators_match(map: impl for<'a> Map<'a, usize, String>) {
-    // Sanity check.
-    assert!(map.iter_pending().next().is_none());
-    assert!(map.iter_confirmed().next().is_none());
-    assert!(map.keys_confirmed().next().is_none());
-    assert!(map.values_confirmed().next().is_none());
+    ensure_map_is_empty(&map);
 
     const NUM_ITEMS: usize = 10;
     const NUM_TOTAL_ITEMS: usize = 20;

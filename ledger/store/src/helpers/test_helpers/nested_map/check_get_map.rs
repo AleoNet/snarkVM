@@ -12,24 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use super::ensure_map_is_empty;
 use crate::helpers::NestedMap;
 
 const NUM_ITEMS: usize = 10;
 const NUM_TOTAL_ITEMS: usize = 20;
 
-fn ensure_map_is_empty(map: &impl for<'a> NestedMap<'a, usize, usize, String>) {
-    // Sanity check.
-    assert!(map.iter_pending().next().is_none());
-    assert!(map.iter_confirmed().next().is_none());
-    assert!(map.keys_confirmed().next().is_none());
-    assert!(map.values_confirmed().next().is_none());
-}
-
 fn check_get_unique_maps(map: &impl for<'a> NestedMap<'a, usize, usize, String>) {
     ensure_map_is_empty(map);
 
     for i in 0..NUM_ITEMS {
-        println!("i: {}", i);
+        println!("insert({i})");
 
         assert_eq!(map.get_map_confirmed(&i).unwrap(), Vec::new());
         assert_eq!(map.get_map_speculative(&i).unwrap(), Vec::new());
@@ -48,7 +41,7 @@ fn check_get_unique_maps(map: &impl for<'a> NestedMap<'a, usize, usize, String>)
         map.start_atomic();
 
         for i in NUM_ITEMS..NUM_TOTAL_ITEMS {
-            println!("i: {}", i);
+            println!("insert({i}) [atomic]");
 
             assert_eq!(map.get_map_confirmed(&i).unwrap(), Vec::new());
             assert_eq!(map.get_map_speculative(&i).unwrap(), Vec::new());
@@ -65,6 +58,8 @@ fn check_get_unique_maps(map: &impl for<'a> NestedMap<'a, usize, usize, String>)
     }
 
     for i in 0..NUM_TOTAL_ITEMS {
+        println!("remove_map({i})");
+
         map.remove_map(&i).unwrap();
     }
 

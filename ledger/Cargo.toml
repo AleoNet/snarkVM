@@ -47,6 +47,7 @@ serial = [
 ]
 test = [ "ledger-block/test" ]
 test-helpers = [
+  "ledger-test-helpers",
   "ledger-committee/test-helpers",
   "ledger-narwhal/test-helpers"
 ]
@@ -92,6 +93,12 @@ features = [ "query" ]
 package = "snarkvm-ledger-store"
 path = "./store"
 version = "=0.15.4"
+
+[dependencies.ledger-test-helpers]
+package = "snarkvm-ledger-test-helpers"
+path = "./test-helpers"
+version = "=0.15.4"
+optional = true
 
 [dependencies.synthesizer]
 package = "snarkvm-synthesizer"
