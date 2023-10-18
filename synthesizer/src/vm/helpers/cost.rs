@@ -176,7 +176,7 @@ pub fn cost_in_microcredits<N: Network>(finalize: &Finalize<N>) -> Result<u64> {
         Command::Instruction(Instruction::PowWrapped(_)) => Ok(2_000),
         Command::Instruction(Instruction::Rem(_)) => Ok(2_000),
         Command::Instruction(Instruction::RemWrapped(_)) => Ok(2_000),
-        Command::Instruction(Instruction::SignVerify(_)) => Ok(1_000_000),
+        Command::Instruction(Instruction::SignVerify(_)) => Ok(250_000),
         Command::Instruction(Instruction::Shl(_)) => Ok(2_000),
         Command::Instruction(Instruction::ShlWrapped(_)) => Ok(2_000),
         Command::Instruction(Instruction::Shr(_)) => Ok(2_000),
@@ -190,12 +190,12 @@ pub fn cost_in_microcredits<N: Network>(finalize: &Finalize<N>) -> Result<u64> {
         // TODO: The following 'finalize' commands are currently priced higher than expected.
         //  Expect these numbers to change as their usage is stabilized.
         Command::Await(_) => Ok(2_000),
-        Command::Contains(_) => Ok(250_000),
-        Command::Get(_) => Ok(500_000),
-        Command::GetOrUse(_) => Ok(500_000),
-        Command::RandChaCha(_) => Ok(500_000),
+        Command::Contains(_) => Ok(12_500),
+        Command::Get(_) => Ok(25_000),
+        Command::GetOrUse(_) => Ok(25_000),
+        Command::RandChaCha(_) => Ok(25_000),
         Command::Remove(_) => Ok(10_000),
-        Command::Set(_) => Ok(1_000_000),
+        Command::Set(_) => Ok(100_000),
         Command::BranchEq(_) | Command::BranchNeq(_) => Ok(5_000),
         Command::Position(_) => Ok(1_000),
     };
