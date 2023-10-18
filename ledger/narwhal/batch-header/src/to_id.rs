@@ -20,6 +20,7 @@ impl<N: Network> BatchHeader<N> {
         Self::compute_batch_id(
             self.author,
             self.round,
+            self.last_commit,
             self.timestamp,
             &self.transmission_ids,
             &self.previous_certificate_ids,
@@ -32,6 +33,7 @@ impl<N: Network> BatchHeader<N> {
     pub fn compute_batch_id(
         author: Address<N>,
         round: u64,
+        last_commit: u64,
         timestamp: i64,
         transmission_ids: &IndexSet<TransmissionID<N>>,
         previous_certificate_ids: &IndexSet<Field<N>>,
@@ -41,16 +43,18 @@ impl<N: Network> BatchHeader<N> {
         author.write_le(&mut preimage)?;
         // Insert the round number.
         round.write_le(&mut preimage)?;
+        // Insert the last commit.
+        last_commit.write_le(&mut preimage)?;
         // Insert the timestamp.
         timestamp.write_le(&mut preimage)?;
         // Insert the number of transmissions.
-        u64::try_from(transmission_ids.len())?.write_le(&mut preimage)?;
+        u32::try_from(transmission_ids.len())?.write_le(&mut preimage)?;
         // Insert the transmission IDs.
         for transmission_id in transmission_ids {
             transmission_id.write_le(&mut preimage)?;
         }
         // Insert the number of previous certificate IDs.
-        u64::try_from(previous_certificate_ids.len())?.write_le(&mut preimage)?;
+        u32::try_from(previous_certificate_ids.len())?.write_le(&mut preimage)?;
         // Insert the previous certificate IDs.
         for certificate_id in previous_certificate_ids {
             // Insert the certificate ID.

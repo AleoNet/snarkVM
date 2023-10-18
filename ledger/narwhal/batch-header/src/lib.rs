@@ -36,6 +36,8 @@ pub struct BatchHeader<N: Network> {
     author: Address<N>,
     /// The round number.
     round: u64,
+    /// The last commit.
+    last_commit: u64,
     /// The timestamp.
     timestamp: i64,
     /// The set of `transmission IDs`.
@@ -51,6 +53,7 @@ impl<N: Network> BatchHeader<N> {
     pub fn new<R: Rng + CryptoRng>(
         private_key: &PrivateKey<N>,
         round: u64,
+        last_commit: u64,
         timestamp: i64,
         transmission_ids: IndexSet<TransmissionID<N>>,
         previous_certificate_ids: IndexSet<Field<N>>,
@@ -62,20 +65,39 @@ impl<N: Network> BatchHeader<N> {
             // If the round is not zero and not one, then there should be at least one previous certificate ID.
             _ => ensure!(!previous_certificate_ids.is_empty(), "Invalid round number, must have certificates"),
         }
+        // Ensure the last commit is less than the round.
+        ensure!(last_commit <= round, "Invalid last commit {last_commit}, must be less than round {round}");
         // Retrieve the address.
         let author = Address::try_from(private_key)?;
         // Compute the batch ID.
-        let batch_id = Self::compute_batch_id(author, round, timestamp, &transmission_ids, &previous_certificate_ids)?;
+        let batch_id = Self::compute_batch_id(
+            author,
+            round,
+            last_commit,
+            timestamp,
+            &transmission_ids,
+            &previous_certificate_ids,
+        )?;
         // Sign the preimage.
         let signature = private_key.sign(&[batch_id], rng)?;
         // Return the batch header.
-        Ok(Self { author, batch_id, round, timestamp, transmission_ids, previous_certificate_ids, signature })
+        Ok(Self {
+            author,
+            batch_id,
+            round,
+            last_commit,
+            timestamp,
+            transmission_ids,
+            previous_certificate_ids,
+            signature,
+        })
     }
 
     /// Initializes a new batch header.
     pub fn from(
         author: Address<N>,
         round: u64,
+        last_commit: u64,
         timestamp: i64,
         transmission_ids: IndexSet<TransmissionID<N>>,
         previous_certificate_ids: IndexSet<Field<N>>,
@@ -87,14 +109,32 @@ impl<N: Network> BatchHeader<N> {
             // If the round is not zero and not one, then there should be at least one previous certificate ID.
             _ => ensure!(!previous_certificate_ids.is_empty(), "Invalid round number, must have certificates"),
         }
+        // Ensure the last commit is less than the round.
+        ensure!(last_commit <= round, "Invalid last commit {last_commit}, must be less than round {round}");
         // Compute the batch ID.
-        let batch_id = Self::compute_batch_id(author, round, timestamp, &transmission_ids, &previous_certificate_ids)?;
+        let batch_id = Self::compute_batch_id(
+            author,
+            round,
+            last_commit,
+            timestamp,
+            &transmission_ids,
+            &previous_certificate_ids,
+        )?;
         // Verify the signature.
         if !signature.verify(&author, &[batch_id]) {
             bail!("Invalid signature for the batch header");
         }
         // Return the batch header.
-        Ok(Self { author, batch_id, round, timestamp, transmission_ids, previous_certificate_ids, signature })
+        Ok(Self {
+            author,
+            batch_id,
+            round,
+            last_commit,
+            timestamp,
+            transmission_ids,
+            previous_certificate_ids,
+            signature,
+        })
     }
 }
 
@@ -112,6 +152,11 @@ impl<N: Network> BatchHeader<N> {
     /// Returns the round number.
     pub const fn round(&self) -> u64 {
         self.round
+    }
+
+    /// Returns the last commit.
+    pub const fn last_commit(&self) -> u64 {
+        self.last_commit
     }
 
     /// Returns the timestamp.
@@ -187,8 +232,11 @@ pub mod test_helpers {
             narwhal_transmission_id::test_helpers::sample_transmission_ids(rng).into_iter().collect::<IndexSet<_>>();
         // Checkpoint the timestamp for the batch.
         let timestamp = OffsetDateTime::now_utc().unix_timestamp();
+        // Set the last commit to be the round.
+        let last_commit = round;
         // Return the batch header.
-        BatchHeader::new(&private_key, round, timestamp, transmission_ids, previous_certificate_ids, rng).unwrap()
+        BatchHeader::new(&private_key, round, last_commit, timestamp, transmission_ids, previous_certificate_ids, rng)
+            .unwrap()
     }
 
     /// Returns a list of sample batch headers, sampled at random.

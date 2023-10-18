@@ -19,10 +19,11 @@ impl<N: Network> Serialize for BatchHeader<N> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
             true => {
-                let mut header = serializer.serialize_struct("BatchHeader", 7)?;
+                let mut header = serializer.serialize_struct("BatchHeader", 8)?;
                 header.serialize_field("batch_id", &self.batch_id)?;
                 header.serialize_field("author", &self.author)?;
                 header.serialize_field("round", &self.round)?;
+                header.serialize_field("last_commit", &self.last_commit)?;
                 header.serialize_field("timestamp", &self.timestamp)?;
                 header.serialize_field("transmission_ids", &self.transmission_ids)?;
                 header.serialize_field("previous_certificate_ids", &self.previous_certificate_ids)?;
@@ -46,6 +47,7 @@ impl<'de, N: Network> Deserialize<'de> for BatchHeader<N> {
                 let batch_header = Self::from(
                     DeserializeExt::take_from_value::<D>(&mut header, "author")?,
                     DeserializeExt::take_from_value::<D>(&mut header, "round")?,
+                    DeserializeExt::take_from_value::<D>(&mut header, "last_commit")?,
                     DeserializeExt::take_from_value::<D>(&mut header, "timestamp")?,
                     DeserializeExt::take_from_value::<D>(&mut header, "transmission_ids")?,
                     DeserializeExt::take_from_value::<D>(&mut header, "previous_certificate_ids")?,
