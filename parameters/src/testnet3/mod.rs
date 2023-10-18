@@ -36,10 +36,7 @@ pub const NUM_POWERS_27: usize = 1 << 27;
 pub const NUM_POWERS_28: usize = 1 << 28;
 
 // Degrees
-#[cfg(not(feature = "wasm"))]
 impl_local!(Degree15, "resources/", "powers-of-beta-15", "usrs");
-#[cfg(feature = "wasm")]
-impl_remote!(Degree15, REMOTE_URL, "resources/", "powers-of-beta-15", "usrs");
 #[cfg(not(feature = "wasm"))]
 impl_local!(Degree16, "resources/", "powers-of-beta-16", "usrs");
 #[cfg(feature = "wasm")]
@@ -58,10 +55,7 @@ impl_remote!(Degree27, REMOTE_URL, "resources/", "powers-of-beta-27", "usrs");
 impl_remote!(Degree28, REMOTE_URL, "resources/", "powers-of-beta-28", "usrs");
 
 // Shifted Degrees
-#[cfg(not(feature = "wasm"))]
 impl_local!(ShiftedDegree15, "resources/", "shifted-powers-of-beta-15", "usrs");
-#[cfg(feature = "wasm")]
-impl_remote!(ShiftedDegree15, REMOTE_URL, "resources/", "shifted-powers-of-beta-15", "usrs");
 #[cfg(not(feature = "wasm"))]
 impl_local!(ShiftedDegree16, "resources/", "shifted-powers-of-beta-16", "usrs");
 #[cfg(feature = "wasm")]

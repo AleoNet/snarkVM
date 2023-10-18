@@ -382,16 +382,9 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
     /// `start` up to `MAXIMUM_NUM_POWERS - self.shifted_powers_of_beta_g.len()`,
     /// and updates `Self` in place with the new powers.
     fn download_shifted_powers_from(&mut self, start: usize) -> Result<()> {
-        let final_num_powers = MAX_NUM_POWERS
-            .checked_sub(start)
-            .ok_or_else(|| {
-                anyhow!("Requesting too many powers: `start ({start}) > MAX_NUM_POWERS ({MAX_NUM_POWERS})`")
-            })?
-            .checked_next_power_of_two()
-            .ok_or_else(|| anyhow!("Requesting too many powers"))?; // Calculated k.next_power_of_two().
-
         // Get the download queue for the shifted powers.
         let download_queue = self.get_shifted_powers_download_queue(start)?;
+        let final_num_powers = *download_queue.first().ok_or(anyhow!("No powers to download"))?;
 
         // If the `target_degree` exceeds the current `degree`, proceed to download the new powers.
         let mut final_powers = Vec::with_capacity(final_num_powers);
@@ -443,23 +436,21 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
 
     /// Extend normal powers in place with checks to ensure the bytes are valid and the extensions
     /// are contiguous with the existing powers.
-    pub(crate) fn extend_normal_powers_checked(&mut self, powers: &[u8], num_powers: usize) -> Result<()> {
+    pub(super) fn extend_normal_powers_checked(&mut self, powers: &[u8], num_powers: usize) -> Result<()> {
         let current_length = self.powers_of_beta_g.len();
         let expected_final_length =
-            (current_length + 1).checked_next_power_of_two().ok_or_else(|| anyhow!("Requesting too many powers"))?;
+            (current_length + 1).checked_next_power_of_two().ok_or_else(|| anyhow!("Extending too many powers"))?;
 
         // Check that the attempted power extension is the next power of two.
         ensure!(
             expected_final_length == num_powers,
-            "The next increment of {} powers does match the number of powers specified {}",
-            expected_final_length,
-            num_powers,
+            "The next expected power is {expected_final_length} - powers specified {num_powers}",
         );
 
         // Ensure the bytes being passed in evaluate to the correct checksum.
         Self::verify_bytes(powers, num_powers)?;
 
-        // Deserialize the group elements and ensure the correct number of powers were downloaded/
+        // Deserialize the group elements and ensure the correct number of powers were downloaded.
         let additional_powers = Vec::deserialize_uncompressed_unchecked(powers)?;
 
         // Ensure the correct number of powers were downloaded prior to extending the powers.
@@ -474,7 +465,7 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
 
     /// Extend shifted powers in place with checks to ensure the bytes are valid and the extensions
     /// are contiguous with the powers already downloaded.
-    pub(crate) fn extend_shifted_powers_checked(
+    pub(super) fn extend_shifted_powers_checked(
         &mut self,
         shifted_powers: &[Vec<u8>],
         num_powers: &[usize],
@@ -485,30 +476,31 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
         let mut last_power = self.shifted_powers_of_beta_g.len();
 
         // Ensure that the powers being passed in are contiguous.
-        for shifted_power in num_powers.iter().rev() {
-            let expected_next_shifted_power =
+        for power in num_powers.iter().rev() {
+            let expected_power =
                 (last_power + 1).checked_next_power_of_two().ok_or_else(|| anyhow!("Requesting too many powers"))?;
             ensure!(
-                *shifted_power == expected_next_shifted_power,
-                "Cannot insert new powers not in the existing shifted power range shifted: {}, expected shifted: {} num_powers: {:?}, last power: {}",
-                shifted_power,
-                expected_next_shifted_power,
-                num_powers,
-                last_power
+                *power == expected_power,
+                "Expected the next shifted power extension to be {expected_power} but got {power}",
             );
-            last_power = *shifted_power;
+            last_power = *power;
         }
 
         let mut final_powers = Vec::with_capacity(final_num_powers);
-        for (power, size) in shifted_powers.iter().zip_eq(num_powers) {
-            // Ensure the shifted powers are of the correct size and evaluate to the correct checksum.
-            Self::verify_shifted_bytes(power, *size)?;
+        for (bytes, power) in shifted_powers.iter().zip_eq(num_powers) {
+            // Ensure the bytes are the correct size and evaluate to the correct checksum.
+            Self::verify_shifted_bytes(bytes, *power)?;
 
-            let additional_powers = Vec::deserialize_uncompressed_unchecked(&**power)?;
+            // Deserialize the bytes into group elements.
+            let additional_powers = Vec::deserialize_uncompressed_unchecked(&**bytes)?;
 
-            // Ensure the specified powers are of the intended size.
-            let expected_size = size.checked_div(2).ok_or_else(|| anyhow!("Invalid power size"))?;
-            ensure!(additional_powers.len() == expected_size, "Downloaded an incorrect number of powers");
+            // Ensure the length of the group elements are of the intended size.
+            let expected_size = power.checked_div(2).ok_or_else(|| anyhow!("Invalid power size"))?;
+            ensure!(
+                additional_powers.len() == expected_size,
+                "Downloaded an incorrect number of powers. Expected {expected_size} but got {}",
+                additional_powers.len()
+            );
 
             if final_powers.is_empty() {
                 final_powers = additional_powers;
@@ -521,7 +513,12 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
         final_powers.extend(self.shifted_powers_of_beta_g.iter());
 
         // Ensure the correct number of powers are present before extending the powers.
-        ensure!(final_powers.len() == final_num_powers, "Downloaded an incorrect number of powers");
+        ensure!(
+            final_powers.len() == final_num_powers,
+            "Power extension failed. Attempted extend the powers with an incorrect number \
+            of powers, expected a final length of {final_num_powers} but got a length of {}",
+            final_powers.len()
+        );
 
         self.shifted_powers_of_beta_g = final_powers;
 
@@ -533,6 +530,7 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
         // Determine the new power of two.
         let final_power_of_two =
             end.checked_next_power_of_two().ok_or_else(|| anyhow!("Requesting too many powers"))?;
+
         // Ensure the total number of powers is less than the maximum number of powers.
         ensure!(final_power_of_two <= MAX_NUM_POWERS, "Requesting more powers than exist in the SRS");
 
@@ -665,6 +663,8 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
     /// degree of normal powers.
     pub(super) fn verify_bytes(bytes: &[u8], num_powers: usize) -> Result<()> {
         match num_powers {
+            #[cfg(feature = "wasm")]
+            NUM_POWERS_16 => Degree16::verify_bytes(bytes),
             NUM_POWERS_17 => Degree17::verify_bytes(bytes),
             NUM_POWERS_18 => Degree18::verify_bytes(bytes),
             NUM_POWERS_19 => Degree19::verify_bytes(bytes),
@@ -686,6 +686,8 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
     /// degree of shifted powers.
     pub(super) fn verify_shifted_bytes(bytes: &[u8], num_powers: usize) -> Result<()> {
         match num_powers {
+            #[cfg(feature = "wasm")]
+            NUM_POWERS_16 => ShiftedDegree16::verify_bytes(bytes),
             NUM_POWERS_17 => ShiftedDegree17::verify_bytes(bytes),
             NUM_POWERS_18 => ShiftedDegree18::verify_bytes(bytes),
             NUM_POWERS_19 => ShiftedDegree19::verify_bytes(bytes),

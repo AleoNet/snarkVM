@@ -80,13 +80,12 @@ impl<E: PairingEngine> UniversalParams<E> {
         }
 
         if shifted_powers {
-            // Ensure the last shifted power is at least 2^16.
-            let final_shifted_power = *powers.last().ok_or_else(|| anyhow!("No powers to download"))?;
-            ensure!(final_shifted_power >= NUM_POWERS_16, "Cannot download shifted powers for less than 2^16 powers");
+            // Ensure the last shifted power is at least 2^16. (TODO: Once powers of 15 are downloadable, change this to 2^15)
+            let lowest_power = *powers.last().ok_or_else(|| anyhow!("No powers to download"))?;
+            ensure!(lowest_power >= NUM_POWERS_16, "Cannot download shifted powers for less than 2^16 powers");
 
-            // If the last power is 2^16 download it locally and pop it off the list of powers to
-            // download.
-            if final_shifted_power == NUM_POWERS_16 {
+            // If the last power is 2^16 get it locally and pop it off the list of powers to download.
+            if lowest_power == NUM_POWERS_16 && cfg!(not(feature = "wasm")) {
                 self.download_powers_for((NUM_POWERS_28 - NUM_POWERS_16)..(NUM_POWERS_28 - NUM_POWERS_15))?;
                 powers.pop().unwrap();
             }
@@ -112,6 +111,7 @@ impl<E: PairingEngine> UniversalParams<E> {
                 #[cfg(debug_assertions)]
                 println!("Loading {num_powers} powers");
 
+                #[cfg(not(feature = "wasm"))]
                 // If the powers of 16 are requested, get them locally.
                 if *num_powers == NUM_POWERS_16 {
                     self.download_powers_for(0..NUM_POWERS_16)?;
@@ -146,7 +146,7 @@ impl<E: PairingEngine> UniversalParams<E> {
             "Lower bound must be less than or equal to upper bound and at least 2^16"
         );
 
-        let range = (1usize << lower)..(1usize << upper);
+        let range = (1 << lower)..(1 << upper);
 
         // Download regular powers
         self.download_powers_for_async(&range).await?;
