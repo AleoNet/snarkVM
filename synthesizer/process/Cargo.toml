@@ -27,6 +27,7 @@ edition = "2021"
 default = [ "indexmap/rayon", "rayon" ]
 aleo-cli = [ ]
 async = [ "ledger-query/async" ]
+rocks = [ "ledger-store/rocks" ]
 serial = [
   "console/serial",
   "ledger-block/serial",
@@ -124,6 +125,15 @@ path = "../../ledger/query"
 default-features = false
 features = [ "query" ]
 
+[dev-dependencies.ledger-store]
+package = "snarkvm-ledger-store"
+path = "../../ledger/store"
+version = "=0.15.4"
+features = [ "test" ]
+
 [dev-dependencies.ledger-test-helpers]
 package = "snarkvm-ledger-test-helpers"
 path = "../../ledger/test-helpers"
+
+[dev-dependencies.tempfile]
+version = "3"

@@ -57,6 +57,8 @@ pub struct BlockDB<N: Network> {
     transactions_map: DataMap<N::BlockHash, Vec<N::TransactionID>>,
     /// The aborted transaction IDs map.
     aborted_transaction_ids_map: DataMap<N::BlockHash, Vec<N::TransactionID>>,
+    /// The rejected or aborted transaction ID map.
+    rejected_or_aborted_transaction_id_map: DataMap<N::TransactionID, N::BlockHash>,
     /// The confirmed transactions map.
     confirmed_transactions_map: DataMap<N::TransactionID, (N::BlockHash, ConfirmedTxType, Vec<u8>)>,
     /// The transaction store.
@@ -77,6 +79,7 @@ impl<N: Network> BlockStorage<N> for BlockDB<N> {
     type PuzzleCommitmentsMap = DataMap<PuzzleCommitment<N>, u32>;
     type TransactionsMap = DataMap<N::BlockHash, Vec<N::TransactionID>>;
     type AbortedTransactionIDsMap = DataMap<N::BlockHash, Vec<N::TransactionID>>;
+    type RejectedOrAbortedTransactionIDMap = DataMap<N::TransactionID, N::BlockHash>;
     type ConfirmedTransactionsMap = DataMap<N::TransactionID, (N::BlockHash, ConfirmedTxType, Vec<u8>)>;
     type TransactionStorage = TransactionDB<N>;
     type TransitionStorage = TransitionDB<N>;
@@ -101,6 +104,7 @@ impl<N: Network> BlockStorage<N> for BlockDB<N> {
             puzzle_commitments_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::PuzzleCommitments))?,
             transactions_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::Transactions))?,
             aborted_transaction_ids_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::AbortedTransactionIDs))?,
+            rejected_or_aborted_transaction_id_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::RejectedOrAbortedTransactionID))?,
             confirmed_transactions_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::ConfirmedTransactions))?,
             transaction_store,
         })
@@ -164,6 +168,11 @@ impl<N: Network> BlockStorage<N> for BlockDB<N> {
     /// Returns the aborted transaction IDs map.
     fn aborted_transaction_ids_map(&self) -> &Self::AbortedTransactionIDsMap {
         &self.aborted_transaction_ids_map
+    }
+
+    /// Returns the rejected or aborted transaction ID map.
+    fn rejected_or_aborted_transaction_id_map(&self) -> &Self::RejectedOrAbortedTransactionIDMap {
+        &self.rejected_or_aborted_transaction_id_map
     }
 
     /// Returns the confirmed transactions map.

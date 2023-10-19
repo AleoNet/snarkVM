@@ -26,22 +26,22 @@ outputs:
     test_rand.aleo/rand_chacha_check:
       outputs:
       - '{"type":"future","id":"6632578043065250671900699630486713707508511783056688582055933257632278653469field","value":"{\n  program_id: test_rand.aleo,\n  function_name: rand_chacha_check,\n  arguments: [\n    1field,\n    true\n  ]\n}"}'
-  speculate: the execution was accepted
+  speculate: the execution was rejected
   add_next_block: succeeded.
 additional:
 - child_outputs:
     credits.aleo/fee_private:
       outputs:
-      - '{"type":"record","id":"3414625046007462357907233936963597031743518533285469193618770662066092860297field","checksum":"6748596554726566616077788304159551458340632606372981320315516519690937074727field","value":"record1qyqsq96nqu434vyta43jksy548fdck37rc7kc34494ndwd9xfg9l7zsfqyxx66trwfhkxun9v35hguerqqpqzqp47n5hck4nflwwyz0wm37mh898yfhr6rw79z026vpnc4v6h5sap3wxhvupx7k4p2jhrwtx5zw6r5t3vuarmsq8n4c4p987z586n6yqzy0e9ad"}'
+      - '{"type":"record","id":"4381229306463692442497149670614588062764798743790588146804215330229884792339field","checksum":"2138639167265992670566199833999883133869484105738196279078647847384925584310field","value":"record1qyqsq96nqu434vyta43jksy548fdck37rc7kc34494ndwd9xfg9l7zsfqyxx66trwfhkxun9v35hguerqqpqzqp47n5hcfmt2twwyz0wm37mh898yfhr6rw79z026vpnc4v6h5sap3wxhvupx7k4p2jhrwtx5zw6r5t3vuarmsq8n4c4p987z586n6yqzjd7p7w"}'
 - child_outputs:
     credits.aleo/fee_private:
       outputs:
-      - '{"type":"record","id":"4484154496467863507445197243426730715163262746415150559195448938738085872287field","checksum":"4724131081939484830458987874305456564780685396344583637408914379105136434818field","value":"record1qyqsq4tq08wj70zje3dth93xhcaac25nc7szhtt8egu4h42tln3nh0crqyxx66trwfhkxun9v35hguerqqpqzq96k0c7knknchvjlnjdyf0z0r28yvnlnmpuuj4qhxpwqc8qktc8z9e93akjxefm88vhqxpv7ppqrxp6q8hpvzee72az4mx6k4553tmssezm7e2"}'
+      - '{"type":"record","id":"6586316285692512365232256556210792622636286450707813931421762885414931353832field","checksum":"1586190359159798393415585130912439326237257065208437997708789530351085560464field","value":"record1qyqsq4tq08wj70zje3dth93xhcaac25nc7szhtt8egu4h42tln3nh0crqyxx66trwfhkxun9v35hguerqqpqzq96k0cukn8schvjlnjdyf0z0r28yvnlnmpuuj4qhxpwqc8qktc8z9e93akjxefm88vhqxpv7ppqrxp6q8hpvzee72az4mx6k4553tmss23hwgr"}'
 - child_outputs:
     credits.aleo/fee_private:
       outputs:
-      - '{"type":"record","id":"4378706090932912349424961469315774658612730607495369192607247461714443624012field","checksum":"1826625931723245298434468963668076089321486618416737183525521345797368736757field","value":"record1qyqspxy8g4khtakgjt7dk7p3ych5zhqysfp78uh7740jyr4j2q4xu3qxqyxx66trwfhkxun9v35hguerqqpqzqqfguxkpwkjdc9xzk0vzklz8v7kt3szhr2h70tt8tj9c2ddgyptppsgj9uj7g0spx3uvw5l7c4ue7qgp948gjcwen4ql5u8fhj3333qjy8pnlg"}'
+      - '{"type":"record","id":"70907903135321440406346995966772705528708353149493963813138922918859409499field","checksum":"1758155264387920852695791077636953465936690916033386407170194003924917340917field","value":"record1qyqspxy8g4khtakgjt7dk7p3ych5zhqysfp78uh7740jyr4j2q4xu3qxqyxx66trwfhkxun9v35hguerqqpqzqqfgux5pw80dc9xzk0vzklz8v7kt3szhr2h70tt8tj9c2ddgyptppsgj9uj7g0spx3uvw5l7c4ue7qgp948gjcwen4ql5u8fhj3333qjccs5hk"}'
 - child_outputs:
     credits.aleo/fee_private:
       outputs:
-      - '{"type":"record","id":"2809741264276410976832644138660198196151849618285398182086898348682223862875field","checksum":"1523380839021857495072683842994987502254719937875902750716725229732830492110field","value":"record1qyqsparxz7rjgu5qwj29fp5xspylvxuxumjzpjwp7yahvn09szx0l6g3qyxx66trwfhkxun9v35hguerqqpqzq9vq9p6maxyxvvrax2n3nht8f9jgdpzt9h9l7w7k5geycwqtypupsuh2lrxq4l7ts96haxgvxkdjvwd42cqpt2l96j9xhw5zlxuu2ssxuxjy9r"}'
+      - '{"type":"record","id":"5402941757199163131329664269602668871633752908147903083826863058623466909547field","checksum":"6299858438509874984288393356100492859126380436511534635530655092194846486258field","value":"record1qyqsparxz7rjgu5qwj29fp5xspylvxuxumjzpjwp7yahvn09szx0l6g3qyxx66trwfhkxun9v35hguerqqpqzq9vq9pcmuhpxvvrax2n3nht8f9jgdpzt9h9l7w7k5geycwqtypupsuh2lrxq4l7ts96haxgvxkdjvwd42cqpt2l96j9xhw5zlxuu2ssx0gfq8x"}'
