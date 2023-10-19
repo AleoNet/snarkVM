@@ -185,15 +185,17 @@ macro_rules! impl_load_bytes_logic_local {
 }
 
 macro_rules! impl_load_bytes_logic_remote {
-    ($remote_url: expr, $local_dir: expr, $filename: expr, $remote_fetch:ident $(, $await:ident)?) => {
+    ($remote_url: expr, $local_dir: expr, $filename: expr, $expected_checksum: expr, $expected_size: expr, $remote_fetch:ident $(, $await:ident)?) => {
         // Compose the correct file path for the parameter file.
         let mut file_path = aleo_std::aleo_dir();
         file_path.push($local_dir);
         file_path.push($filename);
 
-        let buffer = if file_path.exists() {
+        return if file_path.exists() {
             // Attempts to load the parameter file locally with an absolute path.
-            std::fs::read(&file_path)?
+            let buffer = std::fs::read(&file_path)?;
+            impl_verify_bytes_logic!(&buffer, $expected_checksum, $expected_size, $filename);
+            Ok(buffer)
         } else {
             // Downloads the missing parameters and stores it in the local directory for use.
              #[cfg(not(feature = "no_std_out"))]
@@ -214,7 +216,7 @@ macro_rules! impl_load_bytes_logic_remote {
             Self::$remote_fetch(&mut buffer, &url)$(.$await)??;
 
             // Ensure the checksum matches and the length is correct prior to storing the bytes.
-            Self::verify_bytes(&buffer)?;
+            impl_verify_bytes_logic!(&buffer, $expected_checksum, $expected_size, $filename);
 
             cfg_if::cfg_if! {
                 if #[cfg(not(feature = "wasm"))] {
@@ -228,17 +230,9 @@ macro_rules! impl_load_bytes_logic_remote {
                         _ => {}
                     }
                 }
-            };
-            buffer
-        };
-
-        // Verify the expected length and checksum match. If they don't, remove the file.
-        Self::verify_bytes(&buffer).or_else(|e| {
-            remove_file!($filename);
-            Err(e)
-        })?;
-
-        return Ok(buffer)
+            }
+            Ok(buffer)
+        }
     }
 }
 
@@ -336,33 +330,23 @@ macro_rules! impl_remote {
 
             pub fn load_bytes() -> Result<Vec<u8>, $crate::errors::ParameterError> {
 
-                let (_, _, filename) = Self::extract_metadata();
+                let (expected_checksum, expected_size, _filename) = Self::extract_metadata();
 
-                impl_load_bytes_logic_remote!($remote_url, $local_dir, &filename, remote_fetch);
+                impl_load_bytes_logic_remote!($remote_url, $local_dir, &_filename, expected_checksum, expected_size, remote_fetch);
             }
 
             pub async fn load_bytes_async() -> Result<Vec<u8>, $crate::errors::ParameterError> {
 
-                let (_, _, filename) = Self::extract_metadata();
+                let (expected_checksum, expected_size, _filename) = Self::extract_metadata();
 
-                impl_load_bytes_logic_remote!($remote_url, $local_dir, &filename, remote_fetch_async, await);
+                impl_load_bytes_logic_remote!($remote_url, $local_dir, &_filename, expected_checksum, expected_size, remote_fetch_async, await);
             }
 
             /// Ensure bytes match the expected checksum and size for the power degree.
             pub fn verify_bytes(buffer: &[u8]) -> Result<(), $crate::errors::ParameterError> {
-                let (expected_checksum, expected_size, _) = Self::extract_metadata();
+                let (expected_checksum, expected_size, _filename) = Self::extract_metadata();
 
-                // Ensure the length of the bytes passed matches the expected length
-                if expected_size != buffer.len() {
-                    return Err($crate::errors::ParameterError::SizeMismatch(expected_size, buffer.len()));
-                }
-
-                // Ensure the checksum of the bytes passed matches the expected checksum
-                let candidate_checksum = checksum!(buffer);
-                if expected_checksum != candidate_checksum {
-                    return checksum_error!(expected_checksum, candidate_checksum);
-                }
-
+                impl_verify_bytes_logic!(buffer, expected_checksum, expected_size, _filename);
                 Ok(())
             }
         }
@@ -402,30 +386,22 @@ macro_rules! impl_remote {
 
             pub fn load_bytes() -> Result<Vec<u8>, $crate::errors::ParameterError> {
 
-                let (_, _, filename) = Self::extract_metadata();
+                let (expected_checksum, expected_size, _filename) = Self::extract_metadata();
 
-                impl_load_bytes_logic_remote!($remote_url, $local_dir, &filename, remote_fetch);
+                impl_load_bytes_logic_remote!($remote_url, $local_dir, &_filename, expected_checksum, expected_size, remote_fetch);
             }
 
             pub async fn load_bytes_async() -> Result<Vec<u8>, $crate::errors::ParameterError> {
-                let (_, _, filename) = Self::extract_metadata();
+                let (expected_checksum, expected_size, _filename) = Self::extract_metadata();
 
-                impl_load_bytes_logic_remote!($remote_url, $local_dir, &filename, remote_fetch_async, await);
+                impl_load_bytes_logic_remote!($remote_url, $local_dir, &_filename, expected_checksum, expected_size, remote_fetch_async, await);
             }
 
             /// Ensure downloaded bytes are valid.
             pub fn verify_bytes(buffer: &[u8]) -> Result<(), $crate::errors::ParameterError> {
-                let (expected_checksum, expected_size, _) = Self::extract_metadata();
+                let (expected_checksum, expected_size, _filename) = Self::extract_metadata();
 
-                if expected_size != buffer.len() {
-                    return Err($crate::errors::ParameterError::SizeMismatch(expected_size, buffer.len()));
-                }
-
-                let candidate_checksum = checksum!(buffer);
-                if candidate_checksum != candidate_checksum {
-                    return checksum_error!(expected_checksum, candidate_checksum)
-                }
-
+                impl_verify_bytes_logic!(buffer, expected_checksum, expected_size, _filename);
                 Ok(())
             }
         }
@@ -485,6 +461,23 @@ macro_rules! impl_download_shifted_powers {
             NUM_POWERS_26 => ShiftedDegree26::$load_bytes()$(.$await)?,
             NUM_POWERS_27 => ShiftedDegree27::$load_bytes()$(.$await)?,
             _ => Err($crate::errors::ParameterError::Message("invalid degree".to_string())),
+        }
+    };
+}
+
+macro_rules! impl_verify_bytes_logic {
+    ($buffer: expr, $expected_checksum: expr, $expected_size: expr, $filename: expr) => {
+        // Ensure the length of the bytes passed matches the expected length
+        if $expected_size != $buffer.len() {
+            remove_file!($filename);
+            return Err($crate::errors::ParameterError::SizeMismatch($expected_size, $buffer.len()));
+        }
+
+        // Ensure the checksum of the bytes passed matches the expected checksum
+        let candidate_checksum = checksum!($buffer);
+        if $expected_checksum != candidate_checksum {
+            remove_file!($filename);
+            return checksum_error!($expected_checksum, candidate_checksum);
         }
     };
 }

@@ -106,7 +106,10 @@ version = "=0.15.4"
 features = [ "wasm" ]
 
 [dev-dependencies.wasm-bindgen-test]
-version = "0.3.37"
+version = "0.3"
+
+[dev-dependencies]
+tokio-test = "0.4"
 
 
 

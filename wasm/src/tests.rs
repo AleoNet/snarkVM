@@ -63,7 +63,6 @@ fn test_account_sign() {
     }
 }
 
-#[wasm_bindgen_test]
 async fn test_preload_powers_async() {
     // Pre-download powers.
     let mut process = Process::<Testnet3>::load_web().unwrap();
@@ -100,4 +99,14 @@ async fn test_preload_powers_async() {
         process.universal_srs().powers_of_beta_g(NUM_POWERS_28 - NUM_POWERS_19, NUM_POWERS_28 - NUM_POWERS_15).unwrap();
     assert_eq!(powers_of_beta.len(), NUM_POWERS_19);
     assert_eq!(shifted_powers_of_beta.len(), NUM_POWERS_19 - NUM_POWERS_15);
+}
+
+#[test]
+fn test_preload_powers_async_native() {
+    tokio_test::block_on(test_preload_powers_async());
+}
+
+#[wasm_bindgen_test]
+async fn test_preload_powers_async_wasm() {
+    test_preload_powers_async().await;
 }

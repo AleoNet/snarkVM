@@ -125,7 +125,7 @@ impl<E: PairingEngine> PowersOfG<E> {
     }
 
     /// Extend shifted powers with checks to ensure that the bytes passed are valid powers.
-    pub fn extend_shifted_powers_checked(&mut self, powers: &[Vec<u8>], num_powers: &[usize]) -> Result<()> {
+    pub fn extend_shifted_powers_checked(&mut self, powers: &[&[u8]], num_powers: &[usize]) -> Result<()> {
         self.powers_of_beta_g.extend_shifted_powers_checked(powers, num_powers)
     }
 
@@ -467,7 +467,7 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
     /// are contiguous with the powers already downloaded.
     pub(super) fn extend_shifted_powers_checked(
         &mut self,
-        shifted_powers: &[Vec<u8>],
+        shifted_powers: &[&[u8]],
         num_powers: &[usize],
     ) -> Result<()> {
         let final_num_powers = *num_powers.first().ok_or_else(|| anyhow!("No powers to extend"))?;
@@ -784,23 +784,19 @@ mod tests {
         assert_eq!(powers.num_shifted_powers(), NUM_POWERS_16);
 
         // Ensure bytes with incorrect length fail to extend powers.
-        let result = powers
-            .extend_shifted_powers_checked(&[shifted_powers_17.clone()[0..(NUM_POWERS_17 - 3)].to_vec()], &[
-                NUM_POWERS_17,
-            ]);
+        let result =
+            powers.extend_shifted_powers_checked(&[&shifted_powers_17[0..(NUM_POWERS_17 - 3)]], &[NUM_POWERS_17]);
         assert!(result.is_err());
         assert_eq!(powers.num_shifted_powers(), NUM_POWERS_16);
 
         // Ensure non-contiguous bytes fail to extend powers.
-        let result = powers.extend_shifted_powers_checked(&[shifted_powers_19.clone(), shifted_powers_17.clone()], &[
-            NUM_POWERS_18,
-            NUM_POWERS_17,
-        ]);
+        let result = powers
+            .extend_shifted_powers_checked(&[&shifted_powers_19, &shifted_powers_17], &[NUM_POWERS_18, NUM_POWERS_17]);
         assert!(result.is_err());
         assert_eq!(powers.num_shifted_powers(), NUM_POWERS_16);
 
         // Ensure incorrect bytes fail to extend powers.
-        let result = powers.extend_shifted_powers_checked(&[vec![0; NUM_POWERS_17], vec![0; NUM_POWERS_16]], &[
+        let result = powers.extend_shifted_powers_checked(&[&[0; NUM_POWERS_17], &[0; NUM_POWERS_16]], &[
             NUM_POWERS_17,
             NUM_POWERS_16,
         ]);
@@ -808,12 +804,12 @@ mod tests {
         assert_eq!(powers.num_shifted_powers(), NUM_POWERS_16);
 
         // Ensure if powers are specified out of order that the extension fails to extend powers.
-        let result = powers.extend_shifted_powers_checked(&[vec![], vec![]], &[NUM_POWERS_17, NUM_POWERS_18]);
+        let result = powers.extend_shifted_powers_checked(&[&[], &[]], &[NUM_POWERS_17, NUM_POWERS_18]);
         assert!(result.is_err());
         assert_eq!(powers.num_shifted_powers(), NUM_POWERS_16);
 
         // Ensure a valid extension succeeds
-        powers.extend_shifted_powers_checked(&[shifted_powers_17], &[NUM_POWERS_17]).unwrap();
+        powers.extend_shifted_powers_checked(&[&shifted_powers_17], &[NUM_POWERS_17]).unwrap();
         assert_eq!(powers.num_shifted_powers(), NUM_POWERS_17);
 
         // Ensure bytes with a valid range can be downloaded after an extension.
@@ -821,12 +817,12 @@ mod tests {
         assert_eq!(powers.num_shifted_powers(), NUM_POWERS_18);
 
         // Ensure existing powers can't be overwritten with an overlapping range.
-        let result = powers.extend_shifted_powers_checked(&[shifted_powers_18], &[NUM_POWERS_18, NUM_POWERS_18]);
+        let result = powers.extend_shifted_powers_checked(&[&shifted_powers_18], &[NUM_POWERS_18, NUM_POWERS_18]);
         assert!(result.is_err());
         assert_eq!(powers.num_shifted_powers(), NUM_POWERS_18);
 
         // Ensure powers can be extended after normal downloads.
-        powers.extend_shifted_powers_checked(&[shifted_powers_19], &[NUM_POWERS_19]).unwrap();
+        powers.extend_shifted_powers_checked(&[&shifted_powers_19], &[NUM_POWERS_19]).unwrap();
         assert_eq!(powers.num_shifted_powers(), NUM_POWERS_19);
     }
 

@@ -104,7 +104,8 @@ impl<E: PairingEngine> UniversalParams<E> {
 
             // Perform checks to ensure bytes are valid and then extend the shifted powers with the
             // downloaded bytes.
-            self.powers.write().extend_shifted_powers_checked(&final_powers, &powers)?;
+            let power_refs = final_powers.iter().map(|x| x.as_slice()).collect::<Vec<&[u8]>>();
+            self.powers.write().extend_shifted_powers_checked(&power_refs, &powers)?;
         } else {
             // Download the powers of two.
             for num_powers in &powers {
@@ -128,6 +129,16 @@ impl<E: PairingEngine> UniversalParams<E> {
         }
 
         Ok(())
+    }
+
+    /// Do a checked extension of normal powers.
+    pub fn extend_normal_powers_checked(&mut self, powers: &[u8], num_powers: usize) -> Result<()> {
+        self.powers.write().extend_normal_powers_checked(powers, num_powers)
+    }
+
+    /// Do a checked extension of the shifted powers.
+    pub fn extend_shifted_powers_checked(&mut self, powers: &[&[u8]], num_powers: &[usize]) -> Result<()> {
+        self.powers.write().extend_shifted_powers_checked(powers, num_powers)
     }
 
     pub fn lagrange_basis(&self, domain: EvaluationDomain<E::Fr>) -> Result<Vec<E::G1Affine>> {
