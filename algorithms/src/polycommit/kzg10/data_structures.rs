@@ -120,7 +120,7 @@ impl<E: PairingEngine> UniversalParams<E> {
                 }
 
                 // Otherwise download the bytes.
-                let downloaded_powers = PowersOfG::<E>::download_powers_async(*num_powers, 2).await?;
+                let downloaded_powers = PowersOfG::<E>::download_normal_powers_async(*num_powers, 2).await?;
 
                 // Perform checks to ensure bytes are valid and then extend the powers with the
                 // downloaded bytes.

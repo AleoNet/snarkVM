@@ -94,19 +94,19 @@ impl<E: PairingEngine> PowersOfG<E> {
         self.beta_h
     }
 
-    /// Download the powers of beta G specified by `range`.
-    pub fn download_powers_for(&mut self, range: Range<usize>) -> Result<()> {
-        self.powers_of_beta_g.download_powers_for(&range)
-    }
-
     /// Asynchronously download bytes representing powers of `beta * G`.
-    pub async fn download_powers_async(num_powers: usize, retries: usize) -> Result<Vec<u8>> {
+    pub async fn download_normal_powers_async(num_powers: usize, retries: usize) -> Result<Vec<u8>> {
         for _ in 0..(retries + 1) {
             if let Ok(powers) = impl_download_powers!(num_powers, load_bytes_async, await) {
                 return Ok(powers);
             }
         }
         bail!("Failed to download powers of beta * G")
+    }
+
+    /// Download the powers of beta G specified by `range`.
+    pub fn download_powers_for(&mut self, range: Range<usize>) -> Result<()> {
+        self.powers_of_beta_g.download_powers_for(&range)
     }
 
     /// Asynchronously download bytes representing shifted powers of `beta * G`.
@@ -119,6 +119,11 @@ impl<E: PairingEngine> PowersOfG<E> {
         bail!("Failed to download shifted powers of beta * G")
     }
 
+    /// Estimate the powers of `beta * G` needed for a given `range`.
+    pub fn estimate_powers_for(&self, range: &Range<usize>) -> Result<(Vec<usize>, bool)> {
+        self.powers_of_beta_g.estimate_powers_for(range)
+    }
+
     /// Extend normal powers with checks to ensure that the bytes passed are valid powers.
     pub fn extend_normal_powers_checked(&mut self, powers: &[u8], num_powers: usize) -> Result<()> {
         self.powers_of_beta_g.extend_normal_powers_checked(powers, num_powers)
@@ -129,14 +134,23 @@ impl<E: PairingEngine> PowersOfG<E> {
         self.powers_of_beta_g.extend_shifted_powers_checked(powers, num_powers)
     }
 
-    /// Estimate the powers of `beta * G` needed for a given `range`.
-    pub fn estimate_powers_for(&self, range: &Range<usize>) -> Result<(Vec<usize>, bool)> {
-        self.powers_of_beta_g.estimate_powers_for(range)
-    }
-
     /// Returns the maximum possible number of contiguous powers of beta G starting from the 0-th power.
     pub fn max_num_powers(&self) -> usize {
         MAX_NUM_POWERS
+    }
+
+    pub fn negative_powers_of_beta_h(&self) -> Arc<BTreeMap<usize, E::G2Affine>> {
+        self.negative_powers_of_beta_h.clone()
+    }
+
+    /// Returns the number of contiguous powers of beta G starting from the 0-th power.
+    pub fn num_powers(&self) -> usize {
+        self.powers_of_beta_g.num_powers()
+    }
+
+    /// Returns the number of contiguous powers of beta G starting from the MAX power.
+    pub fn num_shifted_powers(&self) -> usize {
+        self.powers_of_beta_g.num_shifted_powers()
     }
 
     /// Returns the `index`-th power of beta * G.
@@ -152,20 +166,6 @@ impl<E: PairingEngine> PowersOfG<E> {
     /// Returns the powers of beta * gamma G.
     pub fn powers_of_beta_gamma_g(&self) -> Arc<BTreeMap<usize, E::G1Affine>> {
         self.powers_of_beta_times_gamma_g.clone()
-    }
-
-    pub fn negative_powers_of_beta_h(&self) -> Arc<BTreeMap<usize, E::G2Affine>> {
-        self.negative_powers_of_beta_h.clone()
-    }
-
-    /// Returns the number of contiguous powers of beta G starting from the 0-th power.
-    pub fn num_powers(&self) -> usize {
-        self.powers_of_beta_g.num_powers()
-    }
-
-    /// Returns the number of contiguous powers of beta G starting from the MAX power.
-    pub fn num_shifted_powers(&self) -> usize {
-        self.powers_of_beta_g.num_shifted_powers()
     }
 
     pub fn prepared_negative_powers_of_beta_h(&self) -> Arc<BTreeMap<usize, <E::G2Affine as PairingCurve>::Prepared>> {
@@ -601,6 +601,12 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
         Ok(download_queue)
     }
 
+    // Assumes that we have the requisite powers.
+    fn normal_powers(&self, range: Range<usize>) -> Result<&[E::G1Affine]> {
+        ensure!(self.contains_in_normal_powers(&range), "Requested range is not contained in the available powers");
+        Ok(&self.powers_of_beta_g[range])
+    }
+
     /// Returns the number of contiguous powers of beta G starting from the 0-th power.
     pub fn num_powers(&self) -> usize {
         self.powers_of_beta_g.len()
@@ -609,12 +615,6 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
     /// Returns the number of contiguous shifted powers of beta G.
     pub fn num_shifted_powers(&self) -> usize {
         self.shifted_powers_of_beta_g.len()
-    }
-
-    // Assumes that we have the requisite powers.
-    fn normal_powers(&self, range: Range<usize>) -> Result<&[E::G1Affine]> {
-        ensure!(self.contains_in_normal_powers(&range), "Requested range is not contained in the available powers");
-        Ok(&self.powers_of_beta_g[range])
     }
 
     // Returns the power of beta times G specified by `target`.

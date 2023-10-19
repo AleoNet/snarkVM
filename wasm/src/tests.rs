@@ -102,7 +102,7 @@ async fn test_preload_powers_async() {
 }
 
 #[test]
-fn test_preload_powers_async_native() {
+fn test_preload_powers_async_rust() {
     tokio_test::block_on(test_preload_powers_async());
 }
 

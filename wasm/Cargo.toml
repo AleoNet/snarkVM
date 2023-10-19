@@ -105,13 +105,11 @@ path = "../parameters"
 version = "=0.15.4"
 features = [ "wasm" ]
 
+[dev-dependencies.tokio-test]
+version = "0.4"
+
 [dev-dependencies.wasm-bindgen-test]
 version = "0.3"
-
-[dev-dependencies]
-tokio-test = "0.4"
-
-
 
 [features]
 default = [ "full" ]
