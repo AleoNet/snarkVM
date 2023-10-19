@@ -109,11 +109,6 @@ impl<N: Network> BatchCertificate<N> {
         self.batch_header.round()
     }
 
-    /// Returns the last commit.
-    pub const fn last_commit(&self) -> u64 {
-        self.batch_header.last_commit()
-    }
-
     /// Returns the transmission IDs.
     pub const fn transmission_ids(&self) -> &IndexSet<TransmissionID<N>> {
         self.batch_header.transmission_ids()
