@@ -51,9 +51,18 @@ impl<N: Network> Block<N> {
             expected_proof_target,
             expected_last_coinbase_target,
             expected_last_coinbase_timestamp,
-            expected_block_reward,
+            mut expected_block_reward,
             expected_puzzle_reward,
         ) = self.verify_solutions(previous_block, current_puzzle, current_epoch_challenge)?;
+
+        // Add the priority fees to the block reward.
+        for confirmed_transacation in self.transactions.iter() {
+            // Get the priority fee amount for the transaction.
+            let priority_fee_amount = confirmed_transacation.transaction().priority_fee_amount()?;
+
+            // Add the priority fee to the block reward.
+            expected_block_reward = expected_block_reward.saturating_add(*priority_fee_amount);
+        }
 
         // Ensure the block ratifications are correct.
         self.verify_ratifications(expected_block_reward, expected_puzzle_reward)?;

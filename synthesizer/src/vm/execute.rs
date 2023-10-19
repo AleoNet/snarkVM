@@ -46,16 +46,25 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             true => {
                 // Compute the minimum execution cost.
                 let (minimum_execution_cost, (_, _)) = execution_cost(self, &execution)?;
-                // Determine the fee.
-                let Some(fee_amount) = minimum_execution_cost.checked_add(priority_fee_in_microcredits) else {
-                    bail!("Fee overflowed for an execution transaction")
-                };
                 // Compute the execution ID.
                 let execution_id = execution.to_execution_id()?;
                 // Authorize the fee.
                 let authorization = match fee_record {
-                    Some(record) => self.authorize_fee_private(private_key, record, fee_amount, execution_id, rng)?,
-                    None => self.authorize_fee_public(private_key, fee_amount, execution_id, rng)?,
+                    Some(record) => self.authorize_fee_private(
+                        private_key,
+                        record,
+                        minimum_execution_cost,
+                        priority_fee_in_microcredits,
+                        execution_id,
+                        rng,
+                    )?,
+                    None => self.authorize_fee_public(
+                        private_key,
+                        minimum_execution_cost,
+                        priority_fee_in_microcredits,
+                        execution_id,
+                        rng,
+                    )?,
                 };
                 // Execute the fee.
                 Some(self.execute_fee_authorization_raw(authorization, query, rng)?)
@@ -262,7 +271,7 @@ mod tests {
 
         // Assert the size of the transaction.
         let transaction_size_in_bytes = transaction.to_bytes_le().unwrap().len();
-        assert_eq!(3584, transaction_size_in_bytes, "Update me if serialization has changed");
+        assert_eq!(3629, transaction_size_in_bytes, "Update me if serialization has changed");
 
         // Assert the size of the execution.
         assert!(matches!(transaction, Transaction::Execute(_, _, _)));
@@ -296,7 +305,7 @@ mod tests {
 
         // Assert the size of the transaction.
         let transaction_size_in_bytes = transaction.to_bytes_le().unwrap().len();
-        assert_eq!(2762, transaction_size_in_bytes, "Update me if serialization has changed");
+        assert_eq!(2807, transaction_size_in_bytes, "Update me if serialization has changed");
 
         // Assert the size of the execution.
         assert!(matches!(transaction, Transaction::Execute(_, _, _)));
@@ -331,7 +340,7 @@ mod tests {
 
         // Assert the size of the transaction.
         let transaction_size_in_bytes = transaction.to_bytes_le().unwrap().len();
-        assert_eq!(3429, transaction_size_in_bytes, "Update me if serialization has changed");
+        assert_eq!(3474, transaction_size_in_bytes, "Update me if serialization has changed");
 
         // Assert the size of the execution.
         assert!(matches!(transaction, Transaction::Execute(_, _, _)));
@@ -388,7 +397,7 @@ mod tests {
         };
         // Assert the size of the transition.
         let fee_size_in_bytes = fee.to_bytes_le().unwrap().len();
-        assert_eq!(1966, fee_size_in_bytes, "Update me if serialization has changed");
+        assert_eq!(2011, fee_size_in_bytes, "Update me if serialization has changed");
     }
 
     #[test]
@@ -404,6 +413,6 @@ mod tests {
         };
         // Assert the size of the transition.
         let fee_size_in_bytes = fee.to_bytes_le().unwrap().len();
-        assert_eq!(1339, fee_size_in_bytes, "Update me if serialization has changed");
+        assert_eq!(1384, fee_size_in_bytes, "Update me if serialization has changed");
     }
 }

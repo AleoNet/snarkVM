@@ -182,13 +182,33 @@ impl<N: Network> Transaction<N> {
         }
     }
 
-    /// Returns the transaction fee.
+    /// Returns the transaction total fee.
     pub fn fee_amount(&self) -> Result<U64<N>> {
         match self {
             Self::Deploy(_, _, _, fee) => fee.amount(),
             Self::Execute(_, _, Some(fee)) => fee.amount(),
             Self::Execute(_, _, None) => Ok(U64::zero()),
             Self::Fee(_, fee) => fee.amount(),
+        }
+    }
+
+    /// Returns the transaction base fee.
+    pub fn base_fee_amount(&self) -> Result<U64<N>> {
+        match self {
+            Self::Deploy(_, _, _, fee) => fee.base_amount(),
+            Self::Execute(_, _, Some(fee)) => fee.base_amount(),
+            Self::Execute(_, _, None) => Ok(U64::zero()),
+            Self::Fee(_, fee) => fee.base_amount(),
+        }
+    }
+
+    /// Returns the transaction priority fee.
+    pub fn priority_fee_amount(&self) -> Result<U64<N>> {
+        match self {
+            Self::Deploy(_, _, _, fee) => fee.priority_amount(),
+            Self::Execute(_, _, Some(fee)) => fee.priority_amount(),
+            Self::Execute(_, _, None) => Ok(U64::zero()),
+            Self::Fee(_, fee) => fee.priority_amount(),
         }
     }
 

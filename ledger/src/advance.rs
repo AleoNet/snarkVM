@@ -198,9 +198,17 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         )?;
 
         // Compute the block reward.
-        let block_reward = ledger_block::block_reward(N::STARTING_SUPPLY, N::BLOCK_TIME, coinbase_reward);
+        let mut block_reward = ledger_block::block_reward(N::STARTING_SUPPLY, N::BLOCK_TIME, coinbase_reward);
         // Compute the puzzle reward.
         let puzzle_reward = coinbase_reward.saturating_div(2);
+
+        // Add the priority fees to the block reward.
+        for transaction in candidate_transactions.iter() {
+            // Get the priority fee for the transaction.
+            let priority_fee_amount = transaction.priority_fee_amount()?;
+            // Add the priority fee to the block reward.
+            block_reward = block_reward.saturating_add(*priority_fee_amount);
+        }
 
         // TODO (howardwu): We must first process the candidate ratifications to filter out invalid ratifications.
         //  We must ensure Ratify::Genesis is only present in the genesis block.
