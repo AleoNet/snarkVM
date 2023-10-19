@@ -239,7 +239,7 @@ impl<N: Network> Block<N> {
 
         // Ensure that the ratification types are unique.
         let number_of_ratification_types =
-            self.ratifications.iter().map(|r| std::mem::discriminant(r)).collect::<HashSet<_>>().len();
+            self.ratifications.iter().map(std::mem::discriminant).collect::<HashSet<_>>().len();
         ensure!(
             number_of_ratification_types == self.ratifications.len(),
             "Block {height} must contain at most 1 of each ratification type"
