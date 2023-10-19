@@ -47,8 +47,9 @@ impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> PathHash for 
 
     /// Returns the hash of the given child nodes.
     fn hash_children(&self, children: &[Self::Hash]) -> Result<Self::Hash> {
+        let mut input = Vec::new();
         // Prepend the nodes with a `true` bit.
-        let mut input = vec![true];
+        input.push(true);
         for child in children {
             child.write_bits_le(&mut input);
         }
@@ -62,8 +63,9 @@ impl<E: Environment, const RATE: usize> PathHash for Poseidon<E, RATE> {
 
     /// Returns the hash of the given child nodes.
     fn hash_children(&self, children: &[Self::Hash]) -> Result<Self::Hash> {
+        let mut input = Vec::with_capacity(1 + children.len());
         // Prepend the nodes with a `1field` byte.
-        let mut input = vec![Self::Hash::one()];
+        input.push(Self::Hash::one());
         for child in children {
             input.push(*child);
         }
@@ -77,8 +79,9 @@ impl<const TYPE: u8, const VARIANT: usize> PathHash for Keccak<TYPE, VARIANT> {
 
     /// Returns the hash of the given child nodes.
     fn hash_children(&self, children: &[Self::Hash]) -> Result<Self::Hash> {
+        let mut input = Vec::new();
         // Prepend the nodes with a `true` bit.
-        let mut input = vec![true];
+        input.push(true);
         for child in children {
             input.extend_from_slice(child.as_slice());
         }

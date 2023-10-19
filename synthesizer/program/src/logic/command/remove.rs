@@ -73,7 +73,7 @@ impl<N: Network> Remove<N> {
         // Load the key operand as a plaintext.
         let key = registers.load_plaintext(stack, &self.key)?;
         // Update the value in storage, and return the finalize operation.
-        store.remove_key_value(stack.program_id(), &self.mapping, &key)
+        store.remove_key_value(*stack.program_id(), self.mapping, &key)
     }
 }
 

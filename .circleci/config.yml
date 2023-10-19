@@ -151,6 +151,16 @@ jobs:
           workspace_member: algorithms
           cache_key: snarkvm-algorithms-cache
 
+  algorithms-profiler:
+    docker:
+      - image: cimg/rust:1.71.1
+    resource_class: xlarge
+    steps:
+      - run_serial: # This runs a single test with profiler enabled
+          workspace_member: algorithms
+          cache_key: snarkvm-algorithms-cache
+          flags: varuna::prove_and_verify_with_square_matrix --features profiler
+
   circuit:
     docker:
       - image: cimg/rust:1.71.1
@@ -635,6 +645,16 @@ jobs:
           workspace_member: synthesizer/process
           cache_key: snarkvm-synthesizer-process-cache
 
+  synthesizer-process-with-rocksdb:
+    docker:
+      - image: cimg/rust:1.71.1
+    resource_class: 2xlarge
+    steps:
+      - run_serial:
+          flags: --features=rocks
+          workspace_member: synthesizer/process
+          cache_key: snarkvm-synthesizer-process-cache
+
   synthesizer-program:
     docker:
       - image: cimg/rust:1.71.1
@@ -798,6 +818,7 @@ workflows:
     jobs:
       - snarkvm
       - algorithms
+      - algorithms-profiler
       - circuit
       - circuit-account
       - circuit-account-noconsole
@@ -851,6 +872,7 @@ workflows:
       - synthesizer
       - synthesizer-integration
       - synthesizer-process
+      - synthesizer-process-with-rocksdb
       - synthesizer-program
       - synthesizer-program-integration-keccak
       - synthesizer-program-integration-psd

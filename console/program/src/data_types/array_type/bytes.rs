@@ -50,7 +50,8 @@ impl<N: Network> ToBytes for ArrayType<N> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Initialize the components to serialize.
         let mut element_type = *self.element_type.clone();
-        let mut lengths = vec![*self.length()];
+        let mut lengths = Vec::new();
+        lengths.push(*self.length());
 
         // Collect the each dimension of the array.
         // Note that the lengths are in the order of the outermost dimension to the innermost dimension.

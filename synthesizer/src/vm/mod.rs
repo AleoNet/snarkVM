@@ -28,7 +28,20 @@ use console::{
     program::{Identifier, Literal, Locator, Plaintext, ProgramID, ProgramOwner, Record, Value},
     types::{Field, U64},
 };
-use ledger_block::{Block, Deployment, Execution, Fee, Header, Ratify, Transaction};
+use ledger_block::{
+    Block,
+    ConfirmedTransaction,
+    Deployment,
+    Execution,
+    Fee,
+    Header,
+    Ratifications,
+    Ratify,
+    Rejected,
+    Transaction,
+    Transactions,
+};
+use ledger_coinbase::CoinbaseSolution;
 use ledger_committee::Committee;
 use ledger_query::Query;
 use ledger_store::{
@@ -43,7 +56,7 @@ use ledger_store::{
     TransitionStore,
 };
 use synthesizer_process::{Authorization, Process, Trace};
-use synthesizer_program::{FinalizeGlobalState, FinalizeStoreTrait, Program};
+use synthesizer_program::{FinalizeGlobalState, FinalizeOperation, FinalizeStoreTrait, Program};
 
 use aleo_std::prelude::{finish, lap, timer};
 use indexmap::IndexMap;
@@ -71,7 +84,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             // Ensure that all mappings are initialized.
             if !store.finalize_store().contains_mapping_confirmed(credits.id(), mapping.name())? {
                 // Initialize the mappings for 'credits.aleo'.
-                store.finalize_store().initialize_mapping(credits.id(), mapping.name())?;
+                store.finalize_store().initialize_mapping(*credits.id(), *mapping.name())?;
             }
         }
 
@@ -228,17 +241,30 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
         // Construct the finalize state.
         let state = FinalizeGlobalState::new_genesis::<N>()?;
-        // Speculate the transactions.
-        let (transactions, aborted) = self.speculate(state, &ratifications, solutions.as_ref(), transactions.iter())?;
-        ensure!(aborted.is_empty(), "Failed to initialize a genesis block - found aborted transactions");
+        // Speculate on the ratifications, solutions, and transactions.
+        let (ratifications, transactions, aborted_transaction_ids, ratified_finalize_operations) =
+            self.speculate(state, &ratifications, solutions.as_ref(), transactions.iter())?;
+        ensure!(
+            aborted_transaction_ids.is_empty(),
+            "Failed to initialize a genesis block - found aborted transaction IDs"
+        );
 
         // Prepare the block header.
-        let header = Header::genesis(&transactions)?;
+        let header = Header::genesis(&ratifications, &transactions, ratified_finalize_operations)?;
         // Prepare the previous block hash.
         let previous_hash = N::BlockHash::default();
 
         // Construct the block.
-        let block = Block::new_beacon(private_key, previous_hash, header, ratifications, solutions, transactions, rng)?;
+        let block = Block::new_beacon(
+            private_key,
+            previous_hash,
+            header,
+            ratifications,
+            solutions,
+            transactions,
+            aborted_transaction_ids,
+            rng,
+        )?;
         // Ensure the block is valid genesis block.
         match block.is_genesis() {
             true => Ok(block),
@@ -264,11 +290,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         // First, insert the block.
         self.block_store().insert(block)?;
         // Next, finalize the transactions.
-        match self.finalize(state, block.ratifications(), block.coinbase(), block.transactions()) {
-            Ok(_) => {
-                // TODO (howardwu): Check the accepted, rejected, and finalize operations match the block.
-                Ok(())
-            }
+        match self.finalize(state, block.ratifications(), block.solutions(), block.transactions()) {
+            Ok(_ratified_finalize_operations) => Ok(()),
             Err(error) => {
                 // Rollback the block.
                 self.block_store().remove_last_n(1)?;
@@ -285,7 +308,7 @@ pub(crate) mod test_helpers {
     use console::{
         account::{Address, ViewKey},
         network::Testnet3,
-        program::{Value, RATIFICATIONS_DEPTH},
+        program::Value,
         types::Field,
     };
     use ledger_block::{Block, Header, Metadata, Transition};
@@ -301,10 +324,6 @@ pub(crate) mod test_helpers {
     /// Samples a new finalize state.
     pub(crate) fn sample_finalize_state(block_height: u32) -> FinalizeGlobalState {
         FinalizeGlobalState::from(block_height as u64, block_height, [0u8; 32])
-    }
-
-    pub(crate) fn sample_ratifications_root() -> Field<CurrentNetwork> {
-        *<CurrentNetwork as Network>::merkle_tree_bhp::<RATIFICATIONS_DEPTH>(&[]).unwrap().root()
     }
 
     pub(crate) fn sample_vm() -> VM<CurrentNetwork, ConsensusMemory<CurrentNetwork>> {
@@ -543,7 +562,7 @@ function compute:
 
                 // Authorize the fee.
                 let authorization = vm
-                    .authorize_fee_public(&caller_private_key, 100, execution.to_execution_id().unwrap(), rng)
+                    .authorize_fee_public(&caller_private_key, 100, 100, execution.to_execution_id().unwrap(), rng)
                     .unwrap();
                 // Compute the fee.
                 let fee = vm.execute_fee_authorization(authorization, None, rng).unwrap();
@@ -570,7 +589,10 @@ function compute:
         let previous_block = vm.block_store().get_block(&block_hash).unwrap().unwrap();
 
         // Construct the new block header.
-        let (transactions, _) = vm.speculate(sample_finalize_state(1), &[], None, transactions.iter())?;
+        let (ratifications, transactions, aborted_transaction_ids, ratified_finalize_operations) =
+            vm.speculate(sample_finalize_state(1), &[], None, transactions.iter())?;
+        assert!(aborted_transaction_ids.is_empty());
+
         // Construct the metadata associated with the block.
         let metadata = Metadata::new(
             Testnet3::ID,
@@ -588,15 +610,24 @@ function compute:
         let header = Header::from(
             vm.block_store().current_state_root(),
             transactions.to_transactions_root().unwrap(),
-            transactions.to_finalize_root().unwrap(),
-            crate::vm::test_helpers::sample_ratifications_root(),
+            transactions.to_finalize_root(ratified_finalize_operations).unwrap(),
+            ratifications.to_ratifications_root().unwrap(),
             Field::zero(),
             Field::zero(),
             metadata,
         )?;
 
         // Construct the new block.
-        Block::new_beacon(private_key, previous_block.hash(), header, vec![], None, transactions, rng)
+        Block::new_beacon(
+            private_key,
+            previous_block.hash(),
+            header,
+            ratifications,
+            None,
+            transactions,
+            aborted_transaction_ids,
+            rng,
+        )
     }
 
     #[test]

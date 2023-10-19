@@ -201,3 +201,78 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Typ
         "function"
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use crate::{Function, Instruction};
+
+    type CurrentNetwork = console::network::Testnet3;
+
+    #[test]
+    fn test_add_input() {
+        // Initialize a new function instance.
+        let name = Identifier::from_str("function_core_test").unwrap();
+        let mut function = Function::<CurrentNetwork>::new(name);
+
+        // Ensure that an input can be added.
+        let input = Input::<CurrentNetwork>::from_str("input r0 as field.private;").unwrap();
+        assert!(function.add_input(input.clone()).is_ok());
+
+        // Ensure that adding a duplicate input will fail.
+        assert!(function.add_input(input).is_err());
+
+        // Ensure that adding more than the maximum number of inputs will fail.
+        for i in 1..CurrentNetwork::MAX_INPUTS * 2 {
+            let input = Input::<CurrentNetwork>::from_str(&format!("input r{i} as field.private;")).unwrap();
+
+            match function.inputs.len() < CurrentNetwork::MAX_INPUTS {
+                true => assert!(function.add_input(input).is_ok()),
+                false => assert!(function.add_input(input).is_err()),
+            }
+        }
+    }
+
+    #[test]
+    fn test_add_instruction() {
+        // Initialize a new function instance.
+        let name = Identifier::from_str("function_core_test").unwrap();
+        let mut function = Function::<CurrentNetwork>::new(name);
+
+        // Ensure that an instruction can be added.
+        let instruction = Instruction::<CurrentNetwork>::from_str("add r0 r1 into r2;").unwrap();
+        assert!(function.add_instruction(instruction.clone()).is_ok());
+
+        // Ensure that adding more than the maximum number of instructions will fail.
+        for i in 3..CurrentNetwork::MAX_INSTRUCTIONS * 2 {
+            let instruction = Instruction::<CurrentNetwork>::from_str(&format!("add r0 r1 into r{i};")).unwrap();
+
+            match function.instructions.len() < CurrentNetwork::MAX_INSTRUCTIONS {
+                true => assert!(function.add_instruction(instruction).is_ok()),
+                false => assert!(function.add_instruction(instruction).is_err()),
+            }
+        }
+    }
+
+    #[test]
+    fn test_add_output() {
+        // Initialize a new function instance.
+        let name = Identifier::from_str("function_core_test").unwrap();
+        let mut function = Function::<CurrentNetwork>::new(name);
+
+        // Ensure that an output can be added.
+        let output = Output::<CurrentNetwork>::from_str("output r0 as field.private;").unwrap();
+        assert!(function.add_output(output.clone()).is_ok());
+
+        // Ensure that adding more than the maximum number of outputs will fail.
+        for i in 1..CurrentNetwork::MAX_OUTPUTS * 2 {
+            let output = Output::<CurrentNetwork>::from_str(&format!("output r{i} as field.private;")).unwrap();
+
+            match function.outputs.len() < CurrentNetwork::MAX_OUTPUTS {
+                true => assert!(function.add_output(output).is_ok()),
+                false => assert!(function.add_output(output).is_err()),
+            }
+        }
+    }
+}

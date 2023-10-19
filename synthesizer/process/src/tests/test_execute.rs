@@ -60,7 +60,7 @@ pub fn sample_fee<N: Network, A: Aleo<Network = N>, B: BlockStorage<N>, P: Final
     let account_mapping = Identifier::from_str("account").unwrap();
 
     // Initialize the account mapping, even if it already has been (we silence the result for testing).
-    let _ = finalize_store.initialize_mapping(&program_id, &account_mapping);
+    let _ = finalize_store.initialize_mapping(program_id, account_mapping);
 
     // Sample a random private key.
     let private_key = PrivateKey::<N>::new(rng).unwrap();
@@ -71,13 +71,13 @@ pub fn sample_fee<N: Network, A: Aleo<Network = N>, B: BlockStorage<N>, P: Final
     // Construct the public balance.
     let value = Value::from(Literal::U64(U64::new(100)));
     // Update the public balance in finalize storage.
-    finalize_store.update_key_value(&program_id, &account_mapping, key, value).unwrap();
+    finalize_store.update_key_value(program_id, account_mapping, key, value).unwrap();
 
     // Sample a dummy ID.
     let id = Field::rand(rng);
 
     // Authorize the fee.
-    let authorization = process.authorize_fee_public(&private_key, 100, id, rng).unwrap();
+    let authorization = process.authorize_fee_public::<A, _>(&private_key, 100, 0, id, rng).unwrap();
     // Execute the fee.
     let (_, mut trace) = process.execute::<A>(authorization).unwrap();
     // Prepare the assignments.
@@ -1291,7 +1291,7 @@ finalize compute:
 
     // Check that the account balance is now 8.
     let candidate = finalize_store
-        .get_value_speculative(program_id, &mapping_name, &Plaintext::from(Literal::Address(caller)))
+        .get_value_speculative(*program_id, mapping_name, &Plaintext::from(Literal::Address(caller)))
         .unwrap()
         .unwrap();
     assert_eq!(candidate, Value::from_str("8u64").unwrap());
@@ -1404,7 +1404,7 @@ finalize compute:
 
     // Check that the account balance is now 0.
     let candidate = finalize_store
-        .get_value_speculative(program_id, &mapping_name, &Plaintext::from(Literal::Address(caller)))
+        .get_value_speculative(*program_id, mapping_name, &Plaintext::from(Literal::Address(caller)))
         .unwrap()
         .unwrap();
     assert_eq!(candidate, Value::from_str("0u64").unwrap());
@@ -1535,7 +1535,7 @@ finalize mint_public:
 
     // Check the account balance.
     let candidate = finalize_store
-        .get_value_speculative(program_id, &mapping_name, &Plaintext::from(Literal::Address(caller)))
+        .get_value_speculative(*program_id, mapping_name, &Plaintext::from(Literal::Address(caller)))
         .unwrap()
         .unwrap();
     assert_eq!(candidate, Value::from_str("3u64").unwrap());
@@ -1703,7 +1703,7 @@ finalize init:
 
     // Check the account balance.
     let candidate = finalize_store
-        .get_value_speculative(program0.id(), &mapping_name, &Plaintext::from(Literal::Address(caller)))
+        .get_value_speculative(*program0.id(), mapping_name, &Plaintext::from(Literal::Address(caller)))
         .unwrap()
         .unwrap();
     assert_eq!(candidate, Value::from_str("100u64").unwrap());
@@ -1818,7 +1818,7 @@ finalize compute:
 
     // Check that the account balance is now 8.
     let candidate = finalize_store
-        .get_value_speculative(program_id, &mapping_name, &Plaintext::from(Literal::Address(caller)))
+        .get_value_speculative(*program_id, mapping_name, &Plaintext::from(Literal::Address(caller)))
         .unwrap()
         .unwrap();
     assert_eq!(candidate, Value::from_str("16u64").unwrap());
@@ -2246,7 +2246,7 @@ finalize compute:
 
     // Check that the struct is stored as expected.
     let candidate = finalize_store
-        .get_value_speculative(program_id, &mapping_name, &Plaintext::from(Literal::Address(caller)))
+        .get_value_speculative(*program_id, mapping_name, &Plaintext::from(Literal::Address(caller)))
         .unwrap()
         .unwrap();
     assert_eq!(candidate, Value::from_str("{ count: 3u8, data: 6u8 }").unwrap());

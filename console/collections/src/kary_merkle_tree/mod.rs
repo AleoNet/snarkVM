@@ -119,7 +119,8 @@ impl<LH: LeafHash<Hash = PH::Hash>, PH: PathHash, const DEPTH: u8, const ARITY: 
         for _ in 0..padding_depth {
             // Update the root hash, by hashing the current root hash with the empty hashes.
 
-            let mut input = vec![root_hash];
+            let mut input = Vec::with_capacity(ARITY as usize);
+            input.push(root_hash);
             // Resize the vector to ARITY length, filling with empty_hash if necessary.
             input.resize(ARITY as usize, empty_hash);
 

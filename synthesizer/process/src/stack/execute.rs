@@ -380,8 +380,8 @@ impl<N: Network> StackExecute<N> for Stack<N> {
             self.matches_value_type(output, output_type)
         })?;
 
-        // If the circuit is in `Execute` mode, then ensure the circuit is satisfied.
-        if let CallStack::Execute(..) = registers.call_stack() {
+        // If the circuit is in `Execute` or `PackageRun` mode, then ensure the circuit is satisfied.
+        if matches!(registers.call_stack(), CallStack::Execute(..) | CallStack::PackageRun(..)) {
             // If the circuit is empty or not satisfied, then throw an error.
             ensure!(
                 A::num_constraints() > 0 && A::is_satisfied(),
@@ -406,9 +406,16 @@ impl<N: Network> StackExecute<N> for Stack<N> {
                 lap!(timer, "Synthesize the {} circuit key", function.name());
             }
         }
-
+        // If the circuit is in `Authorize` mode, then save the transition.
+        if let CallStack::Authorize(_, _, authorization) = registers.call_stack() {
+            // Construct the transition.
+            let transition = Transition::from(&console_request, &response, &output_types, &output_registers)?;
+            // Add the transition to the authorization.
+            authorization.insert_transition(transition)?;
+            lap!(timer, "Save the transition");
+        }
         // If the circuit is in `CheckDeployment` mode, then save the assignment.
-        if let CallStack::CheckDeployment(_, _, ref assignments) = registers.call_stack() {
+        else if let CallStack::CheckDeployment(_, _, ref assignments) = registers.call_stack() {
             // Construct the call metrics.
             let metrics = CallMetrics {
                 program_id: *self.program_id(),
@@ -448,6 +455,21 @@ impl<N: Network> StackExecute<N> for Stack<N> {
                 (proving_key, assignment),
                 metrics,
             )?;
+        }
+        // If the circuit is in `PackageRun` mode, then save the assignment.
+        else if let CallStack::PackageRun(_, _, ref assignments) = registers.call_stack() {
+            // Construct the call metrics.
+            let metrics = CallMetrics {
+                program_id: *self.program_id(),
+                function_name: *function.name(),
+                num_instructions: function.instructions().len(),
+                num_request_constraints,
+                num_function_constraints,
+                num_response_constraints,
+            };
+            // Add the assignment to the assignments.
+            assignments.write().push((assignment, metrics));
+            lap!(timer, "Save the circuit assignment");
         }
 
         finish!(timer);

@@ -31,9 +31,6 @@ use test_strategy::proptest;
 
 type CurrentNetwork = console::network::Testnet3;
 
-/// The maximum number of nodes that can be in a committee.
-pub const MAX_COMMITTEE_SIZE: u16 = 100; // members
-
 #[derive(Debug, Clone)]
 pub struct Validator {
     pub private_key: PrivateKey<CurrentNetwork>,

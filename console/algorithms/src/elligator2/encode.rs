@@ -84,7 +84,9 @@ impl<E: Environment> Elligator2<E> {
             // Let y = -e * sqrt(x^3 + Ax^2 + Bx).
             let x2 = x.square();
             let rhs = (x2 * x) + (a * x2) + (b * x);
-            let value = rhs.square_root().map_err(|_| anyhow!("Elligator2 failed: sqrt(x^3 + Ax^2 + Bx) failed"))?;
+            let value =
+                rhs.even_square_root().map_err(|_| anyhow!("Elligator2 failed: even_sqrt(x^3 + Ax^2 + Bx) failed"))?;
+
             let y = match e {
                 LegendreSymbol::Zero => Field::<E>::zero(),
                 LegendreSymbol::QuadraticResidue => -value,

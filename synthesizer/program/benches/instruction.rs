@@ -18,9 +18,10 @@
 // extern crate criterion;
 //
 // use console::{
-//     network::Testnet3,
+//     network::{Testnet3, Network},
 //     prelude::{TestRng, Uniform, Zero},
 //     program::{
+//         Identifier,
 //         Boolean,
 //         Field,
 //         Group,
@@ -40,14 +41,16 @@
 //         U8,
 //     },
 // };
-// use snarkvm_synthesizer::{
-//     finalize::Finalize,
+// use snarkvm_synthesizer_program::{
+//     Finalize,
 //     FinalizeGlobalState,
+//     Instruction,
+//     RegistersStore,
+// };
+// use synthesizer_process::{
 //     FinalizeRegisters,
 //     FinalizeTypes,
-//     Instruction,
 //     Process,
-//     RegistersStore,
 //     Stack,
 // };
 //
@@ -74,9 +77,9 @@
 //     finalize_string.push_str(&finalize_body.to_string());
 //     let finalize = Finalize::<Testnet3>::from_str(&finalize_string).unwrap();
 //     // Construct the finalize state.
-//     let state = FinalizeGlobalState::new(1);
+//     let state = FinalizeGlobalState::new::<Testnet3>(0, 0, 0, 0, <Testnet3 as Network>::BlockHash::default()).unwrap();
 //     // Initialize a fresh set of finalize registers.
-//     let mut registers = FinalizeRegisters::new(state, FinalizeTypes::from_finalize(stack, &finalize).unwrap());
+//     let mut registers = FinalizeRegisters::new(state, <Testnet3 as Network>::TransitionID::default(), Identifier::from_str("test").unwrap(),  FinalizeTypes::from_finalize(stack, &finalize).unwrap());
 //     // Add the arguments into the registers.
 //     for (i, arg) in args.iter().enumerate() {
 //         registers.store(stack, &Register::Locator(i as u64), arg.clone()).unwrap();
@@ -99,7 +102,7 @@
 //         // Benchmark a unary instruction, with the given sampling method.
 //         ($samples:tt, $instruction:ident { $input:ident , }) => {
 //             {
-//                 use snarkvm_synthesizer::$instruction;
+//                 use snarkvm_synthesizer_program::$instruction;
 //                 let name = concat!(stringify!($instruction), "/", stringify!($input));
 //                 let instruction = Instruction::<Testnet3>::$instruction($instruction::from_str(&format!("{} r0 into r1", $instruction::<Testnet3>::opcode().to_string())).unwrap());
 //                 c.bench_function(&format!("{name}/instruction"), |b| {
@@ -117,7 +120,7 @@
 //         // Benchmark a unary instruction, with the given sampling method.
 //         ($samples:tt, $instruction:ident { $input:ident , }, $as_type:expr) => {
 //             {
-//                 use snarkvm_synthesizer::$instruction;
+//                 use snarkvm_synthesizer_program::$instruction;
 //                 let name = concat!(stringify!($instruction), "/", stringify!($input));
 //                 let instruction = Instruction::<Testnet3>::$instruction($instruction::from_str(&format!("{} r0 into r1 as {}", $instruction::<Testnet3>::opcode().to_string(), $as_type)).unwrap());
 //                 c.bench_function(&format!("{name}/instruction"), |b| {
@@ -135,7 +138,7 @@
 //         // Benchmark a binary instruction, with the given sampling method.
 //         ($samples:tt, $instruction:ident { ($input_a:ident, $input_b:ident) , }) => {
 //             {
-//                 use snarkvm_synthesizer::$instruction;
+//                 use snarkvm_synthesizer_program::$instruction;
 //                 let name = concat!(stringify!($instruction), "/", stringify!($input_a), "_", stringify!($input_b));
 //                 let instruction = Instruction::<Testnet3>::$instruction($instruction::from_str(&format!("{} r0 r1 into r2", $instruction::<Testnet3>::opcode().to_string())).unwrap());
 //                 c.bench_function(&format!("{name}/instruction"), |b| {
@@ -153,7 +156,7 @@
 //         // Benchmark a ternary instruction, with the given sampling method.
 //         ($samples:tt, $instruction:ident { ($input_a:ident, $input_b:ident, $input_c:ident), }) => {
 //             {
-//                 use snarkvm_synthesizer::$instruction;
+//                 use snarkvm_synthesizer_program::$instruction;
 //                 let name = concat!(stringify!($instruction), "/", stringify!($input_a), "_",  stringify!($input_b), "_", stringify!($input_c));
 //                 let instruction = Instruction::<Testnet3>::$instruction($instruction::from_str(&format!("{} r0 r1 r2 into r3", $instruction::<Testnet3>::opcode().to_string())).unwrap());
 //                 c.bench_function(&format!("{name}/instruction"), |b| {
@@ -315,7 +318,7 @@
 //                 (result.clone(), result)
 //             });
 //             {
-//                 use snarkvm_synthesizer::AssertEq;
+//                 use snarkvm_synthesizer_program::AssertEq;
 //                 let name = concat!("AssertEq/", stringify!($typ), "_", stringify!($typ));
 //                 let instruction = Instruction::<Testnet3>::AssertEq(AssertEq::from_str(&format!("{} r0 r1", AssertEq::<Testnet3>::opcode().to_string())).unwrap());
 //                 c.bench_function(&format!("{name}/instruction"), |b| {
@@ -338,7 +341,7 @@
 //                 (first, second)
 //             });
 //             {
-//                 use snarkvm_synthesizer::AssertNeq;
+//                 use snarkvm_synthesizer_program::AssertNeq;
 //                 let name = concat!("AssertNeq/", stringify!($typ), "_", stringify!($typ));
 //                 let instruction = Instruction::<Testnet3>::AssertNeq(AssertNeq::from_str(&format!("{} r0 r1", AssertNeq::<Testnet3>::opcode().to_string())).unwrap());
 //                 c.bench_function(&format!("{name}/instruction"), |b| {

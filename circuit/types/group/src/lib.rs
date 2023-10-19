@@ -61,45 +61,20 @@ impl<E: Environment> Inject for Group<E> {
     /// For safety, the resulting point is always enforced to be on the curve with constraints.
     /// regardless of whether the y-coordinate was recovered.
     fn new(mode: Mode, group: Self::Primitive) -> Self {
-        // Inject `point_inv` from the `(x_inv, y_inv)` coordinates as field elements.
-        let point_inv = {
-            // Compute the `(x_inv, y_inv)` coordinates from `(point / COFACTOR)`.
-            let (x_inv, y_inv) = group.div_by_cofactor().to_xy_coordinates();
-            // If the mode is `Public`, then allocate them privately, as we will allocate a `Public` point at the end.
-            match mode.is_public() {
-                true => Self { x: Field::new(Mode::Private, x_inv), y: Field::new(Mode::Private, y_inv) },
-                false => Self { x: Field::new(mode, x_inv), y: Field::new(mode, y_inv) },
-            }
-        };
-
-        // Ensure `point_inv` is on the curve.
-        point_inv.enforce_on_curve();
-
-        // Return the `point` as `point_inv * COFACTOR`.
-        let point = point_inv.mul_by_cofactor();
-
-        if mode.is_public() {
-            // Inject the point as `Mode::Public`.
-            let public_point = {
-                // Initialize the (x, y) coordinates of the point as field elements.
-                let (x, y) = group.to_xy_coordinates();
-                // Inject the `(x, y)` coordinates as field elements.
-                Self { x: Field::new(mode, x), y: Field::new(mode, y) }
-            };
-
-            // Ensure the `point == public_point`.
-            E::assert_eq(&point, &public_point);
-
-            // Return the public point.
-            public_point
-        } else {
-            point
-        }
+        // Allocate two new variables for the coordinates, with the mode and values given as inputs.
+        let x = Field::new(mode, group.to_x_coordinate());
+        let y = Field::new(mode, group.to_y_coordinate());
+        // Put the coordinates together into a point.
+        let point = Self { x, y };
+        // Enforce in the circuit that the point is in the group.
+        point.enforce_in_group();
+        // Return the point.
+        point
     }
 }
 
 impl<E: Environment> Group<E> {
-    /// Checks `(x, y)` is on the curve.
+    /// Enforces that `self` is on the curve.
     ///
     /// Ensure ax^2 + y^2 = 1 + dx^2y^2
     /// by checking that y^2 * (dx^2 - 1) = (ax^2 - 1)
@@ -116,6 +91,43 @@ impl<E: Environment> Group<E> {
 
         // Ensure y^2 * (dx^2 - 1) = (ax^2 - 1).
         E::enforce(|| (first, second, third));
+    }
+}
+
+impl<E: Environment> Group<E> {
+    /// Enforces that `self` is on the curve and in the largest prime-order subgroup.
+    pub fn enforce_in_group(&self) {
+        let self_witness = self.eject_value();
+
+        // Each point in the subgroup is the quadruple of some point on the curve,
+        // where 'quadruple' refers to the cofactor 4 of the curve.
+        // Thus, to enforce that a given point is in the group,
+        // there must exist some point on the curve such that 4 times the latter yields the former.
+        // The point on the curve is existentially quantified,
+        // so the constraints introduce new coordinate variables for that point.
+
+        // For the internal variables of this circuit,
+        // the mode is constant if the input point is constant, otherwise private.
+        let mode = if self.eject_mode().is_constant() { Mode::Constant } else { Mode::Private };
+
+        // Postulate a point (two new R1CS variables) on the curve,
+        // whose witness is the witness of the input point divided by the cofactor.
+        let point_witness = self_witness.div_by_cofactor();
+        let point_x = Field::new(mode, point_witness.to_x_coordinate());
+        let point_y = Field::new(mode, point_witness.to_y_coordinate());
+        let point = Self { x: point_x, y: point_y };
+        point.enforce_on_curve();
+
+        // (For advanced users) The cofactor for this curve is `4`. Thus doubling is used to be performant.
+        debug_assert!(E::Affine::cofactor().len() == 1 && E::Affine::cofactor()[0] == 4);
+
+        // Double the point on the curve.
+        // This introduces two new R1CS variables for the doubled point.
+        let double_point = point.double();
+
+        // Enforce that the input point (self) is double the double of the point on the curve,
+        // i.e. that it is 4 (= cofactor) times the postulated point on the curve.
+        double_point.enforce_double(self);
     }
 }
 
@@ -139,7 +151,7 @@ impl<E: Environment> Parser for Group<E> {
     /// Parses a string into a group circuit.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
-        // // Parse the group from the string.
+        // Parse the group from the string.
         let (string, group) = console::Group::parse(string)?;
         // Parse the mode from the string.
         let (string, mode) = opt(pair(tag("."), Mode::parse))(string)?;
@@ -245,7 +257,7 @@ mod tests {
             Circuit::scope(&format!("Public {i}"), || {
                 let affine = Group::<Circuit>::new(Mode::Public, point);
                 assert_eq!(point, affine.eject_value());
-                assert_scope!(4, 2, 14, 14);
+                assert_scope!(4, 2, 12, 13);
             });
         }
 

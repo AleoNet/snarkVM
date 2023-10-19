@@ -60,6 +60,7 @@ jobs:
         run: |
           cd console/collections
           cargo bench --bench merkle_tree -- --output-format bencher | tee -a ../../output.txt
+          cargo bench --bench kary_merkle_tree -- --output-format bencher | tee -a ../../output.txt
           cd ../..
           
       - name: Benchmark curves

@@ -92,33 +92,33 @@ fn execute(c: &mut Criterion) {
     let address = Address::try_from(&private_key).unwrap();
 
     // Initialize the VM.
-    let (vm, records) = initialize_vm(&private_key, rng);
+    let (vm, _records) = initialize_vm(&private_key, rng);
 
     // Prepare the inputs.
-    let inputs = [
-        Value::<Testnet3>::Record(records[0].clone()),
-        Value::<Testnet3>::from_str(&address.to_string()).unwrap(),
-        Value::<Testnet3>::from_str("1u64").unwrap(),
-    ]
-    .into_iter();
+    let inputs =
+        [Value::<Testnet3>::from_str(&address.to_string()).unwrap(), Value::<Testnet3>::from_str("1u64").unwrap()]
+            .into_iter();
 
     // Authorize the execution.
-    let execute_authorization = vm.authorize(&private_key, "credits.aleo", "transfer_private", inputs, rng).unwrap();
+    let execute_authorization = vm.authorize(&private_key, "credits.aleo", "transfer_public", inputs, rng).unwrap();
+    // Retrieve the execution ID.
+    let execution_id = execute_authorization.to_execution_id().unwrap();
     // Authorize the fee.
-    let fee_authorization = vm.authorize_fee_public(&private_key, 100000, Field::one(), rng).unwrap();
+    let fee_authorization = vm.authorize_fee_public(&private_key, 100000, 1000, execution_id, rng).unwrap();
 
-    c.bench_function("Transaction::Execute(transfer)", |b| {
+    c.bench_function("Transaction::Execute(transfer_public)", |b| {
         b.iter(|| {
             vm.execute_authorization(execute_authorization.replicate(), Some(fee_authorization.replicate()), None, rng)
                 .unwrap();
         })
     });
 
-    c.bench_function("Transaction::Execute(transfer) - verify", |b| {
-        let transaction = vm
-            .execute_authorization(execute_authorization.replicate(), Some(fee_authorization.replicate()), None, rng)
-            .unwrap();
-        b.iter(|| assert!(vm.verify_transaction(&transaction, None)))
+    let transaction = vm
+        .execute_authorization(execute_authorization.replicate(), Some(fee_authorization.replicate()), None, rng)
+        .unwrap();
+
+    c.bench_function("Transaction::Execute(transfer_public) - verify", |b| {
+        b.iter(|| vm.check_transaction(&transaction, None).unwrap())
     });
 }
 

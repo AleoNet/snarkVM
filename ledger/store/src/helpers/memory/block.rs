@@ -21,7 +21,7 @@ use crate::{
 };
 use console::{prelude::*, types::Field};
 use ledger_authority::Authority;
-use ledger_block::{Header, Ratify};
+use ledger_block::{Header, Ratifications};
 use ledger_coinbase::{CoinbaseSolution, PuzzleCommitment};
 
 /// An in-memory block storage.
@@ -41,18 +41,22 @@ pub struct BlockMemory<N: Network> {
     authority_map: MemoryMap<N::BlockHash, Authority<N>>,
     /// The certificate map.
     certificate_map: MemoryMap<Field<N>, (u32, u64)>,
+    /// The ratifications map.
+    ratifications_map: MemoryMap<N::BlockHash, Ratifications<N>>,
+    /// The solutions map.
+    solutions_map: MemoryMap<N::BlockHash, Option<CoinbaseSolution<N>>>,
+    /// The puzzle commitments map.
+    puzzle_commitments_map: MemoryMap<PuzzleCommitment<N>, u32>,
     /// The transactions map.
     transactions_map: MemoryMap<N::BlockHash, Vec<N::TransactionID>>,
+    /// The aborted transaction IDs map.
+    aborted_transaction_ids_map: MemoryMap<N::BlockHash, Vec<N::TransactionID>>,
+    /// The rejected or aborted transaction ID map.
+    rejected_or_aborted_transaction_id_map: MemoryMap<N::TransactionID, N::BlockHash>,
     /// The confirmed transactions map.
     confirmed_transactions_map: MemoryMap<N::TransactionID, (N::BlockHash, ConfirmedTxType, Vec<u8>)>,
     /// The transaction store.
     transaction_store: TransactionStore<N, TransactionMemory<N>>,
-    /// The ratifications map.
-    ratifications_map: MemoryMap<N::BlockHash, Vec<Ratify<N>>>,
-    /// The solutions map.
-    coinbase_solution_map: MemoryMap<N::BlockHash, Option<CoinbaseSolution<N>>>,
-    /// The coinbase puzzle commitment map.
-    coinbase_puzzle_commitment_map: MemoryMap<PuzzleCommitment<N>, u32>,
 }
 
 #[rustfmt::skip]
@@ -64,13 +68,15 @@ impl<N: Network> BlockStorage<N> for BlockMemory<N> {
     type HeaderMap = MemoryMap<N::BlockHash, Header<N>>;
     type AuthorityMap = MemoryMap<N::BlockHash, Authority<N>>;
     type CertificateMap = MemoryMap<Field<N>, (u32, u64)>;
+    type RatificationsMap = MemoryMap<N::BlockHash, Ratifications<N>>;
+    type SolutionsMap = MemoryMap<N::BlockHash, Option<CoinbaseSolution<N>>>;
+    type PuzzleCommitmentsMap = MemoryMap<PuzzleCommitment<N>, u32>;
     type TransactionsMap = MemoryMap<N::BlockHash, Vec<N::TransactionID>>;
+    type AbortedTransactionIDsMap = MemoryMap<N::BlockHash, Vec<N::TransactionID>>;
+    type RejectedOrAbortedTransactionIDMap = MemoryMap<N::TransactionID, N::BlockHash>;
     type ConfirmedTransactionsMap = MemoryMap<N::TransactionID, (N::BlockHash, ConfirmedTxType, Vec<u8>)>;
     type TransactionStorage = TransactionMemory<N>;
     type TransitionStorage = TransitionMemory<N>;
-    type RatificationsMap = MemoryMap<N::BlockHash, Vec<Ratify<N>>>;
-    type CoinbaseSolutionMap = MemoryMap<N::BlockHash, Option<CoinbaseSolution<N>>>;
-    type CoinbasePuzzleCommitmentMap = MemoryMap<PuzzleCommitment<N>, u32>;
 
     /// Initializes the block storage.
     fn open(dev: Option<u16>) -> Result<Self> {
@@ -87,12 +93,14 @@ impl<N: Network> BlockStorage<N> for BlockMemory<N> {
             header_map: MemoryMap::default(),
             authority_map: MemoryMap::default(),
             certificate_map: MemoryMap::default(),
+            ratifications_map: MemoryMap::default(),
+            solutions_map: MemoryMap::default(),
+            puzzle_commitments_map: MemoryMap::default(),
             transactions_map: MemoryMap::default(),
+            aborted_transaction_ids_map: MemoryMap::default(),
+            rejected_or_aborted_transaction_id_map: MemoryMap::default(),
             confirmed_transactions_map: MemoryMap::default(),
             transaction_store,
-            ratifications_map: MemoryMap::default(),
-            coinbase_solution_map: MemoryMap::default(),
-            coinbase_puzzle_commitment_map: MemoryMap::default(),
         })
     }
 
@@ -131,9 +139,34 @@ impl<N: Network> BlockStorage<N> for BlockMemory<N> {
         &self.authority_map
     }
 
+    /// Returns the ratifications map.
+    fn ratifications_map(&self) -> &Self::RatificationsMap {
+        &self.ratifications_map
+    }
+
+    /// Returns the solutions map.
+    fn solutions_map(&self) -> &Self::SolutionsMap {
+        &self.solutions_map
+    }
+
+    /// Returns the puzzle commitments map.
+    fn puzzle_commitments_map(&self) -> &Self::PuzzleCommitmentsMap {
+        &self.puzzle_commitments_map
+    }
+
     /// Returns the transactions map.
     fn transactions_map(&self) -> &Self::TransactionsMap {
         &self.transactions_map
+    }
+
+    /// Returns the aborted transaction IDs map.
+    fn aborted_transaction_ids_map(&self) -> &Self::AbortedTransactionIDsMap {
+        &self.aborted_transaction_ids_map
+    }
+
+    /// Returns the rejected or aborted transaction ID map.
+    fn rejected_or_aborted_transaction_id_map(&self) -> &Self::RejectedOrAbortedTransactionIDMap {
+        &self.rejected_or_aborted_transaction_id_map
     }
 
     /// Returns the confirmed transactions map.
@@ -144,20 +177,5 @@ impl<N: Network> BlockStorage<N> for BlockMemory<N> {
     /// Returns the transaction store.
     fn transaction_store(&self) -> &TransactionStore<N, Self::TransactionStorage> {
         &self.transaction_store
-    }
-
-    /// Returns the ratifications map.
-    fn ratifications_map(&self) -> &Self::RatificationsMap {
-        &self.ratifications_map
-    }
-
-    /// Returns the solutions map.
-    fn coinbase_solution_map(&self) -> &Self::CoinbaseSolutionMap {
-        &self.coinbase_solution_map
-    }
-
-    /// Returns the coinbase puzzle commitment map.
-    fn coinbase_puzzle_commitment_map(&self) -> &Self::CoinbasePuzzleCommitmentMap {
-        &self.coinbase_puzzle_commitment_map
     }
 }

@@ -30,8 +30,8 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         }
 
         // Ensure the solutions do not already exist.
-        if let Some(coinbase) = block.coinbase() {
-            for puzzle_commitment in coinbase.puzzle_commitments() {
+        if let Some(solutions) = block.solutions() {
+            for puzzle_commitment in solutions.puzzle_commitments() {
                 if self.contains_puzzle_commitment(puzzle_commitment)? {
                     bail!("Puzzle commitment {puzzle_commitment} already exists in the ledger");
                 }
@@ -42,26 +42,9 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         // TODO: this intermediate allocation shouldn't be necessary; this is most likely https://github.com/rust-lang/rust/issues/89418.
         let transactions = block.transactions().iter().collect::<Vec<_>>();
         cfg_iter!(transactions).try_for_each(|transaction| {
-            // Construct the rejected ID.
-            let rejected_id = match transaction {
-                ConfirmedTransaction::AcceptedDeploy(..) | ConfirmedTransaction::AcceptedExecute(..) => None,
-                ConfirmedTransaction::RejectedDeploy(_, _, rejected) => Some(rejected.to_id()?),
-                ConfirmedTransaction::RejectedExecute(_, _, rejected) => Some(rejected.to_id()?),
-            };
-
-            self.check_transaction_basic(*transaction, rejected_id)
+            self.check_transaction_basic(*transaction, transaction.to_rejected_id()?)
                 .map_err(|e| anyhow!("Invalid transaction found in the transactions list: {e}"))
         })?;
-
-        // Ensure the block is correct.
-        block.verify(
-            &self.latest_block(),
-            self.latest_state_root(),
-            &self.latest_committee()?,
-            self.coinbase_puzzle(),
-            &self.latest_epoch_challenge()?,
-            OffsetDateTime::now_utc().unix_timestamp(),
-        )?;
 
         // TODO (howardwu): Remove this after moving the total supply into credits.aleo.
         {
@@ -95,37 +78,43 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             block.previous_hash(),
         )?;
 
+        // Reconstruct the candidate ratifications to verify the speculation.
+        let candidate_ratifications = block.ratifications().iter().cloned().collect::<Vec<_>>();
+
         // Reconstruct the unconfirmed transactions to verify the speculation.
         let unconfirmed_transactions = block
             .transactions()
             .iter()
-            .map(|tx| match tx {
-                // Pass through the accepted deployment and execution transactions.
-                ConfirmedTransaction::AcceptedDeploy(_, tx, _) | ConfirmedTransaction::AcceptedExecute(_, tx, _) => {
-                    Ok(tx.clone())
-                }
-                // Reconstruct the unconfirmed deployment transaction.
-                ConfirmedTransaction::RejectedDeploy(_, fee_transaction, rejected) => Transaction::from_deployment(
-                    rejected.program_owner().copied().ok_or(anyhow!("Missing the program owner"))?,
-                    rejected.deployment().cloned().ok_or(anyhow!("Missing the deployment"))?,
-                    fee_transaction.fee_transition().ok_or(anyhow!("Missing the fee transition"))?,
-                ),
-                // Reconstruct the unconfirmed execution transaction.
-                ConfirmedTransaction::RejectedExecute(_, fee_transaction, rejected) => Transaction::from_execution(
-                    rejected.execution().cloned().ok_or(anyhow!("Missing the execution"))?,
-                    fee_transaction.fee_transition(),
-                ),
-            })
+            .map(|confirmed| confirmed.to_unconfirmed_transaction())
             .collect::<Result<Vec<_>>>()?;
 
         // Speculate over the unconfirmed transactions.
-        let (confirmed_transactions, _) =
-            self.vm.speculate(state, block.ratifications(), block.coinbase(), unconfirmed_transactions.iter())?;
+        let (ratifications, confirmed_transactions, aborted_transaction_ids, ratified_finalize_operations) =
+            self.vm.speculate(state, &candidate_ratifications, block.solutions(), unconfirmed_transactions.iter())?;
+        // Ensure there are no aborted transaction IDs from this speculation.
+        // Note: There should be no aborted transactions, because we are checking a block,
+        // where any aborted transactions should be in the aborted transaction ID list, not in transactions.
+        ensure!(aborted_transaction_ids.is_empty(), "Aborted transactions found in the block (from speculation)");
 
+        // Ensure the ratifications after speculation match.
+        if block.ratifications() != &ratifications {
+            bail!("The ratifications after speculation do not match the ratifications in the block");
+        }
         // Ensure the transactions after speculation match.
         if block.transactions() != &confirmed_transactions {
             bail!("The transactions after speculation do not match the transactions in the block");
         }
+
+        // Ensure the block is correct.
+        block.verify(
+            &self.latest_block(),
+            self.latest_state_root(),
+            &self.latest_committee()?,
+            self.coinbase_puzzle(),
+            &self.latest_epoch_challenge()?,
+            OffsetDateTime::now_utc().unix_timestamp(),
+            ratified_finalize_operations,
+        )?;
 
         Ok(())
     }

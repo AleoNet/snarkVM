@@ -28,7 +28,7 @@ impl<N: Network> Parser for Future<N> {
             let (string, _) = Sanitizer::parse(string)?;
             // Parse the members.
             let (string, arguments) = separated_list0(
-                pair(pair(Sanitizer::parse, tag(",")), Sanitizer::parse),
+                pair(pair(Sanitizer::parse_whitespaces, tag(",")), Sanitizer::parse),
                 alt((map(Future::parse, Argument::Future), map(Plaintext::parse, Argument::Plaintext))),
             )(string)?;
             // Parse the whitespace and comments from the string.
@@ -103,7 +103,7 @@ impl<N: Network> Parser for Future<N> {
 impl<N: Network> FromStr for Future<N> {
     type Err = Error;
 
-    /// Returns a plaintext from a string literal.
+    /// Returns a future from a string literal.
     fn from_str(string: &str) -> Result<Self> {
         match Self::parse(string) {
             Ok((remainder, object)) => {
@@ -118,21 +118,21 @@ impl<N: Network> FromStr for Future<N> {
 }
 
 impl<N: Network> Debug for Future<N> {
-    /// Prints the plaintext as a string.
+    /// Prints the future as a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         Display::fmt(self, f)
     }
 }
 
 impl<N: Network> Display for Future<N> {
-    /// Prints the plaintext as a string.
+    /// Prints the future as a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         self.fmt_internal(f, 0)
     }
 }
 
 impl<N: Network> Future<N> {
-    /// Prints the plaintext with the given indentation depth.
+    /// Prints the future with the given indentation depth.
     fn fmt_internal(&self, f: &mut Formatter, depth: usize) -> fmt::Result {
         /// The number of spaces to indent.
         const INDENT: usize = 2;
