@@ -131,6 +131,28 @@ impl<E: Environment> Group<E> {
     }
 }
 
+impl<E: Environment> Group<E> {
+    /// Attempt to build a circuit for the following specification:
+    /// - If x is the abscissa of a point in Group<E>, then b = 1.
+    /// - Otherwise, b = 0.
+    fn check_in_group(x: Field<E>, b: Boolean<E>) {
+        let irrelevant = console::Field::<E::Network>::zero();
+        // Postulate a point (x1, y1) in the group.
+        let x1 = Field::new(Mode::Private, irrelevant);
+        let y1 = Field::new(Mode::Private, irrelevant);
+        let pt = Self { x: x1.clone(), y: y1 };
+        pt.enforce_in_group();
+        // Set b to 1 or 0 based on whether x is equal to x1 or not.
+        let x_eq_x1 = x.is_equal(&x1); // wastes one variable, but okay for now
+        E::assert_eq(b, x_eq_x1);
+        // These should be the constraints generated from the code in this function:
+        // <(x1, y1) is in the group>
+        // x_eq_x1 = [IF x = x1 THEN 1 ELSE 0]
+        // b = x_eq_x1
+        // Issue: if x is in the group, the constraints allow to pick a different x1 and set b = 0, against the specification.
+    }
+}
+
 #[cfg(console)]
 impl<E: Environment> Eject for Group<E> {
     type Primitive = console::Group<E::Network>;
