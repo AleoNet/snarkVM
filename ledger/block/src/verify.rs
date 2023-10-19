@@ -552,8 +552,9 @@ impl<N: Network> Block<N> {
         // Ensure there are no more transactions in the block.
         ensure!(unconfirmed_transaction_ids.next().is_none(), "There exists more transactions than expected.");
 
+        // TODO: Move this check to be outside of this method, and check against the ledger for existence.
         // Ensure there are no aborted or existing solution IDs.
-        ensure!(aborted_or_existing_solution_ids.is_empty(), "Block contains aborted or already-existing solutions.");
+        // ensure!(aborted_or_existing_solution_ids.is_empty(), "Block contains aborted or already-existing solutions.");
         // Ensure the aborted transaction IDs match.
         for aborted_transaction_id in aborted_transaction_ids {
             // If the aborted transaction ID is not found, throw an error.
