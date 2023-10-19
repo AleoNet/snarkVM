@@ -16,13 +16,24 @@ use super::*;
 
 impl<N: Network> Header<N> {
     /// Initializes the genesis block header.
-    pub fn genesis(transactions: &Transactions<N>) -> Result<Self> {
+    pub fn genesis(
+        ratifications: &Ratifications<N>,
+        transactions: &Transactions<N>,
+        ratified_finalize_operations: Vec<FinalizeOperation<N>>,
+    ) -> Result<Self> {
+        #[cfg(not(debug_assertions))]
+        ensure!(!ratifications.is_empty(), "The genesis block must not contain ratifications");
+        #[cfg(not(debug_assertions))]
+        ensure!(ratifications.len() == 1, "The genesis block must not contain 1 ratification");
+        #[cfg(not(debug_assertions))]
+        ensure!(!ratified_finalize_operations.is_empty(), "The genesis block must contain ratify-finalize operations");
+
         // Prepare a genesis block header.
         let previous_state_root = Into::<N::StateRoot>::into(Field::zero());
         let transactions_root = transactions.to_transactions_root()?;
-        let finalize_root = transactions.to_finalize_root()?;
-        let ratifications_root = *N::merkle_tree_bhp::<RATIFICATIONS_DEPTH>(&[])?.root();
-        let coinbase_accumulator_point = Field::zero();
+        let finalize_root = transactions.to_finalize_root(ratified_finalize_operations)?;
+        let ratifications_root = ratifications.to_ratifications_root()?;
+        let solutions_root = Field::zero();
         let subdag_root = Field::zero();
         let metadata = Metadata::genesis()?;
 
@@ -32,7 +43,7 @@ impl<N: Network> Header<N> {
             transactions_root,
             finalize_root,
             ratifications_root,
-            coinbase_accumulator_point,
+            solutions_root,
             subdag_root,
             metadata,
         )

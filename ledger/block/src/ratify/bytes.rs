@@ -25,7 +25,7 @@ impl<N: Network> FromBytes for Ratify<N> {
         }
 
         let variant = Variant::read_le(&mut reader)?;
-        let literal = match variant {
+        let ratify = match variant {
             0 => {
                 // Read the committee.
                 let committee: Committee<N> = FromBytes::read_le(&mut reader)?;
@@ -58,7 +58,7 @@ impl<N: Network> FromBytes for Ratify<N> {
             }
             3.. => return Err(error(format!("Failed to decode ratify object variant {variant}"))),
         };
-        Ok(literal)
+        Ok(ratify)
     }
 }
 
@@ -102,7 +102,7 @@ mod tests {
     fn test_bytes() {
         let rng = &mut TestRng::default();
 
-        for expected in crate::ratify::test_helpers::sample_ratify_objects(rng) {
+        for expected in crate::ratify::test_helpers::sample_ratifications(rng) {
             // Check the byte representation.
             let expected_bytes = expected.to_bytes_le().unwrap();
             assert_eq!(expected, Ratify::read_le(&expected_bytes[..]).unwrap());

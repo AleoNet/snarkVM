@@ -28,8 +28,8 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         };
 
         if is_fee_required {
-            // Retrieve the transaction fee.
-            let fee_amount = *transaction.fee_amount()?;
+            // Retrieve the transaction base fee.
+            let base_fee_amount = *transaction.base_fee_amount()?;
             // Retrieve the minimum cost of the transaction.
             let (cost, _) = match transaction {
                 // Compute the deployment cost.
@@ -40,7 +40,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                 Transaction::Fee(_, _) => (0, (0, 0)),
             };
             // Ensure the transaction has a sufficient fee.
-            if cost > fee_amount {
+            if cost > base_fee_amount {
                 bail!("Transaction '{transaction_id}' has an insufficient fee - expected at least {cost} microcredits")
             }
         }

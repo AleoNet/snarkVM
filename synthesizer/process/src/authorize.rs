@@ -36,7 +36,8 @@ impl<N: Network> Process<N> {
         &self,
         private_key: &PrivateKey<N>,
         credits: Record<N, Plaintext<N>>,
-        fee_in_microcredits: u64,
+        base_fee_in_microcredits: u64,
+        priority_fee_in_microcredits: u64,
         deployment_or_execution_id: Field<N>,
         rng: &mut R,
     ) -> Result<Authorization<N>> {
@@ -48,12 +49,13 @@ impl<N: Network> Process<N> {
         let function_name = Identifier::from_str("fee_private")?;
 
         // Ensure the record contains a sufficient balance to pay the fee.
-        ensure_record_balance(&credits, fee_in_microcredits)?;
+        ensure_record_balance(&credits, base_fee_in_microcredits.saturating_add(priority_fee_in_microcredits))?;
 
         // Construct the inputs.
         let inputs = [
             Value::Record(credits),
-            Value::from(Literal::U64(U64::<N>::new(fee_in_microcredits))),
+            Value::from(Literal::U64(U64::<N>::new(base_fee_in_microcredits))),
+            Value::from(Literal::U64(U64::<N>::new(priority_fee_in_microcredits))),
             Value::from(Literal::Field(deployment_or_execution_id)),
         ]
         .into_iter();
@@ -72,7 +74,8 @@ impl<N: Network> Process<N> {
     pub fn authorize_fee_public<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
         &self,
         private_key: &PrivateKey<N>,
-        fee_in_microcredits: u64,
+        base_fee_in_microcredits: u64,
+        priority_fee_in_microcredits: u64,
         deployment_or_execution_id: Field<N>,
         rng: &mut R,
     ) -> Result<Authorization<N>> {
@@ -85,7 +88,8 @@ impl<N: Network> Process<N> {
 
         // Construct the inputs.
         let inputs = [
-            Value::from(Literal::U64(U64::<N>::new(fee_in_microcredits))),
+            Value::from(Literal::U64(U64::<N>::new(base_fee_in_microcredits))),
+            Value::from(Literal::U64(U64::<N>::new(priority_fee_in_microcredits))),
             Value::from(Literal::Field(deployment_or_execution_id)),
         ]
         .into_iter();

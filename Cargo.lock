@@ -3016,6 +3016,7 @@ dependencies = [
  "snarkvm-ledger-narwhal",
  "snarkvm-ledger-query",
  "snarkvm-ledger-store",
+ "snarkvm-ledger-test-helpers",
  "snarkvm-synthesizer",
  "time",
  "tracing",
@@ -3153,6 +3154,7 @@ version = "0.15.4"
 dependencies = [
  "bincode",
  "indexmap 2.0.2",
+ "rayon",
  "serde_json",
  "snarkvm-console",
  "snarkvm-ledger-narwhal-batch-certificate",
@@ -3322,6 +3324,7 @@ dependencies = [
  "snarkvm-ledger-test-helpers",
  "snarkvm-synthesizer-program",
  "snarkvm-synthesizer-snark",
+ "tempfile",
 ]
 
 [[package]]

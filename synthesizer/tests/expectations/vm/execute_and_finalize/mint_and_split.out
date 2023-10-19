@@ -13,6 +13,6 @@ additional:
 - child_outputs:
     credits.aleo/fee_private:
       outputs:
-      - '{"type":"record","id":"977920694811706159078899471653604411927128233329160083211705477372454474590field","checksum":"7462991908860745682036789185707450168363705488128851420842490220945105871913field","value":"record1qyqsq50ffm6tzf7q3z553quhrp773gjvntv3htpc3s7zfkdpndaqx3cxqyxx66trwfhkxun9v35hguerqqpqzq9qwkcz7d6ka5ngvfsz3m8dzypc7h984709ffwcj2f452zwhc3wq3gz2rjx9tgewnzxeyaurzdrunjpevr505mk8suj2p7y0dp6xxuqu6uy0rq"}'
+      - '{"type":"record","id":"6034384869866160676195114971378149013303703779101829835678240523345757814679field","checksum":"685010203971891455492083289280654319079811728620135209391715861377156619685field","value":"record1qyqspmum93lsptda6cxy2934329jud5j5d2w974qj980uzacuurkteq0qyxx66trwfhkxun9v35hguerqqpqzq95n3clh78n7alksrkrcwvf0kc5qeej4mmudqf57t7mqt08jd97p4nq3txxlzvtf3hsf093raynhzylqxz8vscq22pc2qaryw7r3qms7wmxm6s"}'
 - {}
 - {}

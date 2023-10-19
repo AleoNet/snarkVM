@@ -117,7 +117,9 @@ mod tests {
 
     type CurrentAleo = snarkvm_circuit::network::AleoV0;
 
+    // TODO: Re-enable this test after `staging` is merged into `testnet3` for the October 18, 2023 calibration reset.
     #[test]
+    #[ignore]
     fn test_execute() {
         // Samples a new package at a temporary directory.
         let (directory, package) = crate::package::test_helpers::sample_token_package();

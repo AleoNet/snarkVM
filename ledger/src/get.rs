@@ -137,14 +137,30 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             return Ok(self.genesis_block.transactions().clone());
         }
         // Retrieve the block hash.
-        let block_hash = match self.vm.block_store().get_block_hash(height)? {
-            Some(block_hash) => block_hash,
-            None => bail!("Block {height} does not exist in storage"),
+        let Some(block_hash) = self.vm.block_store().get_block_hash(height)? else {
+            bail!("Block {height} does not exist in storage");
         };
         // Retrieve the block transaction.
         match self.vm.block_store().get_block_transactions(&block_hash)? {
             Some(transactions) => Ok(transactions),
             None => bail!("Missing block transactions for block {height}"),
+        }
+    }
+
+    /// Returns the aborted transaction IDs for the given block height.
+    pub fn get_aborted_transaction_ids(&self, height: u32) -> Result<Vec<N::TransactionID>> {
+        // If the height is 0, return the genesis block aborted transaction IDs.
+        if height == 0 {
+            return Ok(self.genesis_block.aborted_transaction_ids().clone());
+        }
+        // Retrieve the block hash.
+        let Some(block_hash) = self.vm.block_store().get_block_hash(height)? else {
+            bail!("Block {height} does not exist in storage");
+        };
+        // Retrieve the aborted transaction IDs.
+        match self.vm.block_store().get_block_aborted_transaction_ids(&block_hash)? {
+            Some(aborted_transaction_ids) => Ok(aborted_transaction_ids),
+            None => bail!("Missing aborted transaction IDs for block {height}"),
         }
     }
 
@@ -175,10 +191,10 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
     }
 
     /// Returns the block solutions for the given block height.
-    pub fn get_coinbase(&self, height: u32) -> Result<Option<CoinbaseSolution<N>>> {
+    pub fn get_solutions(&self, height: u32) -> Result<Option<CoinbaseSolution<N>>> {
         // If the height is 0, return the genesis block solutions.
         if height == 0 {
-            return Ok(self.genesis_block.coinbase().cloned());
+            return Ok(self.genesis_block.solutions().cloned());
         }
         // Retrieve the block hash.
         let block_hash = match self.vm.block_store().get_block_hash(height)? {
@@ -186,7 +202,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             None => bail!("Block {height} does not exist in storage"),
         };
         // Retrieve the block solutions.
-        self.vm.block_store().get_block_coinbase(&block_hash)
+        self.vm.block_store().get_block_solutions(&block_hash)
     }
 
     /// Returns the solution for the given solution ID.

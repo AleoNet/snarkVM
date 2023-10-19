@@ -60,7 +60,9 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         /* Transaction */
 
         // Ensure the transaction ID is unique.
-        if self.transaction_store().contains_transaction_id(&transaction.id())? {
+        if self.transaction_store().contains_transaction_id(&transaction.id())?
+            || self.block_store().contains_rejected_or_aborted_transaction_id(&transaction.id())?
+        {
             bail!("Transaction '{}' already exists in the ledger", transaction.id())
         }
 
@@ -227,8 +229,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             // Retrieve the account balance of the payer.
             let Some(Value::Plaintext(Plaintext::Literal(Literal::U64(balance), _))) =
                 self.finalize_store().get_value_speculative(
-                    &ProgramID::from_str("credits.aleo")?,
-                    &Identifier::from_str("account")?,
+                    ProgramID::from_str("credits.aleo")?,
+                    Identifier::from_str("account")?,
                     &Plaintext::from(Literal::Address(payer)),
                 )?
             else {
@@ -432,8 +434,9 @@ mod tests {
         let deployment_transaction = vm.deploy(&caller_private_key, &program, Some(credits), 10, None, rng).unwrap();
 
         // Construct the new block header.
-        let (transactions, _) =
+        let (ratifications, transactions, aborted_transaction_ids, ratified_finalize_operations) =
             vm.speculate(sample_finalize_state(1), &[], None, [deployment_transaction].iter()).unwrap();
+        assert!(aborted_transaction_ids.is_empty());
 
         // Construct the metadata associated with the block.
         let deployment_metadata = Metadata::new(
@@ -453,8 +456,8 @@ mod tests {
         let deployment_header = Header::from(
             vm.block_store().current_state_root(),
             transactions.to_transactions_root().unwrap(),
-            transactions.to_finalize_root().unwrap(),
-            crate::vm::test_helpers::sample_ratifications_root(),
+            transactions.to_finalize_root(ratified_finalize_operations).unwrap(),
+            ratifications.to_ratifications_root().unwrap(),
             Field::zero(),
             Field::zero(),
             deployment_metadata,
@@ -462,9 +465,17 @@ mod tests {
         .unwrap();
 
         // Construct a new block for the deploy transaction.
-        let deployment_block =
-            Block::new_beacon(&caller_private_key, genesis.hash(), deployment_header, vec![], None, transactions, rng)
-                .unwrap();
+        let deployment_block = Block::new_beacon(
+            &caller_private_key,
+            genesis.hash(),
+            deployment_header,
+            ratifications,
+            None,
+            transactions,
+            aborted_transaction_ids,
+            rng,
+        )
+        .unwrap();
 
         // Add the deployment block.
         vm.add_next_block(&deployment_block).unwrap();

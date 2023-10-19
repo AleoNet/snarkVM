@@ -44,6 +44,9 @@ pub struct Committee<N: Network> {
 }
 
 impl<N: Network> Committee<N> {
+    /// The maximum number of members that may be in a committee.
+    pub const MAX_COMMITTEE_SIZE: u16 = 200;
+
     /// Initializes a new `Committee` instance.
     pub fn new_genesis(members: IndexMap<Address<N>, (u64, bool)>) -> Result<Self> {
         // Ensure there are exactly 4 members.
@@ -56,6 +59,12 @@ impl<N: Network> Committee<N> {
     pub fn new(starting_round: u64, members: IndexMap<Address<N>, (u64, bool)>) -> Result<Self> {
         // Ensure there are at least 4 members.
         ensure!(members.len() >= 4, "Committee must have at least 4 members");
+        // Ensure there are no more than the maximum number of members.
+        ensure!(
+            members.len() <= Self::MAX_COMMITTEE_SIZE as usize,
+            "Committee must have no more than {} members",
+            Self::MAX_COMMITTEE_SIZE
+        );
         // Ensure all members have the minimum required stake.
         ensure!(
             members.values().all(|(stake, _)| *stake >= MIN_VALIDATOR_STAKE),

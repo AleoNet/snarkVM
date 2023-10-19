@@ -25,6 +25,7 @@ impl<N: Network> Header<N> {
         expected_finalize_root: Field<N>,
         expected_ratifications_root: Field<N>,
         expected_solutions_root: Field<N>,
+        expected_subdag_root: Field<N>,
         expected_round: u64,
         expected_height: u32,
         expected_cumulative_weight: u128,
@@ -72,6 +73,13 @@ impl<N: Network> Header<N> {
             "Solutions root is incorrect in block {expected_height} (found '{}', expected '{}')",
             self.solutions_root,
             expected_solutions_root
+        );
+        // Ensure the subdag root is correct.
+        ensure!(
+            self.subdag_root == expected_subdag_root,
+            "Subdag root is incorrect in block {expected_height} (found '{}', expected '{}')",
+            self.subdag_root,
+            expected_subdag_root
         );
         // Ensure the block metadata is correct.
         self.metadata.verify(
