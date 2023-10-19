@@ -58,7 +58,10 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
 
     /// Returns `true` if the given transaction ID exists.
     pub fn contains_transaction_id(&self, transaction_id: &N::TransactionID) -> Result<bool> {
-        self.vm.transaction_store().contains_transaction_id(transaction_id)
+        self.vm
+            .transaction_store()
+            .contains_transaction_id(transaction_id)
+            .or(self.vm.block_store().contains_rejected_or_aborted_transaction_id(transaction_id))
     }
 
     /* Transition */

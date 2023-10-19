@@ -60,7 +60,9 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         /* Transaction */
 
         // Ensure the transaction ID is unique.
-        if self.transaction_store().contains_transaction_id(&transaction.id())? {
+        if self.transaction_store().contains_transaction_id(&transaction.id())?
+            || self.block_store().contains_rejected_or_aborted_transaction_id(&transaction.id())?
+        {
             bail!("Transaction '{}' already exists in the ledger", transaction.id())
         }
 
