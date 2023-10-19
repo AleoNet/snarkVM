@@ -51,6 +51,8 @@ pub struct BlockMemory<N: Network> {
     transactions_map: MemoryMap<N::BlockHash, Vec<N::TransactionID>>,
     /// The aborted transaction IDs map.
     aborted_transaction_ids_map: MemoryMap<N::BlockHash, Vec<N::TransactionID>>,
+    /// The rejected or aborted transaction ID map.
+    rejected_or_aborted_transaction_id_map: MemoryMap<N::TransactionID, N::BlockHash>,
     /// The confirmed transactions map.
     confirmed_transactions_map: MemoryMap<N::TransactionID, (N::BlockHash, ConfirmedTxType, Vec<u8>)>,
     /// The transaction store.
@@ -71,6 +73,7 @@ impl<N: Network> BlockStorage<N> for BlockMemory<N> {
     type PuzzleCommitmentsMap = MemoryMap<PuzzleCommitment<N>, u32>;
     type TransactionsMap = MemoryMap<N::BlockHash, Vec<N::TransactionID>>;
     type AbortedTransactionIDsMap = MemoryMap<N::BlockHash, Vec<N::TransactionID>>;
+    type RejectedOrAbortedTransactionIDMap = MemoryMap<N::TransactionID, N::BlockHash>;
     type ConfirmedTransactionsMap = MemoryMap<N::TransactionID, (N::BlockHash, ConfirmedTxType, Vec<u8>)>;
     type TransactionStorage = TransactionMemory<N>;
     type TransitionStorage = TransitionMemory<N>;
@@ -95,6 +98,7 @@ impl<N: Network> BlockStorage<N> for BlockMemory<N> {
             puzzle_commitments_map: MemoryMap::default(),
             transactions_map: MemoryMap::default(),
             aborted_transaction_ids_map: MemoryMap::default(),
+            rejected_or_aborted_transaction_id_map: MemoryMap::default(),
             confirmed_transactions_map: MemoryMap::default(),
             transaction_store,
         })
@@ -158,6 +162,11 @@ impl<N: Network> BlockStorage<N> for BlockMemory<N> {
     /// Returns the aborted transaction IDs map.
     fn aborted_transaction_ids_map(&self) -> &Self::AbortedTransactionIDsMap {
         &self.aborted_transaction_ids_map
+    }
+
+    /// Returns the rejected or aborted transaction ID map.
+    fn rejected_or_aborted_transaction_id_map(&self) -> &Self::RejectedOrAbortedTransactionIDMap {
+        &self.rejected_or_aborted_transaction_id_map
     }
 
     /// Returns the confirmed transactions map.
