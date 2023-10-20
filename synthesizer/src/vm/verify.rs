@@ -33,13 +33,13 @@ macro_rules! ensure_is_unique {
 
 impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// Returns `true` if the transaction is valid.
-    pub fn verify_transaction(&self, transaction: &Transaction<N>, rejected: Option<&Rejected<N>>) -> bool {
-        self.check_transaction(transaction, rejected).map_err(|error| warn!("{error}")).is_ok()
+    pub fn verify_transaction(&self, transaction: &Transaction<N>, rejected_id: Option<Field<N>>) -> bool {
+        self.check_transaction(transaction, rejected_id).map_err(|error| warn!("{error}")).is_ok()
     }
 
     /// Verifies the transaction in the VM. On failure, returns an error.
     #[inline]
-    pub fn check_transaction(&self, transaction: &Transaction<N>, rejected: Option<&Rejected<N>>) -> Result<()> {
+    pub fn check_transaction(&self, transaction: &Transaction<N>, rejected_id: Option<Field<N>>) -> Result<()> {
         let timer = timer!("VM::check_transaction");
 
         /* Transaction */
@@ -95,7 +95,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         lap!(timer, "Check for duplicate elements");
 
         // First, verify the fee.
-        self.check_fee(transaction, rejected)?;
+        self.check_fee(transaction, rejected_id)?;
 
         // Next, verify the deployment or execution.
         match transaction {
@@ -130,11 +130,11 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
     /// Verifies the `fee` in the given transaction. On failure, returns an error.
     #[inline]
-    pub fn check_fee(&self, transaction: &Transaction<N>, rejected: Option<&Rejected<N>>) -> Result<()> {
+    pub fn check_fee(&self, transaction: &Transaction<N>, rejected_id: Option<Field<N>>) -> Result<()> {
         match transaction {
             Transaction::Deploy(id, _, deployment, fee) => {
-                // Ensure the rejected object is not present.
-                ensure!(rejected.is_none(), "Transaction '{id}' should not have a rejected object (deployment)");
+                // Ensure the rejected ID is not present.
+                ensure!(rejected_id.is_none(), "Transaction '{id}' should not have a rejected ID (deployment)");
                 // Compute the deployment ID.
                 let Ok(deployment_id) = deployment.to_deployment_id() else {
                     bail!("Failed to compute the Merkle root for deployment transaction '{id}'")
@@ -149,8 +149,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 self.check_fee_internal(fee, deployment_id)?;
             }
             Transaction::Execute(id, execution, fee) => {
-                // Ensure the rejected object is not present.
-                ensure!(rejected.is_none(), "Transaction '{id}' should not have a rejected object (execution)");
+                // Ensure the rejected ID is not present.
+                ensure!(rejected_id.is_none(), "Transaction '{id}' should not have a rejected ID (execution)");
                 // Compute the execution ID.
                 let Ok(execution_id) = execution.to_execution_id() else {
                     bail!("Failed to compute the Merkle root for execution transaction '{id}'")
@@ -171,25 +171,14 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     ensure!(can_skip_fee, "Transaction '{id}' is missing a fee (execution)");
                 }
             }
+            // Note: This transaction type does not need to check the fee amount, because:
+            //  1. The fee is guaranteed to be non-zero by the constructor of `Transaction::Fee`.
+            //  2. The fee may be less that the deployment or execution cost, as this is a valid reason it was rejected.
             Transaction::Fee(id, fee) => {
-                // Ensure the fee is nonzero.
-                ensure!(!fee.is_zero()?, "Transaction '{id}' contains a fee of 0 microcredits");
-
-                match rejected {
-                    Some(rejected) => {
-                        // Retrieve the cost.
-                        let (cost, _) = match rejected {
-                            Rejected::Deployment(_, deployment) => deployment_cost(deployment)?,
-                            Rejected::Execution(execution) => execution_cost(self, execution)?,
-                        };
-                        // Ensure the fee is sufficient to cover the cost.
-                        if *fee.base_amount()? < cost {
-                            bail!("Transaction '{id}' has an insufficient fee (reject) - requires {cost} microcredits")
-                        }
-                        // Verify the fee.
-                        self.check_fee_internal(fee, rejected.to_id()?)?
-                    }
-                    None => bail!("Transaction '{id}' is missing a rejected object (fee)"),
+                // Verify the fee.
+                match rejected_id {
+                    Some(rejected_id) => self.check_fee_internal(fee, rejected_id)?,
+                    None => bail!("Transaction '{id}' is missing a rejected ID (fee)"),
                 }
             }
         }

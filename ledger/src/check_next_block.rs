@@ -42,7 +42,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         // TODO: this intermediate allocation shouldn't be necessary; this is most likely https://github.com/rust-lang/rust/issues/89418.
         let transactions = block.transactions().iter().collect::<Vec<_>>();
         cfg_iter!(transactions).try_for_each(|transaction| {
-            self.check_transaction_basic(*transaction, transaction.to_rejected())
+            self.check_transaction_basic(*transaction, transaction.to_rejected_id()?)
                 .map_err(|e| anyhow!("Invalid transaction found in the transactions list: {e}"))
         })?;
 
