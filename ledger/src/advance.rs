@@ -129,7 +129,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                     cfg_into_iter!(candidate_solutions).partition(|solution| {
                         solution
                             .verify(
-                                &self.coinbase_puzzle.coinbase_verifying_key(),
+                                self.coinbase_puzzle.coinbase_verifying_key(),
                                 &latest_epoch_challenge,
                                 self.latest_proof_target(),
                             )
@@ -139,7 +139,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                 // Accumulate the prover solutions.
                 let solutions = self.coinbase_puzzle.accumulate(
                     valid_candidate_solutions,
-                    &self.latest_epoch_challenge()?,
+                    &latest_epoch_challenge,
                     self.latest_proof_target(),
                 )?;
                 // Compute the solutions root.
