@@ -142,19 +142,22 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
         // Retrieve the transaction store.
         let transaction_store = store.transaction_store();
+        // Retrieve the list of deployment transaction IDs.
+        let deployment_ids = transaction_store.deployment_transaction_ids().collect::<Vec<_>>();
         // Load the deployments from the store.
-        let deployments = transaction_store
-            .par_deployment_transaction_ids()
-            .map(|transaction_id| {
-                // Load the deployment and its imports.
-                load_deployment_and_imports(&process, transaction_store, *transaction_id)
-            })
-            .collect::<Result<Vec<_>>>()?;
+        for chunk in deployment_ids.chunks(256) {
+            let deployments = cfg_iter!(chunk)
+                .map(|transaction_id| {
+                    // Load the deployment and its imports.
+                    load_deployment_and_imports(&process, transaction_store, **transaction_id)
+                })
+                .collect::<Result<Vec<_>>>()?;
 
-        for (program_id, deployment) in deployments.iter().flatten() {
-            // Load the deployment if it does not exist in the process yet.
-            if !process.contains_program(program_id) {
-                process.load_deployment(deployment)?;
+            for (program_id, deployment) in deployments.iter().flatten() {
+                // Load the deployment if it does not exist in the process yet.
+                if !process.contains_program(program_id) {
+                    process.load_deployment(deployment)?;
+                }
             }
         }
 
