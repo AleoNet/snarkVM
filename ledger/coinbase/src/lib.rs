@@ -168,7 +168,7 @@ impl<N: Network> CoinbasePuzzle<N> {
         // Initialize the coinbase solution.
         let solutions = CoinbaseSolution::new(prover_solutions);
         // Verify the solutions.
-        self.verify(&solutions, epoch_challenge, proof_target)?;
+        ensure!(self.verify(&solutions, epoch_challenge, proof_target)?, "The prover solutions must be valid");
         // Return the solutions.
         Ok(solutions)
     }

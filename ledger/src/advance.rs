@@ -123,20 +123,22 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         let (solutions, solutions_root, combined_proof_target) = match candidate_solutions.is_empty() {
             true => (None, Field::<N>::zero(), 0u128),
             false => {
-                // Only select the candidate solutions that are valid.
+                // Separate the valid and aborted candidate solutions.
                 let latest_epoch_challenge = self.latest_epoch_challenge()?;
-                let coinbase_verifying_key = self.coinbase_puzzle.coinbase_verifying_key();
-                let candidate_solutions = cfg_into_iter!(candidate_solutions)
-                    .filter(|solution| {
+                let (valid_candidate_solutions, _aborted_candidate_solutions): (Vec<_>, Vec<_>) =
+                    cfg_into_iter!(candidate_solutions).partition(|solution| {
                         solution
-                            .verify(coinbase_verifying_key, &latest_epoch_challenge, self.latest_proof_target())
+                            .verify(
+                                &self.coinbase_puzzle.coinbase_verifying_key(),
+                                &latest_epoch_challenge,
+                                self.latest_proof_target(),
+                            )
                             .unwrap_or(false)
-                    })
-                    .collect::<Vec<_>>();
-                // TODO (raychu86): Optimize this. We are currently double verifying the solutions.
+                    });
+                // TODO (raychu86): Optimize this. We are currently double verifying the valid solutions.
                 // Accumulate the prover solutions.
                 let solutions = self.coinbase_puzzle.accumulate(
-                    candidate_solutions,
+                    valid_candidate_solutions,
                     &self.latest_epoch_challenge()?,
                     self.latest_proof_target(),
                 )?;
