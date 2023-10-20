@@ -91,9 +91,28 @@ impl<F: PrimeField> R1CS<F> {
         self.counter.add_constraint(constraint);
     }
 
-    /// Returns `true` if all constraints in the environment are satisfied.
+    /// Returns `true` if both
+    /// - all constraints in the environment are satisfied.
+    /// - all constraints use variables corresponding to the declared variables
     pub fn is_satisfied(&self) -> bool {
-        self.constraints.iter().all(|constraint| constraint.is_satisfied())
+        let constraints_satisfied = self.constraints.iter().all(|constraint| constraint.is_satisfied());
+        if !constraints_satisfied {
+            return false;
+        }
+        self.constraints.iter().all(|constraint| {
+            let (a, b, c) = constraint.to_terms();
+            [a, b, c].into_iter().all(|m| {
+                m.to_terms().into_iter().all(|(var, _)| match var {
+                    Variable::Constant(_value) => false, // terms should not contain Constants
+                    Variable::Private(index, value) => {
+                        self.private.get(*index as usize).map_or_else(|| false, |v| v.value() == **value)
+                    }
+                    Variable::Public(index, value) => {
+                        self.public.get(*index as usize).map_or_else(|| false, |v| v.value() == **value)
+                    }
+                })
+            })
+        })
     }
 
     /// Returns `true` if all constraints in the current scope are satisfied.
