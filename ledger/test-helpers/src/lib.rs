@@ -246,9 +246,9 @@ pub fn sample_fee_public(deployment_or_execution_id: Field<CurrentNetwork>, rng:
     // Sample the genesis block, transaction, and private key.
     let (block, _, private_key) = crate::sample_genesis_block_and_components(rng);
     // Sample a base fee in microcredits.
-    let base_fee_in_microcredits = rng.gen_range(1_000_000..u64::MAX / 2);
+    let base_fee_in_microcredits = 10_000_000;
     // Sample a priority fee in microcredits.
-    let priority_fee_in_microcredits = rng.gen_range(0..u64::MAX / 2);
+    let priority_fee_in_microcredits = 1_000;
 
     // Initialize the process.
     let process = Process::load().unwrap();
