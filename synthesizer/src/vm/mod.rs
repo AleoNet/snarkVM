@@ -437,7 +437,7 @@ function compute:
                 // Deploy.
                 let transaction = vm.deploy(&caller_private_key, &program, credits, 10, None, rng).unwrap();
                 // Verify.
-                assert!(vm.verify_transaction(&transaction, None));
+                vm.check_transaction(&transaction, None).unwrap();
                 // Return the transaction.
                 transaction
             })
@@ -480,7 +480,7 @@ function compute:
                 // Construct the execute transaction.
                 let transaction = vm.execute_authorization(authorization, None, None, rng).unwrap();
                 // Verify.
-                assert!(vm.verify_transaction(&transaction, None));
+                vm.check_transaction(&transaction, None).unwrap();
                 // Return the transaction.
                 transaction
             })
@@ -524,7 +524,7 @@ function compute:
                     .execute(&caller_private_key, ("credits.aleo", "transfer_public"), inputs, record, 0, None, rng)
                     .unwrap();
                 // Verify.
-                assert!(vm.verify_transaction(&transaction, None));
+                vm.check_transaction(&transaction, None).unwrap();
                 // Return the transaction.
                 transaction
             })
@@ -562,7 +562,13 @@ function compute:
 
                 // Authorize the fee.
                 let authorization = vm
-                    .authorize_fee_public(&caller_private_key, 100, 100, execution.to_execution_id().unwrap(), rng)
+                    .authorize_fee_public(
+                        &caller_private_key,
+                        10_000_000,
+                        100,
+                        execution.to_execution_id().unwrap(),
+                        rng,
+                    )
                     .unwrap();
                 // Compute the fee.
                 let fee = vm.execute_fee_authorization(authorization, None, rng).unwrap();
@@ -570,7 +576,7 @@ function compute:
                 // Construct the transaction.
                 let transaction = Transaction::from_execution(execution, Some(fee)).unwrap();
                 // Verify.
-                assert!(vm.verify_transaction(&transaction, None));
+                vm.check_transaction(&transaction, None).unwrap();
                 // Return the transaction.
                 transaction
             })

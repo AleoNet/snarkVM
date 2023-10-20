@@ -1028,7 +1028,7 @@ finalize transfer_public:
             .execute(&caller_private_key, (program_id, function_name), inputs.into_iter(), credits, 1, None, rng)
             .unwrap();
         // Verify.
-        assert!(vm.verify_transaction(&transaction, None));
+        vm.check_transaction(&transaction, None).unwrap();
 
         // Return the transaction.
         transaction

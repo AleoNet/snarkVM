@@ -189,7 +189,7 @@ fn run_test(test: &ProgramTest) -> serde_yaml::Mapping {
             };
 
             // Attempt to verify the transaction.
-            let verified = vm.verify_transaction(&transaction, None);
+            let verified = vm.check_transaction(&transaction, None).is_ok();
             // Store the verification result.
             result.insert(serde_yaml::Value::String("verified".to_string()), serde_yaml::Value::Bool(verified));
 

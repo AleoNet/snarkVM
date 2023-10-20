@@ -32,11 +32,6 @@ macro_rules! ensure_is_unique {
 }
 
 impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
-    /// Returns `true` if the transaction is valid.
-    pub fn verify_transaction(&self, transaction: &Transaction<N>, rejected_id: Option<Field<N>>) -> bool {
-        self.check_transaction(transaction, rejected_id).map_err(|error| warn!("{error}")).is_ok()
-    }
-
     /// Verifies the transaction in the VM. On failure, returns an error.
     #[inline]
     pub fn check_transaction(&self, transaction: &Transaction<N>, rejected_id: Option<Field<N>>) -> Result<()> {
@@ -308,20 +303,17 @@ mod tests {
         // Fetch a deployment transaction.
         let deployment_transaction = crate::vm::test_helpers::sample_deployment_transaction(rng);
         // Ensure the transaction verifies.
-        assert!(vm.check_transaction(&deployment_transaction, None).is_ok());
-        assert!(vm.verify_transaction(&deployment_transaction, None));
+        vm.check_transaction(&deployment_transaction, None).unwrap();
 
         // Fetch an execution transaction.
         let execution_transaction = crate::vm::test_helpers::sample_execution_transaction_with_private_fee(rng);
         // Ensure the transaction verifies.
-        assert!(vm.check_transaction(&execution_transaction, None).is_ok());
-        assert!(vm.verify_transaction(&execution_transaction, None));
+        vm.check_transaction(&execution_transaction, None).unwrap();
 
         // Fetch an execution transaction.
         let execution_transaction = crate::vm::test_helpers::sample_execution_transaction_with_public_fee(rng);
         // Ensure the transaction verifies.
-        assert!(vm.check_transaction(&execution_transaction, None).is_ok());
-        assert!(vm.verify_transaction(&execution_transaction, None));
+        vm.check_transaction(&execution_transaction, None).unwrap();
     }
 
     #[test]
@@ -336,12 +328,12 @@ mod tests {
         let deployment = vm.deploy_raw(&program, rng).unwrap();
 
         // Ensure the deployment is valid.
-        assert!(vm.check_deployment_internal(&deployment).is_ok());
+        vm.check_deployment_internal(&deployment).unwrap();
 
         // Ensure that deserialization doesn't break the transaction verification.
         let serialized_deployment = deployment.to_string();
         let deployment_transaction: Deployment<CurrentNetwork> = serde_json::from_str(&serialized_deployment).unwrap();
-        assert!(vm.check_deployment_internal(&deployment_transaction).is_ok());
+        vm.check_deployment_internal(&deployment_transaction).unwrap();
     }
 
     #[test]
@@ -361,13 +353,13 @@ mod tests {
                     // Ensure the proof exists.
                     assert!(execution.proof().is_some());
                     // Verify the execution.
-                    assert!(vm.check_execution_internal(&execution).is_ok());
+                    vm.check_execution_internal(&execution).unwrap();
 
                     // Ensure that deserialization doesn't break the transaction verification.
                     let serialized_execution = execution.to_string();
                     let recovered_execution: Execution<CurrentNetwork> =
                         serde_json::from_str(&serialized_execution).unwrap();
-                    assert!(vm.check_execution_internal(&recovered_execution).is_ok());
+                    vm.check_execution_internal(&recovered_execution).unwrap();
                 }
                 _ => panic!("Expected an execution transaction"),
             }
@@ -393,12 +385,12 @@ mod tests {
                     // Ensure the proof exists.
                     assert!(fee.proof().is_some());
                     // Verify the fee.
-                    assert!(vm.check_fee_internal(&fee, execution_id).is_ok());
+                    vm.check_fee_internal(&fee, execution_id).unwrap();
 
                     // Ensure that deserialization doesn't break the transaction verification.
                     let serialized_fee = fee.to_string();
                     let recovered_fee: Fee<CurrentNetwork> = serde_json::from_str(&serialized_fee).unwrap();
-                    assert!(vm.check_fee_internal(&recovered_fee, execution_id).is_ok());
+                    vm.check_fee_internal(&recovered_fee, execution_id).unwrap();
                 }
                 _ => panic!("Expected an execution with a fee"),
             }
@@ -418,18 +410,15 @@ mod tests {
 
         // Fetch a valid execution transaction with a private fee.
         let valid_transaction = crate::vm::test_helpers::sample_execution_transaction_with_private_fee(rng);
-        assert!(vm.check_transaction(&valid_transaction, None).is_ok());
-        assert!(vm.verify_transaction(&valid_transaction, None));
+        vm.check_transaction(&valid_transaction, None).unwrap();
 
         // Fetch a valid execution transaction with a public fee.
         let valid_transaction = crate::vm::test_helpers::sample_execution_transaction_with_public_fee(rng);
-        assert!(vm.check_transaction(&valid_transaction, None).is_ok());
-        assert!(vm.verify_transaction(&valid_transaction, None));
+        vm.check_transaction(&valid_transaction, None).unwrap();
 
         // Fetch an valid execution transaction with no fee.
         let valid_transaction = crate::vm::test_helpers::sample_execution_transaction_without_fee(rng);
-        assert!(vm.check_transaction(&valid_transaction, None).is_ok());
-        assert!(vm.verify_transaction(&valid_transaction, None));
+        vm.check_transaction(&valid_transaction, None).unwrap();
     }
 
     #[test]
@@ -525,8 +514,7 @@ mod tests {
             vm.execute(&caller_private_key, ("testing.aleo", "initialize"), inputs, credits, 10, None, rng).unwrap();
 
         // Verify.
-        assert!(vm.check_transaction(&transaction, None).is_ok());
-        assert!(vm.verify_transaction(&transaction, None));
+        vm.check_transaction(&transaction, None).unwrap();
     }
 
     #[test]
