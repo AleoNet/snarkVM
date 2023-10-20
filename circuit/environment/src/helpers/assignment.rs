@@ -162,7 +162,7 @@ impl<F: PrimeField> snarkvm_algorithms::r1cs::ConstraintSynthesizer<F> for Assig
         let mut converter = Converter { public: Default::default(), private: Default::default() };
 
         // Ensure the given `cs` is starting off clean.
-        assert_eq!(1, cs.num_public_variables());
+        assert_eq!(0, cs.num_public_variables());
         assert_eq!(0, cs.num_private_variables());
         assert_eq!(0, cs.num_constraints());
 
@@ -173,7 +173,7 @@ impl<F: PrimeField> snarkvm_algorithms::r1cs::ConstraintSynthesizer<F> for Assig
             let gadget = cs.alloc_input(|| format!("Public {i}"), || Ok(*value))?;
 
             assert_eq!(
-                snarkvm_algorithms::r1cs::Index::Public((index + 1) as usize),
+                snarkvm_algorithms::r1cs::Index::Public((*index) as usize),
                 gadget.get_unchecked(),
                 "Public variables in the second system must match the first system (with an off-by-1 for the public case)"
             );
@@ -218,7 +218,7 @@ impl<F: PrimeField> snarkvm_algorithms::r1cs::ConstraintSynthesizer<F> for Assig
                         AssignmentVariable::Public(index) => {
                             let gadget = converter.public.get(index).unwrap();
                             assert_eq!(
-                                snarkvm_algorithms::r1cs::Index::Public((index + 1) as usize),
+                                snarkvm_algorithms::r1cs::Index::Public((*index) as usize),
                                 gadget.get_unchecked(),
                                 "Failed during constraint translation. The public variable in the second system must match the first system (with an off-by-1 for the public case)"
                             );
@@ -257,7 +257,7 @@ impl<F: PrimeField> snarkvm_algorithms::r1cs::ConstraintSynthesizer<F> for Assig
         }
 
         // Ensure the given `cs` matches in size with the first system.
-        assert_eq!(self.num_public() + 1, cs.num_public_variables() as u64);
+        assert_eq!(self.num_public(), cs.num_public_variables() as u64);
         assert_eq!(self.num_private(), cs.num_private_variables() as u64);
         assert_eq!(self.num_constraints(), cs.num_constraints() as u64);
 

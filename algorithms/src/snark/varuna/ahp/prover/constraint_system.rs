@@ -26,9 +26,9 @@ pub(crate) struct ConstraintSystem<F: Field> {
 impl<F: Field> ConstraintSystem<F> {
     pub(crate) fn new() -> Self {
         Self {
-            public_variables: vec![F::one()],
+            public_variables: Vec::new(),
             private_variables: Vec::new(),
-            num_public_variables: 1usize,
+            num_public_variables: 0usize,
             num_private_variables: 0usize,
             num_constraints: 0usize,
         }

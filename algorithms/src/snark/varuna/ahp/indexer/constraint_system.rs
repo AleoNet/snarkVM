@@ -38,7 +38,7 @@ impl<F: Field> ConstraintSystem<F> {
             a: Vec::new(),
             b: Vec::new(),
             c: Vec::new(),
-            num_public_variables: 1,
+            num_public_variables: 0,
             num_private_variables: 0,
             num_constraints: 0,
         }
