@@ -74,9 +74,9 @@ pub fn sample_fee<N: Network, A: Aleo<Network = N>, B: BlockStorage<N>, P: Final
     finalize_store.update_key_value(program_id, account_mapping, key, value).unwrap();
 
     // Sample a base fee in microcredits.
-    let base_fee_in_microcredits = rng.gen_range(1_000_000..u64::MAX / 2);
+    let base_fee_in_microcredits = 100;
     // Sample a priority fee in microcredits.
-    let priority_fee_in_microcredits = rng.gen_range(0..u64::MAX / 2);
+    let priority_fee_in_microcredits = 0;
     // Sample a dummy ID.
     let id = Field::rand(rng);
 
