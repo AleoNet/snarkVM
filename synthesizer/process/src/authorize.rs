@@ -49,7 +49,10 @@ impl<N: Network> Process<N> {
         let function_name = Identifier::from_str("fee_private")?;
 
         // Ensure the record contains a sufficient balance to pay the fee.
-        ensure_record_balance(&credits, base_fee_in_microcredits.saturating_add(priority_fee_in_microcredits))?;
+        ensure_record_microcredits_is_sufficient(
+            &credits,
+            base_fee_in_microcredits.saturating_add(priority_fee_in_microcredits),
+        )?;
 
         // Construct the inputs.
         let inputs = [
@@ -105,7 +108,10 @@ impl<N: Network> Process<N> {
 }
 
 /// Ensures the record contains a sufficient balance to pay the fee.
-fn ensure_record_balance<N: Network>(record: &Record<N, Plaintext<N>>, fee_in_microcredits: u64) -> Result<()> {
+fn ensure_record_microcredits_is_sufficient<N: Network>(
+    record: &Record<N, Plaintext<N>>,
+    fee_in_microcredits: u64,
+) -> Result<()> {
     // Retrieve the balance from the record.
     let balance = match record.find(&[Identifier::from_str("microcredits")?]) {
         Ok(console::program::Entry::Private(Plaintext::Literal(Literal::U64(amount), _))) => *amount,

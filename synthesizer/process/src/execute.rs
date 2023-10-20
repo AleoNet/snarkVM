@@ -71,19 +71,20 @@ mod tests {
         // Sample a private key.
         let private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
         let owner = Address::try_from(private_key).unwrap();
+
         // Sample a base fee in microcredits.
-        let base_fee_in_microcredits = rng.gen_range(0..u64::MAX / 2);
+        let base_fee_in_microcredits = rng.gen_range(1_000_000..u64::MAX / 2);
         // Sample a priority fee in microcredits.
         let priority_fee_in_microcredits = rng.gen_range(0..u64::MAX / 2);
-        // Compute the total fee in microcredits.
-        let total_fee = base_fee_in_microcredits.saturating_add(priority_fee_in_microcredits);
-        // Sample a credits record.
-        let credits = Record::<CurrentNetwork, Plaintext<_>>::from_str(&format!(
-            "{{ owner: {owner}.private, microcredits: {total_fee}u64.private, _nonce: 0group.public }}"
-        ))
-        .unwrap();
         // Sample a deployment or execution ID.
         let deployment_or_execution_id = Field::rand(rng);
+
+        // Sample a credits record.
+        let fee_in_microcredits = base_fee_in_microcredits.saturating_add(priority_fee_in_microcredits);
+        let credits = Record::<CurrentNetwork, Plaintext<_>>::from_str(&format!(
+            "{{ owner: {owner}.private, microcredits: {fee_in_microcredits}u64.private, _nonce: 0group.public }}"
+        ))
+        .unwrap();
 
         // Initialize the authorization.
         let authorization = process
@@ -122,7 +123,7 @@ mod tests {
         // Sample a private key.
         let private_key = PrivateKey::new(rng).unwrap();
         // Sample a base fee in microcredits.
-        let base_fee_in_microcredits = rng.gen_range(0..u64::MAX / 2);
+        let base_fee_in_microcredits = rng.gen_range(1_000_000..u64::MAX / 2);
         // Sample a priority fee in microcredits.
         let priority_fee_in_microcredits = rng.gen_range(0..u64::MAX / 2);
         // Sample a deployment or execution ID.
