@@ -258,7 +258,7 @@ pub(crate) mod test_helpers {
         // Sample a private key.
         let private_key = PrivateKey::new(rng).unwrap();
         // Sample a base fee in microcredits.
-        let base_fee_in_microcredits = rng.gen_range(0..u64::MAX / 2);
+        let base_fee_in_microcredits = rng.gen_range(1_000_000..u64::MAX / 2);
         // Sample a priority fee in microcredits.
         let priority_fee_in_microcredits = rng.gen_range(0..u64::MAX / 2);
         // Sample a deployment or execution ID.

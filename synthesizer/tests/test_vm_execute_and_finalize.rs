@@ -99,7 +99,7 @@ fn run_test(test: &ProgramTest) -> serde_yaml::Mapping {
             };
 
         let (ratifications, transactions, aborted_transaction_ids, ratified_finalize_operations) =
-            vm.speculate(construct_finalize_global_state(&vm), &[], None, [transaction].iter()).unwrap();
+            vm.speculate(construct_finalize_global_state(&vm), Some(0u64), vec![], None, [transaction].iter()).unwrap();
         assert!(aborted_transaction_ids.is_empty());
 
         let block = construct_next_block(
@@ -189,7 +189,7 @@ fn run_test(test: &ProgramTest) -> serde_yaml::Mapping {
             };
 
             // Attempt to verify the transaction.
-            let verified = vm.verify_transaction(&transaction, None);
+            let verified = vm.check_transaction(&transaction, None).is_ok();
             // Store the verification result.
             result.insert(serde_yaml::Value::String("verified".to_string()), serde_yaml::Value::Bool(verified));
 
@@ -244,7 +244,7 @@ fn run_test(test: &ProgramTest) -> serde_yaml::Mapping {
 
             // Speculate on the ratifications, solutions, and transaction.
             let (ratifications, transactions, aborted_transaction_ids, ratified_finalize_operations) = match vm
-                .speculate(construct_finalize_global_state(&vm), &[], None, [transaction].iter())
+                .speculate(construct_finalize_global_state(&vm), Some(0u64), vec![], None, [transaction].iter())
             {
                 Ok((ratifications, transactions, aborted_transaction_ids, ratified_finalize_operations)) => {
                     result.insert(
@@ -379,7 +379,7 @@ fn construct_fee_records<C: ConsensusStorage<CurrentNetwork>, R: Rng + CryptoRng
         }
 
         let (ratifications, transactions, aborted_transaction_ids, ratified_finalize_operations) =
-            vm.speculate(construct_finalize_global_state(vm), &[], None, transactions.iter()).unwrap();
+            vm.speculate(construct_finalize_global_state(vm), Some(0u64), vec![], None, transactions.iter()).unwrap();
         assert!(aborted_transaction_ids.is_empty());
 
         // Create a block for the fee transactions and add them to the VM.

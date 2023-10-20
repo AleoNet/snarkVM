@@ -265,6 +265,15 @@ impl<N: Network> ConfirmedTransaction<N> {
         }
     }
 
+    /// Returns the rejected object, if the confirmed transaction is rejected.
+    pub fn to_rejected(&self) -> Option<&Rejected<N>> {
+        match self {
+            ConfirmedTransaction::AcceptedDeploy(..) | ConfirmedTransaction::AcceptedExecute(..) => None,
+            ConfirmedTransaction::RejectedDeploy(_, _, rejected, _) => Some(rejected),
+            ConfirmedTransaction::RejectedExecute(_, _, rejected, _) => Some(rejected),
+        }
+    }
+
     /// Returns the unconfirmed transaction ID, which is defined as the transaction ID prior to confirmation.
     /// When a transaction is rejected, its fee transition is used to construct the confirmed transaction ID,
     /// changing the original transaction ID.

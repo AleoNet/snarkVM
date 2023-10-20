@@ -73,11 +73,17 @@ pub fn sample_fee<N: Network, A: Aleo<Network = N>, B: BlockStorage<N>, P: Final
     // Update the public balance in finalize storage.
     finalize_store.update_key_value(program_id, account_mapping, key, value).unwrap();
 
+    // Sample a base fee in microcredits.
+    let base_fee_in_microcredits = 100;
+    // Sample a priority fee in microcredits.
+    let priority_fee_in_microcredits = 0;
     // Sample a dummy ID.
     let id = Field::rand(rng);
 
     // Authorize the fee.
-    let authorization = process.authorize_fee_public::<A, _>(&private_key, 100, 0, id, rng).unwrap();
+    let authorization = process
+        .authorize_fee_public::<A, _>(&private_key, base_fee_in_microcredits, priority_fee_in_microcredits, id, rng)
+        .unwrap();
     // Execute the fee.
     let (_, mut trace) = process.execute::<A>(authorization).unwrap();
     // Prepare the assignments.

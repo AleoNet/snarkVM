@@ -78,32 +78,9 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             block.previous_hash(),
         )?;
 
-        // Reconstruct the candidate ratifications to verify the speculation.
-        let candidate_ratifications = block.ratifications().iter().cloned().collect::<Vec<_>>();
-
-        // Reconstruct the unconfirmed transactions to verify the speculation.
-        let unconfirmed_transactions = block
-            .transactions()
-            .iter()
-            .map(|confirmed| confirmed.to_unconfirmed_transaction())
-            .collect::<Result<Vec<_>>>()?;
-
-        // Speculate over the unconfirmed transactions.
-        let (ratifications, confirmed_transactions, aborted_transaction_ids, ratified_finalize_operations) =
-            self.vm.speculate(state, &candidate_ratifications, block.solutions(), unconfirmed_transactions.iter())?;
-        // Ensure there are no aborted transaction IDs from this speculation.
-        // Note: There should be no aborted transactions, because we are checking a block,
-        // where any aborted transactions should be in the aborted transaction ID list, not in transactions.
-        ensure!(aborted_transaction_ids.is_empty(), "Aborted transactions found in the block (from speculation)");
-
-        // Ensure the ratifications after speculation match.
-        if block.ratifications() != &ratifications {
-            bail!("The ratifications after speculation do not match the ratifications in the block");
-        }
-        // Ensure the transactions after speculation match.
-        if block.transactions() != &confirmed_transactions {
-            bail!("The transactions after speculation do not match the transactions in the block");
-        }
+        // Ensure speculation over the unconfirmed transactions is correct.
+        let ratified_finalize_operations =
+            self.vm.check_speculate(state, block.ratifications(), block.solutions(), block.transactions())?;
 
         // Ensure the block is correct.
         block.verify(

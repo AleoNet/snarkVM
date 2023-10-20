@@ -90,10 +90,10 @@ impl<N: Network> Fee<N> {
     pub fn amount(&self) -> Result<U64<N>> {
         // Retrieve the base fee amount.
         let base_fee_amount = self.base_amount()?;
-
         // Retrieve the priority fee amount.
         let priority_fee_amount = self.priority_amount()?;
-
+        // Return the amount.
+        // Note: Use of saturating add is safe, as the sum cannot exceed a u64.
         Ok(U64::new(base_fee_amount.saturating_add(*priority_fee_amount)))
     }
 
@@ -109,7 +109,6 @@ impl<N: Network> Fee<N> {
             },
             None => bail!("Missing output in fee transition"),
         };
-
         // Retrieve the base fee (in microcredits) as a plaintext value.
         match self.transition.inputs().get(base_fee_index) {
             Some(Input::Public(_, Some(Plaintext::Literal(Literal::U64(microcredits), _)))) => Ok(*microcredits),
@@ -129,7 +128,6 @@ impl<N: Network> Fee<N> {
             },
             None => bail!("Missing output in fee transition"),
         };
-
         // Retrieve the priority fee (in microcredits) as a plaintext value.
         match self.transition.inputs().get(priority_fee_index) {
             Some(Input::Public(_, Some(Plaintext::Literal(Literal::U64(microcredits), _)))) => Ok(*microcredits),
@@ -236,10 +234,10 @@ pub mod test_helpers {
         let credits = transaction.records().next().unwrap().1.clone();
         // Decrypt the record.
         let credits = credits.decrypt(&private_key.try_into().unwrap()).unwrap();
-        // Set the base fee amount.
-        let base_fee = 10_000_000;
-        // Set the priority fee amount.
-        let priority_fee = 1_000;
+        // Sample a base fee in microcredits.
+        let base_fee_in_microcredits = 10_000_000;
+        // Sample a priority fee in microcredits.
+        let priority_fee_in_microcredits = 1_000;
 
         // Initialize the process.
         let process = Process::load().unwrap();
@@ -248,8 +246,8 @@ pub mod test_helpers {
             .authorize_fee_private::<CurrentAleo, _>(
                 &private_key,
                 credits,
-                base_fee,
-                priority_fee,
+                base_fee_in_microcredits,
+                priority_fee_in_microcredits,
                 deployment_or_execution_id,
                 rng,
             )
