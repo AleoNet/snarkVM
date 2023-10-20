@@ -235,9 +235,9 @@ pub mod test_helpers {
         // Decrypt the record.
         let credits = credits.decrypt(&private_key.try_into().unwrap()).unwrap();
         // Sample a base fee in microcredits.
-        let base_fee_in_microcredits = rng.gen_range(1_000_000..u64::MAX / 2);
+        let base_fee_in_microcredits = 10_000_000;
         // Sample a priority fee in microcredits.
-        let priority_fee_in_microcredits = rng.gen_range(0..u64::MAX / 2);
+        let priority_fee_in_microcredits = 1_000;
 
         // Initialize the process.
         let process = Process::load().unwrap();
