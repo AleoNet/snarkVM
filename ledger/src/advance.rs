@@ -128,6 +128,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                 // Retrieve the latest epoch challenge.
                 let latest_epoch_challenge = self.latest_epoch_challenge()?;
                 // Separate the candidate solutions into valid and aborted solutions.
+                // TODO: Add `aborted_solution_ids` to the block.
                 let (valid_candidate_solutions, _aborted_candidate_solutions): (Vec<_>, Vec<_>) =
                     cfg_into_iter!(candidate_solutions).partition(|solution| {
                         solution
