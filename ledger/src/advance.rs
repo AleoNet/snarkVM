@@ -123,12 +123,20 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         let (solutions, solutions_root, combined_proof_target) = match candidate_solutions.is_empty() {
             true => (None, Field::<N>::zero(), 0u128),
             false => {
-                // Accumulate the prover solutions.
-                let solutions = self.coinbase_puzzle.accumulate(
-                    candidate_solutions,
-                    &self.latest_epoch_challenge()?,
-                    self.latest_proof_target(),
-                )?;
+                // Retrieve the coinbase verifying key.
+                let coinbase_verifying_key = self.coinbase_puzzle.coinbase_verifying_key();
+                // Retrieve the latest epoch challenge.
+                let latest_epoch_challenge = self.latest_epoch_challenge()?;
+                // Separate the candidate solutions into valid and aborted solutions.
+                // TODO: Add `aborted_solution_ids` to the block.
+                let (valid_candidate_solutions, _aborted_candidate_solutions): (Vec<_>, Vec<_>) =
+                    cfg_into_iter!(candidate_solutions).partition(|solution| {
+                        solution
+                            .verify(coinbase_verifying_key, &latest_epoch_challenge, self.latest_proof_target())
+                            .unwrap_or(false)
+                    });
+                // Construct the solutions.
+                let solutions = CoinbaseSolution::new(valid_candidate_solutions)?;
                 // Compute the solutions root.
                 let solutions_root = solutions.to_accumulator_point()?;
                 // Compute the combined proof target.

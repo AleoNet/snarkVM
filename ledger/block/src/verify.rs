@@ -282,9 +282,11 @@ impl<N: Network> Block<N> {
                 }
 
                 // Ensure the puzzle proof is valid.
-                let is_valid =
-                    current_puzzle.verify(coinbase, current_epoch_challenge, previous_block.proof_target())?;
-                ensure!(is_valid, "Block {height} contains invalid puzzle proof");
+                if let Err(e) =
+                    current_puzzle.check_solutions(coinbase, current_epoch_challenge, previous_block.proof_target())
+                {
+                    bail!("Block {height} contains an invalid puzzle proof - {e}");
+                }
 
                 // Compute the combined proof target.
                 let combined_proof_target = coinbase.to_combined_proof_target()?;
