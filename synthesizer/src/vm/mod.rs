@@ -243,7 +243,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         let state = FinalizeGlobalState::new_genesis::<N>()?;
         // Speculate on the ratifications, solutions, and transactions.
         let (ratifications, transactions, aborted_transaction_ids, ratified_finalize_operations) =
-            self.speculate(state, &ratifications, solutions.as_ref(), transactions.iter())?;
+            self.speculate(state, None, ratifications, solutions.as_ref(), transactions.iter())?;
         ensure!(
             aborted_transaction_ids.is_empty(),
             "Failed to initialize a genesis block - found aborted transaction IDs"
@@ -437,7 +437,7 @@ function compute:
                 // Deploy.
                 let transaction = vm.deploy(&caller_private_key, &program, credits, 10, None, rng).unwrap();
                 // Verify.
-                assert!(vm.verify_transaction(&transaction, None));
+                vm.check_transaction(&transaction, None).unwrap();
                 // Return the transaction.
                 transaction
             })
@@ -480,7 +480,7 @@ function compute:
                 // Construct the execute transaction.
                 let transaction = vm.execute_authorization(authorization, None, None, rng).unwrap();
                 // Verify.
-                assert!(vm.verify_transaction(&transaction, None));
+                vm.check_transaction(&transaction, None).unwrap();
                 // Return the transaction.
                 transaction
             })
@@ -524,7 +524,7 @@ function compute:
                     .execute(&caller_private_key, ("credits.aleo", "transfer_public"), inputs, record, 0, None, rng)
                     .unwrap();
                 // Verify.
-                assert!(vm.verify_transaction(&transaction, None));
+                vm.check_transaction(&transaction, None).unwrap();
                 // Return the transaction.
                 transaction
             })
@@ -562,7 +562,13 @@ function compute:
 
                 // Authorize the fee.
                 let authorization = vm
-                    .authorize_fee_public(&caller_private_key, 100, 100, execution.to_execution_id().unwrap(), rng)
+                    .authorize_fee_public(
+                        &caller_private_key,
+                        10_000_000,
+                        100,
+                        execution.to_execution_id().unwrap(),
+                        rng,
+                    )
                     .unwrap();
                 // Compute the fee.
                 let fee = vm.execute_fee_authorization(authorization, None, rng).unwrap();
@@ -570,7 +576,7 @@ function compute:
                 // Construct the transaction.
                 let transaction = Transaction::from_execution(execution, Some(fee)).unwrap();
                 // Verify.
-                assert!(vm.verify_transaction(&transaction, None));
+                vm.check_transaction(&transaction, None).unwrap();
                 // Return the transaction.
                 transaction
             })
@@ -590,7 +596,7 @@ function compute:
 
         // Construct the new block header.
         let (ratifications, transactions, aborted_transaction_ids, ratified_finalize_operations) =
-            vm.speculate(sample_finalize_state(1), &[], None, transactions.iter())?;
+            vm.speculate(sample_finalize_state(1), None, vec![], None, transactions.iter())?;
         assert!(aborted_transaction_ids.is_empty());
 
         // Construct the metadata associated with the block.
