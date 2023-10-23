@@ -22,15 +22,21 @@ use snarkvm_console::{
     types::Field,
 };
 use snarkvm_ledger_store::{helpers::memory::ConsensusMemory, ConsensusStore};
-use snarkvm_synthesizer::{process::InclusionAssignment, snark::UniversalSRS, VM};
+use snarkvm_synthesizer::{
+    process::InclusionAssignment,
+    snark::{UniversalProver, UniversalSRS},
+    VM,
+};
 
 use anyhow::{anyhow, Result};
+use parking_lot::RwLock;
 use rand::thread_rng;
 use serde_json::{json, Value};
 use std::{
     fs::File,
     io::{BufWriter, Write},
     path::PathBuf,
+    sync::Arc,
 };
 
 fn checksum(bytes: &[u8]) -> String {
@@ -108,15 +114,20 @@ pub fn inclusion<N: Network, A: Aleo<Network = N>>() -> Result<()> {
     // Load the universal SRS.
     let universal_srs = UniversalSRS::<N>::load()?;
 
+    // Load the universal prover.
+    let universal_prover = Arc::new(RwLock::new(UniversalProver::<N>::load()?));
+
     // Sample the assignment for the inclusion circuit.
     let (assignment, state_path, serial_number) = sample_assignment::<N, A>()?;
 
     // Synthesize the proving and verifying key.
     let inclusion_function_name = N::INCLUSION_FUNCTION_NAME;
-    let (proving_key, verifying_key) = universal_srs.to_circuit_key(inclusion_function_name, &assignment)?;
+    let (proving_key, verifying_key) =
+        universal_srs.to_circuit_key(universal_prover.clone(), inclusion_function_name, &assignment)?;
 
     // Ensure the proving key and verifying keys are valid.
-    let proof = proving_key.prove(inclusion_function_name, &assignment, &mut thread_rng())?;
+    let proof =
+        proving_key.prove(&universal_srs, universal_prover, inclusion_function_name, &assignment, &mut thread_rng())?;
     assert!(verifying_key.verify(
         inclusion_function_name,
         &[N::Field::one(), **state_path.global_state_root(), *Field::<N>::zero(), *serial_number],

@@ -14,7 +14,7 @@
 
 use std::collections::HashSet;
 
-#[derive(Clone)]
+#[derive(Clone, Debug, Default)]
 pub struct DegreeInfo {
     /// The maximum degree of the required SRS to commit to the polynomials.
     pub max_degree: usize,

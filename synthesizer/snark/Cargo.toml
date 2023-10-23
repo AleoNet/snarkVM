@@ -56,6 +56,9 @@ optional = true
 [dependencies.once_cell]
 version = "1.18"
 
+[dependencies.parking_lot]
+version = "0.12"
+
 [dependencies.serde_json]
 version = "1.0"
 features = [ "preserve_order" ]

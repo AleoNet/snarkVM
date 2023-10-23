@@ -25,12 +25,13 @@ use console::{
 };
 use ledger_block::{Execution, Fee, Transition};
 use ledger_query::QueryTrait;
-use synthesizer_snark::{Proof, ProvingKey, VerifyingKey};
+use synthesizer_snark::{Proof, ProvingKey, UniversalProver, UniversalSRS, VerifyingKey};
 
 use once_cell::sync::OnceCell;
-use std::collections::HashMap;
+use parking_lot::RwLock;
+use std::{collections::HashMap, sync::Arc};
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct Trace<N: Network> {
     /// The list of transitions.
     transitions: Vec<Transition<N>>,
@@ -45,11 +46,16 @@ pub struct Trace<N: Network> {
     inclusion_assignments: OnceCell<Vec<InclusionAssignment<N>>>,
     /// A tracker for the global state root.
     global_state_root: OnceCell<N::StateRoot>,
+
+    /// The Universal SRS
+    srs: Arc<UniversalSRS<N>>,
+    /// The Universal Prover
+    universal_prover: Arc<RwLock<UniversalProver<N>>>,
 }
 
 impl<N: Network> Trace<N> {
     /// Initializes a new trace.
-    pub fn new() -> Self {
+    pub fn new(srs: Arc<UniversalSRS<N>>, universal_prover: Arc<RwLock<UniversalProver<N>>>) -> Self {
         Self {
             transitions: Vec::new(),
             transition_tasks: HashMap::new(),
@@ -57,6 +63,8 @@ impl<N: Network> Trace<N> {
             inclusion_assignments: OnceCell::new(),
             global_state_root: OnceCell::new(),
             call_metrics: Vec::new(),
+            srs,
+            universal_prover,
         }
     }
 
@@ -168,8 +176,15 @@ impl<N: Network> Trace<N> {
         // Construct the proving tasks.
         let proving_tasks = self.transition_tasks.values().cloned().collect();
         // Compute the proof.
-        let (global_state_root, proof) =
-            Self::prove_batch::<A, R>(locator, proving_tasks, inclusion_assignments, *global_state_root, rng)?;
+        let (global_state_root, proof) = Self::prove_batch::<A, R>(
+            &self.srs,
+            self.universal_prover.clone(),
+            locator,
+            proving_tasks,
+            inclusion_assignments,
+            *global_state_root,
+            rng,
+        )?;
         // Return the execution.
         Execution::from(self.transitions.iter().cloned(), global_state_root, Some(proof))
     }
@@ -197,6 +212,8 @@ impl<N: Network> Trace<N> {
         let proving_tasks = self.transition_tasks.values().cloned().collect();
         // Compute the proof.
         let (global_state_root, proof) = Self::prove_batch::<A, R>(
+            &self.srs,
+            self.universal_prover.clone(),
             "credits.aleo/fee (private or public)",
             proving_tasks,
             inclusion_assignments,
@@ -257,6 +274,8 @@ impl<N: Network> Trace<N> {
 impl<N: Network> Trace<N> {
     /// Returns the global state root and proof for the given assignments.
     fn prove_batch<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
+        srs: &UniversalSRS<N>,
+        universal_prover: Arc<RwLock<UniversalProver<N>>>,
         locator: &str,
         mut proving_tasks: Vec<(ProvingKey<N>, Vec<Assignment<N::Field>>)>,
         inclusion_assignments: &[InclusionAssignment<N>],
@@ -290,7 +309,7 @@ impl<N: Network> Trace<N> {
         }
 
         // Compute the proof.
-        let proof = ProvingKey::prove_batch(locator, &proving_tasks, rng)?;
+        let proof = ProvingKey::prove_batch(srs, universal_prover, locator, &proving_tasks, rng)?;
         // Return the global state root and proof.
         Ok((global_state_root, proof))
     }

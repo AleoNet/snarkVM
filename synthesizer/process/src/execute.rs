@@ -32,7 +32,8 @@ impl<N: Network> Process<N> {
         println!("{}", format!(" • Executing '{locator}'...",).dimmed());
 
         // Initialize the trace.
-        let trace = Arc::new(RwLock::new(Trace::new()));
+        let trace =
+            Arc::new(RwLock::new(Trace::new(Arc::clone(&self.universal_srs), Arc::clone(&self.universal_prover))));
         // Initialize the call stack.
         let call_stack = CallStack::execute(authorization, trace.clone())?;
         lap!(timer, "Initialize call stack");
@@ -45,6 +46,7 @@ impl<N: Network> Process<N> {
 
         // Extract the trace.
         let trace = Arc::try_unwrap(trace).unwrap().into_inner();
+
         // Ensure the trace is not empty.
         ensure!(!trace.transitions().is_empty(), "Execution of '{locator}' is empty");
 

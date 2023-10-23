@@ -35,7 +35,7 @@ use ledger_store::{
     FinalizeStore,
 };
 use synthesizer_program::{FinalizeGlobalState, FinalizeStoreTrait, Program};
-use synthesizer_snark::UniversalSRS;
+use synthesizer_snark::{UniversalProver, UniversalSRS};
 
 use indexmap::IndexMap;
 use parking_lot::RwLock;
@@ -387,7 +387,8 @@ output r4 as field.private;",
     assert_eq!(authorization.len(), 1);
 
     // Re-run to ensure state continues to work.
-    let trace = Arc::new(RwLock::new(Trace::new()));
+    let trace =
+        Arc::new(RwLock::new(Trace::new(Arc::clone(&process.universal_srs), Arc::clone(&process.universal_prover))));
     let call_stack = CallStack::execute(authorization, trace).unwrap();
     let response = stack.execute_function::<CurrentAleo>(call_stack, None).unwrap();
     let candidate = response.outputs();
@@ -2356,8 +2357,11 @@ fn test_process_deploy_credits_program() {
     let rng = &mut TestRng::default();
 
     // Initialize an empty process without the `credits` program.
-    let empty_process =
-        Process { universal_srs: Arc::new(UniversalSRS::<CurrentNetwork>::load().unwrap()), stacks: IndexMap::new() };
+    let empty_process = Process {
+        universal_srs: Arc::new(UniversalSRS::<CurrentNetwork>::load().unwrap()),
+        universal_prover: Arc::new(RwLock::new(UniversalProver::<CurrentNetwork>::load().unwrap())),
+        stacks: IndexMap::new(),
+    };
 
     // Construct the process.
     let process = Process::load().unwrap();

@@ -13,14 +13,22 @@
 // limitations under the License.
 
 use super::{LabeledPolynomial, PolynomialInfo};
-use crate::{crypto_hash::sha256::sha256, fft::EvaluationDomain, polycommit::kzg10};
+use crate::{
+    crypto_hash::sha256::sha256,
+    fft::EvaluationDomain,
+    polycommit::kzg10::{self, DegreeInfo},
+    prelude::PCError,
+};
+use anyhow::{anyhow, bail, ensure, Result};
 use snarkvm_curves::PairingEngine;
 use snarkvm_fields::{ConstraintFieldError, Field, PrimeField, ToConstraintField};
 use snarkvm_utilities::{error, serialize::*, FromBytes, ToBytes};
 
 use hashbrown::HashMap;
+use itertools::Itertools;
 use std::{
     borrow::{Borrow, Cow},
+    cmp::Ordering,
     collections::{BTreeMap, BTreeSet},
     fmt,
     ops::{AddAssign, MulAssign, SubAssign},
@@ -42,7 +50,8 @@ pub struct CommitterKey<E: PairingEngine> {
     pub powers_of_beta_g: Vec<E::G1Affine>,
 
     /// The key used to commit to polynomials in Lagrange basis.
-    pub lagrange_bases_at_beta_g: BTreeMap<usize, Vec<E::G1Affine>>,
+    /// This is `None` if `self` does not support lagrange bases
+    pub lagrange_bases_at_beta_g: Option<BTreeMap<usize, Vec<E::G1Affine>>>,
 
     /// The key used to commit to hiding polynomials.
     pub powers_of_beta_times_gamma_g: Vec<E::G1Affine>,
@@ -72,17 +81,24 @@ impl<E: PairingEngine> FromBytes for CommitterKey<E> {
         }
 
         // Deserialize `lagrange_basis_at_beta`.
-        let lagrange_bases_at_beta_len: u32 = FromBytes::read_le(&mut reader)?;
-        let mut lagrange_bases_at_beta_g = BTreeMap::new();
-        for _ in 0..lagrange_bases_at_beta_len {
-            let size: u32 = FromBytes::read_le(&mut reader)?;
-            let mut basis = Vec::with_capacity(size as usize);
-            for _ in 0..size {
-                let power: E::G1Affine = FromBytes::read_le(&mut reader)?;
-                basis.push(power);
+        let has_lagrange_bases: bool = FromBytes::read_le(&mut reader)?;
+        let lagrange_bases_at_beta_g = match has_lagrange_bases {
+            true => {
+                let lagrange_bases_at_beta_len: u32 = FromBytes::read_le(&mut reader)?;
+                let mut lagrange_bases_at_beta_g = BTreeMap::new();
+                for _ in 0..lagrange_bases_at_beta_len {
+                    let size: u32 = FromBytes::read_le(&mut reader)?;
+                    let mut basis = Vec::with_capacity(size as usize);
+                    for _ in 0..size {
+                        let power: E::G1Affine = FromBytes::read_le(&mut reader)?;
+                        basis.push(power);
+                    }
+                    lagrange_bases_at_beta_g.insert(size as usize, basis);
+                }
+                Some(lagrange_bases_at_beta_g)
             }
-            lagrange_bases_at_beta_g.insert(size as usize, basis);
-        }
+            false => None,
+        };
 
         // Deserialize `powers_of_beta_times_gamma_g`.
         let powers_of_beta_times_gamma_g_len: u32 = FromBytes::read_le(&mut reader)?;
@@ -188,18 +204,21 @@ impl<E: PairingEngine> FromBytes for CommitterKey<E> {
 
 impl<E: PairingEngine> ToBytes for CommitterKey<E> {
     fn write_le<W: Write>(&self, mut writer: W) -> io::Result<()> {
-        // Serialize `powers`.
+        // Serialize `powers_of_beta_g`.
         (self.powers_of_beta_g.len() as u32).write_le(&mut writer)?;
         for power in &self.powers_of_beta_g {
             power.write_le(&mut writer)?;
         }
 
-        // Serialize `powers`.
-        (self.lagrange_bases_at_beta_g.len() as u32).write_le(&mut writer)?;
-        for (size, powers) in &self.lagrange_bases_at_beta_g {
-            (*size as u32).write_le(&mut writer)?;
-            for power in powers {
-                power.write_le(&mut writer)?;
+        // Serialize `lagrange lagrange_bases_at_beta_g`.
+        self.lagrange_bases_at_beta_g.is_some().write_le(&mut writer)?;
+        if let Some(lagrange_bases_at_beta_g) = &self.lagrange_bases_at_beta_g {
+            (lagrange_bases_at_beta_g.len() as u32).write_le(&mut writer)?;
+            for (size, powers) in lagrange_bases_at_beta_g.iter() {
+                (*size as u32).write_le(&mut writer)?;
+                for power in powers {
+                    power.write_le(&mut writer)?;
+                }
             }
         }
 
@@ -265,6 +284,153 @@ impl<E: PairingEngine> ToBytes for CommitterKey<E> {
 }
 
 impl<E: PairingEngine> CommitterKey<E> {
+    /// Update the committer_key
+    /// The `powers_of_beta_g` and `shifted_powers_of_beta_g` may grow or shrink as per the new supported_degree
+    /// The `enforced_degree_bounds` and `shifted_powers_of_beta_times_gamma_g` will adjust to the new degree_bounds
+    /// The `lagrange_bases_at_beta_g` will optionally adjust to the new degree_bounds
+    /// The `powers_of_beta_times_gamma_g` is only dependent on the `hiding_bound` so doesn't change
+    /// This only works if the SRS max_degree is fixed across specializations
+    /// Note that this implementation is not atomic. If specialize fails halfway through,
+    pub fn update(&mut self, srs: &UniversalParams<E>, degree_info: &DegreeInfo) -> Result<()> {
+        let trim_time = start_timer!(|| "Trimming public parameters");
+
+        // Retrieve the supported parameters from the degree information.
+        let supported_degree = degree_info.max_degree;
+        let supported_lagrange_sizes = degree_info.lagrange_sizes.clone().map(|mut s| s.drain().sorted().collect_vec());
+        let enforced_degree_bounds = degree_info.degree_bounds.clone().map(|mut s| s.drain().sorted().collect_vec());
+        let supported_hiding_bound = degree_info.hiding_bound;
+
+        // The maximum degree of the entire SRS.
+        let max_degree = srs.max_degree();
+
+        // Update shifted_powers_of_beta_g, shifted_powers_of_beta_times_gamma_g, enforced_degree_bounds
+        match enforced_degree_bounds {
+            None => {
+                self.shifted_powers_of_beta_g = None;
+                self.shifted_powers_of_beta_times_gamma_g = None;
+                self.enforced_degree_bounds = None;
+            }
+            Some(enforced_degree_bounds) => {
+                let new_highest_degree_bound =
+                    *enforced_degree_bounds.last().ok_or(anyhow!("expecting new degree_bounds"))?;
+                ensure!(new_highest_degree_bound < supported_degree);
+
+                // Retrieve current degree bounds and shifted powers
+                let degree_bounds = self.enforced_degree_bounds.take().unwrap_or_default();
+                let highest_degree_bound =
+                    degree_bounds.iter().copied().sorted().last().map(|b| b + 1).unwrap_or_default();
+                let mut shifted_powers_of_beta_g = self.shifted_powers_of_beta_g.take().unwrap_or_default();
+                let mut shifted_powers_of_beta_times_gamma_g =
+                    self.shifted_powers_of_beta_times_gamma_g.take().unwrap_or_default();
+
+                let shifted_ck_time = start_timer!(|| "Constructing `shifted_powers_of_beta_g`");
+                match new_highest_degree_bound.cmp(&highest_degree_bound) {
+                    Ordering::Greater => {
+                        let lowest_shift_degree = max_degree - new_highest_degree_bound;
+                        let highest_shift_degree = max_degree + 1 - highest_degree_bound;
+                        let mut new_powers = srs.powers_of_beta_g(lowest_shift_degree, highest_shift_degree)?;
+                        new_powers.append(&mut shifted_powers_of_beta_g);
+                        shifted_powers_of_beta_g = new_powers;
+                    }
+                    Ordering::Equal => (), // No need to adjust shifted_powers_of_beta_g
+                    Ordering::Less => {
+                        let degree_diff = highest_degree_bound - new_highest_degree_bound;
+                        shifted_powers_of_beta_g = shifted_powers_of_beta_g.drain(degree_diff - 1..).collect_vec();
+                    }
+                };
+                self.shifted_powers_of_beta_g = Some(shifted_powers_of_beta_g);
+                end_timer!(shifted_ck_time);
+
+                // because we might batch prove circuits of different sizes, we consider each required degree_bound individually
+                let shifted_ck_time = start_timer!(|| "Constructing `shifted_powers_of_beta_times_gamma_g`");
+                let mut new_shifted_powers_of_beta_times_gamma_g = BTreeMap::new();
+                for degree_bound in &enforced_degree_bounds {
+                    match shifted_powers_of_beta_times_gamma_g.remove(degree_bound) {
+                        Some(found_powers) => {
+                            new_shifted_powers_of_beta_times_gamma_g.insert(*degree_bound, found_powers);
+                        }
+                        None => {
+                            let shift_degree = max_degree - *degree_bound;
+                            let mut powers_for_degree_bound =
+                                Vec::with_capacity((max_degree + 2).saturating_sub(shift_degree));
+                            for i in 0..=supported_hiding_bound + 1 {
+                                // We have an additional degree in `powers_of_beta_times_gamma_g` beyond `powers_of_beta_g`.
+                                if shift_degree + i < max_degree + 2 {
+                                    powers_for_degree_bound
+                                        .push(srs.powers_of_beta_times_gamma_g()[&(shift_degree + i)]);
+                                }
+                            }
+                            new_shifted_powers_of_beta_times_gamma_g.insert(*degree_bound, powers_for_degree_bound);
+                        }
+                    }
+                }
+                self.enforced_degree_bounds = Some(enforced_degree_bounds);
+                self.shifted_powers_of_beta_times_gamma_g = Some(new_shifted_powers_of_beta_times_gamma_g);
+                end_timer!(shifted_ck_time);
+            }
+        }
+
+        // Update powers_of_beta_g
+        let old_supported_degree = self.powers_of_beta_g.len();
+        match supported_degree.cmp(&old_supported_degree) {
+            Ordering::Greater => {
+                let mut new_powers = srs.powers_of_beta_g(old_supported_degree, supported_degree + 1)?;
+                self.powers_of_beta_g.append(&mut new_powers);
+            }
+            Ordering::Equal => (), // No need to adjust powers_of_beta_g
+            Ordering::Less => {
+                let degree_difference = old_supported_degree - supported_degree;
+                self.powers_of_beta_g.truncate(old_supported_degree - degree_difference + 1);
+            }
+        }
+
+        // Set powers_of_beta_times_gamma_g
+        self.powers_of_beta_times_gamma_g = (0..=(supported_hiding_bound + 1))
+            .map(|i| {
+                srs.powers_of_beta_times_gamma_g()
+                    .get(&i)
+                    .copied()
+                    .ok_or(PCError::HidingBoundToolarge { hiding_poly_degree: supported_hiding_bound, num_powers: 0 })
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+
+        // Update lagrange_bases_at_beta_g
+        let mut lagrange_bases_at_beta_g = BTreeMap::new();
+        if let Some(supported_lagrange_sizes) = supported_lagrange_sizes {
+            let mut old_lagrange_bases_at_beta_g = match self.lagrange_bases_at_beta_g.take() {
+                Some(lagrange_bases_at_beta_g) => lagrange_bases_at_beta_g,
+                None => BTreeMap::new(),
+            };
+            for size in supported_lagrange_sizes {
+                let domain = EvaluationDomain::new(size).unwrap();
+                match old_lagrange_bases_at_beta_g.remove(&domain.size()) {
+                    Some(found_lagrange_bases) => {
+                        lagrange_bases_at_beta_g.insert(domain.size(), found_lagrange_bases);
+                    }
+                    None => {
+                        let lagrange_time = start_timer!(|| format!("Constructing `lagrange_bases` of size {size}"));
+                        if !size.is_power_of_two() {
+                            bail!("The Lagrange basis size ({size}) is not a power of two")
+                        }
+                        if size > srs.max_degree() + 1 {
+                            bail!(
+                                "The Lagrange basis size ({size}) is larger than the supported degree ({})",
+                                srs.max_degree() + 1
+                            )
+                        }
+                        let lagrange_basis_at_beta_g = srs.lagrange_basis(domain)?;
+                        assert!(lagrange_basis_at_beta_g.len().is_power_of_two());
+                        lagrange_bases_at_beta_g.insert(domain.size(), lagrange_basis_at_beta_g);
+                        end_timer!(lagrange_time);
+                    }
+                }
+            }
+            self.lagrange_bases_at_beta_g = Some(lagrange_bases_at_beta_g);
+        }
+        end_timer!(trim_time);
+        Ok(())
+    }
+
     /// Obtain powers for the underlying KZG10 construction
     pub fn powers(&self) -> kzg10::Powers<E> {
         kzg10::Powers {
@@ -300,11 +466,14 @@ impl<E: PairingEngine> CommitterKey<E> {
     /// Obtain elements of the SRS in the lagrange basis powers, for use with the underlying
     /// KZG10 construction.
     pub fn lagrange_basis(&self, domain: EvaluationDomain<E::Fr>) -> Option<kzg10::LagrangeBasis<E>> {
-        self.lagrange_bases_at_beta_g.get(&domain.size()).map(|basis| kzg10::LagrangeBasis {
-            lagrange_basis_at_beta_g: Cow::Borrowed(basis),
-            powers_of_beta_times_gamma_g: Cow::Borrowed(&self.powers_of_beta_times_gamma_g),
-            domain,
-        })
+        if let Some(lagrange_bases) = self.lagrange_bases_at_beta_g.as_ref() {
+            return lagrange_bases.get(&domain.size()).map(|basis| kzg10::LagrangeBasis {
+                lagrange_basis_at_beta_g: Cow::Borrowed(basis),
+                powers_of_beta_times_gamma_g: Cow::Borrowed(&self.powers_of_beta_times_gamma_g),
+                domain,
+            });
+        }
+        None
     }
 }
 

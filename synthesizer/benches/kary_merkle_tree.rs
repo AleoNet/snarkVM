@@ -15,6 +15,8 @@
 #[macro_use]
 extern crate criterion;
 
+use std::sync::Arc;
+
 use circuit::{collections::kary_merkle_tree::*, AleoV0, Eject, Environment, Inject, Mode};
 use console::{
     algorithms::Sha3_256,
@@ -25,7 +27,8 @@ use console::{
     },
     types::Field,
 };
-use synthesizer_snark::{ProvingKey, UniversalSRS};
+use parking_lot::RwLock;
+use synthesizer_snark::{ProvingKey, UniversalProver, UniversalSRS};
 
 use criterion::Criterion;
 
@@ -94,8 +97,13 @@ fn batch_prove(c: &mut Criterion) {
 
     // Load the universal srs.
     let universal_srs = UniversalSRS::<CurrentNetwork>::load().unwrap();
+
+    // Load the universal prover.
+    let universal_prover = Arc::new(RwLock::new(UniversalProver::<CurrentNetwork>::load().unwrap()));
+
     // Construct the proving key.
-    let (proving_key, _) = universal_srs.to_circuit_key("KaryMerklePathVerification", &assignment).unwrap();
+    let (proving_key, _) =
+        universal_srs.to_circuit_key(universal_prover.clone(), "KaryMerklePathVerification", &assignment).unwrap();
 
     // Bench the proof construction.
     for num_assignments in &[1, 2, 4, 8] {
@@ -105,7 +113,14 @@ fn batch_prove(c: &mut Criterion) {
 
         c.bench_function(&format!("KaryMerkleTree batch prove {num_assignments} assignments"), |b| {
             b.iter(|| {
-                let _proof = ProvingKey::prove_batch("ProveKaryMerkleTree", &assignments, &mut rng).unwrap();
+                let _proof = ProvingKey::prove_batch(
+                    &universal_srs,
+                    universal_prover.clone(),
+                    "ProveKaryMerkleTree",
+                    &assignments,
+                    &mut rng,
+                )
+                .unwrap();
             })
         });
     }
