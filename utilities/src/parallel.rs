@@ -238,6 +238,20 @@ macro_rules! cfg_find_map {
     }};
 }
 
+/// Applies a predicate and returns the first value that is not None
+#[macro_export]
+macro_rules! cfg_find_map_predicate {
+    ($self:expr, $pred:ident) => {{
+        #[cfg(not(feature = "serial"))]
+        let result = $self.par_values().filter_map(|tx| $pred(tx)).find_any(|_| true);
+
+        #[cfg(feature = "serial")]
+        let result = $self.values().find_map(|tx| $pred(tx));
+
+        result
+    }};
+}
+
 /// Applies fold to the iterator
 #[macro_export]
 macro_rules! cfg_zip_fold {

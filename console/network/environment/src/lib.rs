@@ -32,6 +32,7 @@ pub mod prelude {
     pub use snarkvm_utilities::{
         cfg_find,
         cfg_find_map,
+        cfg_find_map_predicate,
         cfg_into_iter,
         cfg_iter,
         cfg_iter_mut,

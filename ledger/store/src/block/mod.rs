@@ -855,6 +855,29 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         to_confirmed_transaction(confirmed_type, transaction, blob).map(Some)
     }
 
+    /// Returns the transaction for the given `transaction ID`.
+    fn get_transaction(&self, transaction_id: &N::TransactionID) -> Result<Option<Transaction<N>>> {
+        self.transaction_store().get_transaction(transaction_id)
+    }
+
+    /// Returns the unconfirmed transaction for the given `transaction ID`.
+    fn get_unconfirmed_transaction(&self, transaction_id: &N::TransactionID) -> Result<Option<Transaction<N>>> {
+        // Check if the transaction was rejected or aborted.
+        // Note: We can only retrieve accepted or rejected transactions. We cannot retrieve aborted transactions.
+        match self.rejected_or_aborted_transaction_id_map().get_confirmed(transaction_id)? {
+            Some(block_hash) => match self.get_block_transactions(&block_hash)? {
+                Some(transactions) => {
+                    match transactions.find_confirmed_transaction_for_unconfirmed_transaction_id(transaction_id) {
+                        Some(transaction) => Ok(Some(transaction.to_unconfirmed_transaction()?)),
+                        None => bail!("Missing transaction '{transaction_id}' in block storage"),
+                    }
+                }
+                None => bail!("Missing transactions for block '{block_hash}' in block storage"),
+            },
+            None => self.transaction_store().get_transaction(transaction_id),
+        }
+    }
+
     /// Returns the block for the given `block hash`.
     fn get_block(&self, block_hash: &N::BlockHash) -> Result<Option<Block<N>>> {
         // Retrieve the block height.
@@ -1158,6 +1181,16 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
         transaction_id: &N::TransactionID,
     ) -> Result<Option<ConfirmedTransaction<N>>> {
         self.storage.get_confirmed_transaction(*transaction_id)
+    }
+
+    /// Returns the transaction for the given `transaction ID`.
+    pub fn get_transaction(&self, transaction_id: &N::TransactionID) -> Result<Option<Transaction<N>>> {
+        self.storage.get_transaction(transaction_id)
+    }
+
+    /// Returns the unconfirmed transaction for the given `transaction ID`.
+    pub fn get_unconfirmed_transaction(&self, transaction_id: &N::TransactionID) -> Result<Option<Transaction<N>>> {
+        self.storage.get_unconfirmed_transaction(transaction_id)
     }
 
     /// Returns the block for the given `block hash`.
