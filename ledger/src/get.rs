@@ -183,11 +183,11 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
     }
 
     /// Returns the unconfirmed transaction for the given `transaction ID`.
-    pub fn get_unconfirmed_transaction(&self, transaction_id: &N::TransactionID) -> Result<Option<Transaction<N>>> {
+    pub fn get_unconfirmed_transaction(&self, transaction_id: &N::TransactionID) -> Result<Transaction<N>> {
         // Retrieve the unconfirmed transaction.
         match self.vm.block_store().get_unconfirmed_transaction(transaction_id)? {
-            Some(unconfirmed_transaction) => Ok(Some(unconfirmed_transaction)),
-            None => Ok(None),
+            Some(unconfirmed_transaction) => Ok(unconfirmed_transaction),
+            None => bail!("Missing unconfirmed transaction for ID {transaction_id}"),
         }
     }
 
