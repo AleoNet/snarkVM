@@ -272,6 +272,32 @@ function transfer:
         sample_package_with_program_and_imports(&main_program, &[imported_program])
     }
 
+    /// Samples a (temporary) package containing a `transfer.aleo` program which imports `credits.aleo`.
+    pub(crate) fn sample_transfer_package() -> (PathBuf, Package<CurrentNetwork>) {
+        // Initialize the imported program.
+        let imported_program = Program::credits().unwrap();
+
+        // Initialize the main program.
+        let main_program = Program::<CurrentNetwork>::from_str(
+            "
+import credits.aleo;
+
+program transfer.aleo;
+
+function main:
+    input r0 as credits.aleo/credits.record;
+    input r1 as address.private;
+    input r2 as u64.private;
+    call credits.aleo/transfer_private r0 r1 r2 into r3 r4;
+    output r3 as credits.aleo/credits.record;
+    output r4 as credits.aleo/credits.record;",
+        )
+        .unwrap();
+
+        // Sample the package using the main program and imported program.
+        sample_package_with_program_and_imports(&main_program, &[imported_program])
+    }
+
     /// Samples a (temporary) package using a main program and imported programs.
     pub(crate) fn sample_package_with_program_and_imports(
         main_program: &Program<CurrentNetwork>,
