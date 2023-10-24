@@ -125,15 +125,8 @@ impl<N: Network> Transactions<N> {
     pub fn find_confirmed_transaction_for_unconfirmed_transaction_id(
         &self,
         unconfirmed_transaction_id: &N::TransactionID,
-    ) -> Option<ConfirmedTransaction<N>> {
-        // A predicate that returns the transaction if the unconfirmed transaction ID matches.
-        let predicate = |tx: &ConfirmedTransaction<N>| -> Option<ConfirmedTransaction<N>> {
-            match tx.to_unconfirmed_transaction_id() {
-                Ok(id) if id == *unconfirmed_transaction_id => Some(tx.clone()),
-                _ => None,
-            }
-        };
-        cfg_find_map_predicate!(self.transactions, predicate)
+    ) -> Option<&ConfirmedTransaction<N>> {
+        cfg_find!(self.transactions, unconfirmed_transaction_id, contains_unconfirmed_transaction_id)
     }
 
     /// Returns the transaction with the given transition ID, if it exists.

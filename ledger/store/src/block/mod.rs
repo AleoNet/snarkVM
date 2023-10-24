@@ -838,26 +838,39 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         }
     }
 
+    /// Returns the transaction for the given `transaction ID`.
+    fn get_transaction(&self, transaction_id: &N::TransactionID) -> Result<Option<Transaction<N>>> {
+        // Check if the transaction was rejected or aborted.
+        // Note: We can only retrieve accepted or rejected transactions. We cannot retrieve aborted transactions.
+        match self.rejected_or_aborted_transaction_id_map().get_confirmed(transaction_id)? {
+            Some(block_hash) => match self.get_block_transactions(&block_hash)? {
+                Some(transactions) => {
+                    match transactions.find_confirmed_transaction_for_unconfirmed_transaction_id(transaction_id) {
+                        Some(confirmed) => Ok(Some(confirmed.transaction().clone())),
+                        None => bail!("Missing transaction '{transaction_id}' in block storage"),
+                    }
+                }
+                None => bail!("Missing transactions for block '{block_hash}' in block storage"),
+            },
+            None => self.transaction_store().get_transaction(transaction_id),
+        }
+    }
+
     /// Returns the confirmed transaction for the given `transaction ID`.
     fn get_confirmed_transaction(&self, transaction_id: N::TransactionID) -> Result<Option<ConfirmedTransaction<N>>> {
         // Retrieve the transaction.
-        let transaction = match self.transaction_store().get_transaction(&transaction_id) {
+        let transaction = match self.get_transaction(&transaction_id) {
             Ok(Some(transaction)) => transaction,
             Ok(None) => bail!("Missing transaction '{transaction_id}' in block storage"),
             Err(err) => return Err(err),
         };
         // Retrieve the confirmed attributes.
-        let (_, confirmed_type, blob) = match self.confirmed_transactions_map().get_confirmed(&transaction_id)? {
+        let (_, confirmed_type, blob) = match self.confirmed_transactions_map().get_confirmed(&transaction.id())? {
             Some(confirmed_attributes) => cow_to_cloned!(confirmed_attributes),
             None => bail!("Missing confirmed transaction '{transaction_id}' in block storage"),
         };
         // Construct the confirmed transaction.
         to_confirmed_transaction(confirmed_type, transaction, blob).map(Some)
-    }
-
-    /// Returns the transaction for the given `transaction ID`.
-    fn get_transaction(&self, transaction_id: &N::TransactionID) -> Result<Option<Transaction<N>>> {
-        self.transaction_store().get_transaction(transaction_id)
     }
 
     /// Returns the unconfirmed transaction for the given `transaction ID`.
@@ -868,7 +881,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
             Some(block_hash) => match self.get_block_transactions(&block_hash)? {
                 Some(transactions) => {
                     match transactions.find_confirmed_transaction_for_unconfirmed_transaction_id(transaction_id) {
-                        Some(transaction) => Ok(Some(transaction.to_unconfirmed_transaction()?)),
+                        Some(confirmed) => Ok(Some(confirmed.to_unconfirmed_transaction()?)),
                         None => bail!("Missing transaction '{transaction_id}' in block storage"),
                     }
                 }
@@ -1175,17 +1188,17 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
         self.storage.get_block_aborted_transaction_ids(block_hash)
     }
 
+    /// Returns the transaction for the given `transaction ID`.
+    pub fn get_transaction(&self, transaction_id: &N::TransactionID) -> Result<Option<Transaction<N>>> {
+        self.storage.get_transaction(transaction_id)
+    }
+
     /// Returns the confirmed transaction for the given `transaction ID`.
     pub fn get_confirmed_transaction(
         &self,
         transaction_id: &N::TransactionID,
     ) -> Result<Option<ConfirmedTransaction<N>>> {
         self.storage.get_confirmed_transaction(*transaction_id)
-    }
-
-    /// Returns the transaction for the given `transaction ID`.
-    pub fn get_transaction(&self, transaction_id: &N::TransactionID) -> Result<Option<Transaction<N>>> {
-        self.storage.get_transaction(transaction_id)
     }
 
     /// Returns the unconfirmed transaction for the given `transaction ID`.
@@ -1338,6 +1351,66 @@ mod tests {
             // Ensure the block hash is not found.
             let candidate = block_store.find_block_hash(transaction_id).unwrap();
             assert_eq!(None, candidate);
+        }
+    }
+
+    #[test]
+    fn test_get_transaction() {
+        let rng = &mut TestRng::default();
+
+        // Sample the block.
+        let block = ledger_test_helpers::sample_genesis_block(rng);
+        assert!(block.transactions().num_accepted() > 0, "This test must be run with at least one transaction.");
+
+        // Initialize a new block store.
+        let block_store = BlockStore::<CurrentNetwork, BlockMemory<_>>::open(None).unwrap();
+        // Insert the block.
+        block_store.insert(&block).unwrap();
+
+        for confirmed in block.transactions().clone().into_iter() {
+            // Retrieve the transaction.
+            assert_eq!(block_store.get_transaction(&confirmed.id()).unwrap().unwrap(), confirmed.into_transaction());
+        }
+    }
+
+    #[test]
+    fn test_get_confirmed_transaction() {
+        let rng = &mut TestRng::default();
+
+        // Sample the block.
+        let block = ledger_test_helpers::sample_genesis_block(rng);
+        assert!(block.transactions().num_accepted() > 0, "This test must be run with at least one transaction.");
+
+        // Initialize a new block store.
+        let block_store = BlockStore::<CurrentNetwork, BlockMemory<_>>::open(None).unwrap();
+        // Insert the block.
+        block_store.insert(&block).unwrap();
+
+        for confirmed in block.transactions().clone().into_iter() {
+            // Retrieve the transaction.
+            assert_eq!(block_store.get_confirmed_transaction(&confirmed.id()).unwrap().unwrap(), confirmed);
+        }
+    }
+
+    #[test]
+    fn test_get_unconfirmed_transaction() {
+        let rng = &mut TestRng::default();
+
+        // Sample the block.
+        let block = ledger_test_helpers::sample_genesis_block(rng);
+        assert!(block.transactions().num_accepted() > 0, "This test must be run with at least one transaction.");
+
+        // Initialize a new block store.
+        let block_store = BlockStore::<CurrentNetwork, BlockMemory<_>>::open(None).unwrap();
+        // Insert the block.
+        block_store.insert(&block).unwrap();
+
+        for confirmed in block.transactions().clone().into_iter() {
+            // Retrieve the transaction.
+            assert_eq!(
+                block_store.get_unconfirmed_transaction(&confirmed.id()).unwrap().unwrap(),
+                confirmed.to_unconfirmed_transaction().unwrap()
+            );
         }
     }
 }
