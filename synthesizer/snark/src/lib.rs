@@ -28,6 +28,9 @@ use colored::Colorize;
 
 type Varuna<N> = varuna::VarunaSNARK<<N as Environment>::PairingCurve, FiatShamir<N>, varuna::VarunaHidingMode>;
 
+#[cfg(feature = "wasm")]
+pub use snarkvm_algorithms::prelude::InclusionProver;
+
 mod certificate;
 pub use certificate::Certificate;
 

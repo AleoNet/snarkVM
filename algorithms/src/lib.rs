@@ -57,4 +57,6 @@ pub mod prelude {
     pub use crate::polycommit::error::*;
     #[cfg(feature = "r1cs")]
     pub use crate::r1cs::errors::*;
+    #[cfg(feature = "wasm")]
+    pub use snarkvm_parameters::testnet3::InclusionProver;
 }

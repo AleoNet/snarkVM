@@ -20,9 +20,27 @@ pub use powers::*;
 
 const REMOTE_URL: &str = "https://s3-us-west-1.amazonaws.com/testnet3.parameters";
 
+pub const NUM_POWERS_15: usize = 1 << 15;
+pub const NUM_POWERS_16: usize = 1 << 16;
+pub const NUM_POWERS_17: usize = 1 << 17;
+pub const NUM_POWERS_18: usize = 1 << 18;
+pub const NUM_POWERS_19: usize = 1 << 19;
+pub const NUM_POWERS_20: usize = 1 << 20;
+pub const NUM_POWERS_21: usize = 1 << 21;
+pub const NUM_POWERS_22: usize = 1 << 22;
+pub const NUM_POWERS_23: usize = 1 << 23;
+pub const NUM_POWERS_24: usize = 1 << 24;
+pub const NUM_POWERS_25: usize = 1 << 25;
+pub const NUM_POWERS_26: usize = 1 << 26;
+pub const NUM_POWERS_27: usize = 1 << 27;
+pub const NUM_POWERS_28: usize = 1 << 28;
+
 // Degrees
 impl_local!(Degree15, "resources/", "powers-of-beta-15", "usrs");
+#[cfg(not(feature = "wasm"))]
 impl_local!(Degree16, "resources/", "powers-of-beta-16", "usrs");
+#[cfg(feature = "wasm")]
+impl_remote!(Degree16, REMOTE_URL, "resources/", "powers-of-beta-16", "usrs");
 impl_remote!(Degree17, REMOTE_URL, "resources/", "powers-of-beta-17", "usrs");
 impl_remote!(Degree18, REMOTE_URL, "resources/", "powers-of-beta-18", "usrs");
 impl_remote!(Degree19, REMOTE_URL, "resources/", "powers-of-beta-19", "usrs");
@@ -38,6 +56,9 @@ impl_remote!(Degree28, REMOTE_URL, "resources/", "powers-of-beta-28", "usrs");
 
 // Shifted Degrees
 impl_local!(ShiftedDegree15, "resources/", "shifted-powers-of-beta-15", "usrs");
+#[cfg(not(feature = "wasm"))]
+impl_local!(ShiftedDegree16, "resources/", "shifted-powers-of-beta-16", "usrs");
+#[cfg(feature = "wasm")]
 impl_remote!(ShiftedDegree16, REMOTE_URL, "resources/", "shifted-powers-of-beta-16", "usrs");
 impl_remote!(ShiftedDegree17, REMOTE_URL, "resources/", "shifted-powers-of-beta-17", "usrs");
 impl_remote!(ShiftedDegree18, REMOTE_URL, "resources/", "shifted-powers-of-beta-18", "usrs");
@@ -136,12 +157,48 @@ macro_rules! insert_key {
 impl_remote!(InclusionProver, REMOTE_URL, "resources/", "inclusion", "prover");
 impl_local!(InclusionVerifier, "resources/", "inclusion", "verifier");
 
+#[cfg(feature = "wasm")]
+static INCLUSION_PROVING_KEY: once_cell::sync::OnceCell<Vec<u8>> = once_cell::sync::OnceCell::new();
+
+#[cfg(feature = "wasm")]
+impl InclusionProver {
+    /// Attempt to get the inclusion proving key.
+    pub fn load() -> Option<&'static Vec<u8>> {
+        INCLUSION_PROVING_KEY.get()
+    }
+
+    /// Initialize the inclusion proving key via an asynchronous download.
+    pub async fn initialize_async() -> Result<(), crate::ParameterError> {
+        if INCLUSION_PROVING_KEY.get().is_none() {
+            let inclusion_bytes = InclusionProver::load_bytes_async().await?;
+            INCLUSION_PROVING_KEY.set(inclusion_bytes).expect("Failed to set inclusion proving key");
+        }
+        Ok(())
+    }
+
+    /// Initialize the inclusion proving key from bytes with checks to ensure the key bytes are valid.
+    pub fn initialize_from_bytes_checked(buffer: Vec<u8>) -> Result<(), crate::ParameterError> {
+        if INCLUSION_PROVING_KEY.get().is_some() {
+            Err(crate::ParameterError::Message(
+                "Inclusion parameters already initialized, cannot re-initialize".to_string(),
+            ))
+        } else {
+            Self::verify_bytes(&buffer)?;
+            INCLUSION_PROVING_KEY.set(buffer).expect("Failed to set inclusion proving key");
+            Ok(())
+        }
+    }
+}
+
 /// The function name for the inclusion circuit.
 pub const TESTNET3_INCLUSION_FUNCTION_NAME: &str = "inclusion";
 
+#[cfg(not(feature = "wasm"))]
 lazy_static! {
     pub static ref INCLUSION_PROVING_KEY: Vec<u8> =
         InclusionProver::load_bytes().expect("Failed to load inclusion proving key");
+}
+lazy_static! {
     pub static ref INCLUSION_VERIFYING_KEY: Vec<u8> =
         InclusionVerifier::load_bytes().expect("Failed to load inclusion verifying key");
 }

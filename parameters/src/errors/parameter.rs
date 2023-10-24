@@ -35,6 +35,12 @@ pub enum ParameterError {
     Wasm(String),
 }
 
+impl From<ParameterError> for anyhow::Result<()> {
+    fn from(error: ParameterError) -> Self {
+        Err(anyhow::Error::msg(format!("{error:?}")))
+    }
+}
+
 #[cfg(not(feature = "wasm"))]
 impl From<curl::Error> for ParameterError {
     fn from(error: curl::Error) -> Self {
@@ -57,5 +63,11 @@ impl From<std::path::StripPrefixError> for ParameterError {
 impl From<ParameterError> for std::io::Error {
     fn from(error: ParameterError) -> Self {
         std::io::Error::new(std::io::ErrorKind::Other, format!("{error:?}"))
+    }
+}
+
+impl From<reqwest::Error> for ParameterError {
+    fn from(error: reqwest::Error) -> Self {
+        ParameterError::Message(format!("{error:?}"))
     }
 }

@@ -14,11 +14,12 @@
 
 use crate::{
     fft::{DensePolynomial, EvaluationDomain},
+    srs::{UniversalProver, UniversalVerifier},
     AlgebraicSponge,
 };
 use snarkvm_curves::{AffineCurve, PairingCurve, PairingEngine, ProjectiveCurve};
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField, Zero};
-use snarkvm_parameters::testnet3::PowersOfG;
+use snarkvm_parameters::testnet3::{PowersOfG, NUM_POWERS_15, NUM_POWERS_16, NUM_POWERS_28};
 use snarkvm_utilities::{
     borrow::Cow,
     error,
@@ -28,8 +29,7 @@ use snarkvm_utilities::{
     ToBytes,
 };
 
-use crate::srs::{UniversalProver, UniversalVerifier};
-use anyhow::Result;
+use anyhow::{anyhow, ensure, Result};
 use core::ops::{Add, AddAssign};
 use parking_lot::RwLock;
 use rand_core::RngCore;
@@ -61,14 +61,111 @@ impl<E: PairingEngine> UniversalParams<E> {
         Ok(Self { powers, h, prepared_h, prepared_beta_h })
     }
 
+    pub fn beta_h(&self) -> E::G2Affine {
+        self.powers.read().beta_h()
+    }
+
     pub fn download_powers_for(&self, range: Range<usize>) -> Result<()> {
         self.powers.write().download_powers_for(range)
+    }
+
+    // Download powers for a given range asynchronously.
+    async fn download_powers_for_async(&self, range: &Range<usize>) -> Result<()> {
+        // Estimate the powers needed.
+        let (mut powers, shifted_powers) = self.powers.read().estimate_powers_for(range)?;
+
+        // If there are no powers to download, return.
+        if powers.is_empty() {
+            return Ok(());
+        }
+
+        if shifted_powers {
+            // Ensure the last shifted power is at least 2^16. (TODO: Once powers of 15 are downloadable, change this to 2^15)
+            let lowest_power = *powers.last().ok_or_else(|| anyhow!("No powers to download"))?;
+            ensure!(lowest_power >= NUM_POWERS_16, "Cannot download shifted powers for less than 2^16 powers");
+
+            // If the last power is 2^16 get it locally and pop it off the list of powers to download.
+            if lowest_power == NUM_POWERS_16 && cfg!(not(feature = "wasm")) {
+                self.download_powers_for((NUM_POWERS_28 - NUM_POWERS_16)..(NUM_POWERS_28 - NUM_POWERS_15))?;
+                powers.pop().unwrap();
+            }
+
+            let mut final_powers = vec![];
+
+            // Download the shifted powers.
+            for num_powers in powers.iter() {
+                #[cfg(debug_assertions)]
+                println!("Loading {num_powers} shifted powers");
+
+                let downloaded_powers = PowersOfG::<E>::download_shifted_powers_async(*num_powers, 2).await?;
+
+                final_powers.push(downloaded_powers);
+            }
+
+            // Perform checks to ensure bytes are valid and then extend the shifted powers with the
+            // downloaded bytes.
+            let power_refs = final_powers.iter().map(|x| x.as_slice()).collect::<Vec<&[u8]>>();
+            self.powers.write().extend_shifted_powers_checked(&power_refs, &powers)?;
+        } else {
+            // Download the powers of two.
+            for num_powers in &powers {
+                #[cfg(debug_assertions)]
+                println!("Loading {num_powers} powers");
+
+                #[cfg(not(feature = "wasm"))]
+                // If the powers of 16 are requested, get them locally.
+                if *num_powers == NUM_POWERS_16 {
+                    self.download_powers_for(0..NUM_POWERS_16)?;
+                    continue;
+                }
+
+                // Otherwise download the bytes.
+                let downloaded_powers = PowersOfG::<E>::download_normal_powers_async(*num_powers, 2).await?;
+
+                // Perform checks to ensure bytes are valid and then extend the powers with the
+                // downloaded bytes.
+                self.powers.write().extend_normal_powers_checked(&downloaded_powers, *num_powers)?;
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Do a checked extension of normal powers.
+    pub fn extend_normal_powers_checked(&mut self, powers: &[u8], num_powers: usize) -> Result<()> {
+        self.powers.write().extend_normal_powers_checked(powers, num_powers)
+    }
+
+    /// Do a checked extension of the shifted powers.
+    pub fn extend_shifted_powers_checked(&mut self, powers: &[&[u8]], num_powers: &[usize]) -> Result<()> {
+        self.powers.write().extend_shifted_powers_checked(powers, num_powers)
     }
 
     pub fn lagrange_basis(&self, domain: EvaluationDomain<E::Fr>) -> Result<Vec<E::G1Affine>> {
         let basis = domain
             .ifft(&self.powers_of_beta_g(0, domain.size())?.iter().map(|e| (*e).to_projective()).collect::<Vec<_>>());
         Ok(E::G1Projective::batch_normalization_into_affine(basis))
+    }
+
+    /// Preload powers of the Universal SRS into memory prior to a function execution. Useful for
+    /// environments such as WebAssembly where downloading powers in a blocking fashion is not
+    /// possible or not optimal.
+    pub async fn preload_powers_async(&self, lower: usize, upper: usize) -> Result<()> {
+        ensure!(upper <= 28, "Upper bound must not exceed 2^28");
+        ensure!(
+            lower <= upper && lower >= 16,
+            "Lower bound must be less than or equal to upper bound and at least 2^16"
+        );
+
+        let range = (1 << lower)..(1 << upper);
+
+        // Download regular powers
+        self.download_powers_for_async(&range).await?;
+
+        // Then download shifted powers
+        self.download_powers_for_async(&((NUM_POWERS_28 - range.end)..(NUM_POWERS_28 - range.start))).await?;
+
+        Ok(())
     }
 
     pub fn power_of_beta_g(&self, index: usize) -> Result<E::G1Affine> {
@@ -81,10 +178,6 @@ impl<E: PairingEngine> UniversalParams<E> {
 
     pub fn powers_of_beta_times_gamma_g(&self) -> Arc<BTreeMap<usize, E::G1Affine>> {
         self.powers.read().powers_of_beta_gamma_g()
-    }
-
-    pub fn beta_h(&self) -> E::G2Affine {
-        self.powers.read().beta_h()
     }
 
     pub fn max_degree(&self) -> usize {

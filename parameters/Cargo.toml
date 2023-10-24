@@ -27,7 +27,7 @@ edition = "2021"
 default = [ "colored", "remote" ]
 no_std_out = [ ]
 remote = [ "curl" ]
-wasm = [ "encoding", "js-sys", "web-sys" ]
+wasm = [ "encoding", "js-sys", "once_cell", "web-sys" ]
 
 [dependencies.snarkvm-curves]
 path = "../curves"
@@ -76,11 +76,18 @@ optional = true
 [dependencies.lazy_static]
 version = "1.4"
 
+[dependencies.once_cell]
+version = "1.18"
+optional = true
+
 [dependencies.paste]
 version = "1"
 
 [dependencies.rand]
 version = "0.8"
+
+[dependencies.reqwest]
+version = "0.11.20"
 
 [dependencies.serde_json]
 version = "1"

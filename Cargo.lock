@@ -185,6 +185,28 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "96d30a06541fbafbc7f82ed10c06164cfbd2c401138f6addd8404629c4b16711"
 
 [[package]]
+name = "async-stream"
+version = "0.3.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cd56dd203fef61ac097dd65721a419ddccb106b2d2b70ba60a6b529f03961a51"
+dependencies = [
+ "async-stream-impl",
+ "futures-core",
+ "pin-project-lite",
+]
+
+[[package]]
+name = "async-stream-impl"
+version = "0.3.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "16e62a023e7c117e27523144c5d2459f4397fcc3cab0085af8e2224f643a0193"
+dependencies = [
+ "proc-macro2",
+ "quote 1.0.33",
+ "syn 2.0.38",
+]
+
+[[package]]
 name = "async-trait"
 version = "0.1.73"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3255,8 +3277,10 @@ dependencies = [
  "itertools 0.11.0",
  "js-sys",
  "lazy_static",
+ "once_cell",
  "paste",
  "rand",
+ "reqwest",
  "serde_json",
  "sha2",
  "snarkvm-algorithms",
@@ -3390,14 +3414,18 @@ name = "snarkvm-wasm"
 version = "0.16.2"
 dependencies = [
  "getrandom",
- "rand",
- "serde",
+ "snarkvm-algorithms",
+ "snarkvm-circuit-network",
  "snarkvm-console",
  "snarkvm-curves",
  "snarkvm-fields",
+ "snarkvm-ledger-block",
+ "snarkvm-ledger-query",
+ "snarkvm-ledger-store",
+ "snarkvm-parameters",
  "snarkvm-synthesizer",
  "snarkvm-utilities",
- "wasm-bindgen",
+ "tokio-test",
  "wasm-bindgen-test",
 ]
 
@@ -3687,6 +3715,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "tokio-stream"
+version = "0.1.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "397c988d37662c7dda6d2208364a706264bf3d6138b11d436cbac0ad38832842"
+dependencies = [
+ "futures-core",
+ "pin-project-lite",
+ "tokio",
+]
+
+[[package]]
+name = "tokio-test"
+version = "0.4.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e89b3cbabd3ae862100094ae433e1def582cf86451b4e9bf83aa7ac1d8a7d719"
+dependencies = [
+ "async-stream",
+ "bytes",
+ "futures-core",
+ "tokio",
+ "tokio-stream",
+]
+
+[[package]]
 name = "tokio-util"
 version = "0.7.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3962,8 +4014,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7706a72ab36d8cb1f80ffbf0e071533974a60d0a308d01a5d0375bf60499a342"
 dependencies = [
  "cfg-if",
- "serde",
- "serde_json",
  "wasm-bindgen-macro",
 ]
 

@@ -12,16 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#[cfg(feature = "circuit")]
+pub use snarkvm_circuit_network as circuit;
 #[cfg(feature = "console")]
 pub use snarkvm_console as console;
 #[cfg(feature = "curves")]
 pub use snarkvm_curves as curves;
 #[cfg(feature = "fields")]
 pub use snarkvm_fields as fields;
+#[cfg(feature = "ledger")]
+pub use snarkvm_ledger_block as ledger_block;
+#[cfg(feature = "ledger")]
+pub use snarkvm_ledger_query as ledger_query;
+#[cfg(feature = "ledger")]
+pub use snarkvm_ledger_store as ledger_store;
 #[cfg(feature = "synthesizer")]
 pub use snarkvm_synthesizer as synthesizer;
 #[cfg(feature = "utilities")]
 pub use snarkvm_utilities as utilities;
-
-#[cfg(test)]
-mod tests;
