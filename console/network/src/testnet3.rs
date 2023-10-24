@@ -164,10 +164,20 @@ impl Network for Testnet3 {
         static INSTANCE: OnceCell<Arc<VarunaProvingKey<Console>>> = OnceCell::new();
         INSTANCE.get_or_init(|| {
             // Skipping the first byte, which is the encoded version.
-            Arc::new(
+            #[cfg(not(feature = "wasm"))]
+            let inclusion_key = Arc::new(
                 CircuitProvingKey::from_bytes_le(&snarkvm_parameters::testnet3::INCLUSION_PROVING_KEY[1..])
                     .expect("Failed to load inclusion proving key."),
-            )
+            );
+            #[cfg(feature = "wasm")]
+            let inclusion_key = Arc::new(
+                CircuitProvingKey::from_bytes_le(
+                    &snarkvm_parameters::testnet3::InclusionProver::load()
+                        .expect("Failed to load inclusion proving key.")[1..],
+                )
+                .expect("Failed to load inclusion proving key."),
+            );
+            inclusion_key
         })
     }
 

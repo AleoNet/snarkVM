@@ -66,16 +66,6 @@ version = "=0.16.2"
 features = [ "wasm" ]
 optional = true
 
-[dependencies.snarkvm-curves]
-path = "../curves"
-version = "=0.16.2"
-optional = true
-
-[dependencies.snarkvm-fields]
-path = "../fields"
-version = "=0.16.2"
-optional = true
-
 [dependencies.snarkvm-synthesizer]
 path = "../synthesizer"
 version = "=0.16.2"
@@ -97,12 +87,9 @@ features = [ "js" ]
 path = "../algorithms"
 features = [ "wasm" ]
 
-[dev-dependencies.snarkvm-circuit-network]
-path = "../circuit/network"
-
 [dev-dependencies.snarkvm-parameters]
 path = "../parameters"
-version = "=0.15.4"
+version = "=0.16.2"
 features = [ "wasm" ]
 
 [dev-dependencies.tokio-test]

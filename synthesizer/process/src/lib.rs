@@ -241,6 +241,22 @@ impl<N: Network> Process<N> {
         self.get_stack(program_id)?.get_verifying_key(&function_name)
     }
 
+    /// Initialize inclusion proving key from an asynchronous fetch of external parameters.
+    #[inline]
+    #[cfg(feature = "wasm")]
+    pub async fn initialize_inclusion_prover_async() -> Result<()> {
+        synthesizer_snark::InclusionProver::initialize_async().await?;
+        Ok(())
+    }
+
+    /// Initialize inclusion proving keys from external bytes.
+    #[inline]
+    #[cfg(feature = "wasm")]
+    pub fn initialize_inclusion_prover_from_bytes(bytes: Vec<u8>) -> Result<()> {
+        synthesizer_snark::InclusionProver::initialize_from_bytes_checked(bytes)?;
+        Ok(())
+    }
+
     /// Inserts the given proving key, for the given program ID and function name.
     #[inline]
     pub fn insert_proving_key(

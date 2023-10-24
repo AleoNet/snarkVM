@@ -749,6 +749,7 @@ jobs:
             nvm use 20.3.1
             curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
             cd wasm && wasm-pack test --node
+            cargo test
       - clear_environment:
           cache_key: snarkvm-wasm-cache
 

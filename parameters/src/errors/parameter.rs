@@ -35,6 +35,12 @@ pub enum ParameterError {
     Wasm(String),
 }
 
+impl From<ParameterError> for anyhow::Result<()> {
+    fn from(error: ParameterError) -> Self {
+        Err(anyhow::Error::msg(format!("{error:?}")))
+    }
+}
+
 #[cfg(not(feature = "wasm"))]
 impl From<curl::Error> for ParameterError {
     fn from(error: curl::Error) -> Self {

@@ -157,12 +157,48 @@ macro_rules! insert_key {
 impl_remote!(InclusionProver, REMOTE_URL, "resources/", "inclusion", "prover");
 impl_local!(InclusionVerifier, "resources/", "inclusion", "verifier");
 
+#[cfg(feature = "wasm")]
+static INCLUSION_PROVING_KEY: once_cell::sync::OnceCell<Vec<u8>> = once_cell::sync::OnceCell::new();
+
+#[cfg(feature = "wasm")]
+impl InclusionProver {
+    /// Attempt to get the inclusion proving key.
+    pub fn load() -> Option<&'static Vec<u8>> {
+        INCLUSION_PROVING_KEY.get()
+    }
+
+    /// Initialize the inclusion proving key via an asynchronous download.
+    pub async fn initialize_async() -> Result<(), crate::ParameterError> {
+        if INCLUSION_PROVING_KEY.get().is_none() {
+            let inclusion_bytes = InclusionProver::load_bytes_async().await?;
+            INCLUSION_PROVING_KEY.set(inclusion_bytes).expect("Failed to set inclusion proving key");
+        }
+        Ok(())
+    }
+
+    /// Initialize the inclusion proving key from bytes with checks to ensure the key bytes are valid.
+    pub fn initialize_from_bytes_checked(buffer: Vec<u8>) -> Result<(), crate::ParameterError> {
+        if INCLUSION_PROVING_KEY.get().is_some() {
+            Err(crate::ParameterError::Message(
+                "Inclusion parameters already initialized, cannot re-initialize".to_string(),
+            ))
+        } else {
+            Self::verify_bytes(&buffer)?;
+            INCLUSION_PROVING_KEY.set(buffer).expect("Failed to set inclusion proving key");
+            Ok(())
+        }
+    }
+}
+
 /// The function name for the inclusion circuit.
 pub const TESTNET3_INCLUSION_FUNCTION_NAME: &str = "inclusion";
 
+#[cfg(not(feature = "wasm"))]
 lazy_static! {
     pub static ref INCLUSION_PROVING_KEY: Vec<u8> =
         InclusionProver::load_bytes().expect("Failed to load inclusion proving key");
+}
+lazy_static! {
     pub static ref INCLUSION_VERIFYING_KEY: Vec<u8> =
         InclusionVerifier::load_bytes().expect("Failed to load inclusion verifying key");
 }

@@ -3277,6 +3277,7 @@ dependencies = [
  "itertools 0.11.0",
  "js-sys",
  "lazy_static",
+ "once_cell",
  "paste",
  "rand",
  "reqwest",
