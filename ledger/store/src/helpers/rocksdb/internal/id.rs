@@ -26,6 +26,7 @@ pub enum MapID {
     Transition(TransitionMap),
     TransitionInput(TransitionInputMap),
     TransitionOutput(TransitionOutputMap),
+    Transmission(TransmissionMap),
     Program(ProgramMap),
     #[cfg(test)]
     Test(TestMap),
@@ -43,6 +44,7 @@ impl From<MapID> for u16 {
             MapID::Transition(id) => id as u16,
             MapID::TransitionInput(id) => id as u16,
             MapID::TransitionOutput(id) => id as u16,
+            MapID::Transmission(id) => id as u16,
             MapID::Program(id) => id as u16,
             #[cfg(test)]
             MapID::Test(id) => id as u16,
@@ -174,6 +176,15 @@ pub enum TransitionMap {
     ReverseTCM = DataID::TransitionReverseTCMMap as u16,
 }
 
+/// The RocksDB map prefix for transmission-related entries.
+// Note: the order of these variants can be changed at any point in time,
+// as long as the corresponding DataID values remain the same.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[repr(u16)]
+pub enum TransmissionMap {
+    ID = DataID::TransmissionMap as u16,
+}
+
 /// The RocksDB map prefix for program-related entries.
 // Note: the order of these variants can be changed at any point in time,
 // as long as the corresponding DataID values remain the same.
@@ -265,6 +276,8 @@ enum DataID {
     TransitionReverseTPKMap,
     TransitionTCMMap,
     TransitionReverseTCMMap,
+    // Transmission
+    TransmissionMap,
     // Program
     ProgramIDMap,
     KeyValueMap,

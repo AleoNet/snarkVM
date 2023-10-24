@@ -32,6 +32,10 @@ pub trait TransmissionStorage<N: Network>: 'static + Clone + Send + Sync {
     /// Initializes the transmission storage.
     fn open(dev: Option<u16>) -> Result<Self>;
 
+    /// Initializes the test-variant of the storage.
+    #[cfg(any(test, feature = "test"))]
+    fn open_testing(temp_dir: std::path::PathBuf, dev: Option<u16>) -> Result<Self>;
+
     /// Returns the transmission map.
     fn transmission_map(&self) -> &Self::TransmissionMap;
 
@@ -183,6 +187,18 @@ impl<N: Network, T: TransmissionStorage<N>> TransmissionStore<N, T> {
         // Initialize the transmission storage.
         let storage = T::open(dev)?;
 
+        // Return the transmission store.
+        Ok(Self { storage, _phantom: PhantomData })
+    }
+
+    /// Initializes the test-variant of the storage.
+    #[cfg(any(test, feature = "test"))]
+    pub fn open_testing(temp_dir: std::path::PathBuf, dev: Option<u16>) -> Result<Self> {
+        Self::from(T::open_testing(temp_dir, dev)?)
+    }
+
+    /// Initializes a transmission store from storage.
+    pub fn from(storage: T) -> Result<Self> {
         // Return the transmission store.
         Ok(Self { storage, _phantom: PhantomData })
     }

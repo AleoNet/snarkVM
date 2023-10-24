@@ -12,39 +12,47 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::{helpers::memory::NestedMemoryMap, TransmissionStorage};
+#![allow(clippy::type_complexity)]
+
+use crate::{
+    helpers::rocksdb::{self, Database, MapID, NestedDataMap, TransmissionMap},
+    TransmissionStorage,
+};
 use console::prelude::*;
 use ledger_narwhal_transmission::Transmission;
 use ledger_narwhal_transmission_id::TransmissionID;
 
-/// An in-memory transmission storage.
+/// A RocksDB finalize storage.
 #[derive(Clone)]
-pub struct TransmissionMemory<N: Network> {
+pub struct TransmissionDB<N: Network> {
     /// The transmission map.
-    transmission_map: NestedMemoryMap<u64, TransmissionID<N>, Transmission<N>>,
+    transmission_map: NestedDataMap<u64, TransmissionID<N>, Transmission<N>>,
     /// The optional development ID.
     dev: Option<u16>,
 }
 
 #[rustfmt::skip]
-impl<N: Network> TransmissionStorage<N> for TransmissionMemory<N> {
-    type TransmissionMap = NestedMemoryMap<u64, TransmissionID<N>, Transmission<N>>;
+impl<N: Network> TransmissionStorage<N> for TransmissionDB<N> {
+    type TransmissionMap = NestedDataMap<u64, TransmissionID<N>, Transmission<N>>;
 
     /// Initializes the transmission storage.
     fn open(dev: Option<u16>) -> Result<Self> {
+        // Return the transmission storage.
         Ok(Self {
-            transmission_map: NestedMemoryMap::default(),
+            transmission_map: rocksdb::RocksDB::open_nested_map(N::ID, dev, MapID::Transmission(TransmissionMap::ID))?,
             dev,
         })
     }
 
     /// Initializes the test-variant of the storage.
     #[cfg(any(test, feature = "test"))]
-    fn open_testing(_: std::path::PathBuf, dev: Option<u16>) -> Result<Self> {
-        Self::open(dev)
+    fn open_testing(temp_dir: std::path::PathBuf, dev: Option<u16>) -> Result<Self> {
+        Ok(Self {
+            transmission_map: rocksdb::RocksDB::open_nested_map_testing(temp_dir.clone(), dev, MapID::Transmission(TransmissionMap::ID))?,
+            dev,
+        })
     }
-
-    /// Returns the transmission map.
+    /// Returns the committee store.
     fn transmission_map(&self) -> &Self::TransmissionMap {
         &self.transmission_map
     }
