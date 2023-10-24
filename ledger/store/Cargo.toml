@@ -59,6 +59,16 @@ package = "snarkvm-ledger-narwhal-batch-certificate"
 path = "../narwhal/batch-certificate"
 version = "=0.16.2"
 
+[dependencies.ledger-narwhal-transmission]
+package = "snarkvm-ledger-narwhal-transmission"
+path = "../narwhal/transmission"
+version = "=0.16.2"
+
+[dependencies.ledger-narwhal-transmission-id]
+package = "snarkvm-ledger-narwhal-transmission-id"
+path = "../narwhal/transmission-id"
+version = "=0.16.2"
+
 [dependencies.synthesizer-program]
 package = "snarkvm-synthesizer-program"
 path = "../../synthesizer/program"
