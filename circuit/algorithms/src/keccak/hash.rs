@@ -407,6 +407,9 @@ mod tests {
     use console::Rng;
     use snarkvm_circuit_types::environment::{Circuit, FormalCircuit, Transcribe};
 
+    use snarkvm_circuit_types::Field;
+    use snarkvm_console_types_field::{Field as ConsoleField, One, Zero};
+
     const ITERATIONS: usize = 3;
 
     macro_rules! check_equivalence {
@@ -574,6 +577,48 @@ mod tests {
     #[test]
     fn test_sha3_512_equivalence() {
         check_equivalence!(console::Sha3_512::default(), Sha3_512::<Circuit>::new());
+    }
+
+    #[test]
+    // from above: fn round(a: Vec<U64<E>>, round_constant: &U64<E>, rotl: &[usize]) -> Vec<U64<E>>
+    fn formal_sample_permutation_f_1600_24() {
+
+        let v = (0..1600).map(|_| Boolean::<FormalCircuit>::new(Mode::Private, true)).collect::<Vec<_>>();
+
+        let round_constants = (0..24).map(|_| U64::<FormalCircuit>::new(Mode::Private, console::U64::zero())).collect::<Vec<_>>();
+        // initialize a Keccak Circuit with new() in order to generate the rotl
+        let k = Keccak::<Circuit, { KeccakType::Keccak as u8 }, 256>::new();
+
+        // print the entries of rotl
+        //println!("// rotl: {:?}", k.rotl);
+
+        // The _precandidate is what we want as the output.
+        let precandidate= Keccak256::permutation_f::<PERMUTATION_WIDTH, NUM_ROUNDS>(v, &round_constants, &k.rotl);
+
+        // To make it easier to find the output bits, we should consider combining the bits in some way.
+        // It doesn't work to use from_bits_le since that constraints bits above 252 to be zero.
+
+        // _precadidate is a Vec<Boolean<FormalCircuit>> of length 1600;
+        // here's an exmaple of how to convert it to an array.
+        // let _precandidate_array : &[Boolean<FormalCircuit>] = &_precandidate.clone()[..];
+        // and here's what doesn't work in combining the bits:
+        // let _candidate = Field::<FormalCircuit>::from_bits_le(_precandidate_array);
+
+        let mut out = Field::<FormalCircuit>::new(Mode::Constant, ConsoleField::zero());
+        let mut coefficientInt: u32 = 1000000;
+        let mut coefficient = Field::from_str("1000000field").unwrap();
+        for bit in precandidate.iter() {
+            out += Field::from_boolean(bit) * &coefficient;
+            coefficientInt += 1;
+            coefficient = Field::from_str(&format!("{}field", coefficientInt)).unwrap();
+        }
+        let _candidate = out.square();
+
+        let transcript = FormalCircuit::clear();
+        let output = serde_json::to_string_pretty(&transcript).unwrap();
+
+        println!("// keccak256::permutation_f_1600_24");
+        println!("{}", output);
     }
 
     #[test]

@@ -65,6 +65,10 @@ version = "1.0"
 path = "../console/types/integers"
 version = "=0.15.4"
 
+[dev-dependencies.snarkvm-console-types-field]
+path = "../console/types/field"
+version = "0.15.4"
+
 [dev-dependencies.snarkvm-console-types-group]
 path = "../console/types/group"
 version = "=0.15.4"
