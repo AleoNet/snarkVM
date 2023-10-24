@@ -313,3 +313,81 @@ impl<N: Network, T: TransmissionStorage<N>> TransmissionStore<N, T> {
         self.storage.get_transmission_speculative(round, transmission_id)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::helpers::memory::TransmissionMemory;
+    use console::network::Testnet3;
+    use ledger_narwhal_transmission::test_helpers::sample_transmissions;
+    use ledger_narwhal_transmission_id::test_helpers::sample_transmission_ids;
+
+    use std::collections::HashMap;
+
+    type CurrentNetwork = Testnet3;
+
+    #[test]
+    fn test_insert_get_remove_transmission() {
+        let rng = &mut TestRng::default();
+
+        // Sample a round number, transmissions and transmission ids.
+        let round: u64 = rng.gen();
+        let transmissions = sample_transmissions(rng);
+        let transmission_ids = sample_transmission_ids(rng);
+
+        // Initialize a new transmission store.
+        let transmission_store = TransmissionStore::<CurrentNetwork, TransmissionMemory<_>>::open(None).unwrap();
+
+        for (transmission_id, transmission) in transmission_ids.iter().zip_eq(transmissions) {
+            // Insert the transmission.
+            transmission_store.insert_transmission(round, *transmission_id, transmission.clone()).unwrap();
+
+            // Find the transmission.
+            let candidate = transmission_store.get_transmission_confirmed(round, transmission_id).unwrap();
+            assert_eq!(Some(transmission), candidate);
+
+            // Remove the transmission.
+            transmission_store.remove_transmission(round, *transmission_id).unwrap();
+
+            // Ensure the transmission ID is not found.
+            let candidate = transmission_store.get_transmission_confirmed(round, transmission_id).unwrap();
+            assert_eq!(None, candidate);
+        }
+    }
+
+    #[test]
+    fn test_insert_get_remove_transmissions() {
+        let rng = &mut TestRng::default();
+
+        // Sample a round number, transmissions and transmission ids.
+        let round: u64 = rng.gen();
+        let transmissions = sample_transmissions(rng);
+        let transmission_ids = sample_transmission_ids(rng);
+
+        let transmissions = transmission_ids.into_iter().zip_eq(transmissions).collect::<Vec<(_, _)>>();
+
+        // Initialize a new transmission store.
+        let transmission_store = TransmissionStore::<CurrentNetwork, TransmissionMemory<_>>::open(None).unwrap();
+
+        // Find the transmissions.
+        let candidate = transmission_store.get_transmissions_confirmed(round).unwrap();
+        assert!(candidate.is_empty());
+
+        // Insert the transmissions.
+        transmission_store.insert_transmissions(round, transmissions.clone()).unwrap();
+
+        // Find the transmissions.
+        let candidate = transmission_store.get_transmissions_confirmed(round).unwrap();
+        assert_eq!(
+            transmissions.iter().cloned().collect::<HashMap<_, _>>(),
+            candidate.iter().cloned().collect::<HashMap<_, _>>()
+        );
+
+        // Remove the transmissions
+        transmission_store.remove_transmissions(round).unwrap();
+
+        // Ensure the transmissions are not found.
+        let candidate = transmission_store.get_transmissions_confirmed(round).unwrap();
+        assert!(candidate.is_empty());
+    }
+}
