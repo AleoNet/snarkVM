@@ -44,8 +44,6 @@ impl<N: Network> FinalizeTypes<N> {
             // Check the input register type.
             let register = input.register().clone();
             let finalize_type = input.finalize_type();
-
-            // Check the input register.
             finalize_types.check_input(stack, &register, finalize_type)?;
 
             // If the input is a future, add it to the list of input futures.
