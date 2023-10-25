@@ -42,14 +42,14 @@ impl<N: Network> Ratify<N> {
     }
 }
 
-#[cfg(test)]
-pub(crate) mod test_helpers {
+#[cfg(any(test, feature = "test-helpers"))]
+pub mod test_helpers {
     use super::*;
     use console::network::Testnet3;
 
     type CurrentNetwork = Testnet3;
 
-    pub(crate) fn sample_ratifications(rng: &mut TestRng) -> Vec<Ratify<CurrentNetwork>> {
+    pub fn sample_ratifications(rng: &mut TestRng) -> Vec<Ratify<CurrentNetwork>> {
         let committee = ledger_committee::test_helpers::sample_committee(rng);
         let mut public_balances = PublicBalances::new();
         for (address, _) in committee.members().iter() {

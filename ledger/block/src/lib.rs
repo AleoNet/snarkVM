@@ -549,10 +549,12 @@ impl<N: Network> Block<N> {
 #[cfg(test)]
 pub mod test_helpers {
     use super::*;
+    use crate::ratify::test_helpers::sample_ratifications;
     use console::account::{Address, PrivateKey};
     use ledger_query::Query;
     use ledger_store::{helpers::memory::BlockMemory, BlockStore};
     use synthesizer_process::Process;
+    use synthesizer_program::logic::test_helpers::sample_initialize_mapping;
 
     use once_cell::sync::OnceCell;
 
@@ -628,10 +630,12 @@ pub mod test_helpers {
         let transactions = Transactions::from_iter([confirmed].into_iter());
 
         // Construct the ratifications.
-        let ratifications = Ratifications::try_from(vec![]).unwrap();
+        let ratifications = vec![sample_ratifications(rng).swap_remove(0)].try_into().unwrap();
+
+        let ratified_finalize_ops = vec![sample_initialize_mapping(rng)];
 
         // Prepare the block header.
-        let header = Header::genesis(&ratifications, &transactions, vec![]).unwrap();
+        let header = Header::genesis(&ratifications, &transactions, ratified_finalize_ops).unwrap();
         // Prepare the previous block hash.
         let previous_hash = <CurrentNetwork as Network>::BlockHash::default();
 

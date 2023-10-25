@@ -39,45 +39,45 @@ pub enum FinalizeOperation<N: Network> {
     RemoveMapping(Field<N>),
 }
 
-#[cfg(test)]
-pub(crate) mod test_helpers {
+#[cfg(any(test, feature = "test-helpers"))]
+pub mod test_helpers {
     use super::*;
     use console::network::Testnet3;
 
     type CurrentNetwork = Testnet3;
 
     /// Samples a random `InitializeMapping`.
-    pub(crate) fn sample_initialize_mapping(rng: &mut TestRng) -> FinalizeOperation<CurrentNetwork> {
+    pub fn sample_initialize_mapping(rng: &mut TestRng) -> FinalizeOperation<CurrentNetwork> {
         FinalizeOperation::InitializeMapping(Uniform::rand(rng))
     }
 
     /// Samples a random `InsertKeyValue`.
-    pub(crate) fn sample_insert_key_value(rng: &mut TestRng) -> FinalizeOperation<CurrentNetwork> {
+    pub fn sample_insert_key_value(rng: &mut TestRng) -> FinalizeOperation<CurrentNetwork> {
         FinalizeOperation::InsertKeyValue(Uniform::rand(rng), Uniform::rand(rng), Uniform::rand(rng))
     }
 
     /// Samples a random `UpdateKeyValue`.
-    pub(crate) fn sample_update_key_value(rng: &mut TestRng) -> FinalizeOperation<CurrentNetwork> {
+    pub fn sample_update_key_value(rng: &mut TestRng) -> FinalizeOperation<CurrentNetwork> {
         FinalizeOperation::UpdateKeyValue(Uniform::rand(rng), rng.gen(), Uniform::rand(rng), Uniform::rand(rng))
     }
 
     /// Samples a random `RemoveKeyValue`.
-    pub(crate) fn sample_remove_key_value(rng: &mut TestRng) -> FinalizeOperation<CurrentNetwork> {
+    pub fn sample_remove_key_value(rng: &mut TestRng) -> FinalizeOperation<CurrentNetwork> {
         FinalizeOperation::RemoveKeyValue(Uniform::rand(rng), rng.gen())
     }
 
     /// Samples a random `ReplaceMapping`.
-    pub(crate) fn sample_replace_mapping(rng: &mut TestRng) -> FinalizeOperation<CurrentNetwork> {
+    pub fn sample_replace_mapping(rng: &mut TestRng) -> FinalizeOperation<CurrentNetwork> {
         FinalizeOperation::ReplaceMapping(Uniform::rand(rng))
     }
 
     /// Samples a random `RemoveMapping`.
-    pub(crate) fn sample_remove_mapping(rng: &mut TestRng) -> FinalizeOperation<CurrentNetwork> {
+    pub fn sample_remove_mapping(rng: &mut TestRng) -> FinalizeOperation<CurrentNetwork> {
         FinalizeOperation::RemoveMapping(Uniform::rand(rng))
     }
 
     /// Samples a list of random `FinalizeOperation`.
-    pub(crate) fn sample_finalize_operations() -> Vec<FinalizeOperation<CurrentNetwork>> {
+    pub fn sample_finalize_operations() -> Vec<FinalizeOperation<CurrentNetwork>> {
         let rng = &mut TestRng::default();
 
         vec![

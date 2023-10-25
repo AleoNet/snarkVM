@@ -26,6 +26,7 @@ edition = "2021"
 [features]
 default = [ ]
 serial = [ "console/serial" ]
+test-helpers = [ ]
 wasm = [ "console/wasm" ]
 
 [dependencies.circuit]

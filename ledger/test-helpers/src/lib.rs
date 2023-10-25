@@ -19,6 +19,7 @@ use console::{
     types::Field,
 };
 use ledger_block::{
+    ratify::test_helpers::sample_ratifications,
     Block,
     ConfirmedTransaction,
     Deployment,
@@ -27,7 +28,6 @@ use ledger_block::{
     Header,
     Input,
     Output,
-    Ratifications,
     Transaction,
     Transactions,
     Transition,
@@ -35,7 +35,7 @@ use ledger_block::{
 use ledger_query::Query;
 use ledger_store::{helpers::memory::BlockMemory, BlockStore};
 use synthesizer_process::Process;
-use synthesizer_program::Program;
+use synthesizer_program::{test_helpers::sample_initialize_mapping, Program};
 
 use once_cell::sync::OnceCell;
 
@@ -414,10 +414,12 @@ fn sample_genesis_block_and_components_raw(
     let transactions = Transactions::from_iter([confirmed].into_iter());
 
     // Construct the ratifications.
-    let ratifications = Ratifications::try_from(vec![]).unwrap();
+    let ratifications = vec![sample_ratifications(rng).swap_remove(0)].try_into().unwrap();
+
+    let ratified_finalize_ops = vec![sample_initialize_mapping(rng)];
 
     // Prepare the block header.
-    let header = Header::genesis(&ratifications, &transactions, vec![]).unwrap();
+    let header = Header::genesis(&ratifications, &transactions, ratified_finalize_ops).unwrap();
     // Prepare the previous block hash.
     let previous_hash = <CurrentNetwork as Network>::BlockHash::default();
 

@@ -35,6 +35,7 @@ wasm = [
   "synthesizer-snark/wasm"
 ]
 test = [ ]
+test-helpers = [ ]
 
 [dependencies.console]
 package = "snarkvm-console"
@@ -113,6 +114,11 @@ path = "../store"
 [dev-dependencies.synthesizer-process]
 package = "snarkvm-synthesizer-process"
 path = "../../synthesizer/process"
+
+[dev-dependencies.synthesizer-program]
+package = "snarkvm-synthesizer-program"
+path = "../../synthesizer/program"
+features = [ "test-helpers" ]
 
 [dev-dependencies.once_cell]
 version = "1.18"
