@@ -461,11 +461,11 @@ impl<N: Network> RegisterTypes<N> {
                         // Retrieve the program.
                         let external = stack.get_external_program(program_id)?;
                         // Check that function exists in the program.
-                        if let Ok(child_function) = external.get_function(resource) {
+                        if let Ok(child_function) = external.get_function_ref(resource) {
                             // If the child function contains a finalize block, then the parent function must also contain a finalize block.
                             let child_contains_finalize = child_function.finalize_logic().is_some();
                             let parent_contains_finalize =
-                                stack.get_function(closure_or_function_name)?.finalize_logic().is_some();
+                                stack.get_function_ref(closure_or_function_name)?.finalize_logic().is_some();
                             if child_contains_finalize && !parent_contains_finalize {
                                 bail!(
                                     "Function '{}/{closure_or_function_name}' must contain a finalize block, since it calls '{}/{resource}'.",
