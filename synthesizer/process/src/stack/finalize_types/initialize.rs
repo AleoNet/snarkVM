@@ -39,16 +39,44 @@ impl<N: Network> FinalizeTypes<N> {
         let mut finalize_types = Self { inputs: IndexMap::new(), destinations: IndexMap::new() };
 
         // Step 1. Check the inputs are well-formed.
+        let mut input_futures = vec![];
         for input in finalize.inputs() {
             // Check the input register type.
-            finalize_types.check_input(stack, input.register(), input.finalize_type())?;
+            let register = input.register().clone();
+            let finalize_type = input.finalize_type();
+
+            // Check the input register.
+            finalize_types.check_input(stack, &register, finalize_type)?;
+
+            // If the input is a future, add it to the list of input futures.
+            if let FinalizeType::Future(locator) = finalize_type {
+                input_futures.push((register, *locator));
+            }
         }
 
         // Step 2. Check the commands are well-formed.
+        let mut consumed_futures = vec![];
         for command in finalize.commands() {
             // Check the command opcode, operands, and destinations.
             finalize_types.check_command(stack, finalize, command)?;
+
+            // If the command is an `await`, add the future to the list of consumed futures.
+            if let Command::Await(await_) = command {
+                let register = await_.register().clone();
+                // Note that `check_command` ensures that the register is a future. This is an additional check.
+                let locator = match finalize_types.get_type(stack, &register)? {
+                    FinalizeType::Future(locator) => locator,
+                    FinalizeType::Plaintext(..) => bail!("Expected a future"),
+                };
+                consumed_futures.push((register, locator));
+            }
         }
+        // Check that the input futures are consumed in the order they are passed in.
+        ensure!(
+            input_futures == consumed_futures,
+            "Futures in finalize '{}' are not awaited in the order they are passed in.",
+            finalize.name()
+        );
 
         Ok(finalize_types)
     }

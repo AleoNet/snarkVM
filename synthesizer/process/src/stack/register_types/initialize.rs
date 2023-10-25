@@ -164,8 +164,8 @@ impl<N: Network> RegisterTypes<N> {
         let mut future_registers = register_types
             .destinations
             .iter()
-            .filter_map(|(_, register_type)| match register_type {
-                RegisterType::Future(locator) => Some(*locator),
+            .filter_map(|(index, register_type)| match register_type {
+                RegisterType::Future(locator) => Some((Register::Locator(*index), *locator)),
                 _ => None,
             })
             .collect::<Vec<_>>();
@@ -190,7 +190,7 @@ impl<N: Network> RegisterTypes<N> {
                     .iter()
                     .filter_map(|operand| match operand {
                         Operand::Register(register) => match register_types.get_type(stack, register).ok() {
-                            Some(RegisterType::Future(locator)) => Some(locator),
+                            Some(RegisterType::Future(locator)) => Some((register.clone(), locator)),
                             _ => None,
                         },
                         _ => None,
@@ -461,8 +461,22 @@ impl<N: Network> RegisterTypes<N> {
 
                         // Retrieve the program.
                         let external = stack.get_external_program(program_id)?;
-                        // Ensure the function or closure exists in the program.
-                        if !external.contains_function(resource) && !external.contains_closure(resource) {
+                        // Check that function exists in the program.
+                        if let Ok(child_function) = external.get_function(resource) {
+                            // If the child function contains a finalize block, then the parent function must also contain a finalize block.
+                            let child_contains_finalize = child_function.finalize_logic().is_some();
+                            let parent_contains_finalize =
+                                stack.get_function(closure_or_function_name)?.finalize_logic().is_some();
+                            if child_contains_finalize && !parent_contains_finalize {
+                                bail!(
+                                    "Function '{}/{closure_or_function_name}' must contain a finalize block, since it calls '{}/{resource}'.",
+                                    stack.program_id(),
+                                    program_id
+                                )
+                            }
+                        }
+                        // Otherwise, ensure the closure exists in the program.
+                        else if !external.contains_closure(resource) {
                             bail!("'{resource}' is not defined in '{}'.", external.id())
                         }
                     }
