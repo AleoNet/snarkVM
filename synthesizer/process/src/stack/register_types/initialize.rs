@@ -170,20 +170,19 @@ impl<N: Network> RegisterTypes<N> {
             })
             .collect::<Vec<_>>();
 
-        // Remove the last locator, since this is the future created by the `async` call.
-        future_registers.pop();
-
-        // Check that all the registers were consumed by the `async` call, in order.
         match async_ {
+            // If no `async` instruction exists, then there should not be any future registers.
             None => {
-                if !future_registers.is_empty() {
-                    bail!(
-                        "Function '{}' contains futures, but does not contain an 'async' instruction",
-                        function.name()
-                    )
-                }
+                ensure!(
+                    future_registers.is_empty(),
+                    "Function '{}' contains futures, but does not contain an 'async' instruction",
+                    function.name()
+                )
             }
+            // Otherwise, check that all the registers were consumed by the `async` call, in order.
             Some(async_) => {
+                // Remove the last future, since this is the future created by the `async` call.
+                future_registers.pop();
                 // Get the register operands that are `future` types.
                 let async_future_operands = async_
                     .operands()

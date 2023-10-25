@@ -38,13 +38,13 @@ impl<N: Network> FinalizeTypes<N> {
         // Initialize a map of registers to their types.
         let mut finalize_types = Self { inputs: IndexMap::new(), destinations: IndexMap::new() };
 
-        // Step 1. Check the inputs are well-formed.
-        let mut input_futures = vec![];
+        // Step 1. Check the inputs are well-formed. Store the input futures.
+        let mut input_futures = Vec::new();
         for input in finalize.inputs() {
             // Check the input register type.
-            let register = input.register().clone();
+            let register = input.register();
             let finalize_type = input.finalize_type();
-            finalize_types.check_input(stack, &register, finalize_type)?;
+            finalize_types.check_input(stack, register, finalize_type)?;
 
             // If the input is a future, add it to the list of input futures.
             if let FinalizeType::Future(locator) = finalize_type {
@@ -52,17 +52,17 @@ impl<N: Network> FinalizeTypes<N> {
             }
         }
 
-        // Step 2. Check the commands are well-formed.
-        let mut consumed_futures = vec![];
+        // Step 2. Check the commands are well-formed. Store the futures consumed by the `await` commands.
+        let mut consumed_futures = Vec::new();
         for command in finalize.commands() {
             // Check the command opcode, operands, and destinations.
             finalize_types.check_command(stack, finalize, command)?;
 
             // If the command is an `await`, add the future to the list of consumed futures.
             if let Command::Await(await_) = command {
-                let register = await_.register().clone();
+                let register = await_.register();
                 // Note that `check_command` ensures that the register is a future. This is an additional check.
-                let locator = match finalize_types.get_type(stack, &register)? {
+                let locator = match finalize_types.get_type(stack, register)? {
                     FinalizeType::Future(locator) => locator,
                     FinalizeType::Plaintext(..) => bail!("Expected a future"),
                 };
