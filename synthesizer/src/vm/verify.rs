@@ -138,7 +138,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 let (cost, _) = deployment_cost(deployment)?;
                 // Ensure the fee is sufficient to cover the cost.
                 if *fee.base_amount()? < cost {
-                    bail!("Transaction '{id}' has an insufficient fee (deployment) - requires {cost} microcredits")
+                    bail!("Transaction '{id}' has an insufficient base fee (deployment) - requires {cost} microcredits")
                 }
                 // Verify the fee.
                 self.check_fee_internal(fee, deployment_id)?;
@@ -150,20 +150,29 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 let Ok(execution_id) = execution.to_execution_id() else {
                     bail!("Failed to compute the Merkle root for execution transaction '{id}'")
                 };
+                // If the transaction contains only 1 transition, and the transition is a split, then the fee can be skipped.
+                let is_fee_required = !(execution.len() == 1 && transaction.contains_split());
                 // Verify the fee.
                 if let Some(fee) = fee {
-                    // Compute the execution cost.
-                    let (cost, _) = execution_cost(self, execution)?;
-                    // Ensure the fee is sufficient to cover the cost.
-                    if *fee.base_amount()? < cost {
-                        bail!("Transaction '{id}' has an insufficient fee (execution) - requires {cost} microcredits")
+                    // If the fee is required, then check that the base fee amount is satisfied.
+                    if is_fee_required {
+                        // Compute the execution cost.
+                        let (cost, _) = execution_cost(self, execution)?;
+                        // Ensure the fee is sufficient to cover the cost.
+                        if *fee.base_amount()? < cost {
+                            bail!(
+                                "Transaction '{id}' has an insufficient base fee (execution) - requires {cost} microcredits"
+                            )
+                        }
+                    } else {
+                        // Ensure the base fee amount is zero.
+                        ensure!(*fee.base_amount()? == 0, "Transaction '{id}' has a non-zero base fee (execution)");
                     }
                     // Verify the fee.
                     self.check_fee_internal(fee, execution_id)?;
                 } else {
-                    // If the transaction contains only 1 transition, and the transition is a split, then the fee can be skipped.
-                    let can_skip_fee = execution.len() == 1 && transaction.contains_split();
-                    ensure!(can_skip_fee, "Transaction '{id}' is missing a fee (execution)");
+                    // Ensure the fee can be safely skipped.
+                    ensure!(!is_fee_required, "Transaction '{id}' is missing a fee (execution)");
                 }
             }
             // Note: This transaction type does not need to check the fee amount, because:
