@@ -155,12 +155,13 @@ impl<N: Network> Package<N> {
         // Prepare the imports directory.
         let imports_directory = self.imports_directory();
 
+        // Initialize the 'credits.aleo' program ID.
+        let credits_program_id = ProgramID::<N>::from_str("credits.aleo")?;
+
         // Add all import programs (in order) to the process.
         self.program().imports().keys().try_for_each(|program_id| {
             // Don't add `credits.aleo` as the process is already loaded with it.
-            if !(program_id.is_aleo()
-                && program_id.name() == &Identifier::from_str("credits").expect("Failed to parse credits"))
-            {
+            if program_id != &credits_program_id {
                 // Open the Aleo program file.
                 let import_program_file = AleoFile::open(&imports_directory, program_id, false)?;
                 // Add the import program.
