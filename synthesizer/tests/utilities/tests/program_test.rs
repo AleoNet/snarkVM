@@ -43,6 +43,8 @@ pub struct ProgramTest {
     rewrite: bool,
     /// The seed for the RNG.
     randomness: Option<u64>,
+    /// Additional keys for the test.
+    keys: Vec<PrivateKey<CurrentNetwork>>,
 }
 
 impl ProgramTest {
@@ -59,6 +61,11 @@ impl ProgramTest {
     /// Returns the optional seed for the RNG.
     pub fn randomness(&self) -> Option<u64> {
         self.randomness
+    }
+
+    /// Returns the additional keys for the test.
+    pub fn keys(&self) -> &[PrivateKey<CurrentNetwork>] {
+        &self.keys
     }
 }
 
@@ -79,11 +86,26 @@ impl ExpectedTest for ProgramTest {
         let comment = &source[first_comment_start + 2..first_comment_start + 2 + end_first_comment];
 
         // Parse the comment into the test configuration.
-        println!("comment: {}", comment);
         let test_config = serde_yaml::from_str::<Mapping>(comment).expect("invalid test configuration");
 
         // If the `randomness` field is present in the config, parse it as a `u64`.
         let randomness = test_config.get("randomness").map(|value| value.as_u64().expect("`randomness` must be a u64"));
+
+        // If the `keys` field is present in the config, parse it as a sequence of `PrivateKey`s.
+        let keys = match test_config.get("keys") {
+            None => Vec::new(),
+            Some(value) => {
+                value
+                    .as_sequence()
+                    .expect("`keys` must be a sequence")
+                    .iter()
+                    .map(|value| {
+                        PrivateKey::<CurrentNetwork>::from_str(value.as_str().expect("private key must be a string"))
+                            .expect("invalid private key")
+                    })
+                    .collect::<Vec<_>>()
+            }
+        };
 
         // Extract the test cases from the config.
         let cases = test_config
@@ -110,7 +132,7 @@ impl ExpectedTest for ProgramTest {
             }
         };
 
-        Self { programs, cases, expected, path, rewrite, randomness }
+        Self { programs, cases, expected, path, rewrite, randomness, keys }
     }
 
     fn check(&self, output: &Self::Output) -> Result<()> {
