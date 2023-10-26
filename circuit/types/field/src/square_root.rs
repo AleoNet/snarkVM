@@ -63,6 +63,69 @@ impl<E: Environment> Field<E> {
     }
 }
 
+impl<E: Environment> Field<E> {
+    /// Returns both square roots of `self` (hence the plural 'roots' in the name of the function),
+    /// along with a boolean error flag, which is set iff `self` is not a square.
+    ///
+    /// In the console computation:
+    /// if `self` is a non-zero square,
+    /// the first field result is the positive root (i.e. closer to 0)
+    /// and the second field result is the negative root (i.e. closer to the prime);
+    /// if `self` is 0, both field results are 0;
+    /// if `self` is not a square, both field results are 0, but immaterial.
+    ///
+    /// The 'nondeterministic' part of the function name refers to the synthesized circuit,
+    /// whose represented computation, unlike the console computation just described,
+    /// returns the two roots (if `self` is a non-zero square) in no specified order.
+    /// This nondeterminism saves constraints, but generally this circuit should be only used
+    /// as part of larger circuits for which the nondeterminism in the order of the two roots does not matter,
+    /// and where the larger circuits represent deterministic computations despite this internal nondeterminism.
+    pub fn square_roots_flagged_nondeterministic(&self) -> (Boolean<E>, Self, Self) {
+        // Obtain (p-1)/2, as a constant field element.
+        let modulus_minus_one_div_two = match E::BaseField::from_bigint(E::BaseField::modulus_minus_one_div_two()) {
+            Some(modulus_minus_one_div_two) => Field::constant(console::Field::new(modulus_minus_one_div_two)),
+            None => E::halt("Failed to initialize (modulus - 1) / 2"),
+        };
+
+        // Use Euler's criterion: self is a non-zero square iff self^((p-1)/2) is 1.
+        let euler = self.pow(modulus_minus_one_div_two);
+        let is_nonzero_square = euler.is_equal(&Field::one());
+
+        // Calculate the witness for the first square result.
+        // The called function square_root returns the square root closer to 0.
+        let root_witness = match self.eject_value().square_root() {
+            Ok(root) => root,
+            Err(_) => E::halt("Failed to calculate square root witness"),
+        };
+
+        // In order to avoid actually calculating the square root in the circuit,
+        // we would like to generate a constraint saying that squaring the root yields self.
+        // But this constraint would have no solutions if self is not a square.
+        // So we introduce a new variable that is either self (if square) or 0 (otherwise):
+        // either way, this new variable is a square.
+        let square = Self::ternary(&is_nonzero_square, self, &Field::zero());
+
+        // We introduce a variable for the first root we return,
+        // and constrain it to yield, when squared, the square introduced just above.
+        // Thus, if self is a square this is a square root of self; otherwise it is 0, because only 0 yields 0 when squared.
+        // The variable is actually a constant if self is constant, otherwise it is private (even if self is public).
+        let mode = if self.eject_mode() == Mode::Constant { Mode::Constant } else { Mode::Private };
+        let first_root = Field::new(mode, root_witness);
+        E::enforce(|| (&first_root, &first_root, &square));
+
+        // The second root returned by this function is the negation of the first one.
+        // So if self is a non-zero square, this is always different from the first root,
+        // but in the circuit it can be either positive (and the other negative) or vice versa.
+        let second_root = first_root.clone().neg();
+
+        // The error flag is set iff self is a non-square, i.e. it is neither zero nor a non-zero square.
+        let is_nonzero = self.is_not_equal(&Field::zero());
+        let error_flag = is_nonzero.bitand(is_nonzero_square.not());
+
+        (error_flag, first_root, second_root)
+    }
+}
+
 impl<E: Environment> Metrics<dyn SquareRoot<Output = Field<E>>> for Field<E> {
     type Case = Mode;
 
