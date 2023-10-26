@@ -117,11 +117,6 @@ pub trait TransmissionStorage<N: Network>: 'static + Clone + Send + Sync {
             // Insert the transmission for the round.
             self.transmission_map().remove_key(&transmission_id, &round)?;
 
-            // Remove the map if there are no more entries.
-            if self.transmission_map().get_map_speculative(&transmission_id)?.is_empty() {
-                self.transmission_map().remove_map(&transmission_id)?;
-            }
-
             Ok(())
         })
     }
