@@ -91,11 +91,12 @@ pub fn bad_degree_bound_test<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>>() -
 
             polynomials.push(LabeledPolynomial::new(label, poly, Some(degree_bound), Some(hiding_bound)))
         }
+        let degree_bounds = (!degree_bounds.is_empty()).then_some(degree_bounds);
 
         let degree_info = DegreeInfo {
             max_degree,
             max_fft_size: supported_degree,
-            degree_bounds: Some(degree_bounds),
+            degree_bounds,
             hiding_bound,
             lagrange_sizes: None,
         };
@@ -168,12 +169,13 @@ pub fn lagrange_test_template<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>>()
             polynomials.push(LabeledPolynomial::new(label.clone(), poly, degree_bound, Some(hiding_bound)));
             lagrange_polynomials.push(LabeledPolynomialWithBasis::new_lagrange_basis(label, evals, Some(hiding_bound)))
         }
+        let degree_bounds = (!degree_bounds.is_empty()).then_some(degree_bounds);
         let supported_hiding_bound = polynomials.iter().map(|p| p.hiding_bound().unwrap_or(0)).max().unwrap_or(0);
         assert_eq!(supported_hiding_bound, 1);
         let degree_info = DegreeInfo {
             max_degree,
             max_fft_size: supported_degree,
-            degree_bounds: Some(degree_bounds),
+            degree_bounds,
             hiding_bound,
             lagrange_sizes: Some(supported_lagrange_sizes),
         };
@@ -283,12 +285,13 @@ where
             }
             polynomials.push(LabeledPolynomial::new(label, poly, degree_bound, Some(hiding_bound)))
         }
+        let degree_bounds = (!degree_bounds.is_empty()).then_some(degree_bounds);
         let supported_hiding_bound = polynomials.iter().map(|p| p.hiding_bound().unwrap_or(0)).max().unwrap_or(0);
         assert_eq!(supported_hiding_bound, 1);
         let degree_info = DegreeInfo {
             max_degree,
             max_fft_size: supported_degree,
-            degree_bounds: Some(degree_bounds),
+            degree_bounds,
             hiding_bound,
             lagrange_sizes: None,
         };
