@@ -126,11 +126,6 @@ pub trait TransmissionStorage<N: Network>: 'static + Clone + Send + Sync {
         self.transmission_map().contains_key_confirmed(&round, transmission_id)
     }
 
-    /// Returns `true` if the given `round` and `transmission ID` exist.
-    fn contains_transmission_speculative(&self, round: u64, transmission_id: &TransmissionID<N>) -> Result<bool> {
-        self.transmission_map().contains_key_speculative(&round, transmission_id)
-    }
-
     /// Returns the confirmed transmission for the given `round` and `transmission ID`.
     fn get_transmission_confirmed(
         &self,
@@ -143,28 +138,10 @@ pub trait TransmissionStorage<N: Network>: 'static + Clone + Send + Sync {
         }
     }
 
-    /// Returns the speculative transmission for the given `round` and `transmission ID`.
-    fn get_transmission_speculative(
-        &self,
-        round: u64,
-        transmission_id: &TransmissionID<N>,
-    ) -> Result<Option<Transmission<N>>> {
-        match self.transmission_map().get_value_speculative(&round, transmission_id)? {
-            Some(transmission) => Ok(Some(cow_to_cloned!(transmission))),
-            None => Ok(None),
-        }
-    }
-
     /// Returns the confirmed transmission entries for the given `round`.
     fn get_transmissions_confirmed(&self, round: u64) -> Result<Vec<(TransmissionID<N>, Transmission<N>)>> {
         // Retrieve the transmissions for the mapping.
         self.transmission_map().get_map_confirmed(&round)
-    }
-
-    /// Returns the speculative transmission entries for the given `round`.
-    fn get_transmissions_speculative(&self, round: u64) -> Result<Vec<(TransmissionID<N>, Transmission<N>)>> {
-        // Retrieve the transmissions for the mapping.
-        self.transmission_map().get_map_speculative(&round)
     }
 }
 
@@ -270,9 +247,7 @@ impl<N: Network, T: TransmissionStorage<N>> TransmissionStore<N, T> {
     pub(crate) fn remove_transmissions_for_round(&self, round: u64) -> Result<()> {
         self.storage.remove_transmissions_for_round(round)
     }
-}
 
-impl<N: Network, T: TransmissionStorage<N>> TransmissionStore<N, T> {
     /// Returns `true` if the given `round` and `transmission ID` exist.
     pub(crate) fn contains_transmission_confirmed(
         &self,
@@ -282,17 +257,6 @@ impl<N: Network, T: TransmissionStorage<N>> TransmissionStore<N, T> {
         self.storage.contains_transmission_confirmed(round, transmission_id)
     }
 
-    /// Returns `true` if the given `round` and `transmission ID` exist.
-    pub(crate) fn contains_transmission_speculative(
-        &self,
-        round: u64,
-        transmission_id: &TransmissionID<N>,
-    ) -> Result<bool> {
-        self.storage.contains_transmission_speculative(round, transmission_id)
-    }
-}
-
-impl<N: Network, T: TransmissionStorage<N>> TransmissionStore<N, T> {
     /// Returns the confirmed transmission for the given `round` and `transmission ID`.
     pub(crate) fn get_transmission_confirmed(
         &self,
@@ -302,26 +266,9 @@ impl<N: Network, T: TransmissionStorage<N>> TransmissionStore<N, T> {
         self.storage.get_transmission_confirmed(round, transmission_id)
     }
 
-    /// Returns the speculative transmission for the given `round` and `transmission ID`.
-    pub(crate) fn get_transmission_speculative(
-        &self,
-        round: u64,
-        transmission_id: &TransmissionID<N>,
-    ) -> Result<Option<Transmission<N>>> {
-        self.storage.get_transmission_speculative(round, transmission_id)
-    }
-
     /// Returns the confirmed transmission entries for the given `round`.
     pub(crate) fn get_transmissions_confirmed(&self, round: u64) -> Result<Vec<(TransmissionID<N>, Transmission<N>)>> {
         self.storage.get_transmissions_confirmed(round)
-    }
-
-    /// Returns the speculative transmission entries for the given `round`.
-    pub(crate) fn get_transmissions_speculative(
-        &self,
-        round: u64,
-    ) -> Result<Vec<(TransmissionID<N>, Transmission<N>)>> {
-        self.storage.get_transmissions_speculative(round)
     }
 }
 

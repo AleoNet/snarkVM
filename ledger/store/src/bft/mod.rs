@@ -76,70 +76,6 @@ pub trait BFTStorage<N: Network>: 'static + Clone + Send + Sync {
     fn finish_atomic(&self) -> Result<()> {
         self.transmission_store().finish_atomic()
     }
-
-    /// Stores the given `(transmission ID, transmission)` pair into storage.
-    /// If the `transmission ID` already exists, the method returns an error.
-    fn insert_transmission(
-        &self,
-        round: u64,
-        transmission_id: TransmissionID<N>,
-        transmission: Transmission<N>,
-    ) -> Result<()> {
-        self.transmission_store().insert_transmission(round, transmission_id, transmission)
-    }
-
-    /// Stores the given `(transmission ID, transmission)` pairs into storage.
-    fn insert_transmissions(&self, round: u64, transmissions: Vec<(TransmissionID<N>, Transmission<N>)>) -> Result<()> {
-        self.transmission_store().insert_transmissions(round, transmissions)
-    }
-
-    /// Removes the transmission for the given `round` and `transmission ID` from storage.
-    fn remove_transmission(&self, round: u64, transmission_id: TransmissionID<N>) -> Result<()> {
-        self.transmission_store().remove_transmission(round, transmission_id)
-    }
-
-    /// Removes the transmissions for the given `round` from storage.
-    fn remove_transmissions_for_round(&self, round: u64) -> Result<()> {
-        self.transmission_store().remove_transmissions_for_round(round)
-    }
-
-    /// Returns `true` if the given `round` and `transmission ID` exist.
-    fn contains_transmission_confirmed(&self, round: u64, transmission_id: &TransmissionID<N>) -> Result<bool> {
-        self.transmission_store().contains_transmission_confirmed(round, transmission_id)
-    }
-
-    /// Returns `true` if the given `round` and `transmission ID` exist.
-    fn contains_transmission_speculative(&self, round: u64, transmission_id: &TransmissionID<N>) -> Result<bool> {
-        self.transmission_store().contains_transmission_speculative(round, transmission_id)
-    }
-
-    /// Returns the confirmed transmission for the given `round` and `transmission ID`.
-    fn get_transmission_confirmed(
-        &self,
-        round: u64,
-        transmission_id: &TransmissionID<N>,
-    ) -> Result<Option<Transmission<N>>> {
-        self.transmission_store().get_transmission_confirmed(round, transmission_id)
-    }
-
-    /// Returns the speculative transmission for the given `round` and `transmission ID`.
-    fn get_transmission_speculative(
-        &self,
-        round: u64,
-        transmission_id: &TransmissionID<N>,
-    ) -> Result<Option<Transmission<N>>> {
-        self.transmission_store().get_transmission_speculative(round, transmission_id)
-    }
-
-    /// Returns the confirmed transmission entries for the given `round`.
-    fn get_transmissions_confirmed(&self, round: u64) -> Result<Vec<(TransmissionID<N>, Transmission<N>)>> {
-        self.transmission_store().get_transmissions_confirmed(round)
-    }
-
-    /// Returns the speculative transmission entries for the given `round`.
-    fn get_transmissions_speculative(&self, round: u64) -> Result<Vec<(TransmissionID<N>, Transmission<N>)>> {
-        self.transmission_store().get_transmissions_speculative(round)
-    }
 }
 
 /// The BFT store.
@@ -221,7 +157,7 @@ impl<N: Network, T: BFTStorage<N>> BFTStore<N, T> {
         transmission_id: TransmissionID<N>,
         transmission: Transmission<N>,
     ) -> Result<()> {
-        self.storage.insert_transmission(round, transmission_id, transmission)
+        self.storage.transmission_store().insert_transmission(round, transmission_id, transmission)
     }
 
     /// Stores the given `(round, transmissions)` pair into storage.
@@ -230,59 +166,36 @@ impl<N: Network, T: BFTStorage<N>> BFTStore<N, T> {
         round: u64,
         transmissions: Vec<(TransmissionID<N>, Transmission<N>)>,
     ) -> Result<()> {
-        self.storage.insert_transmissions(round, transmissions)
+        self.storage.transmission_store().insert_transmissions(round, transmissions)
     }
 
     /// Removes the transmission for the given `round` and `transmission ID` from storage.
     pub fn remove_transmission(&self, round: u64, transmission_id: TransmissionID<N>) -> Result<()> {
-        self.storage.remove_transmission(round, transmission_id)
+        self.storage.transmission_store().remove_transmission(round, transmission_id)
     }
 
     /// Removes the transmissions for the given `round` from storage.
     pub fn remove_transmissions_for_round(&self, round: u64) -> Result<()> {
-        self.storage.remove_transmissions_for_round(round)
+        self.storage.transmission_store().remove_transmissions_for_round(round)
     }
-}
 
-impl<N: Network, T: BFTStorage<N>> BFTStore<N, T> {
     /// Returns `true` if the given `round` and `transmission ID` exist.
     pub fn contains_transmission_confirmed(&self, round: u64, transmission_id: &TransmissionID<N>) -> Result<bool> {
-        self.storage.contains_transmission_confirmed(round, transmission_id)
+        self.storage.transmission_store().contains_transmission_confirmed(round, transmission_id)
     }
 
-    /// Returns `true` if the given `round` and `transmission ID` exist.
-    pub fn contains_transmission_speculative(&self, round: u64, transmission_id: &TransmissionID<N>) -> Result<bool> {
-        self.storage.contains_transmission_speculative(round, transmission_id)
-    }
-}
-
-impl<N: Network, T: BFTStorage<N>> BFTStore<N, T> {
     /// Returns the confirmed transmission for the given `round` and `transmission ID`.
     pub fn get_transmission_confirmed(
         &self,
         round: u64,
         transmission_id: &TransmissionID<N>,
     ) -> Result<Option<Transmission<N>>> {
-        self.storage.get_transmission_confirmed(round, transmission_id)
-    }
-
-    /// Returns the speculative transmission for the given `round` and `transmission ID`.
-    pub fn get_transmission_speculative(
-        &self,
-        round: u64,
-        transmission_id: &TransmissionID<N>,
-    ) -> Result<Option<Transmission<N>>> {
-        self.storage.get_transmission_speculative(round, transmission_id)
+        self.storage.transmission_store().get_transmission_confirmed(round, transmission_id)
     }
 
     /// Returns the confirmed transmission entries for the given `round`.
     pub fn get_transmissions_confirmed(&self, round: u64) -> Result<Vec<(TransmissionID<N>, Transmission<N>)>> {
-        self.storage.get_transmissions_confirmed(round)
-    }
-
-    /// Returns the speculative transmission entries for the given `round`.
-    pub fn get_transmissions_speculative(&self, round: u64) -> Result<Vec<(TransmissionID<N>, Transmission<N>)>> {
-        self.storage.get_transmissions_speculative(round)
+        self.storage.transmission_store().get_transmissions_confirmed(round)
     }
 }
 
