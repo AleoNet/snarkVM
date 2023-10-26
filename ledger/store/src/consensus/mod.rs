@@ -61,6 +61,8 @@ pub trait ConsensusStorage<N: Network>: 'static + Clone + Send + Sync {
     }
     /// Returns the optional development ID.
     fn dev(&self) -> Option<u16> {
+        debug_assert!(self.bft_store().dev() == self.finalize_store().dev());
+        debug_assert!(self.finalize_store().dev() == self.block_store().dev());
         debug_assert!(self.block_store().dev() == self.transaction_store().dev());
         debug_assert!(self.transaction_store().dev() == self.transition_store().dev());
         self.transition_store().dev()
