@@ -211,19 +211,27 @@ mod tests {
 
     use serial_test::serial;
 
+    /// Samples a new BFT store.
+    macro_rules! sample_bft_store {
+        () => {{
+            #[cfg(not(feature = "rocks"))]
+            let store = BFTStore::from(crate::helpers::memory::BFTMemory::open(None).unwrap()).unwrap();
+            #[cfg(feature = "rocks")]
+            let store = {
+                let temp_dir = tempfile::tempdir().expect("Failed to open temporary directory").into_path();
+                BFTStore::from(crate::helpers::rocksdb::BFTDB::open_testing(temp_dir, None).unwrap()).unwrap()
+            };
+            store
+        }};
+    }
+
     #[test]
     #[serial]
     fn test_insert_get_remove_transmission() {
         let rng = &mut TestRng::default();
 
         // Initialize a new BFT store.
-        #[cfg(not(feature = "rocks"))]
-        let store = BFTStore::from(crate::helpers::memory::BFTMemory::open(None).unwrap()).unwrap();
-        #[cfg(feature = "rocks")]
-        let store = {
-            let temp_dir = tempfile::tempdir().expect("Failed to open temporary directory").into_path();
-            BFTStore::from(crate::helpers::rocksdb::BFTDB::open_testing(temp_dir, None).unwrap()).unwrap()
-        };
+        let store = sample_bft_store!();
 
         // Sample the transmissions.
         let transmissions = sample_transmissions(rng);
@@ -281,13 +289,7 @@ mod tests {
         let rng = &mut TestRng::default();
 
         // Initialize a new BFT store.
-        #[cfg(not(feature = "rocks"))]
-        let store = BFTStore::from(crate::helpers::memory::BFTMemory::open(None).unwrap()).unwrap();
-        #[cfg(feature = "rocks")]
-        let store = {
-            let temp_dir = tempfile::tempdir().expect("Failed to open temporary directory").into_path();
-            BFTStore::from(crate::helpers::rocksdb::BFTDB::open_testing(temp_dir, None).unwrap()).unwrap()
-        };
+        let store = sample_bft_store!();
 
         // Sample the transmissions.
         let transmissions = sample_transmissions(rng);

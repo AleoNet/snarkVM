@@ -294,19 +294,28 @@ mod tests {
     use ledger_narwhal_transmission::test_helpers::sample_transmissions;
     use ledger_narwhal_transmission_id::test_helpers::sample_transmission_ids;
 
+    /// Samples a new transmission store.
+    macro_rules! sample_transmission_store {
+        () => {{
+            #[cfg(not(feature = "rocks"))]
+            let store =
+                TransmissionStore::from(crate::helpers::memory::TransmissionMemory::open(None).unwrap()).unwrap();
+            #[cfg(feature = "rocks")]
+            let store = {
+                let temp_dir = tempfile::tempdir().expect("Failed to open temporary directory").into_path();
+                TransmissionStore::from(crate::helpers::rocksdb::TransmissionDB::open_testing(temp_dir, None).unwrap())
+                    .unwrap()
+            };
+            store
+        }};
+    }
+
     #[test]
     fn test_insert_get_remove_transmission() {
         let rng = &mut TestRng::default();
 
         // Initialize a new transmission store.
-        #[cfg(not(feature = "rocks"))]
-        let store = TransmissionStore::from(crate::helpers::memory::TransmissionMemory::open(None).unwrap()).unwrap();
-        #[cfg(feature = "rocks")]
-        let store = {
-            let temp_dir = tempfile::tempdir().expect("Failed to open temporary directory").into_path();
-            TransmissionStore::from(crate::helpers::rocksdb::TransmissionDB::open_testing(temp_dir, None).unwrap())
-                .unwrap()
-        };
+        let store = sample_transmission_store!();
 
         // Sample the transmissions.
         let transmissions = sample_transmissions(rng);
@@ -363,14 +372,7 @@ mod tests {
         let rng = &mut TestRng::default();
 
         // Initialize a new transmission store.
-        #[cfg(not(feature = "rocks"))]
-        let store = TransmissionStore::from(crate::helpers::memory::TransmissionMemory::open(None).unwrap()).unwrap();
-        #[cfg(feature = "rocks")]
-        let store = {
-            let temp_dir = tempfile::tempdir().expect("Failed to open temporary directory").into_path();
-            TransmissionStore::from(crate::helpers::rocksdb::TransmissionDB::open_testing(temp_dir, None).unwrap())
-                .unwrap()
-        };
+        let store = sample_transmission_store!();
 
         // Sample the transmissions.
         let transmissions = sample_transmissions(rng);
