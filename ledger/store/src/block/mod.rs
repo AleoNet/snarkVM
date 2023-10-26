@@ -514,8 +514,8 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
             None => Vec::new(),
         };
 
-        // Retrieve the rejected transaction IDs, and deployment or execution.
-        let rejected_transaction_ids_and_deployment_or_execution = match self.get_block_transactions(block_hash)? {
+        // Retrieve the rejected transaction IDs, and the deployment or execution ID.
+        let rejected_transaction_ids_and_deployment_or_execution_id = match self.get_block_transactions(block_hash)? {
             Some(transactions) => transactions
                 .iter()
                 .filter(|tx| tx.is_rejected())
@@ -579,7 +579,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
             }
 
             // Remove the rejected state.
-            for (rejected_transaction_id, rejected_id) in rejected_transaction_ids_and_deployment_or_execution {
+            for (rejected_transaction_id, rejected_id) in rejected_transaction_ids_and_deployment_or_execution_id {
                 // Remove the rejected transaction ID.
                 self.rejected_or_aborted_transaction_id_map().remove(&rejected_transaction_id)?;
                 // Remove the rejected deployment or execution.
