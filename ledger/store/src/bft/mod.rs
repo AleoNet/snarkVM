@@ -99,8 +99,8 @@ pub trait BFTStorage<N: Network>: 'static + Clone + Send + Sync {
     }
 
     /// Removes the transmissions for the given `round` from storage.
-    fn remove_transmissions(&self, round: u64) -> Result<()> {
-        self.transmission_store().remove_transmissions(round)
+    fn remove_transmissions_for_round(&self, round: u64) -> Result<()> {
+        self.transmission_store().remove_transmissions_for_round(round)
     }
 
     /// Returns `true` if the given `round` and `transmission ID` exist.
@@ -239,8 +239,8 @@ impl<N: Network, T: BFTStorage<N>> BFTStore<N, T> {
     }
 
     /// Removes the transmissions for the given `round` from storage.
-    pub fn remove_transmissions(&self, round: u64) -> Result<()> {
-        self.storage.remove_transmissions(round)
+    pub fn remove_transmissions_for_round(&self, round: u64) -> Result<()> {
+        self.storage.remove_transmissions_for_round(round)
     }
 }
 
@@ -358,7 +358,7 @@ mod tests {
         );
 
         // Remove the transmissions
-        store.remove_transmissions(round).unwrap();
+        store.remove_transmissions_for_round(round).unwrap();
 
         // Ensure the transmissions are not found.
         let candidate = store.get_transmissions_confirmed(round).unwrap();

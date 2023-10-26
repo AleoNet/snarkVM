@@ -113,7 +113,7 @@ pub trait TransmissionStorage<N: Network>: 'static + Clone + Send + Sync {
     }
 
     /// Removes the transmissions for the given `round` from storage.
-    fn remove_transmissions(&self, round: u64) -> Result<()> {
+    fn remove_transmissions_for_round(&self, round: u64) -> Result<()> {
         atomic_batch_scope!(self, {
             // Remove the round transmissions.
             self.transmission_map().remove_map(&round)?;
@@ -267,8 +267,8 @@ impl<N: Network, T: TransmissionStorage<N>> TransmissionStore<N, T> {
     }
 
     /// Removes the transmissions for the given `round` from storage.
-    pub(crate) fn remove_transmissions(&self, round: u64) -> Result<()> {
-        self.storage.remove_transmissions(round)
+    pub(crate) fn remove_transmissions_for_round(&self, round: u64) -> Result<()> {
+        self.storage.remove_transmissions_for_round(round)
     }
 }
 
@@ -397,7 +397,7 @@ mod tests {
         );
 
         // Remove the transmissions
-        transmission_store.remove_transmissions(round).unwrap();
+        transmission_store.remove_transmissions_for_round(round).unwrap();
 
         // Ensure the transmissions are not found.
         let candidate = transmission_store.get_transmissions_confirmed(round).unwrap();
