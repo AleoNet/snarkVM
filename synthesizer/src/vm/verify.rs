@@ -44,13 +44,6 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             bail!("Transaction '{}' already exists in the ledger", transaction.id())
         }
 
-        // Ensure the rejected ID is unique.
-        if let Some(rejected_id) = rejected_id {
-            if self.block_store().contains_rejected_deployment_or_execution_id(&rejected_id)? {
-                bail!("Transaction '{}' already exists in the ledger", rejected_id)
-            }
-        }
-
         // Compute the Merkle root of the transaction.
         match transaction.to_root() {
             // Ensure the transaction ID is correct.
