@@ -211,8 +211,8 @@ fn check_contains_map_by_removing_key_values(map: &impl for<'a> NestedMap<'a, us
         // Finish the current atomic write batch.
         map.finish_atomic().unwrap();
 
-        assert!(map.contains_map_confirmed(&MAP).unwrap());
-        assert!(map.contains_map_speculative(&MAP).unwrap());
+        assert!(!map.contains_map_confirmed(&MAP).unwrap());
+        assert!(!map.contains_map_speculative(&MAP).unwrap());
     }
 
     ensure_map_is_empty(map);
