@@ -209,8 +209,6 @@ mod tests {
     use ledger_narwhal_transmission::test_helpers::sample_transmissions;
     use ledger_narwhal_transmission_id::test_helpers::sample_transmission_ids;
 
-    use serial_test::serial;
-
     /// Samples a new BFT store.
     macro_rules! sample_bft_store {
         () => {{
@@ -226,7 +224,6 @@ mod tests {
     }
 
     #[test]
-    #[serial]
     fn test_insert_get_remove_transmission() {
         let rng = &mut TestRng::default();
 
@@ -284,7 +281,6 @@ mod tests {
     }
 
     #[test]
-    #[serial]
     fn test_contains_transmission() {
         let rng = &mut TestRng::default();
 

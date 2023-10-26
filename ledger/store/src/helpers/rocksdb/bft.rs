@@ -47,8 +47,11 @@ impl<N: Network> BFTStorage<N> for BFTDB<N> {
 
     /// Initializes the test-variant of the storage.
     #[cfg(any(test, feature = "test"))]
-    fn open_testing(_: std::path::PathBuf, dev: Option<u16>) -> Result<Self> {
-        Self::open(dev)
+    fn open_testing(temp_dir: std::path::PathBuf, dev: Option<u16>) -> Result<Self> {
+        Ok(Self {
+            transmission_store: TransmissionStore::<N, TransmissionDB<N>>::open_testing(temp_dir, dev)?,
+            dev,
+        })
     }
 
     /// Returns the transmission store.
