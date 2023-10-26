@@ -1238,6 +1238,12 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
         self.storage.reverse_id_map().contains_key_confirmed(block_hash)
     }
 
+    /// Returns `true` if the given transaction ID exists.
+    pub fn contains_transaction_id(&self, transaction_id: &N::TransactionID) -> Result<bool> {
+        Ok(self.transaction_store().contains_transaction_id(transaction_id)?
+            || self.contains_rejected_or_aborted_transaction_id(transaction_id)?)
+    }
+
     /// Returns `true` if the given rejected or aborted transaction ID exists.
     pub fn contains_rejected_or_aborted_transaction_id(&self, transaction_id: &N::TransactionID) -> Result<bool> {
         self.storage.rejected_or_aborted_transaction_id_map().contains_key_confirmed(transaction_id)
