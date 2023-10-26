@@ -605,7 +605,7 @@ jobs:
       - run_serial:
           flags: --features=rocks
           workspace_member: ledger/store
-          cache_key: snarkvm-ledger-store-cache
+          cache_key: snarkvm-ledger-store-with-rocksdb-cache
 
   ledger-test-helpers:
     docker:
