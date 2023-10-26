@@ -681,6 +681,14 @@ mod tests {
     }
 
     #[test]
+    fn test_contains_and_remove_map() {
+        // Initialize a map.
+        let map: NestedMemoryMap<usize, usize, String> = Default::default();
+
+        crate::helpers::test_helpers::nested_map::check_contains_and_remove_map(map);
+    }
+
+    #[test]
     fn test_contains_key() {
         // Initialize a map.
         let map: NestedMemoryMap<usize, usize, String> = Default::default();

@@ -1027,6 +1027,18 @@ mod tests {
     #[test]
     #[serial]
     #[traced_test]
+    fn test_contains_and_remove_map() {
+        // Initialize a map.
+        let map: NestedDataMap<usize, usize, String> =
+            RocksDB::open_nested_map_testing(temp_dir(), None, MapID::Test(TestMap::Test))
+                .expect("Failed to open data map");
+
+        crate::helpers::test_helpers::nested_map::check_contains_and_remove_map(map);
+    }
+
+    #[test]
+    #[serial]
+    #[traced_test]
     fn test_contains_key() {
         // Initialize a map.
         let map: NestedDataMap<usize, usize, String> =
