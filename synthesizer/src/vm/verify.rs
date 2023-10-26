@@ -95,7 +95,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             Transaction::Deploy(id, owner, deployment, _) => {
                 // Compute the deployment ID.
                 let Ok(deployment_id) = deployment.to_deployment_id() else {
-                    bail!("Failed to compute the Merkle root for deployment transaction '{id}'")
+                    bail!("Failed to compute the Merkle root for a deployment transaction '{id}'")
                 };
                 // Verify the signature corresponds to the transaction ID.
                 ensure!(owner.verify(deployment_id), "Invalid owner signature for deployment transaction '{id}'");
@@ -110,7 +110,15 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 // Verify the deployment.
                 self.check_deployment_internal(deployment)?;
             }
-            Transaction::Execute(_, execution, _) => {
+            Transaction::Execute(id, execution, _) => {
+                // Compute the execution ID.
+                let Ok(execution_id) = execution.to_execution_id() else {
+                    bail!("Failed to compute the Merkle root for an execution transaction '{id}'")
+                };
+                // Ensure the execution was not previously rejected (replay attack prevention).
+                if self.block_store().contains_rejected_deployment_or_execution_id(&execution_id)? {
+                    bail!("Transaction '{id}' contains a previously rejected execution")
+                }
                 // Verify the execution.
                 self.check_execution_internal(execution)?;
             }
