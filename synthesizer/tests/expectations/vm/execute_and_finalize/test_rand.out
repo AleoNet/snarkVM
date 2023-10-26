@@ -4,44 +4,44 @@ outputs:
   execute:
     test_rand.aleo/rand_chacha_with_literals:
       outputs:
-      - '{"type":"future","id":"856859213363286889141859059264203066675648340843625883729021378909143418037field","value":"{\n  program_id: test_rand.aleo,\n  function_name: rand_chacha_with_literals,\n  arguments: [\n    0scalar,\n    0group,\n    0u8,\n    2i16,\n    4u32,\n    7i64,\n    8u128,\n    10field\n  ]\n}"}'
+      - '{"type":"future","id":"859791478012828215720348494076914719205244104520150752280307504054509554398field","value":"{\n  program_id: test_rand.aleo,\n  function_name: rand_chacha_with_literals,\n  arguments: [\n    0scalar,\n    0group,\n    0u8,\n    2i16,\n    4u32,\n    7i64,\n    8u128,\n    10field\n  ]\n}"}'
   speculate: the execution was accepted
   add_next_block: succeeded.
 - verified: true
   execute:
     test_rand.aleo/rand_chacha_with_struct:
       outputs:
-      - '{"type":"future","id":"2863690152286397600239869811553134445139434415556812678934084238826545926808field","value":"{\n  program_id: test_rand.aleo,\n  function_name: rand_chacha_with_struct,\n  arguments: [\n    {\n  first: 0field,\n  second: 0field,\n  third: 0field,\n  fourth: 0field,\n  fifth: 0field\n}\n  ]\n}"}'
+      - '{"type":"future","id":"1067916594854496467910772380664552622025523070198727493475463622599909707249field","value":"{\n  program_id: test_rand.aleo,\n  function_name: rand_chacha_with_struct,\n  arguments: [\n    {\n  first: 0field,\n  second: 0field,\n  third: 0field,\n  fourth: 0field,\n  fifth: 0field\n}\n  ]\n}"}'
   speculate: the execution was accepted
   add_next_block: succeeded.
 - verified: true
   execute:
     test_rand.aleo/rand_chacha_check:
       outputs:
-      - '{"type":"future","id":"5111075340000719619409954898038080805237607157543987731445343150082162501419field","value":"{\n  program_id: test_rand.aleo,\n  function_name: rand_chacha_check,\n  arguments: [\n    0field,\n    false\n  ]\n}"}'
-  speculate: the execution was rejected
+      - '{"type":"future","id":"3721325135151760660773959530505944451747681933722462808964783147996869797702field","value":"{\n  program_id: test_rand.aleo,\n  function_name: rand_chacha_check,\n  arguments: [\n    0field,\n    false\n  ]\n}"}'
+  speculate: the execution was accepted
   add_next_block: succeeded.
 - verified: true
   execute:
     test_rand.aleo/rand_chacha_check:
       outputs:
-      - '{"type":"future","id":"6632578043065250671900699630486713707508511783056688582055933257632278653469field","value":"{\n  program_id: test_rand.aleo,\n  function_name: rand_chacha_check,\n  arguments: [\n    1field,\n    true\n  ]\n}"}'
+      - '{"type":"future","id":"887371549615679800380522845098080464570119184210350810479392117984911457950field","value":"{\n  program_id: test_rand.aleo,\n  function_name: rand_chacha_check,\n  arguments: [\n    1field,\n    true\n  ]\n}"}'
   speculate: the execution was rejected
   add_next_block: succeeded.
 additional:
 - child_outputs:
-    credits.aleo/fee_private:
+    credits.aleo/fee_public:
       outputs:
-      - '{"type":"record","id":"4381229306463692442497149670614588062764798743790588146804215330229884792339field","checksum":"2138639167265992670566199833999883133869484105738196279078647847384925584310field","value":"record1qyqsq96nqu434vyta43jksy548fdck37rc7kc34494ndwd9xfg9l7zsfqyxx66trwfhkxun9v35hguerqqpqzqp47n5hcfmt2twwyz0wm37mh898yfhr6rw79z026vpnc4v6h5sap3wxhvupx7k4p2jhrwtx5zw6r5t3vuarmsq8n4c4p987z586n6yqzjd7p7w"}'
+      - '{"type":"future","id":"6314628133780265670801554258125814886017405269745792760682853845340140460175field","value":"{\n  program_id: credits.aleo,\n  function_name: fee_public,\n  arguments: [\n    aleo1uchf7kruskpp8thlnfeya9qeklcjss27j6rtu74zz7ch559neqystgslsp,\n    601806u64\n  ]\n}"}'
 - child_outputs:
-    credits.aleo/fee_private:
+    credits.aleo/fee_public:
       outputs:
-      - '{"type":"record","id":"6586316285692512365232256556210792622636286450707813931421762885414931353832field","checksum":"1586190359159798393415585130912439326237257065208437997708789530351085560464field","value":"record1qyqsq4tq08wj70zje3dth93xhcaac25nc7szhtt8egu4h42tln3nh0crqyxx66trwfhkxun9v35hguerqqpqzq96k0cukn8schvjlnjdyf0z0r28yvnlnmpuuj4qhxpwqc8qktc8z9e93akjxefm88vhqxpv7ppqrxp6q8hpvzee72az4mx6k4553tmss23hwgr"}'
+      - '{"type":"future","id":"3725939744341267737290273038160661629630343114766507174134842826652488781816field","value":"{\n  program_id: credits.aleo,\n  function_name: fee_public,\n  arguments: [\n    aleo1uchf7kruskpp8thlnfeya9qeklcjss27j6rtu74zz7ch559neqystgslsp,\n    26679u64\n  ]\n}"}'
 - child_outputs:
-    credits.aleo/fee_private:
+    credits.aleo/fee_public:
       outputs:
-      - '{"type":"record","id":"70907903135321440406346995966772705528708353149493963813138922918859409499field","checksum":"1758155264387920852695791077636953465936690916033386407170194003924917340917field","value":"record1qyqspxy8g4khtakgjt7dk7p3ych5zhqysfp78uh7740jyr4j2q4xu3qxqyxx66trwfhkxun9v35hguerqqpqzqqfgux5pw80dc9xzk0vzklz8v7kt3szhr2h70tt8tj9c2ddgyptppsgj9uj7g0spx3uvw5l7c4ue7qgp948gjcwen4ql5u8fhj3333qjccs5hk"}'
+      - '{"type":"future","id":"5227003534986816857285932061757797688706802206018964764622184983760566708322field","value":"{\n  program_id: credits.aleo,\n  function_name: fee_public,\n  arguments: [\n    aleo1uchf7kruskpp8thlnfeya9qeklcjss27j6rtu74zz7ch559neqystgslsp,\n    28344u64\n  ]\n}"}'
 - child_outputs:
-    credits.aleo/fee_private:
+    credits.aleo/fee_public:
       outputs:
-      - '{"type":"record","id":"5402941757199163131329664269602668871633752908147903083826863058623466909547field","checksum":"6299858438509874984288393356100492859126380436511534635530655092194846486258field","value":"record1qyqsparxz7rjgu5qwj29fp5xspylvxuxumjzpjwp7yahvn09szx0l6g3qyxx66trwfhkxun9v35hguerqqpqzq9vq9pcmuhpxvvrax2n3nht8f9jgdpzt9h9l7w7k5geycwqtypupsuh2lrxq4l7ts96haxgvxkdjvwd42cqpt2l96j9xhw5zlxuu2ssx0gfq8x"}'
+      - '{"type":"future","id":"5806769723479332130567002952494928256138310337461654699762319212831997850826field","value":"{\n  program_id: credits.aleo,\n  function_name: fee_public,\n  arguments: [\n    aleo1uchf7kruskpp8thlnfeya9qeklcjss27j6rtu74zz7ch559neqystgslsp,\n    28344u64\n  ]\n}"}'

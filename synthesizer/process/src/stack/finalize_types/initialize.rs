@@ -303,7 +303,7 @@ impl<N: Network> FinalizeTypes<N> {
                 }
                 // Ensure the current program contains an import for this external program.
                 if !stack.program().imports().keys().contains(program_id) {
-                    bail!("External program '{locator}' is not imported by '{program_id}'.");
+                    bail!("External program '{program_id}' is not imported by '{}'.", stack.program_id());
                 }
                 // Retrieve the program.
                 let external = stack.get_external_program(program_id)?;
