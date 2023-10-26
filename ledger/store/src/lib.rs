@@ -17,6 +17,9 @@
 
 pub mod helpers;
 
+mod bft;
+pub use bft::*;
+
 mod block;
 pub use block::*;
 
@@ -31,9 +34,6 @@ pub use transaction::*;
 
 mod transition;
 pub use transition::*;
-
-mod transmission;
-pub use transmission::*;
 
 #[macro_export]
 macro_rules! cow_to_copied {

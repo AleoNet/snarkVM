@@ -26,7 +26,7 @@ use std::marker::PhantomData;
 
 /// A trait for transmission storage.
 pub trait TransmissionStorage<N: Network>: 'static + Clone + Send + Sync {
-    /// The mapping of `round number` to `[(transmission ID, transmission)]`.
+    /// The mapping of `round number => transmission ID => transmission`.
     type TransmissionMap: for<'a> NestedMap<'a, u64, TransmissionID<N>, Transmission<N>>;
 
     /// Initializes the transmission storage.
@@ -88,17 +88,6 @@ pub trait TransmissionStorage<N: Network>: 'static + Clone + Send + Sync {
         atomic_batch_scope!(self, {
             // Insert the transmission for the round.
             self.transmission_map().insert(round, transmission_id, transmission)?;
-
-            Ok(())
-        })
-    }
-
-    /// Removes the transmission for the given `round` and `transmission ID` from storage.
-    fn remove_transmission(&self, round: u64, transmission_id: TransmissionID<N>) -> Result<()> {
-        atomic_batch_scope!(self, {
-            // Insert the transmission for the round.
-            self.transmission_map().remove_key(&round, &transmission_id)?;
-
             Ok(())
         })
     }
@@ -110,7 +99,15 @@ pub trait TransmissionStorage<N: Network>: 'static + Clone + Send + Sync {
                 // Insert the transmission for the round.
                 self.transmission_map().insert(round, transmission_id, transmission)?
             }
+            Ok(())
+        })
+    }
 
+    /// Removes the transmission for the given `round` and `transmission ID` from storage.
+    fn remove_transmission(&self, round: u64, transmission_id: TransmissionID<N>) -> Result<()> {
+        atomic_batch_scope!(self, {
+            // Insert the transmission for the round.
+            self.transmission_map().remove_key(&round, &transmission_id)?;
             Ok(())
         })
     }
@@ -120,7 +117,6 @@ pub trait TransmissionStorage<N: Network>: 'static + Clone + Send + Sync {
         atomic_batch_scope!(self, {
             // Remove the round transmissions.
             self.transmission_map().remove_map(&round)?;
-
             Ok(())
         })
     }
@@ -133,18 +129,6 @@ pub trait TransmissionStorage<N: Network>: 'static + Clone + Send + Sync {
     /// Returns `true` if the given `round` and `transmission ID` exist.
     fn contains_transmission_speculative(&self, round: u64, transmission_id: &TransmissionID<N>) -> Result<bool> {
         self.transmission_map().contains_key_speculative(&round, transmission_id)
-    }
-
-    /// Returns the confirmed transmission entries for the given `round`.
-    fn get_transmissions_confirmed(&self, round: u64) -> Result<Vec<(TransmissionID<N>, Transmission<N>)>> {
-        // Retrieve the transmissions for the mapping.
-        self.transmission_map().get_map_confirmed(&round)
-    }
-
-    /// Returns the speculative transmission entries for the given `round`.
-    fn get_transmissions_speculative(&self, round: u64) -> Result<Vec<(TransmissionID<N>, Transmission<N>)>> {
-        // Retrieve the transmissions for the mapping.
-        self.transmission_map().get_map_speculative(&round)
     }
 
     /// Returns the confirmed transmission for the given `round` and `transmission ID`.
@@ -169,6 +153,18 @@ pub trait TransmissionStorage<N: Network>: 'static + Clone + Send + Sync {
             Some(transmission) => Ok(Some(cow_to_cloned!(transmission))),
             None => Ok(None),
         }
+    }
+
+    /// Returns the confirmed transmission entries for the given `round`.
+    fn get_transmissions_confirmed(&self, round: u64) -> Result<Vec<(TransmissionID<N>, Transmission<N>)>> {
+        // Retrieve the transmissions for the mapping.
+        self.transmission_map().get_map_confirmed(&round)
+    }
+
+    /// Returns the speculative transmission entries for the given `round`.
+    fn get_transmissions_speculative(&self, round: u64) -> Result<Vec<(TransmissionID<N>, Transmission<N>)>> {
+        // Retrieve the transmissions for the mapping.
+        self.transmission_map().get_map_speculative(&round)
     }
 }
 
@@ -204,42 +200,42 @@ impl<N: Network, T: TransmissionStorage<N>> TransmissionStore<N, T> {
     }
 
     /// Starts an atomic batch write operation.
-    pub fn start_atomic(&self) {
+    pub(crate) fn start_atomic(&self) {
         self.storage.start_atomic();
     }
 
     /// Checks if an atomic batch is in progress.
-    pub fn is_atomic_in_progress(&self) -> bool {
+    pub(crate) fn is_atomic_in_progress(&self) -> bool {
         self.storage.is_atomic_in_progress()
     }
 
     /// Checkpoints the atomic batch.
-    pub fn atomic_checkpoint(&self) {
+    pub(crate) fn atomic_checkpoint(&self) {
         self.storage.atomic_checkpoint();
     }
 
     /// Clears the latest atomic batch checkpoint.
-    pub fn clear_latest_checkpoint(&self) {
+    pub(crate) fn clear_latest_checkpoint(&self) {
         self.storage.clear_latest_checkpoint();
     }
 
     /// Rewinds the atomic batch to the previous checkpoint.
-    pub fn atomic_rewind(&self) {
+    pub(crate) fn atomic_rewind(&self) {
         self.storage.atomic_rewind();
     }
 
     /// Aborts an atomic batch write operation.
-    pub fn abort_atomic(&self) {
+    pub(crate) fn abort_atomic(&self) {
         self.storage.abort_atomic();
     }
 
     /// Finishes an atomic batch write operation.
-    pub fn finish_atomic(&self) -> Result<()> {
+    pub(crate) fn finish_atomic(&self) -> Result<()> {
         self.storage.finish_atomic()
     }
 
     /// Returns the optional development ID.
-    pub fn dev(&self) -> Option<u16> {
+    pub(crate) fn dev(&self) -> Option<u16> {
         self.storage.dev()
     }
 }
@@ -247,7 +243,7 @@ impl<N: Network, T: TransmissionStorage<N>> TransmissionStore<N, T> {
 impl<N: Network, T: TransmissionStorage<N>> TransmissionStore<N, T> {
     /// Stores the given `(round, transmission)` pair into storage.
     /// If the `transmission ID` already exists, the method returns an error.
-    fn insert_transmission(
+    pub(crate) fn insert_transmission(
         &self,
         round: u64,
         transmission_id: TransmissionID<N>,
@@ -256,47 +252,49 @@ impl<N: Network, T: TransmissionStorage<N>> TransmissionStore<N, T> {
         self.storage.insert_transmission(round, transmission_id, transmission)
     }
 
-    /// Removes the transmission for the given `round` and `transmission ID` from storage.
-    fn remove_transmission(&self, round: u64, transmission_id: TransmissionID<N>) -> Result<()> {
-        self.storage.remove_transmission(round, transmission_id)
-    }
-
     /// Stores the given `(round, transmissions)` pair into storage.
-    fn insert_transmissions(&self, round: u64, transmissions: Vec<(TransmissionID<N>, Transmission<N>)>) -> Result<()> {
+    pub(crate) fn insert_transmissions(
+        &self,
+        round: u64,
+        transmissions: Vec<(TransmissionID<N>, Transmission<N>)>,
+    ) -> Result<()> {
         self.storage.insert_transmissions(round, transmissions)
     }
 
+    /// Removes the transmission for the given `round` and `transmission ID` from storage.
+    pub(crate) fn remove_transmission(&self, round: u64, transmission_id: TransmissionID<N>) -> Result<()> {
+        self.storage.remove_transmission(round, transmission_id)
+    }
+
     /// Removes the transmissions for the given `round` from storage.
-    fn remove_transmissions(&self, round: u64) -> Result<()> {
+    pub(crate) fn remove_transmissions(&self, round: u64) -> Result<()> {
         self.storage.remove_transmissions(round)
     }
 }
 
 impl<N: Network, T: TransmissionStorage<N>> TransmissionStore<N, T> {
     /// Returns `true` if the given `round` and `transmission ID` exist.
-    fn contains_transmission_confirmed(&self, round: u64, transmission_id: &TransmissionID<N>) -> Result<bool> {
+    pub(crate) fn contains_transmission_confirmed(
+        &self,
+        round: u64,
+        transmission_id: &TransmissionID<N>,
+    ) -> Result<bool> {
         self.storage.contains_transmission_confirmed(round, transmission_id)
     }
 
     /// Returns `true` if the given `round` and `transmission ID` exist.
-    fn contains_transmission_speculative(&self, round: u64, transmission_id: &TransmissionID<N>) -> Result<bool> {
+    pub(crate) fn contains_transmission_speculative(
+        &self,
+        round: u64,
+        transmission_id: &TransmissionID<N>,
+    ) -> Result<bool> {
         self.storage.contains_transmission_speculative(round, transmission_id)
     }
 }
 
 impl<N: Network, T: TransmissionStorage<N>> TransmissionStore<N, T> {
-    /// Returns the confirmed transmission entries for the given `round`.
-    fn get_transmissions_confirmed(&self, round: u64) -> Result<Vec<(TransmissionID<N>, Transmission<N>)>> {
-        self.storage.get_transmissions_confirmed(round)
-    }
-
-    /// Returns the speculative transmission entries for the given `round`.
-    fn get_transmissions_speculative(&self, round: u64) -> Result<Vec<(TransmissionID<N>, Transmission<N>)>> {
-        self.storage.get_transmissions_speculative(round)
-    }
-
     /// Returns the confirmed transmission for the given `round` and `transmission ID`.
-    fn get_transmission_confirmed(
+    pub(crate) fn get_transmission_confirmed(
         &self,
         round: u64,
         transmission_id: &TransmissionID<N>,
@@ -305,12 +303,25 @@ impl<N: Network, T: TransmissionStorage<N>> TransmissionStore<N, T> {
     }
 
     /// Returns the speculative transmission for the given `round` and `transmission ID`.
-    fn get_transmission_speculative(
+    pub(crate) fn get_transmission_speculative(
         &self,
         round: u64,
         transmission_id: &TransmissionID<N>,
     ) -> Result<Option<Transmission<N>>> {
         self.storage.get_transmission_speculative(round, transmission_id)
+    }
+
+    /// Returns the confirmed transmission entries for the given `round`.
+    pub(crate) fn get_transmissions_confirmed(&self, round: u64) -> Result<Vec<(TransmissionID<N>, Transmission<N>)>> {
+        self.storage.get_transmissions_confirmed(round)
+    }
+
+    /// Returns the speculative transmission entries for the given `round`.
+    pub(crate) fn get_transmissions_speculative(
+        &self,
+        round: u64,
+    ) -> Result<Vec<(TransmissionID<N>, Transmission<N>)>> {
+        self.storage.get_transmissions_speculative(round)
     }
 }
 
@@ -330,10 +341,11 @@ mod tests {
     fn test_insert_get_remove_transmission() {
         let rng = &mut TestRng::default();
 
-        // Sample a round number, transmissions and transmission ids.
+        // Sample a round number, transmissions, and transmission ids.
         let round: u64 = rng.gen();
         let transmissions = sample_transmissions(rng);
         let transmission_ids = sample_transmission_ids(rng);
+        assert_eq!(transmissions.len(), transmission_ids.len());
 
         // Initialize a new transmission store.
         let transmission_store = TransmissionStore::<CurrentNetwork, TransmissionMemory<_>>::open(None).unwrap();
@@ -363,6 +375,7 @@ mod tests {
         let round: u64 = rng.gen();
         let transmissions = sample_transmissions(rng);
         let transmission_ids = sample_transmission_ids(rng);
+        assert_eq!(transmissions.len(), transmission_ids.len());
 
         let transmissions = transmission_ids.into_iter().zip_eq(transmissions).collect::<Vec<(_, _)>>();
 

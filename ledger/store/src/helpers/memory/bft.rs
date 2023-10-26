@@ -12,10 +12,48 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::{helpers::memory::NestedMemoryMap, TransmissionStorage};
+use crate::{helpers::memory::NestedMemoryMap, BFTStorage, TransmissionStorage, TransmissionStore};
 use console::prelude::*;
 use ledger_narwhal_transmission::Transmission;
 use ledger_narwhal_transmission_id::TransmissionID;
+
+/// An in-memory BFT storage.
+#[derive(Clone)]
+pub struct BFTMemory<N: Network> {
+    /// The transmission store.
+    transmission_store: TransmissionStore<N, TransmissionMemory<N>>,
+    /// The optional development ID.
+    dev: Option<u16>,
+}
+
+#[rustfmt::skip]
+impl<N: Network> BFTStorage<N> for BFTMemory<N> {
+    type TransmissionStorage = TransmissionMemory<N>;
+
+    /// Initializes the BFT storage.
+    fn open(dev: Option<u16>) -> Result<Self> {
+        Ok(Self {
+            transmission_store: TransmissionStore::<N, TransmissionMemory<N>>::open(dev)?,
+            dev,
+        })
+    }
+
+    /// Initializes the test-variant of the storage.
+    #[cfg(any(test, feature = "test"))]
+    fn open_testing(_: std::path::PathBuf, dev: Option<u16>) -> Result<Self> {
+        Self::open(dev)
+    }
+
+    /// Returns the transmission store.
+    fn transmission_store(&self) -> &TransmissionStore<N, Self::TransmissionStorage> {
+        &self.transmission_store
+    }
+
+    /// Returns the optional development ID.
+    fn dev(&self) -> Option<u16> {
+        self.dev
+    }
+}
 
 /// An in-memory transmission storage.
 #[derive(Clone)]

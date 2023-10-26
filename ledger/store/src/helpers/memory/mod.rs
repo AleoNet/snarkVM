@@ -15,6 +15,9 @@
 pub mod internal;
 pub use internal::*;
 
+mod bft;
+pub use bft::*;
+
 mod block;
 pub use block::*;
 
@@ -29,6 +32,3 @@ pub use transaction::*;
 
 mod transition;
 pub use transition::*;
-
-mod transmission;
-pub use transmission::*;

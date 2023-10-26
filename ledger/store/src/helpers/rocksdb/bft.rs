@@ -16,13 +16,53 @@
 
 use crate::{
     helpers::rocksdb::{self, Database, MapID, NestedDataMap, TransmissionMap},
+    BFTStorage,
     TransmissionStorage,
+    TransmissionStore,
 };
 use console::prelude::*;
 use ledger_narwhal_transmission::Transmission;
 use ledger_narwhal_transmission_id::TransmissionID;
 
-/// A RocksDB finalize storage.
+/// An in-memory BFT storage.
+#[derive(Clone)]
+pub struct BFTDB<N: Network> {
+    /// The transmission store.
+    transmission_store: TransmissionStore<N, TransmissionDB<N>>,
+    /// The optional development ID.
+    dev: Option<u16>,
+}
+
+#[rustfmt::skip]
+impl<N: Network> BFTStorage<N> for BFTDB<N> {
+    type TransmissionStorage = TransmissionDB<N>;
+
+    /// Initializes the BFT storage.
+    fn open(dev: Option<u16>) -> Result<Self> {
+        Ok(Self {
+            transmission_store: TransmissionStore::<N, TransmissionDB<N>>::open(dev)?,
+            dev,
+        })
+    }
+
+    /// Initializes the test-variant of the storage.
+    #[cfg(any(test, feature = "test"))]
+    fn open_testing(_: std::path::PathBuf, dev: Option<u16>) -> Result<Self> {
+        Self::open(dev)
+    }
+
+    /// Returns the transmission store.
+    fn transmission_store(&self) -> &TransmissionStore<N, Self::TransmissionStorage> {
+        &self.transmission_store
+    }
+
+    /// Returns the optional development ID.
+    fn dev(&self) -> Option<u16> {
+        self.dev
+    }
+}
+
+/// A RocksDB transmission storage.
 #[derive(Clone)]
 pub struct TransmissionDB<N: Network> {
     /// The transmission map.
@@ -37,7 +77,6 @@ impl<N: Network> TransmissionStorage<N> for TransmissionDB<N> {
 
     /// Initializes the transmission storage.
     fn open(dev: Option<u16>) -> Result<Self> {
-        // Return the transmission storage.
         Ok(Self {
             transmission_map: rocksdb::RocksDB::open_nested_map(N::ID, dev, MapID::Transmission(TransmissionMap::ID))?,
             dev,
@@ -52,7 +91,7 @@ impl<N: Network> TransmissionStorage<N> for TransmissionDB<N> {
             dev,
         })
     }
-    /// Returns the committee store.
+    /// Returns the transmission map.
     fn transmission_map(&self) -> &Self::TransmissionMap {
         &self.transmission_map
     }
