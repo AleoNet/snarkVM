@@ -15,7 +15,7 @@
 #![allow(clippy::type_complexity)]
 
 use crate::{
-    helpers::rocksdb::{self, Database, MapID, NestedDataMap, TransmissionMap},
+    helpers::rocksdb::{self, BFTTransmissionMap, Database, MapID, NestedDataMap},
     BFTStorage,
     TransmissionStorage,
     TransmissionStore,
@@ -78,7 +78,7 @@ impl<N: Network> TransmissionStorage<N> for TransmissionDB<N> {
     /// Initializes the transmission storage.
     fn open(dev: Option<u16>) -> Result<Self> {
         Ok(Self {
-            transmission_map: rocksdb::RocksDB::open_nested_map(N::ID, dev, MapID::Transmission(TransmissionMap::ID))?,
+            transmission_map: rocksdb::RocksDB::open_nested_map(N::ID, dev, MapID::BFTTransmission(BFTTransmissionMap::ID))?,
             dev,
         })
     }
@@ -87,7 +87,7 @@ impl<N: Network> TransmissionStorage<N> for TransmissionDB<N> {
     #[cfg(any(test, feature = "test"))]
     fn open_testing(temp_dir: std::path::PathBuf, dev: Option<u16>) -> Result<Self> {
         Ok(Self {
-            transmission_map: rocksdb::RocksDB::open_nested_map_testing(temp_dir.clone(), dev, MapID::Transmission(TransmissionMap::ID))?,
+            transmission_map: rocksdb::RocksDB::open_nested_map_testing(temp_dir.clone(), dev, MapID::BFTTransmission(BFTTransmissionMap::ID))?,
             dev,
         })
     }
