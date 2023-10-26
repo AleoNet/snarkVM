@@ -594,6 +594,15 @@ jobs:
     resource_class: 2xlarge
     steps:
       - run_serial:
+          workspace_member: ledger/store
+          cache_key: snarkvm-ledger-store-cache
+
+  ledger-store-with-rocksdb:
+    docker:
+      - image: cimg/rust:1.71.1
+    resource_class: 2xlarge
+    steps:
+      - run_serial:
           flags: --features=rocks
           workspace_member: ledger/store
           cache_key: snarkvm-ledger-store-cache
@@ -867,6 +876,7 @@ workflows:
       - ledger-narwhal-transmission-id
       - ledger-query
       - ledger-store
+      - ledger-store-with-rocksdb
       - ledger-test-helpers
       - parameters
       - synthesizer

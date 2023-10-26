@@ -26,8 +26,8 @@ use std::marker::PhantomData;
 
 /// A trait for transmission storage.
 pub trait TransmissionStorage<N: Network>: 'static + Clone + Send + Sync {
-    /// The mapping of `round number => transmission ID => transmission`.
-    type TransmissionMap: for<'a> NestedMap<'a, u64, TransmissionID<N>, Transmission<N>>;
+    /// The mapping of `transmission ID => round => transmission`.
+    type TransmissionMap: for<'a> NestedMap<'a, TransmissionID<N>, u64, Transmission<N>>;
 
     /// Initializes the transmission storage.
     fn open(dev: Option<u16>) -> Result<Self>;
@@ -77,8 +77,7 @@ pub trait TransmissionStorage<N: Network>: 'static + Clone + Send + Sync {
         self.transmission_map().finish_atomic()
     }
 
-    /// Stores the given `(transmission ID, transmission)` pair into storage.
-    /// If the `transmission ID` already exists, the method returns an error.
+    /// Stores the given round, transmission ID, and transmission into storage.
     fn insert_transmission(
         &self,
         round: u64,
@@ -86,62 +85,69 @@ pub trait TransmissionStorage<N: Network>: 'static + Clone + Send + Sync {
         transmission: Transmission<N>,
     ) -> Result<()> {
         atomic_batch_scope!(self, {
-            // Insert the transmission for the round.
-            self.transmission_map().insert(round, transmission_id, transmission)?;
+            // Insert the `(transmission ID, round, transmission)` entry.
+            self.transmission_map().insert(transmission_id, round, transmission)?;
             Ok(())
         })
     }
 
-    /// Stores the given `(transmission ID, transmission)` pairs into storage.
+    /// Stores the given `(transmission ID, transmission)` pairs for the given round into storage.
     fn insert_transmissions(&self, round: u64, transmissions: Vec<(TransmissionID<N>, Transmission<N>)>) -> Result<()> {
         atomic_batch_scope!(self, {
             for (transmission_id, transmission) in transmissions.into_iter() {
-                // Insert the transmission for the round.
-                self.transmission_map().insert(round, transmission_id, transmission)?
+                // Insert the `(transmission ID, round, transmission)` entry.
+                self.transmission_map().insert(transmission_id, round, transmission)?
             }
             Ok(())
         })
     }
 
+    /// Removes the transmission for the given `transmission ID` from storage.
+    fn remove_transmission(&self, transmission_id: TransmissionID<N>) -> Result<()> {
+        atomic_batch_scope!(self, {
+            // Insert the transmission from all rounds.
+            self.transmission_map().remove_map(&transmission_id)?;
+            Ok(())
+        })
+    }
+
     /// Removes the transmission for the given `round` and `transmission ID` from storage.
-    fn remove_transmission(&self, round: u64, transmission_id: TransmissionID<N>) -> Result<()> {
+    fn remove_transmission_for_round(&self, round: u64, transmission_id: TransmissionID<N>) -> Result<()> {
         atomic_batch_scope!(self, {
             // Insert the transmission for the round.
-            self.transmission_map().remove_key(&round, &transmission_id)?;
+            self.transmission_map().remove_key(&transmission_id, &round)?;
             Ok(())
         })
     }
 
-    /// Removes the transmissions for the given `round` from storage.
-    fn remove_transmissions_for_round(&self, round: u64) -> Result<()> {
-        atomic_batch_scope!(self, {
-            // Remove the round transmissions.
-            self.transmission_map().remove_map(&round)?;
-            Ok(())
-        })
+    /// Returns `true` if the given `transmission ID` exists.
+    fn contains_transmission(&self, transmission_id: &TransmissionID<N>) -> Result<bool> {
+        self.transmission_map().contains_map_confirmed(&transmission_id)
     }
 
-    /// Returns `true` if the given `round` and `transmission ID` exist.
-    fn contains_transmission_confirmed(&self, round: u64, transmission_id: &TransmissionID<N>) -> Result<bool> {
-        self.transmission_map().contains_key_confirmed(&round, transmission_id)
+    /// Returns `true` if the given `round` and `transmission ID` exists.
+    fn contains_transmission_for_round(&self, round: u64, transmission_id: &TransmissionID<N>) -> Result<bool> {
+        self.transmission_map().contains_key_confirmed(&transmission_id, &round)
     }
 
-    /// Returns the confirmed transmission for the given `round` and `transmission ID`.
-    fn get_transmission_confirmed(
-        &self,
-        round: u64,
-        transmission_id: &TransmissionID<N>,
-    ) -> Result<Option<Transmission<N>>> {
-        match self.transmission_map().get_value_confirmed(&round, transmission_id)? {
-            Some(transmission) => Ok(Some(cow_to_cloned!(transmission))),
+    /// Returns the transmission for the given `transmission ID`.
+    fn get_transmission(&self, transmission_id: &TransmissionID<N>) -> Result<Option<Transmission<N>>> {
+        match self.transmission_map().get_any_map_entry_confirmed(&transmission_id)? {
+            Some((_, transmission)) => Ok(Some(transmission)),
             None => Ok(None),
         }
     }
 
-    /// Returns the confirmed transmission entries for the given `round`.
-    fn get_transmissions_confirmed(&self, round: u64) -> Result<Vec<(TransmissionID<N>, Transmission<N>)>> {
-        // Retrieve the transmissions for the mapping.
-        self.transmission_map().get_map_confirmed(&round)
+    /// Returns the transmission for the given `round` and `transmission ID`.
+    fn get_transmission_for_round(
+        &self,
+        round: u64,
+        transmission_id: &TransmissionID<N>,
+    ) -> Result<Option<Transmission<N>>> {
+        match self.transmission_map().get_value_confirmed(&transmission_id, &round)? {
+            Some(transmission) => Ok(Some(cow_to_cloned!(transmission))),
+            None => Ok(None),
+        }
     }
 }
 
@@ -218,8 +224,7 @@ impl<N: Network, T: TransmissionStorage<N>> TransmissionStore<N, T> {
 }
 
 impl<N: Network, T: TransmissionStorage<N>> TransmissionStore<N, T> {
-    /// Stores the given `(round, transmission)` pair into storage.
-    /// If the `transmission ID` already exists, the method returns an error.
+    /// Stores the given round, transmission ID, and transmission into storage.
     pub(crate) fn insert_transmission(
         &self,
         round: u64,
@@ -229,7 +234,7 @@ impl<N: Network, T: TransmissionStorage<N>> TransmissionStore<N, T> {
         self.storage.insert_transmission(round, transmission_id, transmission)
     }
 
-    /// Stores the given `(round, transmissions)` pair into storage.
+    /// Stores the given `(transmission ID, transmission)` pairs for the given round into storage.
     pub(crate) fn insert_transmissions(
         &self,
         round: u64,
@@ -238,116 +243,180 @@ impl<N: Network, T: TransmissionStorage<N>> TransmissionStore<N, T> {
         self.storage.insert_transmissions(round, transmissions)
     }
 
+    /// Removes the transmission for the given `transmission ID` from storage.
+    pub(crate) fn remove_transmission(&self, transmission_id: TransmissionID<N>) -> Result<()> {
+        self.storage.remove_transmission(transmission_id)
+    }
+
     /// Removes the transmission for the given `round` and `transmission ID` from storage.
-    pub(crate) fn remove_transmission(&self, round: u64, transmission_id: TransmissionID<N>) -> Result<()> {
-        self.storage.remove_transmission(round, transmission_id)
+    pub(crate) fn remove_transmission_for_round(&self, round: u64, transmission_id: TransmissionID<N>) -> Result<()> {
+        self.storage.remove_transmission_for_round(round, transmission_id)
     }
 
-    /// Removes the transmissions for the given `round` from storage.
-    pub(crate) fn remove_transmissions_for_round(&self, round: u64) -> Result<()> {
-        self.storage.remove_transmissions_for_round(round)
+    /// Returns `true` if the given `transmission ID` exists.
+    pub(crate) fn contains_transmission(&self, transmission_id: &TransmissionID<N>) -> Result<bool> {
+        self.storage.contains_transmission(&transmission_id)
     }
 
-    /// Returns `true` if the given `round` and `transmission ID` exist.
-    pub(crate) fn contains_transmission_confirmed(
+    /// Returns `true` if the given `round` and `transmission ID` exists.
+    pub(crate) fn contains_transmission_for_round(
         &self,
         round: u64,
         transmission_id: &TransmissionID<N>,
     ) -> Result<bool> {
-        self.storage.contains_transmission_confirmed(round, transmission_id)
+        self.storage.contains_transmission_for_round(round, transmission_id)
     }
 
-    /// Returns the confirmed transmission for the given `round` and `transmission ID`.
-    pub(crate) fn get_transmission_confirmed(
+    /// Returns the transmission for the given `transmission ID`.
+    pub(crate) fn get_transmission(&self, transmission_id: &TransmissionID<N>) -> Result<Option<Transmission<N>>> {
+        self.storage.get_transmission(transmission_id)
+    }
+
+    /// Returns the transmission for the given `round` and `transmission ID`.
+    pub(crate) fn get_transmission_for_round(
         &self,
         round: u64,
         transmission_id: &TransmissionID<N>,
     ) -> Result<Option<Transmission<N>>> {
-        self.storage.get_transmission_confirmed(round, transmission_id)
-    }
-
-    /// Returns the confirmed transmission entries for the given `round`.
-    pub(crate) fn get_transmissions_confirmed(&self, round: u64) -> Result<Vec<(TransmissionID<N>, Transmission<N>)>> {
-        self.storage.get_transmissions_confirmed(round)
+        self.storage.get_transmission_for_round(round, transmission_id)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::helpers::memory::TransmissionMemory;
-    use console::network::Testnet3;
     use ledger_narwhal_transmission::test_helpers::sample_transmissions;
     use ledger_narwhal_transmission_id::test_helpers::sample_transmission_ids;
-
-    use std::collections::HashMap;
-
-    type CurrentNetwork = Testnet3;
 
     #[test]
     fn test_insert_get_remove_transmission() {
         let rng = &mut TestRng::default();
 
-        // Sample a round number, transmissions, and transmission ids.
-        let round: u64 = rng.gen();
+        // Initialize a new transmission store.
+        #[cfg(not(feature = "rocks"))]
+        let store = TransmissionStore::from(crate::helpers::memory::TransmissionMemory::open(None).unwrap()).unwrap();
+        #[cfg(feature = "rocks")]
+        let store = {
+            let temp_dir = tempfile::tempdir().expect("Failed to open temporary directory").into_path();
+            TransmissionStore::from(crate::helpers::rocksdb::TransmissionDB::open_testing(temp_dir, None).unwrap())
+                .unwrap()
+        };
+
+        // Sample the transmissions.
         let transmissions = sample_transmissions(rng);
         let transmission_ids = sample_transmission_ids(rng);
         assert_eq!(transmissions.len(), transmission_ids.len());
 
-        // Initialize a new transmission store.
-        let transmission_store = TransmissionStore::<CurrentNetwork, TransmissionMemory<_>>::open(None).unwrap();
+        // Sample a list of rounds.
+        let rounds = (0..10).map(|_| rng.gen()).collect::<Vec<u64>>();
 
         for (transmission_id, transmission) in transmission_ids.iter().zip_eq(transmissions) {
-            // Insert the transmission.
-            transmission_store.insert_transmission(round, *transmission_id, transmission.clone()).unwrap();
+            // Insert the transmission into the rounds.
+            for round in &rounds {
+                // Insert the transmission.
+                store.insert_transmission(*round, *transmission_id, transmission.clone()).unwrap();
 
-            // Find the transmission.
-            let candidate = transmission_store.get_transmission_confirmed(round, transmission_id).unwrap();
-            assert_eq!(Some(transmission), candidate);
+                // Get the transmission for the round.
+                let candidate = store.get_transmission_for_round(*round, transmission_id).unwrap();
+                assert_eq!(Some(transmission.clone()), candidate);
+            }
 
-            // Remove the transmission.
-            transmission_store.remove_transmission(round, *transmission_id).unwrap();
+            // Get the transmission.
+            let candidate = store.get_transmission(transmission_id).unwrap();
+            assert_eq!(Some(transmission.clone()), candidate);
 
-            // Ensure the transmission ID is not found.
-            let candidate = transmission_store.get_transmission_confirmed(round, transmission_id).unwrap();
+            // Get the transmission for the rounds.
+            for round in &rounds {
+                // Get the transmission for the round.
+                let candidate = store.get_transmission_for_round(*round, transmission_id).unwrap();
+                assert_eq!(Some(transmission.clone()), candidate);
+            }
+
+            // Remove the transmission for the rounds.
+            for round in &rounds {
+                // Ensure the transmission is found (should succeed on all iterations).
+                let candidate = store.get_transmission(transmission_id).unwrap();
+                assert_eq!(Some(transmission.clone()), candidate);
+
+                // Remove the transmission for the round.
+                store.remove_transmission_for_round(*round, *transmission_id).unwrap();
+
+                // Ensure the transmission is not found for the round.
+                let candidate = store.get_transmission_for_round(*round, transmission_id).unwrap();
+                assert_eq!(None, candidate);
+            }
+
+            // Ensure the transmission is not found.
+            let candidate = store.get_transmission(transmission_id).unwrap();
             assert_eq!(None, candidate);
         }
     }
 
     #[test]
-    fn test_insert_get_remove_transmissions() {
+    fn test_contains_transmission() {
         let rng = &mut TestRng::default();
 
-        // Sample a round number, transmissions and transmission ids.
-        let round: u64 = rng.gen();
+        // Initialize a new transmission store.
+        #[cfg(not(feature = "rocks"))]
+        let store = TransmissionStore::from(crate::helpers::memory::TransmissionMemory::open(None).unwrap()).unwrap();
+        #[cfg(feature = "rocks")]
+        let store = {
+            let temp_dir = tempfile::tempdir().expect("Failed to open temporary directory").into_path();
+            TransmissionStore::from(crate::helpers::rocksdb::TransmissionDB::open_testing(temp_dir, None).unwrap())
+                .unwrap()
+        };
+
+        // Sample the transmissions.
         let transmissions = sample_transmissions(rng);
         let transmission_ids = sample_transmission_ids(rng);
         assert_eq!(transmissions.len(), transmission_ids.len());
 
-        let transmissions = transmission_ids.into_iter().zip_eq(transmissions).collect::<Vec<(_, _)>>();
+        // Sample a list of rounds.
+        let rounds = (0..10).map(|_| rng.gen()).collect::<Vec<u64>>();
 
-        // Initialize a new transmission store.
-        let transmission_store = TransmissionStore::<CurrentNetwork, TransmissionMemory<_>>::open(None).unwrap();
+        for (transmission_id, transmission) in transmission_ids.iter().zip_eq(transmissions) {
+            // Ensure the transmission does not exist.
+            assert!(!store.contains_transmission(transmission_id).unwrap());
+            // Ensure the transmission does not exist for any round.
+            for round in &rounds {
+                assert!(!store.contains_transmission_for_round(*round, transmission_id).unwrap());
+            }
 
-        // Find the transmissions.
-        let candidate = transmission_store.get_transmissions_confirmed(round).unwrap();
-        assert!(candidate.is_empty());
+            // Insert the transmission into the rounds.
+            for round in &rounds {
+                // Insert the transmission.
+                store.insert_transmission(*round, *transmission_id, transmission.clone()).unwrap();
 
-        // Insert the transmissions.
-        transmission_store.insert_transmissions(round, transmissions.clone()).unwrap();
+                // Ensure the transmission exists.
+                assert!(store.contains_transmission(transmission_id).unwrap());
+                // Ensure the transmission exists for the round.
+                assert!(store.contains_transmission_for_round(*round, transmission_id).unwrap());
+            }
+        }
 
-        // Find the transmissions.
-        let candidate = transmission_store.get_transmissions_confirmed(round).unwrap();
-        assert_eq!(
-            transmissions.iter().cloned().collect::<HashMap<_, _>>(),
-            candidate.iter().cloned().collect::<HashMap<_, _>>()
-        );
+        for transmission_id in transmission_ids.iter() {
+            // Ensure the transmission exists for the rounds.
+            for round in &rounds {
+                // Ensure the transmission exists.
+                assert!(store.contains_transmission(transmission_id).unwrap());
+                // Ensure the transmission exists for the round.
+                assert!(store.contains_transmission_for_round(*round, transmission_id).unwrap());
+            }
 
-        // Remove the transmissions
-        transmission_store.remove_transmissions_for_round(round).unwrap();
+            // Remove the transmission for the rounds.
+            for round in &rounds {
+                // Ensure the transmission exists (should succeed on all iterations).
+                assert!(store.contains_transmission(transmission_id).unwrap());
 
-        // Ensure the transmissions are not found.
-        let candidate = transmission_store.get_transmissions_confirmed(round).unwrap();
-        assert!(candidate.is_empty());
+                // Remove the transmission for the round.
+                store.remove_transmission_for_round(*round, *transmission_id).unwrap();
+
+                // Ensure the transmission does not exist for the round.
+                assert!(!store.contains_transmission_for_round(*round, transmission_id).unwrap());
+            }
+
+            // Ensure the transmission does not exist.
+            assert!(store.contains_transmission(transmission_id).unwrap());
+        }
     }
 }

@@ -342,6 +342,66 @@ impl<
     type Values = NestedValues<'a, V>;
 
     ///
+    /// Returns `true` if the given map exists.
+    ///
+    fn contains_map_confirmed(&self, map: &M) -> Result<bool> {
+        // Serialize the map.
+        let serialized_map = bincode::serialize(map)?;
+
+        // Construct an iterator over the DB with the specified prefix.
+        let mut iterator = self
+            .database
+            .iterator(rocksdb::IteratorMode::From(&self.create_prefixed_map(map)?, rocksdb::Direction::Forward));
+
+        // Iterate over the entries in the DB with the specified prefix.
+        if let Some(entry) = iterator.next() {
+            let (map_key, _) = entry?;
+
+            // Extract the bytes belonging to the map and the key.
+            let (entry_map, _) = get_map_and_key(&map_key)?;
+
+            // If the 'entry_map' matches 'serialized_map', then the map exists.
+            if entry_map == serialized_map {
+                return Ok(true);
+            }
+        }
+
+        Ok(false)
+    }
+
+    ///
+    /// Returns `true` if the given map exists.
+    /// This method first checks the atomic batch, and if it does not exist, then checks the map.
+    ///
+    fn contains_map_speculative(&self, map: &M) -> Result<bool> {
+        // If a batch is in progress, check the atomic batch first.
+        if self.is_atomic_in_progress() {
+            // We iterate from the back of the `atomic_batch` to find the latest value.
+            for (m, k, v) in self.atomic_batch.lock().iter().rev() {
+                // If the map does not match the given map, then continue.
+                if m != map {
+                    continue;
+                }
+                // If the key is 'None', then the map is scheduled to be removed.
+                if k.is_none() {
+                    return Ok(false);
+                }
+                // If the value is 'None', then continue, as we do not know for certain whether the map exists.
+                // For instance, if the map contains two KV entries, then removing just one KV entry will not remove the map.
+                if v.is_none() {
+                    continue;
+                }
+                // If the key is 'Some(K)' and the value is 'Some(V)', then the map exists.
+                if k.is_some() && v.is_some() {
+                    return Ok(true);
+                }
+            }
+        }
+        // Otherwise, check the confirmed map.
+        self.contains_map_confirmed(map)
+    }
+
+    ///
     /// Returns `true` if the given map and key exists.
     ///
     fn contains_key_confirmed(&self, map: &M, key: &K) -> Result<bool> {
@@ -457,6 +517,40 @@ impl<
 
         // Return the key-value pairs for the map.
         Ok(key_values)
+    }
+
+    ///
+    /// Returns one key-value entry for the given map, if one exists.
+    /// There is no guarantee on the order or on which entry is returned.
+    ///
+    fn get_any_map_entry_confirmed(&'a self, map: &M) -> Result<Option<(K, V)>> {
+        // Serialize the map.
+        let serialized_map = bincode::serialize(map)?;
+
+        // Construct an iterator over the DB with the specified prefix.
+        let mut iterator = self
+            .database
+            .iterator(rocksdb::IteratorMode::From(&self.create_prefixed_map(map)?, rocksdb::Direction::Forward));
+
+        // Iterate over the entries in the DB with the specified prefix.
+        if let Some(entry) = iterator.next() {
+            let (map_key, value) = entry?;
+
+            // Extract the bytes belonging to the map and the key.
+            let (entry_map, entry_key) = get_map_and_key(&map_key)?;
+
+            // If the 'entry_map' matches 'serialized_map', deserialize the key and value.
+            if entry_map == serialized_map {
+                // Deserialize the key.
+                let key = bincode::deserialize(entry_key)?;
+                // Deserialize the value.
+                let value = bincode::deserialize(&value)?;
+                // Return the key-value pair.
+                return Ok(Some((key, value)));
+            }
+        }
+
+        Ok(None)
     }
 
     ///

@@ -66,14 +66,14 @@ impl<N: Network> BFTStorage<N> for BFTDB<N> {
 #[derive(Clone)]
 pub struct TransmissionDB<N: Network> {
     /// The transmission map.
-    transmission_map: NestedDataMap<u64, TransmissionID<N>, Transmission<N>>,
+    transmission_map: NestedDataMap<TransmissionID<N>, u64, Transmission<N>>,
     /// The optional development ID.
     dev: Option<u16>,
 }
 
 #[rustfmt::skip]
 impl<N: Network> TransmissionStorage<N> for TransmissionDB<N> {
-    type TransmissionMap = NestedDataMap<u64, TransmissionID<N>, Transmission<N>>;
+    type TransmissionMap = NestedDataMap<TransmissionID<N>, u64, Transmission<N>>;
 
     /// Initializes the transmission storage.
     fn open(dev: Option<u16>) -> Result<Self> {
