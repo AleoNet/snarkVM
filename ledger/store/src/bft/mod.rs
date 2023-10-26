@@ -209,7 +209,10 @@ mod tests {
     use ledger_narwhal_transmission::test_helpers::sample_transmissions;
     use ledger_narwhal_transmission_id::test_helpers::sample_transmission_ids;
 
+    use serial_test::serial;
+
     #[test]
+    #[serial]
     fn test_insert_get_remove_transmission() {
         let rng = &mut TestRng::default();
 
@@ -273,6 +276,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_contains_transmission() {
         let rng = &mut TestRng::default();
 
@@ -335,7 +339,7 @@ mod tests {
             }
 
             // Ensure the transmission does not exist.
-            assert!(store.contains_transmission(transmission_id).unwrap());
+            assert!(!store.contains_transmission(transmission_id).unwrap());
         }
     }
 }
