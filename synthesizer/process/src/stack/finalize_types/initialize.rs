@@ -176,7 +176,7 @@ impl<N: Network> FinalizeTypes<N> {
             Command::Await(await_) => self.check_await(stack, await_)?,
             Command::Contains(contains) => self.check_contains(stack, finalize.name(), contains)?,
             Command::Get(get) => self.check_get(stack, get)?,
-            Command::GetOrUse(get_or_use) => self.check_get_or_use(stack, finalize.name(), get_or_use)?,
+            Command::GetOrUse(get_or_use) => self.check_get_or_use(stack, get_or_use)?,
             Command::RandChaCha(rand_chacha) => self.check_rand_chacha(stack, finalize.name(), rand_chacha)?,
             Command::Remove(remove) => self.check_remove(stack, finalize.name(), remove)?,
             Command::Set(set) => self.check_set(stack, finalize.name(), set)?,
@@ -355,7 +355,6 @@ impl<N: Network> FinalizeTypes<N> {
     fn check_get_or_use(
         &mut self,
         stack: &(impl StackMatches<N> + StackProgram<N>),
-        finalize_name: &Identifier<N>,
         get_or_use: &GetOrUse<N>,
     ) -> Result<()> {
         // Retrieve the mapping.

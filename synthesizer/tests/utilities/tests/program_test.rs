@@ -94,17 +94,15 @@ impl ExpectedTest for ProgramTest {
         // If the `keys` field is present in the config, parse it as a sequence of `PrivateKey`s.
         let keys = match test_config.get("keys") {
             None => Vec::new(),
-            Some(value) => {
-                value
-                    .as_sequence()
-                    .expect("`keys` must be a sequence")
-                    .iter()
-                    .map(|value| {
-                        PrivateKey::<CurrentNetwork>::from_str(value.as_str().expect("private key must be a string"))
-                            .expect("invalid private key")
-                    })
-                    .collect::<Vec<_>>()
-            }
+            Some(value) => value
+                .as_sequence()
+                .expect("`keys` must be a sequence")
+                .iter()
+                .map(|value| {
+                    PrivateKey::<CurrentNetwork>::from_str(value.as_str().expect("private key must be a string"))
+                        .expect("invalid private key")
+                })
+                .collect::<Vec<_>>(),
         };
 
         // Extract the test cases from the config.
