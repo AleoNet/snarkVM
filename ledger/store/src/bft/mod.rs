@@ -180,7 +180,7 @@ impl<N: Network, T: BFTStorage<N>> BFTStore<N, T> {
 
     /// Returns `true` if the given `transmission ID` exists.
     pub fn contains_transmission(&self, transmission_id: &TransmissionID<N>) -> Result<bool> {
-        self.storage.transmission_store().contains_transmission(&transmission_id)
+        self.storage.transmission_store().contains_transmission(transmission_id)
     }
 
     /// Returns `true` if the given `round` and `transmission ID` exists.

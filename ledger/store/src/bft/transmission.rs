@@ -122,17 +122,17 @@ pub trait TransmissionStorage<N: Network>: 'static + Clone + Send + Sync {
 
     /// Returns `true` if the given `transmission ID` exists.
     fn contains_transmission(&self, transmission_id: &TransmissionID<N>) -> Result<bool> {
-        self.transmission_map().contains_map_confirmed(&transmission_id)
+        self.transmission_map().contains_map_confirmed(transmission_id)
     }
 
     /// Returns `true` if the given `round` and `transmission ID` exists.
     fn contains_transmission_for_round(&self, round: u64, transmission_id: &TransmissionID<N>) -> Result<bool> {
-        self.transmission_map().contains_key_confirmed(&transmission_id, &round)
+        self.transmission_map().contains_key_confirmed(transmission_id, &round)
     }
 
     /// Returns the transmission for the given `transmission ID`.
     fn get_transmission(&self, transmission_id: &TransmissionID<N>) -> Result<Option<Transmission<N>>> {
-        match self.transmission_map().get_any_map_entry_confirmed(&transmission_id)? {
+        match self.transmission_map().get_any_map_entry_confirmed(transmission_id)? {
             Some((_, transmission)) => Ok(Some(transmission)),
             None => Ok(None),
         }
@@ -144,7 +144,7 @@ pub trait TransmissionStorage<N: Network>: 'static + Clone + Send + Sync {
         round: u64,
         transmission_id: &TransmissionID<N>,
     ) -> Result<Option<Transmission<N>>> {
-        match self.transmission_map().get_value_confirmed(&transmission_id, &round)? {
+        match self.transmission_map().get_value_confirmed(transmission_id, &round)? {
             Some(transmission) => Ok(Some(cow_to_cloned!(transmission))),
             None => Ok(None),
         }
@@ -255,7 +255,7 @@ impl<N: Network, T: TransmissionStorage<N>> TransmissionStore<N, T> {
 
     /// Returns `true` if the given `transmission ID` exists.
     pub(crate) fn contains_transmission(&self, transmission_id: &TransmissionID<N>) -> Result<bool> {
-        self.storage.contains_transmission(&transmission_id)
+        self.storage.contains_transmission(transmission_id)
     }
 
     /// Returns `true` if the given `round` and `transmission ID` exists.
