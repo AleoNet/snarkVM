@@ -146,8 +146,11 @@ fn check_contains_map_by_removing_key_values(map: &impl for<'a> NestedMap<'a, us
 
     println!("Removing all {NUM_TOTAL_ITEMS} items");
 
-    for i in 0..NUM_TOTAL_ITEMS {
+    for i in 0..(NUM_TOTAL_ITEMS - 1) {
         println!("i: {}", i);
+
+        assert!(map.contains_map_confirmed(&MAP).unwrap());
+        assert!(map.contains_map_speculative(&MAP).unwrap());
 
         // Remove the item from the map.
         map.remove_key(&MAP, &i).unwrap();
@@ -155,6 +158,14 @@ fn check_contains_map_by_removing_key_values(map: &impl for<'a> NestedMap<'a, us
         assert!(map.contains_map_confirmed(&MAP).unwrap());
         assert!(map.contains_map_speculative(&MAP).unwrap());
     }
+
+    println!("i: {}", NUM_TOTAL_ITEMS - 1);
+
+    // Remove the final item from the map.
+    map.remove_key(&MAP, &(NUM_TOTAL_ITEMS - 1)).unwrap();
+
+    assert!(!map.contains_map_confirmed(&MAP).unwrap());
+    assert!(!map.contains_map_speculative(&MAP).unwrap());
 
     println!("Inserting all {NUM_TOTAL_ITEMS} items");
 
