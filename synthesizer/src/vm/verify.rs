@@ -40,9 +40,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         /* Transaction */
 
         // Ensure the transaction ID is unique.
-        if self.transaction_store().contains_transaction_id(&transaction.id())?
-            || self.block_store().contains_rejected_or_aborted_transaction_id(&transaction.id())?
-        {
+        if self.block_store().contains_transaction_id(&transaction.id())? {
             bail!("Transaction '{}' already exists in the ledger", transaction.id())
         }
 
@@ -97,7 +95,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             Transaction::Deploy(id, owner, deployment, _) => {
                 // Compute the deployment ID.
                 let Ok(deployment_id) = deployment.to_deployment_id() else {
-                    bail!("Failed to compute the Merkle root for deployment transaction '{id}'")
+                    bail!("Failed to compute the Merkle root for a deployment transaction '{id}'")
                 };
                 // Verify the signature corresponds to the transaction ID.
                 ensure!(owner.verify(deployment_id), "Invalid owner signature for deployment transaction '{id}'");
@@ -112,7 +110,15 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 // Verify the deployment.
                 self.check_deployment_internal(deployment)?;
             }
-            Transaction::Execute(_, execution, _) => {
+            Transaction::Execute(id, execution, _) => {
+                // Compute the execution ID.
+                let Ok(execution_id) = execution.to_execution_id() else {
+                    bail!("Failed to compute the Merkle root for an execution transaction '{id}'")
+                };
+                // Ensure the execution was not previously rejected (replay attack prevention).
+                if self.block_store().contains_rejected_deployment_or_execution_id(&execution_id)? {
+                    bail!("Transaction '{id}' contains a previously rejected execution")
+                }
                 // Verify the execution.
                 self.check_execution_internal(execution)?;
             }
@@ -138,7 +144,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 let (cost, _) = deployment_cost(deployment)?;
                 // Ensure the fee is sufficient to cover the cost.
                 if *fee.base_amount()? < cost {
-                    bail!("Transaction '{id}' has an insufficient fee (deployment) - requires {cost} microcredits")
+                    bail!("Transaction '{id}' has an insufficient base fee (deployment) - requires {cost} microcredits")
                 }
                 // Verify the fee.
                 self.check_fee_internal(fee, deployment_id)?;
@@ -150,20 +156,29 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 let Ok(execution_id) = execution.to_execution_id() else {
                     bail!("Failed to compute the Merkle root for execution transaction '{id}'")
                 };
+                // If the transaction contains only 1 transition, and the transition is a split, then the fee can be skipped.
+                let is_fee_required = !(execution.len() == 1 && transaction.contains_split());
                 // Verify the fee.
                 if let Some(fee) = fee {
-                    // Compute the execution cost.
-                    let (cost, _) = execution_cost(self, execution)?;
-                    // Ensure the fee is sufficient to cover the cost.
-                    if *fee.base_amount()? < cost {
-                        bail!("Transaction '{id}' has an insufficient fee (execution) - requires {cost} microcredits")
+                    // If the fee is required, then check that the base fee amount is satisfied.
+                    if is_fee_required {
+                        // Compute the execution cost.
+                        let (cost, _) = execution_cost(self, execution)?;
+                        // Ensure the fee is sufficient to cover the cost.
+                        if *fee.base_amount()? < cost {
+                            bail!(
+                                "Transaction '{id}' has an insufficient base fee (execution) - requires {cost} microcredits"
+                            )
+                        }
+                    } else {
+                        // Ensure the base fee amount is zero.
+                        ensure!(*fee.base_amount()? == 0, "Transaction '{id}' has a non-zero base fee (execution)");
                     }
                     // Verify the fee.
                     self.check_fee_internal(fee, execution_id)?;
                 } else {
-                    // If the transaction contains only 1 transition, and the transition is a split, then the fee can be skipped.
-                    let can_skip_fee = execution.len() == 1 && transaction.contains_split();
-                    ensure!(can_skip_fee, "Transaction '{id}' is missing a fee (execution)");
+                    // Ensure the fee can be safely skipped.
+                    ensure!(!is_fee_required, "Transaction '{id}' is missing a fee (execution)");
                 }
             }
             // Note: This transaction type does not need to check the fee amount, because:
