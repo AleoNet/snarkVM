@@ -70,6 +70,7 @@ pub enum BlockMap {
     AbortedTransactionIDs = DataID::BlockAbortedTransactionIDsMap as u16,
     RejectedOrAbortedTransactionID = DataID::BlockRejectedOrAbortedTransactionIDMap as u16,
     ConfirmedTransactions = DataID::BlockConfirmedTransactionsMap as u16,
+    RejectedDeploymentOrExecution = DataID::BlockRejectedDeploymentOrExecutionMap as u16,
 }
 
 /// The RocksDB map prefix for committee-related entries.
@@ -268,6 +269,9 @@ enum DataID {
     // Program
     ProgramIDMap,
     KeyValueMap,
+
+    // TODO (howardwu): For mainnet - Reorder this up above.
+    BlockRejectedDeploymentOrExecutionMap,
 
     // Testing
     #[cfg(test)]

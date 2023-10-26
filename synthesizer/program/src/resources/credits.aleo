@@ -789,11 +789,11 @@ function fee_private:
     input r1 as u64.public;
     // Input the priority fee amount.
     input r2 as u64.public;
-    // Input the deployment or execution root.
+    // Input the deployment or execution ID.
     input r3 as field.public;
     // Ensure the amount is nonzero.
     assert.neq r1 0u64;
-    // Ensure the deployment or execution root is nonzero.
+    // Ensure the deployment or execution ID is nonzero.
     assert.neq r3 0field;
     // Add the fee and priority fee amounts.
     add r1 r2 into r4;
@@ -815,11 +815,11 @@ function fee_public:
     input r0 as u64.public;
     // Input the priority fee amount.
     input r1 as u64.public;
-    // Input the deployment or execution root.
+    // Input the deployment or execution ID.
     input r2 as field.public;
     // Ensure the amount is nonzero.
     assert.neq r0 0u64;
-    // Ensure the deployment or execution root is nonzero.
+    // Ensure the deployment or execution ID is nonzero.
     assert.neq r2 0field;
     // Add the fee and priority fee amounts.
     add r0 r1 into r3;
