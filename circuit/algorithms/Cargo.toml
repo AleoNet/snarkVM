@@ -14,7 +14,7 @@ optional = true
 
 [dependencies.snarkvm-console-types-field]
 path = "../../console/types/field"
-version = "0.15.4"
+version = "0.16.6"
 
 [dependencies.snarkvm-circuit-types]
 path = "../types"
