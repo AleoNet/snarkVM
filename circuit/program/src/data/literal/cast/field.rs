@@ -120,8 +120,8 @@ mod tests {
             Mode::Constant,
             count_less_than!(11, 0, 0, 0),
         );
-        check_cast::<Address<Circuit>, console_root::types::Address<Testnet3>>(Mode::Public, count_is!(4, 0, 15, 15));
-        check_cast::<Address<Circuit>, console_root::types::Address<Testnet3>>(Mode::Private, count_is!(4, 0, 15, 15));
+        check_cast::<Address<Circuit>, console_root::types::Address<Testnet3>>(Mode::Public, count_is!(4, 0, 13, 13));
+        check_cast::<Address<Circuit>, console_root::types::Address<Testnet3>>(Mode::Private, count_is!(4, 0, 13, 13));
     }
 
     #[test]
@@ -144,8 +144,8 @@ mod tests {
             Mode::Constant,
             count_less_than!(11, 0, 0, 0),
         );
-        check_cast::<Group<Circuit>, console_root::types::Group<Testnet3>>(Mode::Public, count_is!(4, 0, 15, 15));
-        check_cast::<Group<Circuit>, console_root::types::Group<Testnet3>>(Mode::Private, count_is!(4, 0, 15, 15));
+        check_cast::<Group<Circuit>, console_root::types::Group<Testnet3>>(Mode::Public, count_is!(4, 0, 13, 13));
+        check_cast::<Group<Circuit>, console_root::types::Group<Testnet3>>(Mode::Private, count_is!(4, 0, 13, 13));
     }
 
     #[test]
@@ -186,8 +186,8 @@ mod tests {
     #[test]
     fn test_field_to_scalar() {
         check_cast::<Scalar<Circuit>, console_root::types::Scalar<Testnet3>>(Mode::Constant, count_is!(253, 0, 0, 0));
-        check_cast::<Scalar<Circuit>, console_root::types::Scalar<Testnet3>>(Mode::Public, count_is!(0, 0, 755, 760));
-        check_cast::<Scalar<Circuit>, console_root::types::Scalar<Testnet3>>(Mode::Private, count_is!(0, 0, 755, 760));
+        check_cast::<Scalar<Circuit>, console_root::types::Scalar<Testnet3>>(Mode::Public, count_is!(0, 0, 755, 759));
+        check_cast::<Scalar<Circuit>, console_root::types::Scalar<Testnet3>>(Mode::Private, count_is!(0, 0, 755, 759));
     }
 
     #[test]

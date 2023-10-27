@@ -69,15 +69,6 @@ impl<M: Serialize + DeserializeOwned, K: Serialize + DeserializeOwned, V: Serial
         Ok(raw_map_key)
     }
 
-    // #[inline]
-    // fn get_map_raw(&self, map: &M) -> Result<Option<rocksdb::DBPinnableSlice>> {
-    //     let raw_map = self.create_prefixed_map(map)?;
-    //     match self.database.get_pinned(&raw_map)? {
-    //         Some(data) => Ok(Some(data)),
-    //         None => Ok(None),
-    //     }
-    // }
-
     #[inline]
     fn get_map_key_raw(&self, map: &M, key: &K) -> Result<Option<rocksdb::DBPinnableSlice>> {
         let raw_map_key = self.create_prefixed_map_key(map, key)?;
@@ -88,12 +79,12 @@ impl<M: Serialize + DeserializeOwned, K: Serialize + DeserializeOwned, V: Serial
     }
 }
 #[inline]
-fn get_map_and_key(map_key: &[u8]) -> Option<(&[u8], &[u8])> {
-    let map_len = u32::from_bytes_le(&map_key[PREFIX_LEN..][..4]).ok()? as usize;
+fn get_map_and_key(map_key: &[u8]) -> Result<(&[u8], &[u8])> {
+    let map_len = u32::from_bytes_le(&map_key[PREFIX_LEN..][..4])? as usize;
     let map = &map_key[PREFIX_LEN + 4..][..map_len];
     let key = &map_key[PREFIX_LEN + 4 + map_len..];
 
-    Some((map, key))
+    Ok((map, key))
 }
 
 impl<
@@ -132,17 +123,37 @@ impl<
             true => self.atomic_batch.lock().push((*map, None, None)),
             // Otherwise, remove the map directly from the map.
             false => {
-                let map = self.create_prefixed_map(map)?;
+                // Serialize the map.
+                let serialized_map = bincode::serialize(map)?;
 
-                // Iterate over the keys with the specified map prefix.
-                let entries_to_delete =
-                    self.database.iterator(rocksdb::IteratorMode::From(&map, rocksdb::Direction::Forward));
+                // Batching the delete operations to optimize the write performance and ensure atomicity.
+                let mut batch = rocksdb::WriteBatch::default();
 
-                // Now delete all the identified keys.
-                for entry in entries_to_delete {
+                // Construct an iterator over the DB with the specified prefix.
+                let iterator = self.database.iterator(rocksdb::IteratorMode::From(
+                    &self.create_prefixed_map(map)?,
+                    rocksdb::Direction::Forward,
+                ));
+
+                // Iterate over the entries in the DB with the specified prefix.
+                for entry in iterator {
                     let (map_key, _) = entry?;
-                    self.database.delete(&map_key).unwrap();
+
+                    // Extract the bytes belonging to the map and the key.
+                    let (entry_map, _) = get_map_and_key(&map_key)?;
+
+                    // If the 'entry_map' matches 'serialized_map', delete the key.
+                    if entry_map == serialized_map {
+                        batch.delete(map_key);
+                    } else {
+                        // If the 'entry_map' no longer matches the 'serialized_map',
+                        // we've moved past the relevant keys and can break the loop.
+                        break;
+                    }
                 }
+
+                // Deleting the batched keys atomically from RocksDB.
+                self.database.write(batch)?;
             }
         }
         Ok(())
@@ -159,8 +170,8 @@ impl<
             // Otherwise, remove the key-value pair directly from the map.
             false => {
                 // Prepare the prefixed map-key.
-                let raw_key = self.create_prefixed_map_key(map, key)?;
-                self.database.delete(raw_key)?;
+                let map_key = self.create_prefixed_map_key(map, key)?;
+                self.database.delete(map_key)?;
             }
         }
         Ok(())
@@ -257,16 +268,30 @@ impl<
                     }
                     (Some(key), None) => atomic_batch.delete(self.create_prefixed_map_key(&map, &key)?),
                     (None, None) => {
-                        let map = self.create_prefixed_map(&map)?;
+                        // Serialize the map.
+                        let serialized_map = bincode::serialize(&map)?;
 
-                        // Iterate over the keys with the specified map prefix.
-                        let entries_to_delete =
-                            self.database.iterator(rocksdb::IteratorMode::From(&map, rocksdb::Direction::Forward));
+                        // Construct an iterator over the DB with the specified prefix.
+                        let iterator = self.database.iterator(rocksdb::IteratorMode::From(
+                            &self.create_prefixed_map(&map)?,
+                            rocksdb::Direction::Forward,
+                        ));
 
-                        // Now delete all the identified keys.
-                        for entry in entries_to_delete {
+                        // Iterate over the entries in the DB with the specified prefix.
+                        for entry in iterator {
                             let (map_key, _) = entry?;
-                            atomic_batch.delete(map_key);
+
+                            // Extract the bytes belonging to the map and the key.
+                            let (entry_map, _) = get_map_and_key(&map_key)?;
+
+                            // If the 'entry_map' matches 'serialized_map', delete the key.
+                            if entry_map == serialized_map {
+                                atomic_batch.delete(map_key);
+                            } else {
+                                // If the 'entry_map' no longer matches the 'serialized_map',
+                                // we've moved past the relevant keys and can break the loop.
+                                break;
+                            }
                         }
                     }
                     (None, Some(_)) => unreachable!("Cannot insert a value without a key"),
@@ -356,32 +381,38 @@ impl<
     /// Returns the key-value pairs for the given map, if it exists.
     ///
     fn get_map_confirmed(&'a self, map: &M) -> Result<Vec<(K, V)>> {
-        // Prepare the prefixed map.
-        let raw_map = self.create_prefixed_map(map)?;
         // Serialize the map.
         let serialized_map = bincode::serialize(map)?;
 
-        // Iterate over the keys with the specified map prefix.
-        let entries: Vec<_> = self
+        // Initialize a vector for the entries.
+        let mut entries = Vec::new();
+
+        // Construct an iterator over the DB with the specified prefix.
+        let iterator = self
             .database
-            .iterator(rocksdb::IteratorMode::From(&raw_map, rocksdb::Direction::Forward))
-            .filter_map(|entry| {
-                let (map_key, value) = entry.ok()?;
+            .iterator(rocksdb::IteratorMode::From(&self.create_prefixed_map(map)?, rocksdb::Direction::Forward));
 
-                // Extract the bytes belonging to the map and the key.
-                let (entry_map, entry_key) = get_map_and_key(&map_key)?;
+        // Iterate over the entries in the DB with the specified prefix.
+        for entry in iterator {
+            let (map_key, value) = entry?;
 
-                if entry_map == serialized_map {
-                    // Deserialize the key.
-                    let key = bincode::deserialize(entry_key).ok()?;
-                    // Deserialize the value.
-                    let value = bincode::deserialize(&value).ok()?;
-                    Some((key, value))
-                } else {
-                    None
-                }
-            })
-            .collect();
+            // Extract the bytes belonging to the map and the key.
+            let (entry_map, entry_key) = get_map_and_key(&map_key)?;
+
+            // If the 'entry_map' matches 'serialized_map', deserialize the key and value.
+            if entry_map == serialized_map {
+                // Deserialize the key.
+                let key = bincode::deserialize(entry_key)?;
+                // Deserialize the value.
+                let value = bincode::deserialize(&value)?;
+                // Push the key-value pair to the vector.
+                entries.push((key, value));
+            } else {
+                // If the 'entry_map' no longer matches the 'serialized_map',
+                // we've moved past the relevant keys and can break the loop.
+                break;
+            }
+        }
 
         Ok(entries)
     }
@@ -390,11 +421,6 @@ impl<
     /// Returns the speculative key-value pairs for the given map, if it exists.
     ///
     fn get_map_speculative(&'a self, map: &M) -> Result<Vec<(K, V)>> {
-        // If there is no atomic batch in progress, then return the confirmed key-value pairs.
-        if !self.is_atomic_in_progress() {
-            return self.get_map_confirmed(map);
-        }
-
         // Retrieve the confirmed key-value pairs for the given map.
         let mut key_values = self.get_map_confirmed(map)?;
 
@@ -547,17 +573,34 @@ impl<
             .db_iter
             .next()?
             .map_err(|e| {
-                error!("RocksDB iterator error: {e}");
+                error!("RocksDB NestedIter iterator error: {e}");
             })
             .ok()?;
 
         // Extract the bytes belonging to the map and the key.
-        let (entry_map, entry_key) = get_map_and_key(&map_key)?;
-        // Deserialize the map and key.
-        let map = bincode::deserialize(entry_map).ok()?;
-        let key = bincode::deserialize(entry_key).ok()?;
+        let (entry_map, entry_key) = get_map_and_key(&map_key)
+            .map_err(|e| {
+                error!("RocksDB NestedIter get_map_and_key error: {e}");
+            })
+            .ok()?;
+
+        // Deserialize the map, key, and value.
+        let map = bincode::deserialize(entry_map)
+            .map_err(|e| {
+                error!("RocksDB NestedIter deserialize(map) error: {e}");
+            })
+            .ok()?;
+        let key = bincode::deserialize(entry_key)
+            .map_err(|e| {
+                error!("RocksDB NestedIter deserialize(key) error: {e}");
+            })
+            .ok()?;
         // Deserialize the value.
-        let value = bincode::deserialize(&value).ok()?;
+        let value = bincode::deserialize(&value)
+            .map_err(|e| {
+                error!("RocksDB NestedIter deserialize(value) error: {e}");
+            })
+            .ok()?;
 
         Some((Cow::Owned(map), Cow::Owned(key), Cow::Owned(value)))
     }
@@ -597,15 +640,28 @@ impl<
             .db_iter
             .next()?
             .map_err(|e| {
-                error!("RocksDB iterator error: {e}");
+                error!("RocksDB NestedKeys iterator error: {e}");
             })
             .ok()?;
 
         // Extract the bytes belonging to the map and the key.
-        let (entry_map, entry_key) = get_map_and_key(&map_key)?;
+        let (entry_map, entry_key) = get_map_and_key(&map_key)
+            .map_err(|e| {
+                error!("RocksDB NestedKeys get_map_and_key error: {e}");
+            })
+            .ok()?;
+
         // Deserialize the map and key.
-        let map = bincode::deserialize(entry_map).ok()?;
-        let key = bincode::deserialize(entry_key).ok()?;
+        let map = bincode::deserialize(entry_map)
+            .map_err(|e| {
+                error!("RocksDB NestedKeys deserialize(map) error: {e}");
+            })
+            .ok()?;
+        let key = bincode::deserialize(entry_key)
+            .map_err(|e| {
+                error!("RocksDB NestedKeys deserialize(key) error: {e}");
+            })
+            .ok()?;
 
         Some((Cow::Owned(map), Cow::Owned(key)))
     }
@@ -631,10 +687,16 @@ impl<'a, V: 'a + Clone + PartialEq + Eq + Serialize + DeserializeOwned> Iterator
             .db_iter
             .next()?
             .map_err(|e| {
-                error!("RocksDB iterator error: {e}");
+                error!("RocksDB NestedValues iterator error: {e}");
             })
             .ok()?;
-        let value = bincode::deserialize(&value).ok()?;
+
+        // Deserialize the value.
+        let value = bincode::deserialize(&value)
+            .map_err(|e| {
+                error!("RocksDB NestedValues deserialize(value) error: {e}");
+            })
+            .ok()?;
 
         Some(Cow::Owned(value))
     }

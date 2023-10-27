@@ -80,7 +80,7 @@ function hello:
 
     c.bench_function("Transaction::Deploy - verify", |b| {
         let transaction = vm.deploy(&private_key, &program, Some(records[0].clone()), 600000, None, rng).unwrap();
-        b.iter(|| assert!(vm.verify_transaction(&transaction, None)))
+        b.iter(|| vm.check_transaction(&transaction, None).unwrap())
     });
 }
 
@@ -104,7 +104,7 @@ fn execute(c: &mut Criterion) {
     // Retrieve the execution ID.
     let execution_id = execute_authorization.to_execution_id().unwrap();
     // Authorize the fee.
-    let fee_authorization = vm.authorize_fee_public(&private_key, 100000, execution_id, rng).unwrap();
+    let fee_authorization = vm.authorize_fee_public(&private_key, 100000, 1000, execution_id, rng).unwrap();
 
     c.bench_function("Transaction::Execute(transfer_public)", |b| {
         b.iter(|| {

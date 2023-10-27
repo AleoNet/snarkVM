@@ -126,7 +126,7 @@ impl<E: Environment, I: IntegerType> Integer<E, I> {
             let z_1_upper_field = Field::from_bits_le(&z_1_upper_bits);
             // Compute whether the sum of z_1_field and z_2 is zero.
             let z_1_upper_field_plus_z_2 = &z_1_upper_field + &z2;
-            let flag = z_1_upper_field_plus_z_2.is_equal(&Field::zero());
+            let flag = z_1_upper_field_plus_z_2.is_not_equal(&Field::zero());
 
             // Return the product of `self` and `other` and the overflow flag.
             (product, flag)

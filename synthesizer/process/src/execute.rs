@@ -71,22 +71,28 @@ mod tests {
         // Sample a private key.
         let private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
         let owner = Address::try_from(private_key).unwrap();
-        // Sample a fee in microcredits.
-        let fee_in_microcredits = rng.gen();
+
+        // Sample a base fee in microcredits.
+        let base_fee_in_microcredits = rng.gen_range(1_000_000..u64::MAX / 2);
+        // Sample a priority fee in microcredits.
+        let priority_fee_in_microcredits = rng.gen_range(0..u64::MAX / 2);
+        // Sample a deployment or execution ID.
+        let deployment_or_execution_id = Field::rand(rng);
+
         // Sample a credits record.
+        let fee_in_microcredits = base_fee_in_microcredits.saturating_add(priority_fee_in_microcredits);
         let credits = Record::<CurrentNetwork, Plaintext<_>>::from_str(&format!(
             "{{ owner: {owner}.private, microcredits: {fee_in_microcredits}u64.private, _nonce: 0group.public }}"
         ))
         .unwrap();
-        // Sample a deployment or execution ID.
-        let deployment_or_execution_id = Field::rand(rng);
 
         // Initialize the authorization.
         let authorization = process
             .authorize_fee_private::<CurrentAleo, _>(
                 &private_key,
                 credits,
-                fee_in_microcredits,
+                base_fee_in_microcredits,
+                priority_fee_in_microcredits,
                 deployment_or_execution_id,
                 rng,
             )
@@ -116,14 +122,22 @@ mod tests {
 
         // Sample a private key.
         let private_key = PrivateKey::new(rng).unwrap();
-        // Sample a fee in microcredits.
-        let fee_in_microcredits = rng.gen();
+        // Sample a base fee in microcredits.
+        let base_fee_in_microcredits = rng.gen_range(1_000_000..u64::MAX / 2);
+        // Sample a priority fee in microcredits.
+        let priority_fee_in_microcredits = rng.gen_range(0..u64::MAX / 2);
         // Sample a deployment or execution ID.
         let deployment_or_execution_id = Field::rand(rng);
 
         // Compute the authorization.
         let authorization = process
-            .authorize_fee_public::<CurrentAleo, _>(&private_key, fee_in_microcredits, deployment_or_execution_id, rng)
+            .authorize_fee_public::<CurrentAleo, _>(
+                &private_key,
+                base_fee_in_microcredits,
+                priority_fee_in_microcredits,
+                deployment_or_execution_id,
+                rng,
+            )
             .unwrap();
         assert!(authorization.is_fee_public(), "Authorization must be for a call to 'credits.aleo/fee_public'");
 

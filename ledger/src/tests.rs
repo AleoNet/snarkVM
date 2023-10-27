@@ -136,6 +136,7 @@ fn test_insufficient_fees() {
                 &private_key,
                 record_2.clone(),
                 10_000_000,
+                1_000,
                 execution.to_execution_id().unwrap(),
                 rng,
             )
@@ -147,7 +148,7 @@ fn test_insufficient_fees() {
         // Check that a transaction with insufficient fee will fail.
         let insufficient_fee_authorization = ledger
             .vm
-            .authorize_fee_private(&private_key, record_2.clone(), 1, execution.to_execution_id().unwrap(), rng)
+            .authorize_fee_private(&private_key, record_2.clone(), 1, 0, execution.to_execution_id().unwrap(), rng)
             .unwrap();
         let insufficient_fee = ledger.vm.execute_fee_authorization(insufficient_fee_authorization, None, rng).unwrap();
         let insufficient_fee_transaction =
@@ -180,7 +181,7 @@ finalize foo:
         let deployment = transaction.deployment().unwrap();
         let insufficient_fee_authorization = ledger
             .vm
-            .authorize_fee_private(&private_key, record_2, 1, deployment.to_deployment_id().unwrap(), rng)
+            .authorize_fee_private(&private_key, record_2, 1, 0, deployment.to_deployment_id().unwrap(), rng)
             .unwrap();
         let insufficient_fee = ledger.vm.execute_fee_authorization(insufficient_fee_authorization, None, rng).unwrap();
         let insufficient_fee_transaction =
@@ -232,7 +233,7 @@ finalize foo:
     // Deploy.
     let transaction = ledger.vm.deploy(&private_key, &program, credits, 0, None, rng).unwrap();
     // Verify.
-    assert!(ledger.vm().verify_transaction(&transaction, None));
+    ledger.vm().check_transaction(&transaction, None).unwrap();
 
     // Construct the next block.
     let block =
@@ -286,7 +287,7 @@ finalize foo:
     let transaction =
         ledger.vm.execute(&private_key, ("dummy.aleo", "foo"), inputs, Some(sufficient_record), 0, None, rng).unwrap();
     // Verify.
-    assert!(ledger.vm.verify_transaction(&transaction, None));
+    ledger.vm.check_transaction(&transaction, None).unwrap();
     // Ensure that the ledger deems the transaction valid.
     assert!(ledger.check_transaction_basic(&transaction, None).is_ok());
 }
@@ -418,7 +419,7 @@ finalize foo:
     // Deploy.
     let transaction = ledger.vm.deploy(&private_key, &program, None, 0, None, rng).unwrap();
     // Verify.
-    assert!(ledger.vm().verify_transaction(&transaction, None));
+    ledger.vm().check_transaction(&transaction, None).unwrap();
 
     // Construct the next block.
     let block =

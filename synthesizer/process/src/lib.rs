@@ -115,8 +115,12 @@ impl<N: Network> Process<N> {
     /// If you intend to `execute` the program, use `deploy` and `finalize_deployment` instead.
     #[inline]
     pub fn add_program(&mut self, program: &Program<N>) -> Result<()> {
-        // Compute the program stack, and add it to the process.
-        self.add_stack(Stack::new(self, program)?);
+        // Initialize the 'credits.aleo' program ID.
+        let credits_program_id = ProgramID::<N>::from_str("credits.aleo")?;
+        // If the program is not 'credits.aleo', compute the program stack, and add it to the process.
+        if program.id() != &credits_program_id {
+            self.add_stack(Stack::new(self, program)?);
+        }
         Ok(())
     }
 

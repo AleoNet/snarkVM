@@ -44,13 +44,13 @@ impl<N: Network> BatchHeader<N> {
         // Insert the timestamp.
         timestamp.write_le(&mut preimage)?;
         // Insert the number of transmissions.
-        u64::try_from(transmission_ids.len())?.write_le(&mut preimage)?;
+        u32::try_from(transmission_ids.len())?.write_le(&mut preimage)?;
         // Insert the transmission IDs.
         for transmission_id in transmission_ids {
             transmission_id.write_le(&mut preimage)?;
         }
         // Insert the number of previous certificate IDs.
-        u64::try_from(previous_certificate_ids.len())?.write_le(&mut preimage)?;
+        u32::try_from(previous_certificate_ids.len())?.write_le(&mut preimage)?;
         // Insert the previous certificate IDs.
         for certificate_id in previous_certificate_ids {
             // Insert the certificate ID.

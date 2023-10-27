@@ -29,8 +29,23 @@ pub struct CoinbaseSolution<N: Network> {
 
 impl<N: Network> CoinbaseSolution<N> {
     /// Initializes a new instance of the solutions.
-    pub fn new(solutions: Vec<ProverSolution<N>>) -> Self {
-        Self { solutions: solutions.into_iter().map(|solution| (solution.commitment(), solution)).collect() }
+    pub fn new(solutions: Vec<ProverSolution<N>>) -> Result<Self> {
+        // Ensure the solutions are not empty.
+        ensure!(!solutions.is_empty(), "There are no solutions to verify for the coinbase puzzle");
+        // Ensure the number of partial solutions does not exceed `MAX_PROVER_SOLUTIONS`.
+        if solutions.len() > N::MAX_PROVER_SOLUTIONS {
+            bail!(
+                "The solutions exceed the allowed number of partial solutions. ({} > {})",
+                solutions.len(),
+                N::MAX_PROVER_SOLUTIONS
+            );
+        }
+        // Ensure the puzzle commitments are unique.
+        if has_duplicates(solutions.iter().map(|s| s.commitment())) {
+            bail!("The solutions contain duplicate puzzle commitments");
+        }
+        // Return the solutions.
+        Ok(Self { solutions: solutions.into_iter().map(|solution| (solution.commitment(), solution)).collect() })
     }
 
     /// Returns the puzzle commitments.

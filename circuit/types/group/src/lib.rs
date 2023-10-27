@@ -32,7 +32,7 @@ use console::{TestRng, Uniform};
 use snarkvm_circuit_environment::{assert_count, assert_output_mode, assert_scope, count, output_mode};
 
 use console::AffineCurve;
-use snarkvm_circuit_environment::prelude::{num_traits::zero, *};
+use snarkvm_circuit_environment::prelude::*;
 use snarkvm_circuit_types_boolean::Boolean;
 use snarkvm_circuit_types_field::Field;
 use snarkvm_circuit_types_scalar::Scalar;

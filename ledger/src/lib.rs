@@ -28,6 +28,9 @@ pub use ledger_store as store;
 
 pub use crate::block::*;
 
+#[cfg(feature = "test-helpers")]
+pub use ledger_test_helpers;
+
 mod helpers;
 pub use helpers::*;
 

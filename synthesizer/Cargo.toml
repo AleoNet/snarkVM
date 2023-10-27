@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-synthesizer"
-version = "0.15.4"
+version = "0.16.6"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Synthesizer for a decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -28,7 +28,6 @@ default = [ "process", "program", "rayon", "snark" ]
 process = [ "synthesizer-process" ]
 program = [ "synthesizer-program" ]
 snark = [ "synthesizer-snark" ]
-
 aleo-cli = [ ]
 async = [ "ledger-query/async", "synthesizer-process/async" ]
 cuda = [ "algorithms/cuda" ]
@@ -69,61 +68,61 @@ harness = false
 [dependencies.algorithms]
 package = "snarkvm-algorithms"
 path = "../algorithms"
-version = "=0.15.4"
+version = "=0.16.6"
 
 [dependencies.circuit]
 package = "snarkvm-circuit"
 path = "../circuit"
-version = "=0.15.4"
+version = "=0.16.6"
 
 [dependencies.console]
 package = "snarkvm-console"
 path = "../console"
-version = "=0.15.4"
+version = "=0.16.6"
 
 [dependencies.ledger-block]
 package = "snarkvm-ledger-block"
 path = "../ledger/block"
-version = "=0.15.4"
+version = "=0.16.6"
 
 [dependencies.ledger-coinbase]
 package = "snarkvm-ledger-coinbase"
 path = "../ledger/coinbase"
-version = "=0.15.4"
+version = "=0.16.6"
 
 [dependencies.ledger-committee]
 package = "snarkvm-ledger-committee"
 path = "../ledger/committee"
-version = "=0.15.4"
+version = "=0.16.6"
 
 [dependencies.ledger-query]
 package = "snarkvm-ledger-query"
 path = "../ledger/query"
-version = "=0.15.4"
+version = "=0.16.6"
 default-features = false
 features = [ "query" ]
 
 [dependencies.ledger-store]
 package = "snarkvm-ledger-store"
 path = "../ledger/store"
-version = "=0.15.4"
+version = "=0.16.6"
 
 [dependencies.synthesizer-process]
 package = "snarkvm-synthesizer-process"
 path = "./process"
-version = "=0.15.4"
+version = "=0.16.6"
 optional = true
 
 [dependencies.synthesizer-program]
 package = "snarkvm-synthesizer-program"
 path = "./program"
-version = "=0.15.4"
+version = "=0.16.6"
 optional = true
 
 [dependencies.synthesizer-snark]
 package = "snarkvm-synthesizer-snark"
 path = "./snark"
-version = "=0.15.4"
+version = "=0.16.6"
 optional = true
 
 [dependencies.aleo-std]

@@ -8,10 +8,10 @@ outputs:
       - '{"type":"public","id":"4408001848080504344165436121252640202617322612254005793329268580869751931263field","value":"aleo1qr2ha4pfs5l28aze88yn6fhleeythklkczrule2v838uwj65n5gqxt9djx"}'
   speculate: the execution was accepted
   add_next_block: succeeded.
-- execute: 'Failed to evaluate instruction (call child.aleo/foo into r0 r1;): Failed to evaluate instruction (assert.eq self.caller self.signer ;): ''assert.eq'' failed: ''aleo18ruz9g9e0h5elul8a6j6c7fq68tey2u0jj4nwwza60xdgz5pgsysphw7zg'' is not equal to ''aleo1qr2ha4pfs5l28aze88yn6fhleeythklkczrule2v838uwj65n5gqxt9djx'' (should be equal)'
+- execute: 'Failed to evaluate instruction (call child.aleo/foo into r0 r1;): Failed to evaluate instruction (assert.eq self.caller self.signer ;): ''assert.eq'' failed: ''aleo16w8t56s7v6ud7vu33fr388ph0dq0c7yhp597cyjt88rr3nultcyqcyk9yy'' is not equal to ''aleo1qr2ha4pfs5l28aze88yn6fhleeythklkczrule2v838uwj65n5gqxt9djx'' (should be equal)'
 additional:
 - child_outputs:
     credits.aleo/fee_private:
       outputs:
-      - '{"type":"record","id":"3016941229901441056588651080908607801693155798837344578888431259782128238411field","checksum":"5879080894131074121533453004863838821405536569870396241404140229889576450255field","value":"record1qyqsp3agqhrv6lrugrgu9sc32rh2h486s7adwpdht6w8yj53j94f0tgwqyxx66trwfhkxun9v35hguerqqpqzqxrcnjq9znfycp8td8tz4q4wmx67xd9k0mzldeecqxtzc5uxtl4qv3cn759q932fq05jk0a7hr63lxpfmy7je3anzmerqhkswu0yteq27t3m7r"}'
+      - '{"type":"record","id":"7306036686667087636279947507997825407084203811048562802739660291735242744444field","checksum":"7132981897182131254956763451386939918007763262893522220397577775796699535598field","value":"record1qyqsqx586v4tjhcdgtvpat2cmz7ztzd7drzm5c04gyeaxqmujgv7ucq3qyxx66trwfhkxun9v35hguerqqpqzqx4pcwh0jc37snpu02y8ujwh2u327ghc6yaeeyc4k74e56uvuhqp0tpta5q5eppwa48pq9eepyuln9ct5qth57klqzf67ewyqn9hresxwalp5l"}'
 - {}
