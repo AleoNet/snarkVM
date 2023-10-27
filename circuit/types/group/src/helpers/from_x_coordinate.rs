@@ -74,7 +74,7 @@ impl<E: Environment> Group<E> {
         let order_bits_be = order.to_bits_be();
         let mut order_bits_be_constants = Vec::new();
         for bit in order_bits_be.iter() {
-            order_bits_be_constants.push(Boolean::constant(bit.clone()));
+            order_bits_be_constants.push(Boolean::constant(*bit));
         }
         let point1_times_order = order_bits_be_constants.mul(point1);
         let point2_times_order = order_bits_be_constants.mul(point2);
