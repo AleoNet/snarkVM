@@ -6,6 +6,9 @@ cases:
   - program: relay.aleo
     function: send
     inputs: [aleo1f6eg623knp66cwx0926w3plgdgzcmfpgyrzgnjz90mucgs3z7s9qls4upm, 0u8]
+  - program: relay.aleo
+    function: send_without_check
+    inputs: [aleo1f6eg623knp66cwx0926w3plgdgzcmfpgyrzgnjz90mucgs3z7s9qls4upm, 0u8]
   - program: registry.aleo
     function: register
     inputs: []
@@ -65,4 +68,17 @@ function send:
 finalize send:
     input r0 as address.public;
     get registry.aleo/users[r0] into r1;
+    assert.eq r1 true;
+
+function send_without_check:
+    input r0 as address.public;
+    input r1 as u8.public;
+    cast r0 r1 into r2 as message.record;
+    async send_without_check r0 into r3;
+    output r2 as message.record;
+    output r3 as relay.aleo/send_without_check.future;
+
+finalize send_without_check:
+    input r0 as address.public;
+    get.or_use registry.aleo/users[r0] true into r1;
     assert.eq r1 true;
