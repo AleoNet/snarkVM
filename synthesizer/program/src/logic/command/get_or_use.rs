@@ -51,7 +51,7 @@ impl<N: Network> GetOrUse<N> {
         vec![self.key.clone(), self.default.clone()]
     }
 
-    /// Returns the mapping.
+    /// Returns the mapping name.
     #[inline]
     pub const fn mapping(&self) -> &CallOperator<N> {
         &self.mapping
