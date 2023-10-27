@@ -384,7 +384,7 @@ impl<N: Network> FinalizeTypes<N> {
                 external.get_mapping(mapping_name).unwrap()
             }
             CallOperator::Resource(mapping_name) => {
-                // Ensure the declared mapping in `get` is defined in the current program.
+                // Ensure the declared mapping in `get.or_use` is defined in the current program.
                 if !stack.program().contains_mapping(mapping_name) {
                     bail!("Mapping '{mapping_name}' in '{}' is not defined.", stack.program_id())
                 }

@@ -28,7 +28,7 @@ use console::{
 /// If the key is not present, `default` is stored in `destination`.
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct GetOrUse<N: Network> {
-    /// The mapping name.
+    /// The mapping.
     mapping: CallOperator<N>,
     /// The key to access the mapping.
     key: Operand<N>,
@@ -51,7 +51,7 @@ impl<N: Network> GetOrUse<N> {
         vec![self.key.clone(), self.default.clone()]
     }
 
-    /// Returns the mapping name.
+    /// Returns the mapping.
     #[inline]
     pub const fn mapping(&self) -> &CallOperator<N> {
         &self.mapping

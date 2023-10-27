@@ -27,7 +27,7 @@ use console::{
 /// Gets the value stored at `operand` in `mapping` and stores the result in `destination`.
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Get<N: Network> {
-    /// The mapping name.
+    /// The mapping.
     mapping: CallOperator<N>,
     /// The key to access the mapping.
     key: Operand<N>,
@@ -48,7 +48,7 @@ impl<N: Network> Get<N> {
         vec![self.key.clone()]
     }
 
-    /// Returns the mapping name.
+    /// Returns the mapping.
     #[inline]
     pub const fn mapping(&self) -> &CallOperator<N> {
         &self.mapping
