@@ -95,7 +95,7 @@ impl<E: Environment> Field<E> {
         // The called function square_root returns the square root closer to 0.
         let root_witness = match self.eject_value().square_root() {
             Ok(root) => root,
-            Err(_) => E::halt("Failed to calculate square root witness"),
+            Err(_) => console::Field::zero(),
         };
 
         // In order to avoid actually calculating the square root in the circuit,
