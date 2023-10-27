@@ -376,6 +376,9 @@ impl<
     fn contains_map_speculative(&self, map: &M) -> Result<bool> {
         // If a batch is in progress, check the atomic batch first.
         if self.is_atomic_in_progress() {
+            // Fetch the remaining keys in the map.
+            let mut remaining_keys = self.get_map_confirmed(map)?.into_iter().map(|(k, _)| k).collect::<Vec<_>>();
+
             // We iterate from the back of the `atomic_batch` to find the latest value.
             for (m, k, v) in self.atomic_batch.lock().iter().rev() {
                 // If the map does not match the given map, then continue.
@@ -389,12 +392,22 @@ impl<
                 // If the value is 'None', then continue, as we do not know for certain whether the map exists.
                 // For instance, if the map contains two KV entries, then removing just one KV entry will not remove the map.
                 if v.is_none() {
+                    // Remove the key from the list of remaining keys.
+                    if let Some(index) = k.as_ref().and_then(|key| remaining_keys.iter().position(|x| x == key)) {
+                        remaining_keys.remove(index);
+                    }
+
                     continue;
                 }
                 // If the key is 'Some(K)' and the value is 'Some(V)', then the map exists.
                 if k.is_some() && v.is_some() {
                     return Ok(true);
                 }
+            }
+
+            // If there are no more remaining keys, then the map does not exist.
+            if remaining_keys.is_empty() {
+                return Ok(false);
             }
         }
         // Otherwise, check the confirmed map.
