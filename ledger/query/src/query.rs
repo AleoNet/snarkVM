@@ -27,6 +27,8 @@ pub enum Query<N: Network, B: BlockStorage<N>> {
     VM(BlockStore<N, B>),
     /// The base URL of the node.
     REST(String),
+    /// The hardcoded state root and state path.
+    CONST(N::StateRoot, StatePath<N>),
 }
 
 impl<N: Network, B: BlockStorage<N>> From<BlockStore<N, B>> for Query<N, B> {
@@ -59,6 +61,18 @@ impl<N: Network, B: BlockStorage<N>> From<&str> for Query<N, B> {
     }
 }
 
+impl<N: Network, B: BlockStorage<N>> From<(N::StateRoot, StatePath<N>)> for Query<N, B> {
+    fn from((state_root, state_path): (N::StateRoot, StatePath<N>)) -> Self {
+        Self::CONST(state_root, state_path)
+    }
+}
+
+impl<N: Network, B: BlockStorage<N>> From<&(N::StateRoot, StatePath<N>)> for Query<N, B> {
+    fn from((state_root, state_path): &(N::StateRoot, StatePath<N>)) -> Self {
+        Self::CONST(*state_root, state_path.clone())
+    }
+}
+
 #[cfg_attr(feature = "async", async_trait(?Send))]
 impl<N: Network, B: BlockStorage<N>> QueryTrait<N> for Query<N, B> {
     /// Returns the current state root.
@@ -69,6 +83,7 @@ impl<N: Network, B: BlockStorage<N>> QueryTrait<N> for Query<N, B> {
                 3 => Ok(Self::get_request(&format!("{url}/testnet3/latest/stateRoot"))?.into_json()?),
                 _ => bail!("Unsupported network ID in inclusion query"),
             },
+            Self::CONST(state_root, _) => Ok(*state_root),
         }
     }
 
@@ -81,6 +96,7 @@ impl<N: Network, B: BlockStorage<N>> QueryTrait<N> for Query<N, B> {
                 3 => Ok(Self::get_request_async(&format!("{url}/testnet3/latest/stateRoot")).await?.json().await?),
                 _ => bail!("Unsupported network ID in inclusion query"),
             },
+            Self::CONST(state_root, _) => Ok(*state_root),
         }
     }
 
@@ -92,6 +108,7 @@ impl<N: Network, B: BlockStorage<N>> QueryTrait<N> for Query<N, B> {
                 3 => Ok(Self::get_request(&format!("{url}/testnet3/statePath/{commitment}"))?.into_json()?),
                 _ => bail!("Unsupported network ID in inclusion query"),
             },
+            Self::CONST(_, state_path) => Ok(state_path.clone()),
         }
     }
 
@@ -106,6 +123,7 @@ impl<N: Network, B: BlockStorage<N>> QueryTrait<N> for Query<N, B> {
                 }
                 _ => bail!("Unsupported network ID in inclusion query"),
             },
+            Self::CONST(_, state_path) => Ok(state_path.clone()),
         }
     }
 }
@@ -121,6 +139,7 @@ impl<N: Network, B: BlockStorage<N>> Query<N, B> {
                 3 => Ok(Self::get_request(&format!("{url}/testnet3/program/{program_id}"))?.into_json()?),
                 _ => bail!("Unsupported network ID in inclusion query"),
             },
+            Self::CONST(..) => bail!("Cannot get a program from `CONST` query"),
         }
     }
 
@@ -135,6 +154,7 @@ impl<N: Network, B: BlockStorage<N>> Query<N, B> {
                 3 => Ok(Self::get_request_async(&format!("{url}/testnet3/program/{program_id}")).await?.json().await?),
                 _ => bail!("Unsupported network ID in inclusion query"),
             },
+            Self::CONST(..) => bail!("Cannot get a program from `CONST` query"),
         }
     }
 
