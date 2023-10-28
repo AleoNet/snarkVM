@@ -130,6 +130,35 @@ mod tests {
         }
     }
 
+    fn check_from_x_coordinate_flagged(
+        mode: Mode,
+        num_constants: u64,
+        num_public: u64,
+        num_private: u64,
+        num_constraints: u64,
+    ) {
+        let mut rng = TestRng::default();
+
+        for i in 0..ITERATIONS {
+            // Sample a random x coordinate.
+            let x: console::Field<<Circuit as Environment>::Network> = Uniform::rand(&mut rng);
+            // Compute error flag and point in console-land.
+            let (expected_error_flag, expected_point) = match console::Group::from_x_coordinate(x) {
+                Ok(point) => (false, point),
+                Err(_) => (true, console::Group::from_xy_coordinates_unchecked(x, console::Field::zero())),
+            };
+            // Compute error flag and point in circuit-land.
+            let input = Field::<Circuit>::new(mode, x);
+            Circuit::scope(format!("{mode} {i}"), || {
+                let (candidate_error_flag, candidate_point) = Group::from_x_coordinate_flagged(input);
+                assert_eq!(expected_error_flag, candidate_error_flag.eject_value());
+                assert_eq!(expected_point, candidate_point.eject_value());
+                assert_scope!(num_constants, num_public, num_private, num_constraints);
+            });
+            Circuit::reset();
+        }
+    }
+
     #[test]
     fn test_from_x_coordinate_constant() {
         check_from_x_coordinate(Mode::Constant, 9, 0, 0, 0);
@@ -143,5 +172,20 @@ mod tests {
     #[test]
     fn test_from_x_coordinate_private() {
         check_from_x_coordinate(Mode::Private, 4, 0, 13, 13);
+    }
+
+    #[test]
+    fn test_from_x_coordinate_flagged_constant() {
+        check_from_x_coordinate_flagged(Mode::Constant, 3764, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_from_x_coordinate_flagged_public() {
+        check_from_x_coordinate_flagged(Mode::Public, 1756, 0, 5861, 5861);
+    }
+
+    #[test]
+    fn test_from_x_coordinate_flagged_private() {
+        check_from_x_coordinate_flagged(Mode::Private, 1756, 0, 5861, 5861);
     }
 }
