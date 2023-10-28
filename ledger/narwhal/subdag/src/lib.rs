@@ -134,10 +134,9 @@ impl<N: Network> Subdag<N> {
         self.values().flatten().flat_map(BatchCertificate::transmission_ids)
     }
 
-    /// Returns the timestamp of the anchor round, defined as the median timestamp of the leader certificate.
+    /// Returns the timestamp of the anchor round, defined as the median timestamp of the subdag.
     pub fn timestamp(&self) -> i64 {
-        // Retrieve the median timestamp from the leader certificate.
-        self.leader_certificate().median_timestamp()
+        self.leader_certificate().timestamp()
     }
 
     /// Returns the subdag root of the transactions.
