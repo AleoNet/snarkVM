@@ -136,7 +136,20 @@ impl<N: Network> Subdag<N> {
 
     /// Returns the timestamp of the anchor round, defined as the median timestamp of the subdag.
     pub fn timestamp(&self) -> i64 {
-        self.leader_certificate().timestamp()
+        match self.leader_certificate() {
+            BatchCertificate::V1 { .. } => self.leader_certificate().timestamp(),
+            BatchCertificate::V2 { .. } => {
+                // Retrieve the timestamps of the certificates.
+                let mut timestamps = self.values().flatten().map(BatchCertificate::timestamp).collect::<Vec<_>>();
+                // Sort the timestamps.
+                #[cfg(not(feature = "serial"))]
+                timestamps.par_sort_unstable();
+                #[cfg(feature = "serial")]
+                timestamps.sort_unstable();
+                // Return the median timestamp.
+                timestamps[timestamps.len() / 2]
+            }
+        }
     }
 
     /// Returns the subdag root of the transactions.
