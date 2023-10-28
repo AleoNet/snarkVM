@@ -159,7 +159,7 @@ mod tests {
         for _ in 0..ITERATIONS {
             // Sample a random element.
             let given: console::Field<<Circuit as Environment>::Network> = Uniform::rand(rng);
-            // Compute it's square root, or skip this iteration if it does not natively exist.
+            // Compute its square root, or skip this iteration if it does not natively exist.
             if let Ok(expected) = given.square_root() {
                 let input = Field::<Circuit>::new(mode, given);
 
@@ -186,7 +186,7 @@ mod tests {
         for _ in 0..ITERATIONS {
             // Sample a random element.
             let given: console::Field<<Circuit as Environment>::Network> = Uniform::rand(rng);
-            // Compute it's square root, or skip this iteration if it does not natively exist.
+            // Compute its square root, or skip this iteration if it does not natively exist.
             if let Ok(expected) = given.even_square_root() {
                 let input = Field::<Circuit>::new(mode, given);
 
@@ -197,6 +197,39 @@ mod tests {
                 });
                 Circuit::reset();
             }
+        }
+    }
+
+    fn check_square_roots_flagged_nondeterministic(
+        name: &str,
+        mode: Mode,
+        rng: &mut TestRng,
+        num_constants: u64,
+        num_public: u64,
+        num_private: u64,
+        num_constraints: u64,
+    ) {
+        for _ in 0..ITERATIONS {
+            // Sample a random element.
+            let given: console::Field<<Circuit as Environment>::Network> = Uniform::rand(rng);
+            // Compute square roots and error flag in console-land.
+            let (expected_error_flag, expected_positive_root, expected_negative_root) = match given.square_root() {
+                Ok(root) => (false, root, -root),
+                Err(_) => (true, console::Field::zero(), console::Field::zero()),
+            };
+            // Compute square roots and error flag in circuit-land.
+            let input = Field::<Circuit>::new(mode, given);
+            Circuit::scope(name, || {
+                let (candidate_error_flag, candidate_first_root, candidate_second_root) =
+                    input.square_roots_flagged_nondeterministic();
+                // Although the order of the roots is unspecified in the circuit,
+                // the witness values are in a fixed order (first positive, then negative).
+                assert_eq!(expected_error_flag, candidate_error_flag.eject_value());
+                assert_eq!(expected_positive_root, candidate_first_root.eject_value());
+                assert_eq!(expected_negative_root, candidate_second_root.eject_value());
+                assert_scope!(num_constants, num_public, num_private, num_constraints);
+            });
+            Circuit::reset();
         }
     }
 
@@ -216,5 +249,14 @@ mod tests {
         check_even_square_root("Constant", &mut rng, Mode::Constant, 254, 0, 0, 0);
         check_even_square_root("Public", &mut rng, Mode::Public, 0, 0, 506, 509);
         check_even_square_root("Private", &mut rng, Mode::Private, 0, 0, 506, 509);
+    }
+
+    #[test]
+    fn test_square_roots_flagged_nondeterministic() {
+        let mut rng = TestRng::default();
+
+        check_square_roots_flagged_nondeterministic("Constant", Mode::Constant, &mut rng, 257, 0, 0, 0);
+        check_square_roots_flagged_nondeterministic("Public", Mode::Public, &mut rng, 254, 0, 344, 344);
+        check_square_roots_flagged_nondeterministic("Private", Mode::Private, &mut rng, 254, 0, 344, 344);
     }
 }
