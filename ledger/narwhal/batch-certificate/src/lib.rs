@@ -138,7 +138,7 @@ impl<N: Network> Hash for BatchCertificate<N> {
 
 impl<N: Network> BatchCertificate<N> {
     /// Returns the certificate ID.
-    pub const fn certificate_id(&self) -> Field<N> {
+    pub const fn id(&self) -> Field<N> {
         match self {
             Self::V1 { certificate_id, .. } => *certificate_id,
             Self::V2 { batch_header, .. } => batch_header.batch_id(),
@@ -279,7 +279,7 @@ pub mod test_helpers {
             sample_batch_certificate_for_round(previous_round, rng),
         ];
         // Construct the previous certificate IDs.
-        let previous_certificate_ids: IndexSet<_> = previous_certificates.iter().map(|c| c.certificate_id()).collect();
+        let previous_certificate_ids: IndexSet<_> = previous_certificates.iter().map(|c| c.id()).collect();
         // Sample the leader certificate.
         let certificate = sample_batch_certificate_for_round_with_previous_certificate_ids(
             current_round,
