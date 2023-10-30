@@ -34,9 +34,8 @@ impl<E: Environment> FromBits for Scalar<E> {
 
         // If `num_bits` is greater than `size_in_data_bits`, check it is less than `Scalar::MODULUS`.
         if num_bits > size_in_data_bits {
-            // Retrieve the modulus & subtract by 1 as we'll check `bits_le` is less than or *equal* to this value.
-            // (For advanced users) Scalar::MODULUS - 1 is equivalent to -1 in the field.
-            let modulus_minus_one = E::Scalar::modulus();
+            // Retrieve the modulus as we'll check `bits_le` is less than this value.
+            let modulus = E::Scalar::modulus();
 
             // Recover the scalar as a `BigInteger` for comparison.
             // As `bits_le[size_in_bits..]` is guaranteed to be zero from the above logic,
@@ -44,7 +43,7 @@ impl<E: Environment> FromBits for Scalar<E> {
             let scalar = E::BigInteger::from_bits_le(&bits_le[..size_in_bits])?;
 
             // Ensure the scalar is less than `Scalar::MODULUS`.
-            ensure!(scalar < modulus_minus_one, "The scalar is greater than or equal to the modulus.");
+            ensure!(scalar < modulus, "The scalar is greater than or equal to the modulus.");
 
             // Return the scalar.
             Ok(Scalar { scalar: E::Scalar::from_bigint(scalar).ok_or_else(|| anyhow!("Invalid scalar from bits"))? })
