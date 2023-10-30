@@ -16,7 +16,7 @@
 
 use super::*;
 use crate::helpers::{NestedMap, NestedMapRead};
-use console::prelude::FromBytes;
+use console::prelude::{error, FromBytes};
 
 use core::{fmt, fmt::Debug, hash::Hash, mem};
 use std::{borrow::Cow, sync::atomic::Ordering};
@@ -81,8 +81,8 @@ impl<M: Serialize + DeserializeOwned, K: Serialize + DeserializeOwned, V: Serial
 #[inline]
 fn get_map_and_key(map_key: &[u8]) -> Result<(&[u8], &[u8])> {
     let map_len = u32::from_bytes_le(&map_key[PREFIX_LEN..][..4])? as usize;
-    let map = &map_key[PREFIX_LEN + 4..][..map_len];
-    let key = &map_key[PREFIX_LEN + 4 + map_len..];
+    let map = map_key.get(PREFIX_LEN + 4..PREFIX_LEN + 4 + map_len).ok_or_else(|| error("map index out of range"))?;
+    let key = map_key.get(PREFIX_LEN + 4 + map_len..).ok_or_else(|| error("key index out of range"))?;
 
     Ok((map, key))
 }
@@ -140,7 +140,9 @@ impl<
                     let (map_key, _) = entry?;
 
                     // Extract the bytes belonging to the map and the key.
-                    let (entry_map, _) = get_map_and_key(&map_key)?;
+                    let Ok((entry_map, _)) = get_map_and_key(&map_key) else {
+                        break;
+                    };
 
                     // If the 'entry_map' matches 'serialized_map', delete the key.
                     if entry_map == serialized_map {
@@ -282,7 +284,9 @@ impl<
                             let (map_key, _) = entry?;
 
                             // Extract the bytes belonging to the map and the key.
-                            let (entry_map, _) = get_map_and_key(&map_key)?;
+                            let Ok((entry_map, _)) = get_map_and_key(&map_key) else {
+                                break;
+                            };
 
                             // If the 'entry_map' matches 'serialized_map', delete the key.
                             if entry_map == serialized_map {
@@ -397,7 +401,9 @@ impl<
             let (map_key, value) = entry?;
 
             // Extract the bytes belonging to the map and the key.
-            let (entry_map, entry_key) = get_map_and_key(&map_key)?;
+            let Ok((entry_map, entry_key)) = get_map_and_key(&map_key) else {
+                break;
+            };
 
             // If the 'entry_map' matches 'serialized_map', deserialize the key and value.
             if entry_map == serialized_map {
