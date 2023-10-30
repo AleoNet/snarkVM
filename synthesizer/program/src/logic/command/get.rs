@@ -336,78 +336,6 @@ mod tests {
         destination: Register<N>,
     }
 
-    impl<N: Network> Parser for OldGet<N> {
-        #[inline]
-        fn parse(string: &str) -> ParserResult<Self> {
-            // Parse the whitespace and comments from the string.
-            let (string, _) = Sanitizer::parse(string)?;
-            // Parse the opcode from the string.
-            let (string, _) = tag("get")(string)?;
-            // Parse the whitespace from the string.
-            let (string, _) = Sanitizer::parse_whitespaces(string)?;
-
-            // Parse the mapping name from the string.
-            let (string, mapping) = Identifier::parse(string)?;
-            // Parse the "[" from the string.
-            let (string, _) = tag("[")(string)?;
-            // Parse the whitespace from the string.
-            let (string, _) = Sanitizer::parse_whitespaces(string)?;
-            // Parse the key operand from the string.
-            let (string, key) = Operand::parse(string)?;
-            // Parse the whitespace from the string.
-            let (string, _) = Sanitizer::parse_whitespaces(string)?;
-            // Parse the "]" from the string.
-            let (string, _) = tag("]")(string)?;
-
-            // Parse the whitespace from the string.
-            let (string, _) = Sanitizer::parse_whitespaces(string)?;
-            // Parse the "into" keyword from the string.
-            let (string, _) = tag("into")(string)?;
-            // Parse the whitespace from the string.
-            let (string, _) = Sanitizer::parse_whitespaces(string)?;
-            // Parse the destination register from the string.
-            let (string, destination) = Register::parse(string)?;
-
-            // Parse the whitespace from the string.
-            let (string, _) = Sanitizer::parse_whitespaces(string)?;
-            // Parse the ";" from the string.
-            let (string, _) = tag(";")(string)?;
-
-            Ok((string, Self { mapping, key, destination }))
-        }
-    }
-
-    impl<N: Network> FromStr for OldGet<N> {
-        type Err = Error;
-
-        #[inline]
-        fn from_str(string: &str) -> Result<Self> {
-            match Self::parse(string) {
-                Ok((remainder, object)) => {
-                    // Ensure the remainder is empty.
-                    ensure!(
-                        remainder.is_empty(),
-                        "Failed to parse string. Found invalid character in: \"{remainder}\""
-                    );
-                    // Return the object.
-                    Ok(object)
-                }
-                Err(error) => bail!("Failed to parse string. {error}"),
-            }
-        }
-    }
-
-    impl<N: Network> Display for OldGet<N> {
-        fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-            // Print the command.
-            write!(f, "get ")?;
-            // Print the mapping and key operand.
-            write!(f, "{}[{}] into ", self.mapping, self.key)?;
-            // Print the destination register.
-            write!(f, "{};", self.destination)
-        }
-    }
-
     impl<N: Network> ToBytes for OldGet<N> {
         fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()>
         where
@@ -443,8 +371,12 @@ mod tests {
     fn test_from_bytes() {
         let (string, get) = Get::<CurrentNetwork>::parse("get account[r0] into r1;").unwrap();
         assert!(string.is_empty());
-        let (string, old_get) = OldGet::<CurrentNetwork>::parse("get account[r0] into r1;").unwrap();
-        assert!(string.is_empty());
+
+        let old_get = OldGet::<CurrentNetwork> {
+            mapping: Identifier::from_str("account").unwrap(),
+            key: Operand::Register(Register::Locator(0)),
+            destination: Register::Locator(1),
+        };
 
         let get_bytes = get.to_bytes_le().unwrap();
         let old_get_bytes = old_get.to_bytes_le().unwrap();

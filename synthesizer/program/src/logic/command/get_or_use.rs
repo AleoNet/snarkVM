@@ -251,92 +251,10 @@ mod tests {
     type CurrentNetwork = Testnet3;
 
     pub struct OldGetOrUse<N: Network> {
-        mapping: Identifier<N>,
-        key: Operand<N>,
-        default: Operand<N>,
-        destination: Register<N>,
-    }
-
-    impl<N: Network> Parser for OldGetOrUse<N> {
-        #[inline]
-        fn parse(string: &str) -> ParserResult<Self> {
-            // Parse the whitespace and comments from the string.
-            let (string, _) = Sanitizer::parse(string)?;
-            // Parse the opcode from the string.
-            let (string, _) = tag("get.or_use")(string)?;
-            // Parse the whitespace from the string.
-            let (string, _) = Sanitizer::parse_whitespaces(string)?;
-
-            // Parse the mapping name from the string.
-            let (string, mapping) = Identifier::parse(string)?;
-            // Parse the "[" from the string.
-            let (string, _) = tag("[")(string)?;
-            // Parse the whitespace from the string.
-            let (string, _) = Sanitizer::parse_whitespaces(string)?;
-            // Parse the key operand from the string.
-            let (string, key) = Operand::parse(string)?;
-            // Parse the whitespace from the string.
-            let (string, _) = Sanitizer::parse_whitespaces(string)?;
-            // Parse the "]" from the string.
-            let (string, _) = tag("]")(string)?;
-            // Parse the whitespace from the string.
-            let (string, _) = Sanitizer::parse_whitespaces(string)?;
-            // Parse the default value from the string.
-            let (string, default) = Operand::parse(string)?;
-
-            // Parse the whitespace from the string.
-            let (string, _) = Sanitizer::parse_whitespaces(string)?;
-            // Parse the "into" keyword from the string.
-            let (string, _) = tag("into")(string)?;
-            // Parse the whitespace from the string.
-            let (string, _) = Sanitizer::parse_whitespaces(string)?;
-            // Parse the destination register from the string.
-            let (string, destination) = Register::parse(string)?;
-
-            // Parse the whitespace from the string.
-            let (string, _) = Sanitizer::parse_whitespaces(string)?;
-            // Parse the ";" from the string.
-            let (string, _) = tag(";")(string)?;
-
-            Ok((string, Self { mapping, key, default, destination }))
-        }
-    }
-
-    impl<N: Network> FromStr for OldGetOrUse<N> {
-        type Err = Error;
-
-        #[inline]
-        fn from_str(string: &str) -> Result<Self> {
-            match Self::parse(string) {
-                Ok((remainder, object)) => {
-                    // Ensure the remainder is empty.
-                    ensure!(
-                        remainder.is_empty(),
-                        "Failed to parse string. Found invalid character in: \"{remainder}\""
-                    );
-                    // Return the object.
-                    Ok(object)
-                }
-                Err(error) => bail!("Failed to parse string. {error}"),
-            }
-        }
-    }
-
-    impl<N: Network> Debug for OldGetOrUse<N> {
-        fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-            Display::fmt(self, f)
-        }
-    }
-
-    impl<N: Network> Display for OldGetOrUse<N> {
-        fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-            // Print the command.
-            write!(f, "get.or_use ")?;
-            // Print the mapping and key operand.
-            write!(f, "{}[{}] {} into ", self.mapping, self.key, self.default)?;
-            // Print the destination register.
-            write!(f, "{};", self.destination)
-        }
+        pub mapping: Identifier<N>,
+        pub key: Operand<N>,
+        pub default: Operand<N>,
+        pub destination: Register<N>,
     }
 
     impl<N: Network> ToBytes for OldGetOrUse<N> {
@@ -376,9 +294,13 @@ mod tests {
     fn test_from_bytes() {
         let (string, get_or_use) = GetOrUse::<CurrentNetwork>::parse("get.or_use account[r0] r1 into r2;").unwrap();
         assert!(string.is_empty());
-        let (string, old_get_or_use) =
-            OldGetOrUse::<CurrentNetwork>::parse("get.or_use account[r0] r1 into r2;").unwrap();
-        assert!(string.is_empty());
+
+        let old_get_or_use = OldGetOrUse::<CurrentNetwork> {
+            mapping: Identifier::from_str("account").unwrap(),
+            key: Operand::Register(Register::Locator(0)),
+            default: Operand::Register(Register::Locator(1)),
+            destination: Register::Locator(2),
+        };
 
         let get_or_use_bytes = get_or_use.to_bytes_le().unwrap();
         let old_get_or_use_bytes = old_get_or_use.to_bytes_le().unwrap();
