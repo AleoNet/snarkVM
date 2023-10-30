@@ -17,11 +17,11 @@ use crate::RegisterTypes;
 use synthesizer_program::{
     Await,
     Branch,
-    CallOperator,
     CastType,
     Contains,
     Get,
     GetOrUse,
+    MappingLocator,
     RandChaCha,
     Remove,
     Set,
@@ -291,7 +291,7 @@ impl<N: Network> FinalizeTypes<N> {
     fn check_get(&mut self, stack: &(impl StackMatches<N> + StackProgram<N>), get: &Get<N>) -> Result<()> {
         // Retrieve the mapping.
         let mapping = match get.mapping() {
-            CallOperator::Locator(locator) => {
+            MappingLocator::Locator(locator) => {
                 // Retrieve the program ID.
                 let program_id = locator.program_id();
                 // Retrieve the mapping_name.
@@ -315,7 +315,7 @@ impl<N: Network> FinalizeTypes<N> {
                 // Note that the unwrap is safe, as we have already checked the mapping exists.
                 external.get_mapping(mapping_name).unwrap()
             }
-            CallOperator::Resource(mapping_name) => {
+            MappingLocator::Resource(mapping_name) => {
                 // Ensure the declared mapping in `get` is defined in the current program.
                 if !stack.program().contains_mapping(mapping_name) {
                     bail!("Mapping '{mapping_name}' in '{}' is not defined.", stack.program_id())
@@ -359,7 +359,7 @@ impl<N: Network> FinalizeTypes<N> {
     ) -> Result<()> {
         // Retrieve the mapping.
         let mapping = match get_or_use.mapping() {
-            CallOperator::Locator(locator) => {
+            MappingLocator::Locator(locator) => {
                 // Retrieve the program ID.
                 let program_id = locator.program_id();
                 // Retrieve the mapping_name.
@@ -383,7 +383,7 @@ impl<N: Network> FinalizeTypes<N> {
                 // Note that the unwrap is safe, as we have already checked the mapping exists.
                 external.get_mapping(mapping_name).unwrap()
             }
-            CallOperator::Resource(mapping_name) => {
+            MappingLocator::Resource(mapping_name) => {
                 // Ensure the declared mapping in `get.or_use` is defined in the current program.
                 if !stack.program().contains_mapping(mapping_name) {
                     bail!("Mapping '{mapping_name}' in '{}' is not defined.", stack.program_id())

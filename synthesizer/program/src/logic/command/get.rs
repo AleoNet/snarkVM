@@ -14,21 +14,122 @@
 
 use crate::{
     traits::{FinalizeStoreTrait, RegistersLoad, RegistersStore, StackMatches, StackProgram},
-    CallOperator,
     Opcode,
     Operand,
 };
 use console::{
     network::prelude::*,
-    program::{Register, Value},
+    program::{Identifier, Locator, Register, Value},
 };
+
+use std::io::{BufRead, BufReader};
+
+/// The operator references a local or external mapping name.
+#[derive(Clone, PartialEq, Eq, Hash)]
+pub enum MappingLocator<N: Network> {
+    /// The reference to a non-local mapping name.
+    Locator(Locator<N>),
+    /// The reference to a local mapping name.
+    Resource(Identifier<N>),
+}
+
+impl<N: Network> Parser for MappingLocator<N> {
+    /// Parses a string into an operator.
+    #[inline]
+    fn parse(string: &str) -> ParserResult<Self> {
+        alt((
+            map(Locator::parse, |locator| MappingLocator::Locator(locator)),
+            map(Identifier::parse, |identifier| MappingLocator::Resource(identifier)),
+        ))(string)
+    }
+}
+
+impl<N: Network> FromStr for MappingLocator<N> {
+    type Err = Error;
+
+    /// Parses a string into an operator.
+    #[inline]
+    fn from_str(string: &str) -> Result<Self> {
+        match Self::parse(string) {
+            Ok((remainder, object)) => {
+                // Ensure the remainder is empty.
+                ensure!(remainder.is_empty(), "Failed to parse string. Found invalid character in: \"{remainder}\"");
+                // Return the object.
+                Ok(object)
+            }
+            Err(error) => bail!("Failed to parse string. {error}"),
+        }
+    }
+}
+
+impl<N: Network> Debug for MappingLocator<N> {
+    /// Prints the operator as a string.
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        Display::fmt(self, f)
+    }
+}
+
+impl<N: Network> Display for MappingLocator<N> {
+    /// Prints the operator to a string.
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        match self {
+            MappingLocator::Locator(locator) => Display::fmt(locator, f),
+            MappingLocator::Resource(resource) => Display::fmt(resource, f),
+        }
+    }
+}
+
+impl<N: Network> FromBytes for MappingLocator<N> {
+    /// Reads the operation from a buffer.
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        // Read the version.
+        let version = u8::read_le(&mut reader)?;
+        // Ensure the version is valid.
+        if version != 0 {
+            return Err(error("Failed to read MappingLocator. Invalid version."));
+        }
+        // Read the variant.
+        let variant = u8::read_le(&mut reader)?;
+        // Match the variant.
+        match variant {
+            0 => Ok(MappingLocator::Locator(Locator::read_le(&mut reader)?)),
+            1 => Ok(MappingLocator::Resource(Identifier::read_le(&mut reader)?)),
+            _ => Err(error("Failed to read MappingLocator. Invalid variant.")),
+        }
+    }
+}
+
+impl<N: Network> ToBytes for MappingLocator<N> {
+    /// Writes the operation to a buffer.
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        match self {
+            MappingLocator::Locator(locator) => {
+                // Write the version.
+                0u8.write_le(&mut writer)?;
+                // Write the variant.
+                0u8.write_le(&mut writer)?;
+                // Write the locator.
+                locator.write_le(&mut writer)
+            }
+            MappingLocator::Resource(resource) => {
+                // Write the version.
+                0u8.write_le(&mut writer)?;
+                // Write the variant.
+                1u8.write_le(&mut writer)?;
+                // Write the resource.
+                resource.write_le(&mut writer)
+            }
+        }
+    }
+}
 
 /// A get command, e.g. `get accounts[r0] into r1;`.
 /// Gets the value stored at `operand` in `mapping` and stores the result in `destination`.
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Get<N: Network> {
     /// The mapping.
-    mapping: CallOperator<N>,
+    // TODO (howardwu): For mainnet - Use `CallOperator`, delete the above `MappingLocator`.
+    mapping: MappingLocator<N>,
     /// The key to access the mapping.
     key: Operand<N>,
     /// The destination register.
@@ -50,7 +151,7 @@ impl<N: Network> Get<N> {
 
     /// Returns the mapping.
     #[inline]
-    pub const fn mapping(&self) -> &CallOperator<N> {
+    pub const fn mapping(&self) -> &MappingLocator<N> {
         &self.mapping
     }
 
@@ -78,8 +179,8 @@ impl<N: Network> Get<N> {
     ) -> Result<()> {
         // Determine the program ID and mapping name.
         let (program_id, mapping_name) = match self.mapping {
-            CallOperator::Locator(locator) => (*locator.program_id(), *locator.resource()),
-            CallOperator::Resource(mapping_name) => (*stack.program_id(), mapping_name),
+            MappingLocator::Locator(locator) => (*locator.program_id(), *locator.resource()),
+            MappingLocator::Resource(mapping_name) => (*stack.program_id(), mapping_name),
         };
 
         // Ensure the mapping exists in storage.
@@ -118,7 +219,7 @@ impl<N: Network> Parser for Get<N> {
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
 
         // Parse the mapping name from the string.
-        let (string, mapping) = CallOperator::parse(string)?;
+        let (string, mapping) = MappingLocator::parse(string)?;
         // Parse the "[" from the string.
         let (string, _) = tag("[")(string)?;
         // Parse the whitespace from the string.
@@ -187,9 +288,21 @@ impl<N: Network> Display for Get<N> {
 
 impl<N: Network> FromBytes for Get<N> {
     /// Reads the command from a buffer.
-    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        // Read the mapping name.
-        let mapping = CallOperator::read_le(&mut reader)?;
+    fn read_le<R: Read>(reader: R) -> IoResult<Self> {
+        // Peek at the first byte.
+        // TODO (howardwu): For mainnet - Read a `MappingLocator`.
+        let mut buffered = BufReader::new(reader);
+        let first_byte = {
+            let buffer = buffered.fill_buf()?;
+            buffer.first().copied()
+        };
+        let mut reader = buffered.into_inner();
+        // If the first byte is zero, then read a `MappingLocator`, otherwise read an `Identifier`.
+        let mapping = match first_byte {
+            Some(0u8) => MappingLocator::read_le(&mut reader)?,
+            Some(_) => MappingLocator::Resource(Identifier::read_le(&mut reader)?),
+            None => return Err(error("Failed to read `get`. Expected byte.")),
+        };
         // Read the key operand.
         let key = Operand::read_le(&mut reader)?;
         // Read the destination register.
@@ -222,14 +335,14 @@ mod tests {
     fn test_parse() {
         let (string, get) = Get::<CurrentNetwork>::parse("get account[r0] into r1;").unwrap();
         assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
-        assert_eq!(get.mapping, CallOperator::from_str("account").unwrap());
+        assert_eq!(get.mapping, MappingLocator::from_str("account").unwrap());
         assert_eq!(get.operands().len(), 1, "The number of operands is incorrect");
         assert_eq!(get.key, Operand::Register(Register::Locator(0)), "The first operand is incorrect");
         assert_eq!(get.destination, Register::Locator(1), "The second operand is incorrect");
 
         let (string, get) = Get::<CurrentNetwork>::parse("get token.aleo/balances[r0] into r1;").unwrap();
         assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
-        assert_eq!(get.mapping, CallOperator::from_str("token.aleo/balances").unwrap());
+        assert_eq!(get.mapping, MappingLocator::from_str("token.aleo/balances").unwrap());
         assert_eq!(get.operands().len(), 1, "The number of operands is incorrect");
         assert_eq!(get.key, Operand::Register(Register::Locator(0)), "The first operand is incorrect");
         assert_eq!(get.destination, Register::Locator(1), "The second operand is incorrect");
