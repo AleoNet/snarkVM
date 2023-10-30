@@ -207,12 +207,11 @@ impl<N: Network> FromBytes for GetOrUse<N> {
     fn read_le<R: Read>(reader: R) -> IoResult<Self> {
         // Peek at the first byte.
         // TODO (howardwu): For mainnet - Read a `MappingLocator`.
-        let mut buffered = BufReader::new(reader);
+        let mut reader = BufReader::new(reader);
         let first_byte = {
-            let buffer = buffered.fill_buf()?;
+            let buffer = reader.fill_buf()?;
             buffer.first().copied()
         };
-        let mut reader = buffered.into_inner();
         // If the first byte is zero, then read a `MappingLocator`, otherwise read an `Identifier`.
         let mapping = match first_byte {
             Some(0u8) => MappingLocator::read_le(&mut reader)?,
@@ -251,6 +250,108 @@ mod tests {
 
     type CurrentNetwork = Testnet3;
 
+    pub struct OldGetOrUse<N: Network> {
+        mapping: Identifier<N>,
+        key: Operand<N>,
+        default: Operand<N>,
+        destination: Register<N>,
+    }
+
+    impl<N: Network> Parser for OldGetOrUse<N> {
+        #[inline]
+        fn parse(string: &str) -> ParserResult<Self> {
+            // Parse the whitespace and comments from the string.
+            let (string, _) = Sanitizer::parse(string)?;
+            // Parse the opcode from the string.
+            let (string, _) = tag("get.or_use")(string)?;
+            // Parse the whitespace from the string.
+            let (string, _) = Sanitizer::parse_whitespaces(string)?;
+
+            // Parse the mapping name from the string.
+            let (string, mapping) = Identifier::parse(string)?;
+            // Parse the "[" from the string.
+            let (string, _) = tag("[")(string)?;
+            // Parse the whitespace from the string.
+            let (string, _) = Sanitizer::parse_whitespaces(string)?;
+            // Parse the key operand from the string.
+            let (string, key) = Operand::parse(string)?;
+            // Parse the whitespace from the string.
+            let (string, _) = Sanitizer::parse_whitespaces(string)?;
+            // Parse the "]" from the string.
+            let (string, _) = tag("]")(string)?;
+            // Parse the whitespace from the string.
+            let (string, _) = Sanitizer::parse_whitespaces(string)?;
+            // Parse the default value from the string.
+            let (string, default) = Operand::parse(string)?;
+
+            // Parse the whitespace from the string.
+            let (string, _) = Sanitizer::parse_whitespaces(string)?;
+            // Parse the "into" keyword from the string.
+            let (string, _) = tag("into")(string)?;
+            // Parse the whitespace from the string.
+            let (string, _) = Sanitizer::parse_whitespaces(string)?;
+            // Parse the destination register from the string.
+            let (string, destination) = Register::parse(string)?;
+
+            // Parse the whitespace from the string.
+            let (string, _) = Sanitizer::parse_whitespaces(string)?;
+            // Parse the ";" from the string.
+            let (string, _) = tag(";")(string)?;
+
+            Ok((string, Self { mapping, key, default, destination }))
+        }
+    }
+
+    impl<N: Network> FromStr for OldGetOrUse<N> {
+        type Err = Error;
+
+        #[inline]
+        fn from_str(string: &str) -> Result<Self> {
+            match Self::parse(string) {
+                Ok((remainder, object)) => {
+                    // Ensure the remainder is empty.
+                    ensure!(
+                        remainder.is_empty(),
+                        "Failed to parse string. Found invalid character in: \"{remainder}\""
+                    );
+                    // Return the object.
+                    Ok(object)
+                }
+                Err(error) => bail!("Failed to parse string. {error}"),
+            }
+        }
+    }
+
+    impl<N: Network> Debug for OldGetOrUse<N> {
+        fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+            Display::fmt(self, f)
+        }
+    }
+
+    impl<N: Network> Display for OldGetOrUse<N> {
+        fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+            // Print the command.
+            write!(f, "get.or_use ")?;
+            // Print the mapping and key operand.
+            write!(f, "{}[{}] {} into ", self.mapping, self.key, self.default)?;
+            // Print the destination register.
+            write!(f, "{};", self.destination)
+        }
+    }
+
+    impl<N: Network> ToBytes for OldGetOrUse<N> {
+        fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+            // Write the mapping name.
+            self.mapping.write_le(&mut writer)?;
+            // Write the key operand.
+            self.key.write_le(&mut writer)?;
+            // Write the default value.
+            self.default.write_le(&mut writer)?;
+            // Write the destination register.
+            self.destination.write_le(&mut writer)
+        }
+    }
+
     #[test]
     fn test_parse() {
         let (string, get_or_use) = GetOrUse::<CurrentNetwork>::parse("get.or_use account[r0] r1 into r2;").unwrap();
@@ -269,5 +370,21 @@ mod tests {
         assert_eq!(get_or_use.key, Operand::Register(Register::Locator(0)), "The first operand is incorrect");
         assert_eq!(get_or_use.default, Operand::Register(Register::Locator(1)), "The second operand is incorrect");
         assert_eq!(get_or_use.destination, Register::Locator(2), "The second operand is incorrect");
+    }
+
+    #[test]
+    fn test_from_bytes() {
+        let (string, get_or_use) = GetOrUse::<CurrentNetwork>::parse("get.or_use account[r0] r1 into r2;").unwrap();
+        assert!(string.is_empty());
+        let (string, old_get_or_use) =
+            OldGetOrUse::<CurrentNetwork>::parse("get.or_use account[r0] r1 into r2;").unwrap();
+        assert!(string.is_empty());
+
+        let get_or_use_bytes = get_or_use.to_bytes_le().unwrap();
+        let old_get_or_use_bytes = old_get_or_use.to_bytes_le().unwrap();
+
+        let first = GetOrUse::<CurrentNetwork>::from_bytes_le(&get_or_use_bytes[..]).unwrap();
+        let second = GetOrUse::<CurrentNetwork>::from_bytes_le(&old_get_or_use_bytes[..]).unwrap();
+        assert_eq!(first, second);
     }
 }
