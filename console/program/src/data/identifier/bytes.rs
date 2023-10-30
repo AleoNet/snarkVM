@@ -22,9 +22,11 @@ impl<N: Network> FromBytes for Identifier<N> {
 
         // Read the identifier bytes.
         let mut buffer = vec![0u8; size as usize];
+
         reader.read_exact(&mut buffer)?;
 
         // from_str the identifier.
+        // Note: `Self::from_str` ensures that the identifier string is not empty.
         Self::from_str(&String::from_utf8(buffer).map_err(|e| error(format!("Failed to decode identifier: {e}")))?)
             .map_err(|e| error(format!("{e}")))
     }
@@ -75,5 +77,10 @@ mod tests {
             assert!(Identifier::<CurrentNetwork>::read_le(&expected_bytes[1..]).is_err());
         }
         Ok(())
+    }
+
+    #[test]
+    fn test_zero_identifier_fails() {
+        assert!(Identifier::<CurrentNetwork>::read_le(&[0u8; 1][..]).is_err())
     }
 }

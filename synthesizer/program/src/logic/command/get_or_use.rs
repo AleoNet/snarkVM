@@ -207,7 +207,7 @@ impl<N: Network> FromBytes for GetOrUse<N> {
     fn read_le<R: Read>(reader: R) -> IoResult<Self> {
         // Peek at the first byte.
         // TODO (howardwu): For mainnet - Read a `MappingLocator`.
-        let mut reader = BufReader::new(reader);
+        let mut reader = BufReader::with_capacity(1, reader);
         let first_byte = {
             let buffer = reader.fill_buf()?;
             buffer.first().copied()
