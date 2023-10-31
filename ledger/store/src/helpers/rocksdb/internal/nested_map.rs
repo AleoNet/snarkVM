@@ -16,7 +16,7 @@
 
 use super::*;
 use crate::helpers::{NestedMap, NestedMapRead};
-use console::prelude::FromBytes;
+use console::prelude::{anyhow, FromBytes};
 
 use core::{fmt, fmt::Debug, hash::Hash, mem};
 use std::{borrow::Cow, sync::atomic::Ordering};
@@ -80,10 +80,20 @@ impl<M: Serialize + DeserializeOwned, K: Serialize + DeserializeOwned, V: Serial
 }
 #[inline]
 fn get_map_and_key(map_key: &[u8]) -> Result<(&[u8], &[u8])> {
-    let map_len = u32::from_bytes_le(&map_key[PREFIX_LEN..][..4])? as usize;
-    let map = &map_key[PREFIX_LEN + 4..][..map_len];
-    let key = &map_key[PREFIX_LEN + 4 + map_len..];
+    // Retrieve the map length.
+    let map_len = u32::from_bytes_le(
+        map_key.get(PREFIX_LEN..PREFIX_LEN + 4).ok_or_else(|| anyhow!("NestedMap map_len index out of range"))?,
+    )? as usize;
 
+    // Retrieve the map bytes.
+    let map = map_key
+        .get(PREFIX_LEN + 4..PREFIX_LEN + 4 + map_len)
+        .ok_or_else(|| anyhow!("NestedMap map index out of range"))?;
+
+    // Retrieve the key bytes.
+    let key = map_key.get(PREFIX_LEN + 4 + map_len..).ok_or_else(|| anyhow!("NestedMap key index out of range"))?;
+
+    // Return the map and key bytes.
     Ok((map, key))
 }
 
