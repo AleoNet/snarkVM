@@ -308,6 +308,7 @@ pub(crate) mod test_helpers {
     use console::{
         account::{Address, ViewKey},
         network::Testnet3,
+        prelude::Uniform,
         program::Value,
         types::Field,
     };
@@ -966,5 +967,91 @@ function multitransfer:
             )
             .unwrap();
         vm.add_next_block(&sample_next_block(&vm, &caller_private_key, &[execution], rng).unwrap()).unwrap();
+    }
+
+    #[test]
+    fn test_constant_queries() {
+        let rng = &mut TestRng::default();
+
+        // Initialize a new caller.
+        let caller_private_key = crate::vm::test_helpers::sample_genesis_private_key(rng);
+
+        // Initialize the genesis block.
+        let genesis = crate::vm::test_helpers::sample_genesis_block(rng);
+
+        // Initialize the VM.
+        let vm = sample_vm();
+        // Update the VM.
+        vm.add_next_block(&genesis).unwrap();
+
+        // Get the state root.
+        let state_root = vm.block_store().current_state_root();
+
+        // Execute `transfer_public` ten times with random inputs.
+        for _ in 0..10 {
+            // Generate a random recipient and amount.
+            let recipient = Address::<CurrentNetwork>::rand(rng);
+            let amount = u8::rand(rng);
+            // Construct the transaction.
+            let transaction = vm
+                .execute(
+                    &caller_private_key,
+                    ("credits.aleo", "transfer_public"),
+                    [
+                        Value::<Testnet3>::from_str(&recipient.to_string()).unwrap(),
+                        Value::<Testnet3>::from_str(&format!("{amount}u64")).unwrap(),
+                    ]
+                    .iter(),
+                    None,
+                    0,
+                    None,
+                    rng,
+                )
+                .unwrap();
+            // Add the transaction to the VM.
+            vm.add_next_block(&sample_next_block(&vm, &caller_private_key, &[transaction], rng).unwrap()).unwrap();
+        }
+
+        // Execute a random `transfer_public` with the earlier state root.
+        let recipient = Address::<CurrentNetwork>::rand(rng);
+        let amount = u8::rand(rng);
+        let transaction = vm
+            .execute(
+                &caller_private_key,
+                ("credits.aleo", "transfer_public"),
+                [
+                    Value::<Testnet3>::from_str(&recipient.to_string()).unwrap(),
+                    Value::<Testnet3>::from_str(&format!("{amount}u64")).unwrap(),
+                ]
+                .iter(),
+                None,
+                0,
+                Some(Query::CONST(Some(state_root), None)),
+                rng,
+            )
+            .unwrap();
+        // Add the transaction to the VM.
+        vm.add_next_block(&sample_next_block(&vm, &caller_private_key, &[transaction], rng).unwrap()).unwrap();
+
+        // Execute random `transfer_public` with a hardcoded state root.
+        let recipient = Address::<CurrentNetwork>::rand(rng);
+        let amount = u8::rand(rng);
+        let transaction = vm
+            .execute(
+                &caller_private_key,
+                ("credits.aleo", "transfer_public"),
+                [
+                    Value::<Testnet3>::from_str(&recipient.to_string()).unwrap(),
+                    Value::<Testnet3>::from_str(&format!("{amount}u64")).unwrap(),
+                ]
+                .iter(),
+                None,
+                0,
+                Some(Query::CONST(Some(<CurrentNetwork as Network>::StateRoot::from(Field::one())), None)),
+                rng,
+            )
+            .unwrap();
+        // Add the transaction to the VM.
+        vm.add_next_block(&sample_next_block(&vm, &caller_private_key, &[transaction], rng).unwrap()).unwrap();
     }
 }
