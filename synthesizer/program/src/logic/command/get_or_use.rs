@@ -29,9 +29,10 @@ use std::io::{BufRead, BufReader};
 /// A get command that uses the provided default in case of failure, e.g. `get.or_use accounts[r0] r1 into r2;`.
 /// Gets the value stored at `operand` in `mapping` and stores the result in `destination`.
 /// If the key is not present, `default` is stored in `destination`.
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(Clone)]
 pub struct GetOrUse<N: Network> {
     /// The mapping.
+    // TODO (howardwu): For mainnet - Use `CallOperator`, delete the above `MappingLocator`.
     mapping: MappingLocator<N>,
     /// The key to access the mapping.
     key: Operand<N>,
@@ -39,6 +40,30 @@ pub struct GetOrUse<N: Network> {
     default: Operand<N>,
     /// The destination register.
     destination: Register<N>,
+    // TODO (howardwu): For mainnet - remove `is_old`.
+    is_old: bool,
+}
+
+impl<N: Network> PartialEq for GetOrUse<N> {
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        self.mapping == other.mapping
+            && self.key == other.key
+            && self.default == other.default
+            && self.destination == other.destination
+    }
+}
+
+impl<N: Network> Eq for GetOrUse<N> {}
+
+impl<N: Network> std::hash::Hash for GetOrUse<N> {
+    #[inline]
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.mapping.hash(state);
+        self.key.hash(state);
+        self.default.hash(state);
+        self.destination.hash(state);
+    }
 }
 
 impl<N: Network> GetOrUse<N> {
@@ -161,7 +186,7 @@ impl<N: Network> Parser for GetOrUse<N> {
         // Parse the ";" from the string.
         let (string, _) = tag(";")(string)?;
 
-        Ok((string, Self { mapping, key, default, destination }))
+        Ok((string, Self { mapping, key, default, destination, is_old: false }))
     }
 }
 
@@ -210,13 +235,15 @@ impl<N: Network> FromBytes for GetOrUse<N> {
         let mut reader = BufReader::with_capacity(1, reader);
         let first_byte = {
             let buffer = reader.fill_buf()?;
-            buffer.first().copied()
+            match buffer.first() {
+                Some(byte) => *byte,
+                None => return Err(error("Failed to read `get.or_use`. Expected byte.")),
+            }
         };
         // If the first byte is zero, then read a `MappingLocator`, otherwise read an `Identifier`.
         let mapping = match first_byte {
-            Some(0u8) => MappingLocator::read_le(&mut reader)?,
-            Some(_) => MappingLocator::Resource(Identifier::read_le(&mut reader)?),
-            None => return Err(error("Failed to read `get.or_use`. Expected byte.")),
+            0u8 => MappingLocator::read_le(&mut reader)?,
+            _ => MappingLocator::Resource(Identifier::read_le(&mut reader)?),
         };
         // Read the key operand.
         let key = Operand::read_le(&mut reader)?;
@@ -225,7 +252,7 @@ impl<N: Network> FromBytes for GetOrUse<N> {
         // Read the destination register.
         let destination = Register::read_le(&mut reader)?;
         // Return the command.
-        Ok(Self { mapping, key, default, destination })
+        Ok(Self { mapping, key, default, destination, is_old: !first_byte.is_zero() })
     }
 }
 
@@ -233,7 +260,15 @@ impl<N: Network> ToBytes for GetOrUse<N> {
     /// Writes the operation to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Write the mapping name.
-        self.mapping.write_le(&mut writer)?;
+        match self.is_old {
+            false => self.mapping.write_le(&mut writer)?,
+            true => match self.mapping {
+                MappingLocator::Resource(identifier) => identifier.write_le(&mut writer)?,
+                MappingLocator::Locator(_) => {
+                    return Err(error("Expected `MappingLocator::Resource` for `get.or_use`."));
+                }
+            },
+        }
         // Write the key operand.
         self.key.write_le(&mut writer)?;
         // Write the default value.

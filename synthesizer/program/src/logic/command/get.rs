@@ -125,7 +125,7 @@ impl<N: Network> ToBytes for MappingLocator<N> {
 
 /// A get command, e.g. `get accounts[r0] into r1;`.
 /// Gets the value stored at `operand` in `mapping` and stores the result in `destination`.
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(Clone)]
 pub struct Get<N: Network> {
     /// The mapping.
     // TODO (howardwu): For mainnet - Use `CallOperator`, delete the above `MappingLocator`.
@@ -134,6 +134,28 @@ pub struct Get<N: Network> {
     key: Operand<N>,
     /// The destination register.
     destination: Register<N>,
+    // TODO (howardwu): For mainnet - remove `is_old`.
+    is_old: bool,
+}
+
+impl<N: Network> PartialEq for Get<N> {
+    /// Returns true if the two objects are equal.
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        self.mapping == other.mapping && self.key == other.key && self.destination == other.destination
+    }
+}
+
+impl<N: Network> Eq for Get<N> {}
+
+impl<N: Network> std::hash::Hash for Get<N> {
+    /// Returns the hash of the object.
+    #[inline]
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.mapping.hash(state);
+        self.key.hash(state);
+        self.destination.hash(state);
+    }
 }
 
 impl<N: Network> Get<N> {
@@ -245,7 +267,7 @@ impl<N: Network> Parser for Get<N> {
         // Parse the ";" from the string.
         let (string, _) = tag(";")(string)?;
 
-        Ok((string, Self { mapping, key, destination }))
+        Ok((string, Self { mapping, key, destination, is_old: false }))
     }
 }
 
@@ -294,20 +316,22 @@ impl<N: Network> FromBytes for Get<N> {
         let mut reader = BufReader::with_capacity(1, reader);
         let first_byte = {
             let buffer = reader.fill_buf()?;
-            buffer.first().copied()
+            match buffer.first() {
+                Some(byte) => *byte,
+                None => return Err(error("Failed to read `get`. Expected byte.")),
+            }
         };
         // If the first byte is zero, then read a `MappingLocator`, otherwise read an `Identifier`.
         let mapping = match first_byte {
-            Some(0u8) => MappingLocator::read_le(&mut reader)?,
-            Some(_) => MappingLocator::Resource(Identifier::read_le(&mut reader)?),
-            None => return Err(error("Failed to read `get`. Expected byte.")),
+            0u8 => MappingLocator::read_le(&mut reader)?,
+            _ => MappingLocator::Resource(Identifier::read_le(&mut reader)?),
         };
         // Read the key operand.
         let key = Operand::read_le(&mut reader)?;
         // Read the destination register.
         let destination = Register::read_le(&mut reader)?;
         // Return the command.
-        Ok(Self { mapping, key, destination })
+        Ok(Self { mapping, key, destination, is_old: !first_byte.is_zero() })
     }
 }
 
@@ -315,7 +339,15 @@ impl<N: Network> ToBytes for Get<N> {
     /// Writes the operation to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Write the mapping name.
-        self.mapping.write_le(&mut writer)?;
+        match self.is_old {
+            false => self.mapping.write_le(&mut writer)?,
+            true => match self.mapping {
+                MappingLocator::Resource(identifier) => identifier.write_le(&mut writer)?,
+                MappingLocator::Locator(_) => {
+                    return Err(error("Expected `MappingLocator::Resource` for `get`."));
+                }
+            },
+        }
         // Write the key operand.
         self.key.write_le(&mut writer)?;
         // Write the destination register.
