@@ -312,8 +312,7 @@ impl<N: Network> FinalizeTypes<N> {
                     bail!("Mapping '{mapping_name}' in '{program_id}' is not defined.")
                 }
                 // Retrieve the mapping from the program.
-                // Note that the unwrap is safe, as we have already checked the mapping exists.
-                external.get_mapping(mapping_name).unwrap()
+                external.get_mapping(mapping_name)?
             }
             MappingLocator::Resource(mapping_name) => {
                 // Ensure the declared mapping in `get` is defined in the current program.
@@ -321,8 +320,7 @@ impl<N: Network> FinalizeTypes<N> {
                     bail!("Mapping '{mapping_name}' in '{}' is not defined.", stack.program_id())
                 }
                 // Retrieve the mapping from the program.
-                // Note that the unwrap is safe, as we have already checked the mapping exists.
-                stack.program().get_mapping(mapping_name).unwrap()
+                stack.program().get_mapping(mapping_name)?
             }
         };
 
@@ -380,8 +378,7 @@ impl<N: Network> FinalizeTypes<N> {
                     bail!("Mapping '{mapping_name}' in '{program_id}' is not defined.")
                 }
                 // Retrieve the mapping from the program.
-                // Note that the unwrap is safe, as we have already checked the mapping exists.
-                external.get_mapping(mapping_name).unwrap()
+                external.get_mapping(mapping_name)?
             }
             MappingLocator::Resource(mapping_name) => {
                 // Ensure the declared mapping in `get.or_use` is defined in the current program.
@@ -389,8 +386,7 @@ impl<N: Network> FinalizeTypes<N> {
                     bail!("Mapping '{mapping_name}' in '{}' is not defined.", stack.program_id())
                 }
                 // Retrieve the mapping from the program.
-                // Note that the unwrap is safe, as we have already checked the mapping exists.
-                stack.program().get_mapping(mapping_name).unwrap()
+                stack.program().get_mapping(mapping_name)?
             }
         };
 
