@@ -22,7 +22,6 @@ impl<N: Network> FromBytes for Identifier<N> {
 
         // Read the identifier bytes.
         let mut buffer = vec![0u8; size as usize];
-
         reader.read_exact(&mut buffer)?;
 
         // from_str the identifier.
