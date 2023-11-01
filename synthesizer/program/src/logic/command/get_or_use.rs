@@ -186,7 +186,13 @@ impl<N: Network> Parser for GetOrUse<N> {
         // Parse the ";" from the string.
         let (string, _) = tag(";")(string)?;
 
-        Ok((string, Self { mapping, key, default, destination, is_old: false }))
+        Ok((string, Self {
+            is_old: matches!(mapping, MappingLocator::Resource(_)),
+            mapping,
+            key,
+            default,
+            destination,
+        }))
     }
 }
 
@@ -252,7 +258,7 @@ impl<N: Network> FromBytes for GetOrUse<N> {
         // Read the destination register.
         let destination = Register::read_le(&mut reader)?;
         // Return the command.
-        Ok(Self { mapping, key, default, destination, is_old: !first_byte.is_zero() })
+        Ok(Self { is_old: matches!(mapping, MappingLocator::Resource(_)), mapping, key, default, destination })
     }
 }
 
