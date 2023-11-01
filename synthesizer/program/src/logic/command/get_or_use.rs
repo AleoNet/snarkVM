@@ -40,8 +40,6 @@ pub struct GetOrUse<N: Network> {
     default: Operand<N>,
     /// The destination register.
     destination: Register<N>,
-    // TODO (howardwu): For mainnet - remove `is_old`.
-    is_old: bool,
 }
 
 impl<N: Network> PartialEq for GetOrUse<N> {
@@ -186,13 +184,7 @@ impl<N: Network> Parser for GetOrUse<N> {
         // Parse the ";" from the string.
         let (string, _) = tag(";")(string)?;
 
-        Ok((string, Self {
-            is_old: matches!(mapping, MappingLocator::Resource(_)),
-            mapping,
-            key,
-            default,
-            destination,
-        }))
+        Ok((string, Self { mapping, key, default, destination }))
     }
 }
 
@@ -258,7 +250,7 @@ impl<N: Network> FromBytes for GetOrUse<N> {
         // Read the destination register.
         let destination = Register::read_le(&mut reader)?;
         // Return the command.
-        Ok(Self { is_old: matches!(mapping, MappingLocator::Resource(_)), mapping, key, default, destination })
+        Ok(Self { mapping, key, default, destination })
     }
 }
 
@@ -266,14 +258,10 @@ impl<N: Network> ToBytes for GetOrUse<N> {
     /// Writes the operation to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Write the mapping name.
-        match self.is_old {
-            false => self.mapping.write_le(&mut writer)?,
-            true => match self.mapping {
-                MappingLocator::Resource(identifier) => identifier.write_le(&mut writer)?,
-                MappingLocator::Locator(_) => {
-                    return Err(error("Expected `MappingLocator::Resource` for `get.or_use`."));
-                }
-            },
+        // TODO (howardwu): For mainnet - Write the `self.mapping` directly, instead of matching on the identifier case.
+        match &self.mapping {
+            MappingLocator::Locator(_) => self.mapping.write_le(&mut writer)?,
+            MappingLocator::Resource(identifier) => identifier.write_le(&mut writer)?,
         }
         // Write the key operand.
         self.key.write_le(&mut writer)?;
