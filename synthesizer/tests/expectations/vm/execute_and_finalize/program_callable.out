@@ -16,8 +16,8 @@ additional:
 - child_outputs:
     child.aleo/foo:
       outputs:
-      - '{"type":"public","id":"6570086835149819439219303224003492878705751026121012692011734299993965867007field","value":"aleo16w8t56s7v6ud7vu33fr388ph0dq0c7yhp597cyjt88rr3nultcyqcyk9yy"}'
-      - '{"type":"public","id":"2866009676898789345591427281882170655806617413858789892357234972821058149651field","value":"aleo1qr2ha4pfs5l28aze88yn6fhleeythklkczrule2v838uwj65n5gqxt9djx"}'
+      - '{"type":"public","id":"8256096006685601051730823022659471790701845130080598423319521977566444421040field","value":"aleo16w8t56s7v6ud7vu33fr388ph0dq0c7yhp597cyjt88rr3nultcyqcyk9yy"}'
+      - '{"type":"public","id":"5221989025862141472722693152948767316757289409356062808145501796303456062879field","value":"aleo1qr2ha4pfs5l28aze88yn6fhleeythklkczrule2v838uwj65n5gqxt9djx"}'
     credits.aleo/fee_public:
       outputs:
       - '{"type":"future","id":"2015747658045377273535220569098051012671760616560705166778921345457847058512field","value":"{\n  program_id: credits.aleo,\n  function_name: fee_public,\n  arguments: [\n    aleo1qr2ha4pfs5l28aze88yn6fhleeythklkczrule2v838uwj65n5gqxt9djx,\n    2123u64\n  ]\n}"}'
