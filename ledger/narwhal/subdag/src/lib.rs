@@ -57,14 +57,15 @@ fn sanity_check_subdag_with_dfs<N: Network>(subdag: &BTreeMap<u64, IndexSet<Batc
         commit.entry(certificate.round()).or_default().insert(certificate.clone());
         // Iterate over the previous certificate IDs.
         for previous_certificate_id in certificate.previous_certificate_ids() {
-            let Some(previous_certificate) = subdag.get(&(certificate.round() - 1)).and_then(|map| {
-                map.iter().find(|certificate| certificate.certificate_id() == *previous_certificate_id)
-            }) else {
+            let Some(previous_certificate) = subdag
+                .get(&(certificate.round() - 1))
+                .and_then(|map| map.iter().find(|certificate| certificate.id() == *previous_certificate_id))
+            else {
                 // It is either ordered or below the GC round.
                 continue;
             };
             // Insert the previous certificate into the set of already ordered certificates.
-            if !already_ordered.insert(previous_certificate.certificate_id()) {
+            if !already_ordered.insert(previous_certificate.id()) {
                 // If the previous certificate is already ordered, continue.
                 continue;
             }
@@ -108,7 +109,7 @@ impl<N: Network> Subdag<N> {
 
     /// Returns the certificate IDs of the subdag (from earliest round to latest round).
     pub fn certificate_ids(&self) -> impl Iterator<Item = Field<N>> + '_ {
-        self.values().flatten().map(BatchCertificate::certificate_id)
+        self.values().flatten().map(BatchCertificate::id)
     }
 
     /// Returns the leader certificate.
@@ -134,10 +135,22 @@ impl<N: Network> Subdag<N> {
         self.values().flatten().flat_map(BatchCertificate::transmission_ids)
     }
 
-    /// Returns the timestamp of the anchor round, defined as the median timestamp of the leader certificate.
+    /// Returns the timestamp of the anchor round, defined as the median timestamp of the subdag.
     pub fn timestamp(&self) -> i64 {
-        // Retrieve the median timestamp from the leader certificate.
-        self.leader_certificate().median_timestamp()
+        match self.leader_certificate() {
+            BatchCertificate::V1 { .. } => self.leader_certificate().timestamp(),
+            BatchCertificate::V2 { .. } => {
+                // Retrieve the timestamps of the certificates.
+                let mut timestamps = self.values().flatten().map(BatchCertificate::timestamp).collect::<Vec<_>>();
+                // Sort the timestamps.
+                #[cfg(not(feature = "serial"))]
+                timestamps.par_sort_unstable();
+                #[cfg(feature = "serial")]
+                timestamps.sort_unstable();
+                // Return the median timestamp.
+                timestamps[timestamps.len() / 2]
+            }
+        }
     }
 
     /// Returns the subdag root of the transactions.
@@ -145,10 +158,7 @@ impl<N: Network> Subdag<N> {
         // Prepare the leaves.
         let leaves = cfg_iter!(self.subdag)
             .map(|(_, certificates)| {
-                certificates
-                    .iter()
-                    .flat_map(|certificate| certificate.certificate_id().to_bits_le())
-                    .collect::<Vec<_>>()
+                certificates.iter().flat_map(|certificate| certificate.id().to_bits_le()).collect::<Vec<_>>()
             })
             .collect::<Vec<_>>();
 
@@ -201,7 +211,7 @@ pub mod test_helpers {
         for _ in 0..AVAILABILITY_THRESHOLD {
             let certificate =
                 narwhal_batch_certificate::test_helpers::sample_batch_certificate_for_round(starting_round, rng);
-            previous_certificate_ids.insert(certificate.certificate_id());
+            previous_certificate_ids.insert(certificate.id());
             subdag.entry(starting_round).or_default().insert(certificate);
         }
 
@@ -210,7 +220,7 @@ pub mod test_helpers {
         for _ in 0..QUORUM_THRESHOLD {
             let certificate =
                 narwhal_batch_certificate::test_helpers::sample_batch_certificate_for_round_with_previous_certificate_ids(starting_round + 1, previous_certificate_ids.clone(), rng);
-            previous_certificate_ids_2.insert(certificate.certificate_id());
+            previous_certificate_ids_2.insert(certificate.id());
             subdag.entry(starting_round + 1).or_default().insert(certificate);
         }
 
