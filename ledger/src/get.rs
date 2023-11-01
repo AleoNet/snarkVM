@@ -167,7 +167,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
     /// Returns the transaction for the given transaction ID.
     pub fn get_transaction(&self, transaction_id: N::TransactionID) -> Result<Transaction<N>> {
         // Retrieve the transaction.
-        match self.vm.transaction_store().get_transaction(&transaction_id)? {
+        match self.vm.block_store().get_transaction(&transaction_id)? {
             Some(transaction) => Ok(transaction),
             None => bail!("Missing transaction for ID {transaction_id}"),
         }
@@ -182,9 +182,18 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         }
     }
 
+    /// Returns the unconfirmed transaction for the given `transaction ID`.
+    pub fn get_unconfirmed_transaction(&self, transaction_id: &N::TransactionID) -> Result<Transaction<N>> {
+        // Retrieve the unconfirmed transaction.
+        match self.vm.block_store().get_unconfirmed_transaction(transaction_id)? {
+            Some(unconfirmed_transaction) => Ok(unconfirmed_transaction),
+            None => bail!("Missing unconfirmed transaction for ID {transaction_id}"),
+        }
+    }
+
     /// Returns the program for the given program ID.
     pub fn get_program(&self, program_id: ProgramID<N>) -> Result<Program<N>> {
-        match self.vm.transaction_store().get_program(&program_id)? {
+        match self.vm.block_store().get_program(&program_id)? {
             Some(program) => Ok(program),
             None => bail!("Missing program for ID {program_id}"),
         }

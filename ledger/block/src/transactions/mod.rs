@@ -121,6 +121,14 @@ impl<N: Network> Transactions<N> {
 }
 
 impl<N: Network> Transactions<N> {
+    /// Returns the confirmed transaction for the given unconfirmed transaction ID, if it exists.
+    pub fn find_confirmed_transaction_for_unconfirmed_transaction_id(
+        &self,
+        unconfirmed_transaction_id: &N::TransactionID,
+    ) -> Option<&ConfirmedTransaction<N>> {
+        cfg_find!(self.transactions, unconfirmed_transaction_id, contains_unconfirmed_transaction_id)
+    }
+
     /// Returns the transaction with the given transition ID, if it exists.
     pub fn find_transaction_for_transition_id(&self, transition_id: &N::TransitionID) -> Option<&Transaction<N>> {
         cfg_find!(self.transactions, transition_id, contains_transition).map(|tx| tx.transaction())

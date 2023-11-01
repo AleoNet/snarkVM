@@ -32,26 +32,6 @@ macro_rules! ensure_is_unique {
 }
 
 impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
-    /// Returns `true` if the transaction is valid.
-    pub fn verify_transaction(&self, transaction: &Transaction<N>, rejected_id: Option<Field<N>>) -> bool {
-        self.check_transaction(transaction, rejected_id).map_err(|error| warn!("{error}")).is_ok()
-    }
-
-    /// Returns `true` if the deployment is valid.
-    pub fn verify_deployment(&self, deployment: &Deployment<N>) -> bool {
-        self.check_deployment(deployment).map_err(|error| warn!("{error}")).is_ok()
-    }
-
-    /// Returns `true` if the execution is valid.
-    pub fn verify_execution(&self, execution: &Execution<N>) -> bool {
-        self.check_execution(execution).map_err(|error| warn!("{error}")).is_ok()
-    }
-
-    /// Returns `true` if the fee is valid.
-    pub fn verify_fee(&self, fee: &Fee<N>, deployment_or_execution_id: Field<N>) -> bool {
-        self.check_fee(fee, deployment_or_execution_id).map_err(|error| warn!("{error}")).is_ok()
-    }
-
     /// Verifies the transaction in the VM. On failure, returns an error.
     #[inline]
     pub fn check_transaction(&self, transaction: &Transaction<N>, rejected_id: Option<Field<N>>) -> Result<()> {
@@ -60,9 +40,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         /* Transaction */
 
         // Ensure the transaction ID is unique.
-        if self.transaction_store().contains_transaction_id(&transaction.id())?
-            || self.block_store().contains_rejected_or_aborted_transaction_id(&transaction.id())?
-        {
+        if self.block_store().contains_transaction_id(&transaction.id())? {
             bail!("Transaction '{}' already exists in the ledger", transaction.id())
         }
 
@@ -109,63 +87,122 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
         lap!(timer, "Check for duplicate elements");
 
+        // First, verify the fee.
+        self.check_fee(transaction, rejected_id)?;
+
+        // Next, verify the deployment or execution.
         match transaction {
-            Transaction::Deploy(id, owner, deployment, fee) => {
-                // Ensure the rejected ID is not present.
-                ensure!(rejected_id.is_none(), "Transaction should not have a rejected ID (deployment)");
+            Transaction::Deploy(id, owner, deployment, _) => {
                 // Compute the deployment ID.
                 let Ok(deployment_id) = deployment.to_deployment_id() else {
-                    bail!("Failed to compute the Merkle root for deployment transaction '{id}'")
+                    bail!("Failed to compute the Merkle root for a deployment transaction '{id}'")
                 };
                 // Verify the signature corresponds to the transaction ID.
                 ensure!(owner.verify(deployment_id), "Invalid owner signature for deployment transaction '{id}'");
                 // Ensure the edition is correct.
-                ensure!(deployment.edition() == N::EDITION, "Invalid deployment: expected edition {}", N::EDITION);
+                if deployment.edition() != N::EDITION {
+                    bail!("Invalid deployment transaction '{id}' - expected edition {}", N::EDITION)
+                }
                 // Ensure the program ID does not already exist..
                 if self.transaction_store().contains_program_id(deployment.program_id())? {
                     bail!("Program ID '{}' is already deployed", deployment.program_id())
                 }
-                // Verify the fee.
-                self.check_fee(fee, deployment_id)?;
                 // Verify the deployment.
-                self.check_deployment(deployment)?;
+                self.check_deployment_internal(deployment)?;
             }
-            Transaction::Execute(id, execution, fee) => {
-                // Ensure the rejected ID is not present.
-                ensure!(rejected_id.is_none(), "Transaction should not have a rejected ID (execution)");
+            Transaction::Execute(id, execution, _) => {
                 // Compute the execution ID.
                 let Ok(execution_id) = execution.to_execution_id() else {
-                    bail!("Failed to compute the Merkle root for execution transaction '{id}'")
+                    bail!("Failed to compute the Merkle root for an execution transaction '{id}'")
                 };
-                // Verify the fee.
-                if let Some(fee) = fee {
-                    self.check_fee(fee, execution_id)?;
-                } else {
-                    // If the transaction contains only 1 transition, and the transition is a split, then the fee can be skipped.
-                    let can_skip_fee = execution.len() == 1 && transaction.contains_split();
-                    ensure!(can_skip_fee, "Transaction is missing a fee (execution)");
+                // Ensure the execution was not previously rejected (replay attack prevention).
+                if self.block_store().contains_rejected_deployment_or_execution_id(&execution_id)? {
+                    bail!("Transaction '{id}' contains a previously rejected execution")
                 }
                 // Verify the execution.
-                self.check_execution(execution)?;
+                self.check_execution_internal(execution)?;
             }
-            Transaction::Fee(_, fee) => {
-                // Ensure the fee is nonzero.
-                ensure!(!fee.is_zero()?, "Invalid fee (zero)");
-                // Verify the fee.
-                match rejected_id {
-                    Some(rejected_id) => self.check_fee(fee, rejected_id)?,
-                    None => bail!("Transaction is missing a rejected ID (fee)"),
-                }
-            }
+            Transaction::Fee(..) => { /* no-op */ }
         }
 
         finish!(timer, "Verify the transaction");
         Ok(())
     }
 
-    /// Verifies the given deployment. On failure, returns an error.
+    /// Verifies the `fee` in the given transaction. On failure, returns an error.
     #[inline]
-    fn check_deployment(&self, deployment: &Deployment<N>) -> Result<()> {
+    pub fn check_fee(&self, transaction: &Transaction<N>, rejected_id: Option<Field<N>>) -> Result<()> {
+        match transaction {
+            Transaction::Deploy(id, _, deployment, fee) => {
+                // Ensure the rejected ID is not present.
+                ensure!(rejected_id.is_none(), "Transaction '{id}' should not have a rejected ID (deployment)");
+                // Compute the deployment ID.
+                let Ok(deployment_id) = deployment.to_deployment_id() else {
+                    bail!("Failed to compute the Merkle root for deployment transaction '{id}'")
+                };
+                // Compute the deployment cost.
+                let (cost, _) = deployment_cost(deployment)?;
+                // Ensure the fee is sufficient to cover the cost.
+                if *fee.base_amount()? < cost {
+                    bail!("Transaction '{id}' has an insufficient base fee (deployment) - requires {cost} microcredits")
+                }
+                // Verify the fee.
+                self.check_fee_internal(fee, deployment_id)?;
+            }
+            Transaction::Execute(id, execution, fee) => {
+                // Ensure the rejected ID is not present.
+                ensure!(rejected_id.is_none(), "Transaction '{id}' should not have a rejected ID (execution)");
+                // Compute the execution ID.
+                let Ok(execution_id) = execution.to_execution_id() else {
+                    bail!("Failed to compute the Merkle root for execution transaction '{id}'")
+                };
+                // If the transaction contains only 1 transition, and the transition is a split, then the fee can be skipped.
+                let is_fee_required = !(execution.len() == 1 && transaction.contains_split());
+                // Verify the fee.
+                if let Some(fee) = fee {
+                    // If the fee is required, then check that the base fee amount is satisfied.
+                    if is_fee_required {
+                        // Compute the execution cost.
+                        let (cost, _) = execution_cost(self, execution)?;
+                        // Ensure the fee is sufficient to cover the cost.
+                        if *fee.base_amount()? < cost {
+                            bail!(
+                                "Transaction '{id}' has an insufficient base fee (execution) - requires {cost} microcredits"
+                            )
+                        }
+                    } else {
+                        // Ensure the base fee amount is zero.
+                        ensure!(*fee.base_amount()? == 0, "Transaction '{id}' has a non-zero base fee (execution)");
+                    }
+                    // Verify the fee.
+                    self.check_fee_internal(fee, execution_id)?;
+                } else {
+                    // Ensure the fee can be safely skipped.
+                    ensure!(!is_fee_required, "Transaction '{id}' is missing a fee (execution)");
+                }
+            }
+            // Note: This transaction type does not need to check the fee amount, because:
+            //  1. The fee is guaranteed to be non-zero by the constructor of `Transaction::Fee`.
+            //  2. The fee may be less that the deployment or execution cost, as this is a valid reason it was rejected.
+            Transaction::Fee(id, fee) => {
+                // Verify the fee.
+                match rejected_id {
+                    Some(rejected_id) => self.check_fee_internal(fee, rejected_id)?,
+                    None => bail!("Transaction '{id}' is missing a rejected ID (fee)"),
+                }
+            }
+        }
+        Ok(())
+    }
+}
+
+impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
+    /// Verifies the given deployment. On failure, returns an error.
+    ///
+    /// Note: This is an internal check only. To ensure all components of the deployment are checked,
+    /// use `VM::check_transaction` instead.
+    #[inline]
+    fn check_deployment_internal(&self, deployment: &Deployment<N>) -> Result<()> {
         macro_rules! logic {
             ($process:expr, $network:path, $aleo:path) => {{
                 // Prepare the deployment.
@@ -183,8 +220,11 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     }
 
     /// Verifies the given execution. On failure, returns an error.
+    ///
+    /// Note: This is an internal check only. To ensure all components of the execution are checked,
+    /// use `VM::check_transaction` instead.
     #[inline]
-    fn check_execution(&self, execution: &Execution<N>) -> Result<()> {
+    fn check_execution_internal(&self, execution: &Execution<N>) -> Result<()> {
         let timer = timer!("VM::check_execution");
 
         // Verify the execution.
@@ -206,8 +246,11 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     }
 
     /// Verifies the given fee. On failure, returns an error.
+    ///
+    /// Note: This is an internal check only. To ensure all components of the fee are checked,
+    /// use `VM::check_fee` instead.
     #[inline]
-    fn check_fee(&self, fee: &Fee<N>, deployment_or_execution_id: Field<N>) -> Result<()> {
+    fn check_fee_internal(&self, fee: &Fee<N>, deployment_or_execution_id: Field<N>) -> Result<()> {
         let timer = timer!("VM::check_fee");
 
         // Ensure the fee does not exceed the limit.
@@ -275,20 +318,17 @@ mod tests {
         // Fetch a deployment transaction.
         let deployment_transaction = crate::vm::test_helpers::sample_deployment_transaction(rng);
         // Ensure the transaction verifies.
-        assert!(vm.check_transaction(&deployment_transaction, None).is_ok());
-        assert!(vm.verify_transaction(&deployment_transaction, None));
+        vm.check_transaction(&deployment_transaction, None).unwrap();
 
         // Fetch an execution transaction.
         let execution_transaction = crate::vm::test_helpers::sample_execution_transaction_with_private_fee(rng);
         // Ensure the transaction verifies.
-        assert!(vm.check_transaction(&execution_transaction, None).is_ok());
-        assert!(vm.verify_transaction(&execution_transaction, None));
+        vm.check_transaction(&execution_transaction, None).unwrap();
 
         // Fetch an execution transaction.
         let execution_transaction = crate::vm::test_helpers::sample_execution_transaction_with_public_fee(rng);
         // Ensure the transaction verifies.
-        assert!(vm.check_transaction(&execution_transaction, None).is_ok());
-        assert!(vm.verify_transaction(&execution_transaction, None));
+        vm.check_transaction(&execution_transaction, None).unwrap();
     }
 
     #[test]
@@ -303,14 +343,12 @@ mod tests {
         let deployment = vm.deploy_raw(&program, rng).unwrap();
 
         // Ensure the deployment is valid.
-        assert!(vm.check_deployment(&deployment).is_ok());
-        assert!(vm.verify_deployment(&deployment));
+        vm.check_deployment_internal(&deployment).unwrap();
 
         // Ensure that deserialization doesn't break the transaction verification.
         let serialized_deployment = deployment.to_string();
         let deployment_transaction: Deployment<CurrentNetwork> = serde_json::from_str(&serialized_deployment).unwrap();
-        assert!(vm.check_deployment(&deployment_transaction).is_ok());
-        assert!(vm.verify_deployment(&deployment_transaction));
+        vm.check_deployment_internal(&deployment_transaction).unwrap();
     }
 
     #[test]
@@ -330,15 +368,13 @@ mod tests {
                     // Ensure the proof exists.
                     assert!(execution.proof().is_some());
                     // Verify the execution.
-                    assert!(vm.check_execution(&execution).is_ok());
-                    assert!(vm.verify_execution(&execution));
+                    vm.check_execution_internal(&execution).unwrap();
 
                     // Ensure that deserialization doesn't break the transaction verification.
                     let serialized_execution = execution.to_string();
                     let recovered_execution: Execution<CurrentNetwork> =
                         serde_json::from_str(&serialized_execution).unwrap();
-                    assert!(vm.check_execution(&recovered_execution).is_ok());
-                    assert!(vm.verify_execution(&recovered_execution));
+                    vm.check_execution_internal(&recovered_execution).unwrap();
                 }
                 _ => panic!("Expected an execution transaction"),
             }
@@ -364,14 +400,12 @@ mod tests {
                     // Ensure the proof exists.
                     assert!(fee.proof().is_some());
                     // Verify the fee.
-                    assert!(vm.check_fee(&fee, execution_id).is_ok());
-                    assert!(vm.verify_fee(&fee, execution_id));
+                    vm.check_fee_internal(&fee, execution_id).unwrap();
 
                     // Ensure that deserialization doesn't break the transaction verification.
                     let serialized_fee = fee.to_string();
                     let recovered_fee: Fee<CurrentNetwork> = serde_json::from_str(&serialized_fee).unwrap();
-                    assert!(vm.check_fee(&recovered_fee, execution_id).is_ok());
-                    assert!(vm.verify_fee(&recovered_fee, execution_id));
+                    vm.check_fee_internal(&recovered_fee, execution_id).unwrap();
                 }
                 _ => panic!("Expected an execution with a fee"),
             }
@@ -391,18 +425,15 @@ mod tests {
 
         // Fetch a valid execution transaction with a private fee.
         let valid_transaction = crate::vm::test_helpers::sample_execution_transaction_with_private_fee(rng);
-        assert!(vm.check_transaction(&valid_transaction, None).is_ok());
-        assert!(vm.verify_transaction(&valid_transaction, None));
+        vm.check_transaction(&valid_transaction, None).unwrap();
 
         // Fetch a valid execution transaction with a public fee.
         let valid_transaction = crate::vm::test_helpers::sample_execution_transaction_with_public_fee(rng);
-        assert!(vm.check_transaction(&valid_transaction, None).is_ok());
-        assert!(vm.verify_transaction(&valid_transaction, None));
+        vm.check_transaction(&valid_transaction, None).unwrap();
 
         // Fetch an valid execution transaction with no fee.
         let valid_transaction = crate::vm::test_helpers::sample_execution_transaction_without_fee(rng);
-        assert!(vm.check_transaction(&valid_transaction, None).is_ok());
-        assert!(vm.verify_transaction(&valid_transaction, None));
+        vm.check_transaction(&valid_transaction, None).unwrap();
     }
 
     #[test]
@@ -435,7 +466,7 @@ mod tests {
 
         // Construct the new block header.
         let (ratifications, transactions, aborted_transaction_ids, ratified_finalize_operations) =
-            vm.speculate(sample_finalize_state(1), &[], None, [deployment_transaction].iter()).unwrap();
+            vm.speculate(sample_finalize_state(1), Some(0u64), vec![], None, [deployment_transaction].iter()).unwrap();
         assert!(aborted_transaction_ids.is_empty());
 
         // Construct the metadata associated with the block.
@@ -498,8 +529,7 @@ mod tests {
             vm.execute(&caller_private_key, ("testing.aleo", "initialize"), inputs, credits, 10, None, rng).unwrap();
 
         // Verify.
-        assert!(vm.check_transaction(&transaction, None).is_ok());
-        assert!(vm.verify_transaction(&transaction, None));
+        vm.check_transaction(&transaction, None).unwrap();
     }
 
     #[test]

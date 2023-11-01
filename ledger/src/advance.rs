@@ -123,18 +123,32 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         let (solutions, solutions_root, combined_proof_target) = match candidate_solutions.is_empty() {
             true => (None, Field::<N>::zero(), 0u128),
             false => {
-                // Accumulate the prover solutions.
-                let solutions = self.coinbase_puzzle.accumulate(
-                    candidate_solutions,
-                    &self.latest_epoch_challenge()?,
-                    self.latest_proof_target(),
-                )?;
-                // Compute the solutions root.
-                let solutions_root = solutions.to_accumulator_point()?;
-                // Compute the combined proof target.
-                let combined_proof_target = solutions.to_combined_proof_target()?;
-                // Output the solutions, solutions root, and combined proof target.
-                (Some(solutions), solutions_root, combined_proof_target)
+                // Retrieve the coinbase verifying key.
+                let coinbase_verifying_key = self.coinbase_puzzle.coinbase_verifying_key();
+                // Retrieve the latest epoch challenge.
+                let latest_epoch_challenge = self.latest_epoch_challenge()?;
+                // Separate the candidate solutions into valid and aborted solutions.
+                // TODO: Add `aborted_solution_ids` to the block.
+                let (valid_candidate_solutions, _aborted_candidate_solutions): (Vec<_>, Vec<_>) =
+                    cfg_into_iter!(candidate_solutions).partition(|solution| {
+                        solution
+                            .verify(coinbase_verifying_key, &latest_epoch_challenge, self.latest_proof_target())
+                            .unwrap_or(false)
+                    });
+                // Check if there are any valid solutions.
+                match valid_candidate_solutions.is_empty() {
+                    true => (None, Field::<N>::zero(), 0u128),
+                    false => {
+                        // Construct the solutions.
+                        let solutions = CoinbaseSolution::new(valid_candidate_solutions)?;
+                        // Compute the solutions root.
+                        let solutions_root = solutions.to_accumulator_point()?;
+                        // Compute the combined proof target.
+                        let combined_proof_target = solutions.to_combined_proof_target()?;
+                        // Output the solutions, solutions root, and combined proof target.
+                        (Some(solutions), solutions_root, combined_proof_target)
+                    }
+                }
             }
         };
 
@@ -187,7 +201,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         };
 
         // Calculate the coinbase reward.
-        let coinbase_reward = ledger_block::coinbase_reward(
+        let coinbase_reward = coinbase_reward(
             next_height,
             N::STARTING_SUPPLY,
             N::ANCHOR_HEIGHT,
@@ -196,34 +210,6 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             u64::try_from(latest_cumulative_proof_target)?,
             latest_coinbase_target,
         )?;
-
-        // Compute the block reward.
-        let mut block_reward = ledger_block::block_reward(N::STARTING_SUPPLY, N::BLOCK_TIME, coinbase_reward);
-        // Compute the puzzle reward.
-        let puzzle_reward = coinbase_reward.saturating_div(2);
-
-        // Add the priority fees to the block reward.
-        for transaction in candidate_transactions.iter() {
-            // Get the priority fee for the transaction.
-            let priority_fee_amount = transaction.priority_fee_amount()?;
-            // Add the priority fee to the block reward.
-            block_reward = block_reward.saturating_add(*priority_fee_amount);
-        }
-
-        // TODO (howardwu): We must first process the candidate ratifications to filter out invalid ratifications.
-        //  We must ensure Ratify::Genesis is only present in the genesis block.
-        // Construct the ratifications.
-        // Attention: Do not change the order of the ratifications.
-        let candidate_ratifications = [Ratify::BlockReward(block_reward), Ratify::PuzzleReward(puzzle_reward)]
-                .into_iter()
-                // Lastly, we must append the candidate ratifications.
-                .chain(candidate_ratifications.into_iter()).collect::<Vec<_>>();
-
-        // Construct the subdag root.
-        let subdag_root = match subdag {
-            Some(subdag) => subdag.to_subdag_root()?,
-            None => Field::zero(),
-        };
 
         // Construct the finalize state.
         let state = FinalizeGlobalState::new::<N>(
@@ -234,11 +220,22 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             previous_block.hash(),
         )?;
         // Speculate over the ratifications, solutions, and transactions.
-        let (ratifications, transactions, aborted_transaction_ids, ratified_finalize_operations) =
-            self.vm.speculate(state, &candidate_ratifications, solutions.as_ref(), candidate_transactions.iter())?;
+        let (ratifications, transactions, aborted_transaction_ids, ratified_finalize_operations) = self.vm.speculate(
+            state,
+            Some(coinbase_reward),
+            candidate_ratifications,
+            solutions.as_ref(),
+            candidate_transactions.iter(),
+        )?;
 
         // Compute the ratifications root.
         let ratifications_root = ratifications.to_ratifications_root()?;
+
+        // Construct the subdag root.
+        let subdag_root = match subdag {
+            Some(subdag) => subdag.to_subdag_root()?,
+            None => Field::zero(),
+        };
 
         // Construct the metadata.
         let metadata = Metadata::new(

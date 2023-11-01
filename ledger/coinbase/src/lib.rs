@@ -158,28 +158,13 @@ impl<N: Network> CoinbasePuzzle<N> {
         Ok(ProverSolution::new(partial_solution, proof))
     }
 
-    /// Returns the coinbase solution for the given prover solutions.
-    pub fn accumulate(
-        &self,
-        prover_solutions: Vec<ProverSolution<N>>,
-        epoch_challenge: &EpochChallenge<N>,
-        proof_target: u64,
-    ) -> Result<CoinbaseSolution<N>> {
-        // Initialize the coinbase solution.
-        let solutions = CoinbaseSolution::new(prover_solutions);
-        // Verify the solutions.
-        self.verify(&solutions, epoch_challenge, proof_target)?;
-        // Return the solutions.
-        Ok(solutions)
-    }
-
     /// Returns `true` if the solutions are valid.
-    pub fn verify(
+    pub fn check_solutions(
         &self,
         solutions: &CoinbaseSolution<N>,
         epoch_challenge: &EpochChallenge<N>,
         proof_target: u64,
-    ) -> Result<bool> {
+    ) -> Result<()> {
         let timer = timer!("CoinbasePuzzle::verify");
 
         // Ensure the solutions are not empty.
@@ -204,12 +189,11 @@ impl<N: Network> CoinbasePuzzle<N> {
         if !cfg_iter!(solutions).all(|(_, solution)| {
             solution.verify(self.coinbase_verifying_key(), epoch_challenge, proof_target).unwrap_or(false)
         }) {
-            return Ok(false);
+            bail!("The solutions contain an invalid prover solution");
         }
         finish!(timer, "Verify each solution");
 
-        // Return the verification result.
-        Ok(true)
+        Ok(())
     }
 
     /// Returns the coinbase proving key.

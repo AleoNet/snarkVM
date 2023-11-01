@@ -193,6 +193,11 @@ impl<N: Network> ConfirmedTransaction<N> {
     pub const fn is_rejected(&self) -> bool {
         !self.is_accepted()
     }
+
+    /// Returns `true` if the confirmed transaction represents the given unconfirmed transaction ID.
+    pub fn contains_unconfirmed_transaction_id(&self, unconfirmed_transaction_id: &N::TransactionID) -> bool {
+        self.to_unconfirmed_transaction_id().map_or(false, |id| &id == unconfirmed_transaction_id)
+    }
 }
 
 impl<N: Network> ConfirmedTransaction<N> {
@@ -262,6 +267,15 @@ impl<N: Network> ConfirmedTransaction<N> {
             ConfirmedTransaction::AcceptedDeploy(..) | ConfirmedTransaction::AcceptedExecute(..) => Ok(None),
             ConfirmedTransaction::RejectedDeploy(_, _, rejected, _) => Ok(Some(rejected.to_id()?)),
             ConfirmedTransaction::RejectedExecute(_, _, rejected, _) => Ok(Some(rejected.to_id()?)),
+        }
+    }
+
+    /// Returns the rejected object, if the confirmed transaction is rejected.
+    pub fn to_rejected(&self) -> Option<&Rejected<N>> {
+        match self {
+            ConfirmedTransaction::AcceptedDeploy(..) | ConfirmedTransaction::AcceptedExecute(..) => None,
+            ConfirmedTransaction::RejectedDeploy(_, _, rejected, _) => Some(rejected),
+            ConfirmedTransaction::RejectedExecute(_, _, rejected, _) => Some(rejected),
         }
     }
 
@@ -422,9 +436,10 @@ pub mod test_helpers {
 
 #[cfg(test)]
 mod test {
-
     use super::*;
     use crate::transactions::confirmed::test_helpers;
+
+    type CurrentNetwork = console::network::Testnet3;
 
     #[test]
     fn test_accepted_execute() {
@@ -459,6 +474,45 @@ mod test {
         let finalize_operations = vec![FinalizeOperation::RemoveMapping(Uniform::rand(rng))];
         let confirmed = ConfirmedTransaction::accepted_execute(index, tx, finalize_operations);
         assert!(confirmed.is_err());
+    }
+
+    #[test]
+    fn test_contains_unconfirmed_transaction_id() {
+        let rng = &mut TestRng::default();
+
+        // A helper function to check that the unconfirmed transaction ID is correct.
+        let check_contains_unconfirmed_transaction_id = |confirmed: ConfirmedTransaction<CurrentNetwork>| {
+            let rng = &mut TestRng::default();
+            let unconfirmed_transaction_id = confirmed.to_unconfirmed_transaction_id().unwrap();
+            assert!(confirmed.contains_unconfirmed_transaction_id(&unconfirmed_transaction_id));
+            assert!(!confirmed.contains_unconfirmed_transaction_id(&<CurrentNetwork as Network>::TransactionID::from(
+                Field::rand(rng)
+            )));
+        };
+
+        // Ensure that the unconfirmed transaction ID of an accepted deployment is equivalent to its confirmed transaction ID.
+        let accepted_deploy = test_helpers::sample_accepted_deploy(Uniform::rand(rng), true, rng);
+        check_contains_unconfirmed_transaction_id(accepted_deploy);
+        let accepted_deploy = test_helpers::sample_accepted_deploy(Uniform::rand(rng), false, rng);
+        check_contains_unconfirmed_transaction_id(accepted_deploy);
+
+        // Ensure that the unconfirmed transaction ID of an accepted execute is equivalent to its confirmed transaction ID.
+        let accepted_execution = test_helpers::sample_accepted_execute(Uniform::rand(rng), true, rng);
+        check_contains_unconfirmed_transaction_id(accepted_execution);
+        let accepted_execution = test_helpers::sample_accepted_execute(Uniform::rand(rng), false, rng);
+        check_contains_unconfirmed_transaction_id(accepted_execution);
+
+        // Ensure that the unconfirmed transaction ID of a rejected deployment is not equivalent to its confirmed transaction ID.
+        let rejected_deploy = test_helpers::sample_rejected_deploy(Uniform::rand(rng), true, rng);
+        check_contains_unconfirmed_transaction_id(rejected_deploy);
+        let rejected_deploy = test_helpers::sample_rejected_deploy(Uniform::rand(rng), false, rng);
+        check_contains_unconfirmed_transaction_id(rejected_deploy);
+
+        // Ensure that the unconfirmed transaction ID of a rejected execute is not equivalent to its confirmed transaction ID.
+        let rejected_execution = test_helpers::sample_rejected_execute(Uniform::rand(rng), true, rng);
+        check_contains_unconfirmed_transaction_id(rejected_execution);
+        let rejected_execution = test_helpers::sample_rejected_execute(Uniform::rand(rng), false, rng);
+        check_contains_unconfirmed_transaction_id(rejected_execution);
     }
 
     #[test]

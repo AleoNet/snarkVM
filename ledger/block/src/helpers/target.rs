@@ -17,20 +17,27 @@ use console::prelude::{ensure, Result};
 /// A safety bound (sanity-check) for the coinbase reward.
 pub const MAX_COINBASE_REWARD: u64 = 190_258_739; // Coinbase reward at block 1.
 
-/// Calculate the block reward, given the total supply, block time, and coinbase reward.
-///     R_staking = floor((0.05 * S) / H_Y1) + CR / 2
+/// Calculate the block reward, given the total supply, block time, coinbase reward, and transaction fees.
+///     R_staking = floor((0.05 * S) / H_Y1) + CR / 2 + TX_F.
 ///     S = Total supply.
 ///     H_Y1 = Expected block height at year 1.
 ///     CR = Coinbase reward.
-pub const fn block_reward(total_supply: u64, block_time: u16, coinbase_reward: u64) -> u64 {
+///     TX_F = Transaction fees.
+pub const fn block_reward(total_supply: u64, block_time: u16, coinbase_reward: u64, transaction_fees: u64) -> u64 {
     // Compute the expected block height at year 1.
     let block_height_at_year_1 = block_height_at_year(block_time, 1);
     // Compute the annual reward: (0.05 * S).
     let annual_reward = (total_supply / 1000) * 50;
     // Compute the block reward: (0.05 * S) / H_Y1.
     let block_reward = annual_reward / block_height_at_year_1 as u64;
-    // Return the sum of the block and coinbase rewards.
-    block_reward + coinbase_reward / 2
+    // Return the sum of the block reward, coinbase reward, and transaction fees.
+    block_reward + (coinbase_reward / 2) + transaction_fees
+}
+
+/// Calculate the puzzle reward, given the coinbase reward.
+pub const fn puzzle_reward(coinbase_reward: u64) -> u64 {
+    // Return the coinbase reward divided by 2.
+    coinbase_reward / 2
 }
 
 /// Calculates the coinbase reward for a given block.
@@ -270,15 +277,15 @@ mod tests {
 
     #[test]
     fn test_block_reward() {
-        let reward = block_reward(CurrentNetwork::STARTING_SUPPLY, CurrentNetwork::BLOCK_TIME, 0);
+        let reward = block_reward(CurrentNetwork::STARTING_SUPPLY, CurrentNetwork::BLOCK_TIME, 0, 0);
         assert_eq!(reward, EXPECTED_STAKING_REWARD);
 
         // Increasing the anchor time will increase the reward.
-        let larger_reward = block_reward(CurrentNetwork::STARTING_SUPPLY, CurrentNetwork::BLOCK_TIME + 1, 0);
+        let larger_reward = block_reward(CurrentNetwork::STARTING_SUPPLY, CurrentNetwork::BLOCK_TIME + 1, 0, 0);
         assert!(reward < larger_reward);
 
         // Decreasing the anchor time will decrease the reward.
-        let smaller_reward = block_reward(CurrentNetwork::STARTING_SUPPLY, CurrentNetwork::BLOCK_TIME - 1, 0);
+        let smaller_reward = block_reward(CurrentNetwork::STARTING_SUPPLY, CurrentNetwork::BLOCK_TIME - 1, 0, 0);
         assert!(reward > smaller_reward);
     }
 

@@ -155,12 +155,18 @@ impl<N: Network> Package<N> {
         // Prepare the imports directory.
         let imports_directory = self.imports_directory();
 
+        // Initialize the 'credits.aleo' program ID.
+        let credits_program_id = ProgramID::<N>::from_str("credits.aleo")?;
+
         // Add all import programs (in order) to the process.
         self.program().imports().keys().try_for_each(|program_id| {
-            // Open the Aleo program file.
-            let import_program_file = AleoFile::open(&imports_directory, program_id, false)?;
-            // Add the import program.
-            process.add_program(import_program_file.program())?;
+            // Don't add `credits.aleo` as the process is already loaded with it.
+            if program_id != &credits_program_id {
+                // Open the Aleo program file.
+                let import_program_file = AleoFile::open(&imports_directory, program_id, false)?;
+                // Add the import program.
+                process.add_program(import_program_file.program())?;
+            }
             Ok::<_, Error>(())
         })?;
 
@@ -260,6 +266,32 @@ function transfer:
     call token.aleo/transfer r0 r1 r2 into r3 r4;
     output r3 as token.aleo/token.record;
     output r4 as token.aleo/token.record;",
+        )
+        .unwrap();
+
+        // Sample the package using the main program and imported program.
+        sample_package_with_program_and_imports(&main_program, &[imported_program])
+    }
+
+    /// Samples a (temporary) package containing a `transfer.aleo` program which imports `credits.aleo`.
+    pub(crate) fn sample_transfer_package() -> (PathBuf, Package<CurrentNetwork>) {
+        // Initialize the imported program.
+        let imported_program = Program::credits().unwrap();
+
+        // Initialize the main program.
+        let main_program = Program::<CurrentNetwork>::from_str(
+            "
+import credits.aleo;
+
+program transfer.aleo;
+
+function main:
+    input r0 as credits.aleo/credits.record;
+    input r1 as address.private;
+    input r2 as u64.private;
+    call credits.aleo/transfer_private r0 r1 r2 into r3 r4;
+    output r3 as credits.aleo/credits.record;
+    output r4 as credits.aleo/credits.record;",
         )
         .unwrap();
 

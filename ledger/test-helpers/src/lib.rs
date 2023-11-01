@@ -191,10 +191,10 @@ pub fn sample_fee_private(deployment_or_execution_id: Field<CurrentNetwork>, rng
     let credits = transaction.records().next().unwrap().1.clone();
     // Decrypt the record.
     let credits = credits.decrypt(&private_key.try_into().unwrap()).unwrap();
-    // Set the base fee amount.
-    let base_fee = 10_000_000;
-    // Set the priority fee amount.
-    let priority_fee = 1_000;
+    // Sample a base fee in microcredits.
+    let base_fee_in_microcredits = 10_000_000;
+    // Sample a priority fee in microcredits.
+    let priority_fee_in_microcredits = 1_000;
 
     // Initialize the process.
     let process = Process::load().unwrap();
@@ -203,8 +203,8 @@ pub fn sample_fee_private(deployment_or_execution_id: Field<CurrentNetwork>, rng
         .authorize_fee_private::<CurrentAleo, _>(
             &private_key,
             credits,
-            base_fee,
-            priority_fee,
+            base_fee_in_microcredits,
+            priority_fee_in_microcredits,
             deployment_or_execution_id,
             rng,
         )
@@ -245,16 +245,22 @@ pub fn sample_fee_public_hardcoded(rng: &mut TestRng) -> Fee<CurrentNetwork> {
 pub fn sample_fee_public(deployment_or_execution_id: Field<CurrentNetwork>, rng: &mut TestRng) -> Fee<CurrentNetwork> {
     // Sample the genesis block, transaction, and private key.
     let (block, _, private_key) = crate::sample_genesis_block_and_components(rng);
-    // Set the base fee amount.
-    let base_fee = 10_000_000;
-    // Set the priority fee amount.
-    let priority_fee = 1_000;
+    // Sample a base fee in microcredits.
+    let base_fee_in_microcredits = 10_000_000;
+    // Sample a priority fee in microcredits.
+    let priority_fee_in_microcredits = 1_000;
 
     // Initialize the process.
     let process = Process::load().unwrap();
     // Authorize the fee.
     let authorization = process
-        .authorize_fee_public::<CurrentAleo, _>(&private_key, base_fee, priority_fee, deployment_or_execution_id, rng)
+        .authorize_fee_public::<CurrentAleo, _>(
+            &private_key,
+            base_fee_in_microcredits,
+            priority_fee_in_microcredits,
+            deployment_or_execution_id,
+            rng,
+        )
         .unwrap();
     // Construct the fee trace.
     let (_, mut trace) = process.execute::<CurrentAleo>(authorization).unwrap();

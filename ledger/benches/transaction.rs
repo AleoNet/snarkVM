@@ -80,7 +80,7 @@ function hello:
 
     c.bench_function("Transaction::Deploy - verify", |b| {
         let transaction = vm.deploy(&private_key, &program, Some(records[0].clone()), 600000, None, rng).unwrap();
-        b.iter(|| assert!(vm.verify_transaction(&transaction, None)))
+        b.iter(|| vm.check_transaction(&transaction, None).unwrap())
     });
 }
 

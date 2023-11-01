@@ -51,18 +51,9 @@ impl<N: Network> Block<N> {
             expected_proof_target,
             expected_last_coinbase_target,
             expected_last_coinbase_timestamp,
-            mut expected_block_reward,
+            expected_block_reward,
             expected_puzzle_reward,
         ) = self.verify_solutions(previous_block, current_puzzle, current_epoch_challenge)?;
-
-        // Add the priority fees to the block reward.
-        for confirmed_transacation in self.transactions.iter() {
-            // Get the priority fee amount for the transaction.
-            let priority_fee_amount = confirmed_transacation.transaction().priority_fee_amount()?;
-
-            // Add the priority fee to the block reward.
-            expected_block_reward = expected_block_reward.saturating_add(*priority_fee_amount);
-        }
 
         // Ensure the block ratifications are correct.
         self.verify_ratifications(expected_block_reward, expected_puzzle_reward)?;
@@ -291,9 +282,11 @@ impl<N: Network> Block<N> {
                 }
 
                 // Ensure the puzzle proof is valid.
-                let is_valid =
-                    current_puzzle.verify(coinbase, current_epoch_challenge, previous_block.proof_target())?;
-                ensure!(is_valid, "Block {height} contains invalid puzzle proof");
+                if let Err(e) =
+                    current_puzzle.check_solutions(coinbase, current_epoch_challenge, previous_block.proof_target())
+                {
+                    bail!("Block {height} contains an invalid puzzle proof - {e}");
+                }
 
                 // Compute the combined proof target.
                 let combined_proof_target = coinbase.to_combined_proof_target()?;
@@ -366,10 +359,16 @@ impl<N: Network> Block<N> {
             u64::try_from(previous_block.cumulative_proof_target())?,
             previous_block.coinbase_target(),
         )?;
+
+        // Calculate the expected transaction fees.
+        let expected_transaction_fees =
+            self.transactions.iter().map(|tx| Ok(*tx.priority_fee_amount()?)).sum::<Result<u64>>()?;
+
         // Compute the expected block reward.
-        let expected_block_reward = block_reward(N::STARTING_SUPPLY, N::BLOCK_TIME, expected_coinbase_reward);
+        let expected_block_reward =
+            block_reward(N::STARTING_SUPPLY, N::BLOCK_TIME, expected_coinbase_reward, expected_transaction_fees);
         // Compute the expected puzzle reward.
-        let expected_puzzle_reward = expected_coinbase_reward.saturating_div(2);
+        let expected_puzzle_reward = puzzle_reward(expected_coinbase_reward);
 
         Ok((
             expected_cumulative_weight,
@@ -552,8 +551,9 @@ impl<N: Network> Block<N> {
         // Ensure there are no more transactions in the block.
         ensure!(unconfirmed_transaction_ids.next().is_none(), "There exists more transactions than expected.");
 
+        // TODO: Move this check to be outside of this method, and check against the ledger for existence.
         // Ensure there are no aborted or existing solution IDs.
-        ensure!(aborted_or_existing_solution_ids.is_empty(), "Block contains aborted or already-existing solutions.");
+        // ensure!(aborted_or_existing_solution_ids.is_empty(), "Block contains aborted or already-existing solutions.");
         // Ensure the aborted transaction IDs match.
         for aborted_transaction_id in aborted_transaction_ids {
             // If the aborted transaction ID is not found, throw an error.
