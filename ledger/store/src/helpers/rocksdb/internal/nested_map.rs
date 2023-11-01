@@ -839,7 +839,7 @@ mod tests {
             self.own_map.is_atomic_in_progress()
                 && self.extra_maps.own_map1.is_atomic_in_progress()
                 && self.extra_maps.own_map1.is_atomic_in_progress()
-                && self.extra_maps.extra_maps.own_map.is_atomic_in_progress()
+                && self.extra_maps.extra_maps.own_nested_map.is_atomic_in_progress()
         }
     }
 
@@ -896,45 +896,45 @@ mod tests {
     }
 
     struct TestStorage3 {
-        own_map: NestedDataMap<usize, usize, String>,
-        own_non_nested_map: DataMap<usize, String>,
+        own_nested_map: NestedDataMap<usize, usize, String>,
+        own_map: DataMap<usize, String>,
     }
 
     impl TestStorage3 {
         fn open(database: RocksDB) -> Self {
             Self {
-                own_map: open_map_testing_from_db(database.clone(), MapID::Test(TestMap::Test4)),
-                own_non_nested_map: open_non_nested_map_testing_from_db(database, MapID::Test(TestMap::Test5)),
+                own_nested_map: open_map_testing_from_db(database.clone(), MapID::Test(TestMap::Test4)),
+                own_map: open_non_nested_map_testing_from_db(database, MapID::Test(TestMap::Test5)),
             }
         }
 
         fn start_atomic(&self) {
+            self.own_nested_map.start_atomic();
             self.own_map.start_atomic();
-            self.own_non_nested_map.start_atomic();
         }
 
         fn is_atomic_in_progress(&self) -> bool {
-            self.own_map.is_atomic_in_progress() || self.own_non_nested_map.is_atomic_in_progress()
+            self.own_nested_map.is_atomic_in_progress() || self.own_map.is_atomic_in_progress()
         }
 
         fn atomic_checkpoint(&self) {
+            self.own_nested_map.atomic_checkpoint();
             self.own_map.atomic_checkpoint();
-            self.own_non_nested_map.atomic_checkpoint();
         }
 
         fn clear_latest_checkpoint(&self) {
+            self.own_nested_map.clear_latest_checkpoint();
             self.own_map.clear_latest_checkpoint();
-            self.own_non_nested_map.clear_latest_checkpoint();
         }
 
         fn atomic_rewind(&self) {
+            self.own_nested_map.atomic_rewind();
             self.own_map.atomic_rewind();
-            self.own_non_nested_map.atomic_rewind();
         }
 
         fn finish_atomic(&self) -> Result<()> {
-            self.own_map.finish_atomic()?;
-            self.own_non_nested_map.finish_atomic()
+            self.own_nested_map.finish_atomic()?;
+            self.own_map.finish_atomic()
         }
     }
 
@@ -1026,19 +1026,16 @@ mod tests {
 
         // Insert 5 (confirmed) records into a nested map 77.
         for i in 0..5 {
-            test_storage.own_map.insert(77, i, i.to_string()).expect("Failed to insert");
+            test_storage.own_nested_map.insert(77, i, i.to_string()).expect("Failed to insert");
         }
 
         // Insert 5 (confirmed) records into the neighboring data map; the keys are large on purpose.
         for i in 0..5 {
-            test_storage
-                .own_non_nested_map
-                .insert(usize::MAX - i, (usize::MAX - i).to_string())
-                .expect("Failed to insert");
+            test_storage.own_map.insert(usize::MAX - i, (usize::MAX - i).to_string()).expect("Failed to insert");
         }
 
         // We should be able to collect the 5 records from the nested data map.
-        let confirmed = test_storage.own_map.get_map_confirmed(&77).unwrap();
+        let confirmed = test_storage.own_nested_map.get_map_confirmed(&77).unwrap();
         assert_eq!(confirmed.len(), 5);
     }
 
@@ -1650,7 +1647,7 @@ mod tests {
         assert!(test_storage.own_map.iter_confirmed().next().is_none());
         assert!(test_storage.extra_maps.own_map1.iter_confirmed().next().is_none());
         assert!(test_storage.extra_maps.own_map2.iter_confirmed().next().is_none());
-        assert!(test_storage.extra_maps.extra_maps.own_map.iter_confirmed().next().is_none());
+        assert!(test_storage.extra_maps.extra_maps.own_nested_map.iter_confirmed().next().is_none());
 
         assert_eq!(test_storage.own_map.checkpoints.lock().last(), None);
 
@@ -1679,11 +1676,11 @@ mod tests {
                 test_storage.extra_maps.own_map2.insert(2, 2, 2.to_string()).unwrap();
 
                 // Start another atomic write batch.
-                atomic_batch_scope!(test_storage.extra_maps.extra_maps.own_map, {
-                    assert!(test_storage.extra_maps.extra_maps.own_map.is_atomic_in_progress());
+                atomic_batch_scope!(test_storage.extra_maps.extra_maps.own_nested_map, {
+                    assert!(test_storage.extra_maps.extra_maps.own_nested_map.is_atomic_in_progress());
 
                     // Write an item into the fourth map.
-                    test_storage.extra_maps.extra_maps.own_map.insert(3, 3, 3.to_string()).unwrap();
+                    test_storage.extra_maps.extra_maps.own_nested_map.insert(3, 3, 3.to_string()).unwrap();
 
                     Ok(())
                 })?;
@@ -1704,7 +1701,7 @@ mod tests {
         assert_eq!(test_storage.own_map.iter_confirmed().count(), 1);
         assert_eq!(test_storage.extra_maps.own_map1.iter_confirmed().count(), 1);
         assert_eq!(test_storage.extra_maps.own_map2.iter_confirmed().count(), 1);
-        assert_eq!(test_storage.extra_maps.extra_maps.own_map.iter_confirmed().count(), 1);
+        assert_eq!(test_storage.extra_maps.extra_maps.own_nested_map.iter_confirmed().count(), 1);
 
         // The atomic_write_batch macro uses ?, so the test returns a Result for simplicity.
         Ok(())
@@ -1735,11 +1732,11 @@ mod tests {
                     test_storage.extra_maps.own_map2.insert(2, 2, 2.to_string()).unwrap();
 
                     // Start another atomic write batch.
-                    let result: Result<()> = atomic_batch_scope!(test_storage.extra_maps.extra_maps.own_map, {
+                    let result: Result<()> = atomic_batch_scope!(test_storage.extra_maps.extra_maps.own_nested_map, {
                         assert!(test_storage.is_atomic_in_progress_everywhere());
 
                         // Write an item into the fourth map.
-                        test_storage.extra_maps.extra_maps.own_map.insert(3, 3, 3.to_string()).unwrap();
+                        test_storage.extra_maps.extra_maps.own_nested_map.insert(3, 3, 3.to_string()).unwrap();
 
                         // Rewind the atomic batch via a simulated error.
                         bail!("An error that will trigger a single rewind.");
@@ -1766,7 +1763,7 @@ mod tests {
         assert!(test_storage.own_map.iter_confirmed().next().is_none());
         assert!(test_storage.extra_maps.own_map1.iter_confirmed().next().is_none());
         assert!(test_storage.extra_maps.own_map2.iter_confirmed().next().is_none());
-        assert!(test_storage.extra_maps.extra_maps.own_map.iter_confirmed().next().is_none());
+        assert!(test_storage.extra_maps.extra_maps.own_nested_map.iter_confirmed().next().is_none());
 
         // Note: all the checks going through .database can be performed on any one
         // of the objects, as all of them share the same instance of the database.
@@ -1782,6 +1779,6 @@ mod tests {
         assert_eq!(test_storage.own_map.iter_confirmed().count(), 1);
         assert_eq!(test_storage.extra_maps.own_map1.iter_confirmed().count(), 1);
         assert_eq!(test_storage.extra_maps.own_map2.iter_confirmed().count(), 1);
-        assert_eq!(test_storage.extra_maps.extra_maps.own_map.iter_confirmed().count(), 0);
+        assert_eq!(test_storage.extra_maps.extra_maps.own_nested_map.iter_confirmed().count(), 0);
     }
 }
