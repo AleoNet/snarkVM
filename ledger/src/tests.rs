@@ -195,7 +195,7 @@ fn test_insufficient_public_fees() {
     let rng = &mut TestRng::default();
 
     // Initialize the test environment.
-    let crate::test_helpers::TestEnv { ledger, private_key, address, .. } = crate::test_helpers::sample_test_env(rng);
+    let crate::test_helpers::TestEnv { ledger, private_key, .. } = crate::test_helpers::sample_test_env(rng);
 
     // Sample recipient.
     let recipient_private_key = PrivateKey::new(rng).unwrap();

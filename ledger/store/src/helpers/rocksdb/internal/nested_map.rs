@@ -150,7 +150,9 @@ impl<
                     let (map_key, _) = entry?;
 
                     // Extract the bytes belonging to the map and the key.
-                    let (entry_map, _) = get_map_and_key(&map_key)?;
+                    let Ok((entry_map, _)) = get_map_and_key(&map_key) else {
+                        break;
+                    };
 
                     // If the 'entry_map' matches 'serialized_map', delete the key.
                     if entry_map == serialized_map {
@@ -292,7 +294,9 @@ impl<
                             let (map_key, _) = entry?;
 
                             // Extract the bytes belonging to the map and the key.
-                            let (entry_map, _) = get_map_and_key(&map_key)?;
+                            let Ok((entry_map, _)) = get_map_and_key(&map_key) else {
+                                break;
+                            };
 
                             // If the 'entry_map' matches 'serialized_map', delete the key.
                             if entry_map == serialized_map {
@@ -407,7 +411,9 @@ impl<
             let (map_key, value) = entry?;
 
             // Extract the bytes belonging to the map and the key.
-            let (entry_map, entry_key) = get_map_and_key(&map_key)?;
+            let Ok((entry_map, entry_key)) = get_map_and_key(&map_key) else {
+                break;
+            };
 
             // If the 'entry_map' matches 'serialized_map', deserialize the key and value.
             if entry_map == serialized_map {
