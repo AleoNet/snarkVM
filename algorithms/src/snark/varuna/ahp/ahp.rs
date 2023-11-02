@@ -90,7 +90,7 @@ impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
             2 * variable_domain_size + 2 * zk_bound - 2,       // h_1
             if SM::ZK { variable_domain_size + 3 } else { 0 }, // mask_poly
             variable_domain_size,                              // g_1
-            non_zero_domain_size - 1,                          // g_M, h_M
+            non_zero_domain_size,                              // g_M, h_M
         ]
         .iter()
         .max()

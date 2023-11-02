@@ -251,7 +251,7 @@ where
     for _ in 0..num_iters {
         let universal_verifier = pp.to_universal_verifier().unwrap();
         let supported_degree =
-            supported_degree.unwrap_or_else(|| distributions::Uniform::from(4..=max_degree).sample(rng));
+            supported_degree.unwrap_or_else(|| distributions::Uniform::from(4..=max_degree - 1).sample(rng));
         assert!(max_degree >= supported_degree, "max_degree < supported_degree");
         let mut polynomials = Vec::new();
         let mut degree_bounds = HashSet::new();
@@ -366,7 +366,7 @@ fn equation_test_template<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>>(
     for _ in 0..num_iters {
         let universal_verifier = pp.to_universal_verifier().unwrap();
         let supported_degree =
-            supported_degree.unwrap_or_else(|| distributions::Uniform::from(4..=max_degree).sample(rng));
+            supported_degree.unwrap_or_else(|| distributions::Uniform::from(4..=max_degree - 1).sample(rng));
         assert!(max_degree >= supported_degree, "max_degree < supported_degree");
         let mut polynomials = Vec::new();
         let mut degree_bounds = HashSet::new();

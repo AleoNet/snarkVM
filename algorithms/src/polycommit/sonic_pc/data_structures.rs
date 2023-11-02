@@ -374,13 +374,13 @@ impl<E: PairingEngine> CommitterKey<E> {
         let old_supported_degree = self.powers_of_beta_g.len();
         match supported_degree.cmp(&old_supported_degree) {
             Ordering::Greater => {
-                let mut new_powers = srs.powers_of_beta_g(old_supported_degree, supported_degree + 1)?;
+                let mut new_powers = srs.powers_of_beta_g(old_supported_degree, supported_degree)?;
                 self.powers_of_beta_g.append(&mut new_powers);
             }
             Ordering::Equal => (), // No need to adjust powers_of_beta_g
             Ordering::Less => {
                 let degree_difference = old_supported_degree - supported_degree;
-                self.powers_of_beta_g.truncate(old_supported_degree - degree_difference + 1);
+                self.powers_of_beta_g.truncate(old_supported_degree - degree_difference);
             }
         }
 
