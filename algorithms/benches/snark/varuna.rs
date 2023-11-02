@@ -59,9 +59,11 @@ fn snark_circuit_setup(c: &mut Criterion) {
         let num_variables = size;
         let mul_depth = 1;
         let (circuit, _) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, rng);
-        let mut universal_prover = UniversalProver::default();
         c.bench_function(&format!("snark_circuit_setup_{size}"), |b| {
-            b.iter(|| VarunaInst::circuit_setup(&universal_srs, &mut universal_prover, &circuit).unwrap())
+            b.iter(|| {
+                let mut universal_prover = UniversalProver::default();
+                VarunaInst::circuit_setup(&universal_srs, &mut universal_prover, &circuit).unwrap()
+            })
         });
     }
 }
