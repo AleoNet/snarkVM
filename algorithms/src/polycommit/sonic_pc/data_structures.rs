@@ -294,17 +294,15 @@ impl<E: PairingEngine> CommitterKey<E> {
     pub fn update(&mut self, srs: &UniversalParams<E>, degree_info: &DegreeInfo) -> Result<()> {
         let trim_time = start_timer!(|| "Trimming public parameters");
 
-        // Retrieve the supported parameters from the degree information.
+        // The maximum degree required by the circuit polynomials
         let supported_degree = degree_info.max_degree;
-        let supported_lagrange_sizes = degree_info.lagrange_sizes.clone().map(|mut s| s.drain().sorted().collect_vec());
-        let enforced_degree_bounds = degree_info.degree_bounds.clone().map(|mut s| s.drain().sorted().collect_vec());
+        // The maximum degree of the entire SRS
+        let max_degree = srs.max_degree();
+        // The hiding bound for the circuit polynomials
         let supported_hiding_bound = degree_info.hiding_bound;
 
-        // The maximum degree of the entire SRS.
-        let max_degree = srs.max_degree();
-
         // Update shifted_powers_of_beta_g, shifted_powers_of_beta_times_gamma_g, enforced_degree_bounds
-        match enforced_degree_bounds {
+        match degree_info.degree_bounds.as_ref() {
             None => {
                 self.shifted_powers_of_beta_g = None;
                 self.shifted_powers_of_beta_times_gamma_g = None;
@@ -344,7 +342,7 @@ impl<E: PairingEngine> CommitterKey<E> {
                 // because we might batch prove circuits of different sizes, we consider each required degree_bound individually
                 let shifted_ck_time = start_timer!(|| "Constructing `shifted_powers_of_beta_times_gamma_g`");
                 let mut new_shifted_powers_of_beta_times_gamma_g = BTreeMap::new();
-                for degree_bound in &enforced_degree_bounds {
+                for degree_bound in enforced_degree_bounds {
                     match shifted_powers_of_beta_times_gamma_g.remove(degree_bound) {
                         Some(found_powers) => {
                             new_shifted_powers_of_beta_times_gamma_g.insert(*degree_bound, found_powers);
@@ -364,7 +362,7 @@ impl<E: PairingEngine> CommitterKey<E> {
                         }
                     }
                 }
-                self.enforced_degree_bounds = Some(enforced_degree_bounds);
+                self.enforced_degree_bounds = Some(enforced_degree_bounds.iter().copied().collect_vec());
                 self.shifted_powers_of_beta_times_gamma_g = Some(new_shifted_powers_of_beta_times_gamma_g);
                 end_timer!(shifted_ck_time);
             }
@@ -396,13 +394,13 @@ impl<E: PairingEngine> CommitterKey<E> {
 
         // Update lagrange_bases_at_beta_g
         let mut lagrange_bases_at_beta_g = BTreeMap::new();
-        if let Some(supported_lagrange_sizes) = supported_lagrange_sizes {
+        if let Some(supported_lagrange_sizes) = degree_info.lagrange_sizes.as_ref() {
             let mut old_lagrange_bases_at_beta_g = match self.lagrange_bases_at_beta_g.take() {
                 Some(lagrange_bases_at_beta_g) => lagrange_bases_at_beta_g,
                 None => BTreeMap::new(),
             };
             for size in supported_lagrange_sizes {
-                let domain = EvaluationDomain::new(size).unwrap();
+                let domain = EvaluationDomain::new(*size).unwrap();
                 match old_lagrange_bases_at_beta_g.remove(&domain.size()) {
                     Some(found_lagrange_bases) => {
                         lagrange_bases_at_beta_g.insert(domain.size(), found_lagrange_bases);
@@ -412,7 +410,7 @@ impl<E: PairingEngine> CommitterKey<E> {
                         if !size.is_power_of_two() {
                             bail!("The Lagrange basis size ({size}) is not a power of two")
                         }
-                        if size > srs.max_degree() + 1 {
+                        if *size > srs.max_degree() + 1 {
                             bail!(
                                 "The Lagrange basis size ({size}) is larger than the supported degree ({})",
                                 srs.max_degree() + 1

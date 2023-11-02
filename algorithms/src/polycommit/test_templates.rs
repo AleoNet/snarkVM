@@ -35,7 +35,7 @@ use crate::{
 use snarkvm_curves::PairingEngine;
 use snarkvm_fields::{One, Zero};
 use snarkvm_utilities::rand::{TestRng, Uniform};
-use std::collections::HashSet;
+use std::collections::BTreeSet;
 
 use itertools::Itertools;
 use rand::{
@@ -79,7 +79,7 @@ pub fn bad_degree_bound_test<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>>() -
 
         let mut labels = Vec::new();
         let mut polynomials = Vec::new();
-        let mut degree_bounds = HashSet::new();
+        let mut degree_bounds = BTreeSet::new();
 
         for i in 0..10 {
             let label = format!("Test{i}");
@@ -142,8 +142,8 @@ pub fn lagrange_test_template<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>>()
         assert!(max_degree >= supported_degree, "max_degree < supported_degree");
         let mut polynomials = Vec::new();
         let mut lagrange_polynomials = Vec::new();
-        let mut supported_lagrange_sizes = HashSet::new();
-        let degree_bounds = HashSet::new();
+        let mut supported_lagrange_sizes = BTreeSet::new();
+        let degree_bounds = BTreeSet::new();
         let hiding_bound = 1;
 
         let mut labels = Vec::new();
@@ -254,7 +254,7 @@ where
             supported_degree.unwrap_or_else(|| distributions::Uniform::from(4..=max_degree - 1).sample(rng));
         assert!(max_degree >= supported_degree, "max_degree < supported_degree");
         let mut polynomials = Vec::new();
-        let mut degree_bounds = HashSet::new();
+        let mut degree_bounds = BTreeSet::new();
 
         let mut labels = Vec::new();
         println!("Sampled supported degree");
@@ -369,7 +369,7 @@ fn equation_test_template<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>>(
             supported_degree.unwrap_or_else(|| distributions::Uniform::from(4..=max_degree - 1).sample(rng));
         assert!(max_degree >= supported_degree, "max_degree < supported_degree");
         let mut polynomials = Vec::new();
-        let mut degree_bounds = HashSet::new();
+        let mut degree_bounds = BTreeSet::new();
 
         let mut labels = Vec::new();
         println!("Sampled supported degree");
