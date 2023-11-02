@@ -421,11 +421,7 @@ impl<F: Field> CheckedDiv for DensePolynomial<F> {
         let a: Polynomial<_> = self.into();
         let b: Polynomial<_> = divisor.into();
         let res = a.divide_with_q_and_r(&b);
-        if let Some((divisor, remainder)) = res {
-            if remainder.is_zero() { Some(divisor) } else { None }
-        } else {
-            None
-        }
+        if let Some((divisor, remainder)) = res { if remainder.is_zero() { Some(divisor) } else { None } } else { None }
     }
 }
 
