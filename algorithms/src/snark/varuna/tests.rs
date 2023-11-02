@@ -49,16 +49,16 @@ mod varuna {
 
                     let max_degree = AHPForR1CS::<Fr, $snark_mode>::max_degree(100, 25, 300).unwrap();
                     let universal_srs = $snark_inst::universal_setup(max_degree).unwrap();
+                    let mut universal_prover = UniversalProver::default();
 
                     let universal_verifier = &universal_srs.to_universal_verifier().unwrap();
                     let fs_parameters = FS::sample_parameters();
 
-                    for i in 0..1 {
+                    for i in 0..5 {
                         let mul_depth = 1;
                         println!("running test with SM::ZK: {}, mul_depth: {}, num_constraints: {}, num_variables: {}", $snark_mode::ZK, mul_depth + i, num_constraints + i, num_variables + i);
                         let (circ, public_inputs) = TestCircuit::gen_rand(mul_depth + i, num_constraints + i, num_variables + i, rng);
 
-                        let mut universal_prover = UniversalProver::default();
                         let (index_pk, index_vk) = $snark_inst::circuit_setup(&universal_srs, &mut universal_prover, &circ).unwrap();
                         println!("Called circuit setup");
 
@@ -78,7 +78,6 @@ mod varuna {
                         println!("Called verifier");
                         eprintln!("\nShould not verify (i.e. verifier messages should print below):");
                         assert!(!$snark_inst::verify(universal_verifier, &fs_parameters, &index_vk, [random, random], &proof).unwrap());
-                        return;
                     }
 
                     for circuit_batch_size in (0..4).map(|i| 2usize.pow(i)) {
@@ -101,7 +100,6 @@ mod varuna {
                             }
                             let unique_instances = constraints.values().map(|instances| &instances[0]).collect::<Vec<_>>();
 
-                            let mut universal_prover = UniversalProver::default();
                             let index_keys =
                                 $snark_inst::batch_circuit_setup(&universal_srs, &mut universal_prover, unique_instances.as_slice()).unwrap();
                             println!("Called circuit setup");

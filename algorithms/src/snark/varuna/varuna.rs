@@ -70,7 +70,6 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, SM: SNARKMode> VarunaSNARK
         universal_prover: &mut UniversalProver<E>,
         circuits: &[&C],
     ) -> Result<Vec<(CircuitProvingKey<E, SM>, CircuitVerifyingKey<E>)>> {
-        println!("Varuna::CircuitSetup");
         ensure!(!circuits.is_empty());
 
         let index_time = start_timer!(|| "Varuna::CircuitSetup");
@@ -351,10 +350,6 @@ where
             }
             _ => return Err(SNARKError::FFTPrecompNotFound),
         };
-        // let fft_precomp = &universal_prover.fft_precomputation;
-        // let ifft_precomp = &universal_prover.ifft_precomputation;
-        // let prover_state =
-        //     AHPForR1CS::<_, SM>::init_prover(&circuits_to_constraints, fft_precomp, ifft_precomp, zk_rng)?;
 
         // extract information from the prover key and state to consume in further calculations
         let mut batch_sizes = BTreeMap::new();
