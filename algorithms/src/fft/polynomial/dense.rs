@@ -120,7 +120,7 @@ impl<F: Field> DensePolynomial<F> {
         let mut random_coeffs = (0..(d + 1)).map(|_| F::rand(rng)).collect_vec();
         while random_coeffs[d].is_zero() {
             // In the extremely unlikely event, sample again.
-            random_coeffs = (0..(d + 1)).map(|_| F::rand(rng)).collect();
+            random_coeffs[d] = F::rand(rng);
         }
         Self::from_coefficients_vec(random_coeffs)
     }
