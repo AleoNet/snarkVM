@@ -25,7 +25,6 @@ use std::{
     ops::{Add, AddAssign, Deref, DerefMut, Div, Mul, MulAssign, Neg, Sub, SubAssign},
 };
 
-#[cfg(feature = "serial")]
 use itertools::Itertools;
 
 #[cfg(not(feature = "serial"))]
