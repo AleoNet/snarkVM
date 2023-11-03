@@ -51,11 +51,10 @@ impl<N: Network> ProvingKey<N> {
         let fiat_shamir = N::varuna_fs_parameters();
 
         // Update the universal_prover and prevent other threads from writing to it
-        let mut universal_prover = universal_prover.write();
-        universal_prover.update(srs, degree_info)?;
+        universal_prover.write().update(srs, degree_info)?;
 
         // Compute the proof.
-        let proof = Proof::new(Varuna::<N>::prove(&universal_prover, fiat_shamir, self, assignment, rng)?);
+        let proof = Proof::new(Varuna::<N>::prove(&universal_prover.read(), fiat_shamir, self, assignment, rng)?);
 
         #[cfg(feature = "aleo-cli")]
         println!("{}", format!(" • Executed '{function_name}' (in {} ms)", timer.elapsed().as_millis()).dimmed());
@@ -96,11 +95,10 @@ impl<N: Network> ProvingKey<N> {
         let fiat_shamir = N::varuna_fs_parameters();
 
         // Update the universal_prover and prevent other threads from writing to it
-        let mut universal_prover = universal_prover.write();
-        universal_prover.update(srs, degree_info.unwrap())?;
+        universal_prover.write().update(srs, degree_info.unwrap())?;
 
         // Compute the proof.
-        let batch_proof = Proof::new(Varuna::<N>::prove_batch(&universal_prover, fiat_shamir, &instances, rng)?);
+        let batch_proof = Proof::new(Varuna::<N>::prove_batch(&universal_prover.read(), fiat_shamir, &instances, rng)?);
 
         #[cfg(feature = "aleo-cli")]
         println!("{}", format!(" • Executed '{locator}' (in {} ms)", timer.elapsed().as_millis()).dimmed());

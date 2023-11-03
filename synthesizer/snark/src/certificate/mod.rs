@@ -45,11 +45,10 @@ impl<N: Network> Certificate<N> {
         let degree_info = proving_key.circuit.index_info.degree_info::<N::Field, varuna::VarunaHidingMode>();
         let fiat_shamir = N::varuna_fs_parameters();
 
-        let mut universal_prover = universal_prover.write();
-        universal_prover.update(srs, degree_info)?;
+        universal_prover.write().update(srs, degree_info)?;
 
         // Compute the certificate.
-        let certificate = Varuna::<N>::prove_vk(&universal_prover, fiat_shamir, verifying_key, proving_key)?;
+        let certificate = Varuna::<N>::prove_vk(&universal_prover.read(), fiat_shamir, verifying_key, proving_key)?;
 
         #[cfg(feature = "aleo-cli")]
         println!("{}", format!(" • Certified '{function_name}': {} ms", timer.elapsed().as_millis()).dimmed());

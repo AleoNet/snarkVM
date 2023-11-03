@@ -37,8 +37,8 @@ impl<N: Network> UniversalSRS<N> {
         let timer = std::time::Instant::now();
 
         // Put a write lock on the universal_prover
-        let mut universal_prover = universal_prover.write();
-        let (proving_key, verifying_key) = Varuna::<N>::circuit_setup(self.deref(), &mut universal_prover, assignment)?;
+        let (proving_key, verifying_key) =
+            Varuna::<N>::circuit_setup(self.deref(), &mut universal_prover.write(), assignment)?;
 
         #[cfg(feature = "aleo-cli")]
         println!("{}", format!(" • Built '{function_name}' (in {} ms)", timer.elapsed().as_millis()).dimmed());
