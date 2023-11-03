@@ -15,6 +15,7 @@
 //! A polynomial represented in coefficient form.
 
 use crate::fft::{EvaluationDomain, Evaluations, Polynomial};
+use anyhow::Result;
 use snarkvm_fields::{Field, PrimeField};
 use snarkvm_utilities::{cfg_iter_mut, serialize::*};
 
@@ -156,7 +157,7 @@ impl<F: PrimeField> DensePolynomial<F> {
     pub fn divide_by_vanishing_poly(
         &self,
         domain: EvaluationDomain<F>,
-    ) -> Option<(DensePolynomial<F>, DensePolynomial<F>)> {
+    ) -> Result<(DensePolynomial<F>, DensePolynomial<F>)> {
         let self_poly = Polynomial::from(self);
         let vanishing_poly = Polynomial::from(domain.vanishing_polynomial());
         self_poly.divide_with_q_and_r(&vanishing_poly)
@@ -421,14 +422,14 @@ impl<F: Field> CheckedDiv for DensePolynomial<F> {
         let a: Polynomial<_> = self.into();
         let b: Polynomial<_> = divisor.into();
         match a.divide_with_q_and_r(&b) {
-            Some((divisor, remainder)) => {
+            Ok((divisor, remainder)) => {
                 if remainder.is_zero() {
                     Some(divisor)
                 } else {
                     None
                 }
             }
-            None => None,
+            Err(_) => None,
         }
     }
 }
@@ -592,11 +593,9 @@ mod tests {
             for b_degree in 0..70 {
                 let dividend = DensePolynomial::<Fr>::rand(a_degree, rng);
                 let divisor = DensePolynomial::<Fr>::rand(b_degree, rng);
-                if let Some((quotient, remainder)) =
-                    Polynomial::divide_with_q_and_r(&(&dividend).into(), &(&divisor).into())
-                {
-                    assert_eq!(dividend, &(&divisor * &quotient) + &remainder)
-                }
+                let (quotient, remainder) =
+                    Polynomial::divide_with_q_and_r(&(&dividend).into(), &(&divisor).into()).unwrap();
+                assert_eq!(dividend, &(&divisor * &quotient) + &remainder)
             }
         }
     }

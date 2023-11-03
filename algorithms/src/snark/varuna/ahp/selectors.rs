@@ -88,8 +88,7 @@ pub(crate) fn apply_randomized_selector<F: PrimeField>(
     if !remainder_witness {
         // Substituting in s_i, we get that poly_i * s_i / v_H = poly_i / v_H * (H_i.size() / H.size());
         let selector_time = start_timer!(|| "Compute selector without remainder witness");
-        let (mut h_i, remainder) =
-            poly.divide_by_vanishing_poly(*src_domain).ok_or(anyhow::anyhow!("could not divide by vanishing poly"))?;
+        let (mut h_i, remainder) = poly.divide_by_vanishing_poly(*src_domain)?;
         assert!(remainder.is_zero());
         let multiplier = combiner * src_domain.size_as_field_element * target_domain.size_inv;
         cfg_iter_mut!(h_i.coeffs).for_each(|c| *c *= multiplier);
