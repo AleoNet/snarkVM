@@ -405,7 +405,7 @@ impl<F: PrimeField, const RATE: usize> PoseidonSponge<F, RATE, 1> {
             cur_bits.clear();
         }
 
-        // then we reserve, so that the limbs are ``big limb first''
+        // then we reverse, so that the limbs are ``big limb first''
         limbs.reverse();
 
         limbs
