@@ -607,7 +607,7 @@ pub mod test_helpers {
         let authorization =
             process.authorize::<CurrentAleo, _>(&private_key, locator.0, locator.1, inputs.iter(), rng).unwrap();
         // Execute the function.
-        let (_, mut trace) = process.execute::<CurrentAleo>(authorization).unwrap();
+        let (_, mut trace) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
 
         // Initialize a new block store.
         let block_store = BlockStore::<CurrentNetwork, BlockMemory<_>>::open(None).unwrap();

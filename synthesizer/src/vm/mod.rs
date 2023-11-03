@@ -445,7 +445,7 @@ function compute:
                 // Deploy.
                 let transaction = vm.deploy(&caller_private_key, &program, credits, 10, None, rng).unwrap();
                 // Verify.
-                vm.check_transaction(&transaction, None).unwrap();
+                vm.check_transaction(&transaction, None, rng).unwrap();
                 // Return the transaction.
                 transaction
             })
@@ -488,7 +488,7 @@ function compute:
                 // Construct the execute transaction.
                 let transaction = vm.execute_authorization(authorization, None, None, rng).unwrap();
                 // Verify.
-                vm.check_transaction(&transaction, None).unwrap();
+                vm.check_transaction(&transaction, None, rng).unwrap();
                 // Return the transaction.
                 transaction
             })
@@ -532,7 +532,7 @@ function compute:
                     .execute(&caller_private_key, ("credits.aleo", "transfer_public"), inputs, record, 0, None, rng)
                     .unwrap();
                 // Verify.
-                vm.check_transaction(&transaction, None).unwrap();
+                vm.check_transaction(&transaction, None, rng).unwrap();
                 // Return the transaction.
                 transaction
             })
@@ -584,7 +584,7 @@ function compute:
                 // Construct the transaction.
                 let transaction = Transaction::from_execution(execution, Some(fee)).unwrap();
                 // Verify.
-                vm.check_transaction(&transaction, None).unwrap();
+                vm.check_transaction(&transaction, None, rng).unwrap();
                 // Return the transaction.
                 transaction
             })
