@@ -327,7 +327,7 @@ impl<E: PairingEngine> CommitterKey<E> {
                         let lowest_shift_degree = max_degree - new_highest_degree_bound;
                         let highest_shift_degree = max_degree + 1 - highest_degree_bound;
                         let mut new_powers = srs.powers_of_beta_g(lowest_shift_degree, highest_shift_degree)?;
-                        new_powers.append(&mut shifted_powers_of_beta_g);
+                        new_powers.extend_from_slice(&shifted_powers_of_beta_g);
                         shifted_powers_of_beta_g = new_powers;
                     }
                     Ordering::Equal => (), // No need to adjust shifted_powers_of_beta_g
