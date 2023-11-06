@@ -27,9 +27,8 @@ impl<A: Aleo> Response<A> {
         output_types: &[console::ValueType<A::Network>], // Note: Console type
         output_registers: &[Option<console::Register<A::Network>>], // Note: Console type
     ) -> Self {
-        // Compute the function ID as `Hash(network_id, program_id, function_name)`.
-        let function_id =
-            A::hash_bhp1024(&(network_id, program_id.name(), program_id.network(), function_name).to_bits_le());
+        // Compute the function ID.
+        let function_id = compute_function_id(network_id, program_id, function_name);
 
         // Compute the output IDs.
         let output_ids = outputs

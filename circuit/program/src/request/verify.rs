@@ -21,10 +21,8 @@ impl<A: Aleo> Request<A> {
     /// Verifies (challenge == challenge') && (address == address') && (serial_numbers == serial_numbers') where:
     ///     challenge' := HashToScalar(r * G, pk_sig, pr_sig, signer, \[tvk, tcm, function ID, input IDs\])
     pub fn verify(&self, input_types: &[console::ValueType<A::Network>], tpk: &Group<A>) -> Boolean<A> {
-        // Compute the function ID as `Hash(network_id, program_id, function_name)`.
-        let function_id = A::hash_bhp1024(
-            &(&self.network_id, self.program_id.name(), self.program_id.network(), &self.function_name).to_bits_le(),
-        );
+        // Compute the function ID
+        let function_id = compute_function_id(&self.network_id, &self.program_id, &self.function_name);
 
         // Construct the signature message as `[tvk, tcm, function ID, input IDs]`.
         let mut message = Vec::with_capacity(3 + 4 * self.input_ids.len());
@@ -111,9 +109,8 @@ impl<A: Aleo> Request<A> {
             false => assert!(signature.is_none()),
         }
 
-        // Compute the function ID as `Hash(network_id, program_id, function_name)`.
-        let function_id =
-            A::hash_bhp1024(&(network_id, program_id.name(), program_id.network(), function_name).to_bits_le());
+        // Compute the function ID.
+        let function_id = compute_function_id(network_id, program_id, function_name);
 
         // Initialize a vector for a message.
         let mut message = Vec::new();
