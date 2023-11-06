@@ -19,7 +19,7 @@ impl<N: Network> Serialize for Block<N> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
             true => {
-                let mut block = serializer.serialize_struct("Block", 6)?;
+                let mut block = serializer.serialize_struct("Block", 7 + self.solutions.is_some() as usize)?;
                 block.serialize_field("block_hash", &self.block_hash)?;
                 block.serialize_field("previous_hash", &self.previous_hash)?;
                 block.serialize_field("header", &self.header)?;
