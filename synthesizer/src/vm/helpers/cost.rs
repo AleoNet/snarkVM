@@ -199,5 +199,9 @@ pub fn cost_in_microcredits<N: Network>(finalize: &Finalize<N>) -> Result<u64> {
         Command::BranchEq(_) | Command::BranchNeq(_) => Ok(5_000),
         Command::Position(_) => Ok(1_000),
     };
-    finalize.commands().iter().map(|command| cost(command)).sum()
+    finalize
+        .commands()
+        .iter()
+        .map(|command| cost(command))
+        .try_fold(0u64, |acc, res| res.map(|x| acc.saturating_add(x)))
 }
