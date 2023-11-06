@@ -615,6 +615,13 @@ mod tests {
     }
 
     #[test]
+    fn divide_poly_by_zero() {
+        let a = Polynomial::<Fr>::zero();
+        let b = Polynomial::<Fr>::zero();
+        assert!(a.divide_with_q_and_r(&b).is_err());
+    }
+
+    #[test]
     fn mul_polynomials_random() {
         let rng = &mut TestRng::default();
         for a_degree in 0..70 {
