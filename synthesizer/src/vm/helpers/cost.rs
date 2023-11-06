@@ -203,5 +203,5 @@ pub fn cost_in_microcredits<N: Network>(finalize: &Finalize<N>) -> Result<u64> {
         .commands()
         .iter()
         .map(|command| cost(command))
-        .try_fold(0u64, |acc, res| res.map(|x| acc.saturating_add(x)))
+        .try_fold(0u64, |acc, res| res.and_then(|x| acc.checked_add(x).ok_or(anyhow!("Finalize cost overflowed"))))
 }
