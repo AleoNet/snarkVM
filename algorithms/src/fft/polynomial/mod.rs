@@ -211,7 +211,7 @@ impl<'a, F: Field> Polynomial<'a, F> {
 
     /// Divide self by another (sparse or dense) polynomial, and returns the quotient and remainder.
     pub fn divide_with_q_and_r(&self, divisor: &Self) -> Result<(DensePolynomial<F>, DensePolynomial<F>)> {
-        ensure!(!divisor.is_zero(), "Dividing by zero polynomial");
+        ensure!(!divisor.is_zero(), "Dividing by zero polynomial is undefined");
 
         if self.is_zero() {
             Ok((DensePolynomial::zero(), DensePolynomial::zero()))
