@@ -301,11 +301,11 @@ mod tests {
 
     #[test]
     fn test_from_outputs_public() -> Result<()> {
-        check_from_outputs(Mode::Public, 24793, 6, 13962, 13983)
+        check_from_outputs(Mode::Public, 24849, 6, 13962, 13983)
     }
 
     #[test]
     fn test_from_outputs_private() -> Result<()> {
-        check_from_outputs(Mode::Private, 24793, 6, 13962, 13983)
+        check_from_outputs(Mode::Private, 24849, 6, 13962, 13983)
     }
 }
