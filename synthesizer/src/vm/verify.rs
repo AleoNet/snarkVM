@@ -255,7 +255,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
         // Ensure the fee does not exceed the limit.
         let fee_amount = fee.amount()?;
-        ensure!(*fee_amount < N::MAX_FEE, "Fee verification failed: fee exceeds the maximum limit");
+        ensure!(*fee_amount <= N::MAX_FEE, "Fee verification failed: fee exceeds the maximum limit");
 
         // Verify the fee.
         let verification = self.process.read().verify_fee(fee, deployment_or_execution_id);
