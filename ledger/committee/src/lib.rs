@@ -198,7 +198,8 @@ impl<N: Network> Committee<N> {
     /// Note: This ensures the method returns a deterministic result that is SNARK-friendly.
     fn sorted_members(&self) -> indexmap::map::IntoIter<Address<N>, (u64, bool)> {
         let members = self.members.clone();
-        members.sorted_unstable_by(|address1, stake1, address2, stake2| {
+        // Note: The use of 'sorted_unstable_by' is safe here because the addresses are guaranteed to be unique.
+        members.sorted_unstable_by(|address1, (stake1, _), address2, (stake2, _)| {
             // Sort by stake in decreasing order.
             let cmp = stake2.cmp(stake1);
             // If the stakes are equal, sort by x-coordinate in decreasing order.
@@ -280,6 +281,22 @@ pub mod test_helpers {
         }
         // Return the committee.
         Committee::<CurrentNetwork>::new(round, committee_members).unwrap()
+    }
+
+    /// Samples a committee where all validators have the same stake.
+    pub fn sample_committee_equal_stake_committee(num_members: u16, rng: &mut TestRng) -> Committee<CurrentNetwork> {
+        assert!(num_members >= 4);
+        // Sample the members.
+        let mut members = IndexMap::new();
+        // Add in the minimum and maximum staked nodes.
+        members.insert(Address::<CurrentNetwork>::new(rng.gen()), (MIN_VALIDATOR_STAKE, false));
+        while members.len() < num_members as usize - 1 {
+            let stake = MIN_VALIDATOR_STAKE as f64;
+            let is_open = rng.gen();
+            members.insert(Address::<CurrentNetwork>::new(rng.gen()), (stake as u64, is_open));
+        }
+        // Return the committee.
+        Committee::<CurrentNetwork>::new(1, members).unwrap()
     }
 
     /// Samples a random committee.
@@ -390,6 +407,28 @@ mod tests {
         // Sample a committee.
         let committee = crate::test_helpers::sample_committee_custom(200, rng);
 
+        // Start a timer.
+        let timer = std::time::Instant::now();
+        // Sort the members.
+        let sorted_members = committee.sorted_members().collect::<Vec<_>>();
+        println!("sorted_members: {}ms", timer.elapsed().as_millis());
+        // Check that the members are sorted based on our sorting criteria.
+        for i in 0..sorted_members.len() - 1 {
+            let (address1, (stake1, _)) = sorted_members[i];
+            let (address2, (stake2, _)) = sorted_members[i + 1];
+            assert!(stake1 >= stake2);
+            if stake1 == stake2 {
+                assert!(address1.to_x_coordinate() > address2.to_x_coordinate());
+            }
+        }
+    }
+
+    #[test]
+    fn test_sorted_members_with_equal_stake() {
+        // Initialize the RNG.
+        let rng = &mut TestRng::default();
+        // Sample a committee.
+        let committee = crate::test_helpers::sample_committee_equal_stake_committee(200, rng);
         // Start a timer.
         let timer = std::time::Instant::now();
         // Sort the members.
