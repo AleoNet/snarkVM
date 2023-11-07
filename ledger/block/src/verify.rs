@@ -137,16 +137,11 @@ impl<N: Network> Block<N> {
         previous_height: u32,
         current_committee: &Committee<N>,
     ) -> Result<(u64, u32, i64)> {
+        #[cfg(not(any(test, feature = "test")))]
+        ensure!(self.authority.is_quorum(), "The next block must be a quorum block");
+
         // Determine the expected height.
         let expected_height = previous_height.saturating_add(1);
-        // Ensure the block type is correct.
-        match expected_height == 0 {
-            true => ensure!(self.authority.is_beacon(), "The genesis block must be a beacon block"),
-            false => {
-                #[cfg(not(any(test, feature = "test")))]
-                ensure!(self.authority.is_quorum(), "The next block must be a quorum block");
-            }
-        }
 
         // Determine the expected round.
         let expected_round = match &self.authority {
