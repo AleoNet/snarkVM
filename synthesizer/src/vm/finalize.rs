@@ -204,7 +204,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             let mut confirmed = Vec::with_capacity(num_transactions);
             // Initialize a list of the aborted transactions.
             let mut aborted = Vec::new();
-            // Initialize a counter for the confirmed transactions.
+            // Initialize a counter for the confirmed transaction index.
             let mut counter = 0u32;
 
             // Finalize the transactions.
@@ -298,7 +298,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     // If the transaction succeeded, store it and continue to the next transaction.
                     Ok(confirmed_transaction) => {
                         confirmed.push(confirmed_transaction);
-                        // Increment the transaction counter.
+                        // Increment the transaction index counter.
                         counter = counter.saturating_add(1);
                     }
                     // If the transaction failed, abort the entire batch.
