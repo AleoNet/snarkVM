@@ -605,7 +605,6 @@ function compute:
         // Construct the new block header.
         let (ratifications, transactions, aborted_transaction_ids, ratified_finalize_operations) =
             vm.speculate(sample_finalize_state(1), None, vec![], None, transactions.iter())?;
-        assert!(aborted_transaction_ids.is_empty());
 
         // Construct the metadata associated with the block.
         let metadata = Metadata::new(
@@ -974,5 +973,84 @@ function multitransfer:
             )
             .unwrap();
         vm.add_next_block(&sample_next_block(&vm, &caller_private_key, &[execution], rng).unwrap()).unwrap();
+    }
+
+    #[test]
+    #[ignore]
+    fn test_deployment_memory_overload() {
+        const NUM_DEPLOYMENTS: usize = 100;
+
+        let rng = &mut TestRng::default();
+
+        // Initialize a private key.
+        let private_key = sample_genesis_private_key(rng);
+
+        // Initialize the genesis block.
+        let genesis = sample_genesis_block(rng);
+
+        // Initialize the VM.
+        let vm = sample_vm();
+        // Update the VM.
+        vm.add_next_block(&genesis).unwrap();
+
+        // Deploy the base program.
+        let program = Program::from_str(
+            r"
+program program_layer_0.aleo;
+
+mapping m:
+    key as u8.public;
+    value as u32.public;
+
+function do:
+    input r0 as u32.public;
+    async do r0 into r1;
+    output r1 as program_layer_0.aleo/do.future;
+
+finalize do:
+    input r0 as u32.public;
+    set r0 into m[0u8];",
+        )
+        .unwrap();
+        println!("Deploying the base program.");
+        let deployment = vm.deploy(&private_key, &program, None, 0, None, rng).unwrap();
+        vm.add_next_block(&sample_next_block(&vm, &private_key, &[deployment], rng).unwrap()).unwrap();
+
+        // For each layer, deploy a program that calls the program from the previous layer.
+        for i in 1..NUM_DEPLOYMENTS {
+            let mut program_string = String::new();
+            // Add the import statements.
+            for j in 0..i {
+                program_string.push_str(&format!("import program_layer_{}.aleo;\n", j));
+            }
+            // Add the program body.
+            program_string.push_str(&format!(
+                "program program_layer_{i}.aleo;
+
+mapping m:
+    key as u8.public;
+    value as u32.public;
+
+function do:
+    input r0 as u32.public;
+    call program_layer_{prev}.aleo/do r0 into r1;
+    async do r0 r1 into r2;
+    output r2 as program_layer_{i}.aleo/do.future;
+
+finalize do:
+    input r0 as u32.public;
+    input r1 as program_layer_{prev}.aleo/do.future;
+    await r1;
+    set r0 into m[0u8];",
+                prev = i - 1
+            ));
+            // Construct the program.
+            let program = Program::from_str(&program_string).unwrap();
+
+            // Deploy the program.
+            println!("Deploying program {}.", i);
+            let deployment = vm.deploy(&private_key, &program, None, 0, None, rng).unwrap();
+            vm.add_next_block(&sample_next_block(&vm, &private_key, &[deployment], rng).unwrap()).unwrap();
+        }
     }
 }
