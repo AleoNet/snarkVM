@@ -81,7 +81,7 @@ fn test_state_path() {
 }
 
 #[test]
-fn test_insufficient_fees() {
+fn test_insufficient_private_fees() {
     let rng = &mut TestRng::default();
 
     // Initialize the test environment.
@@ -187,6 +187,56 @@ finalize foo:
         let insufficient_fee_transaction =
             Transaction::from_deployment(*transaction.owner().unwrap(), deployment.clone(), insufficient_fee).unwrap();
         assert!(ledger.check_transaction_basic(&insufficient_fee_transaction, None).is_err());
+    }
+}
+
+#[test]
+fn test_insufficient_public_fees() {
+    let rng = &mut TestRng::default();
+
+    // Initialize the test environment.
+    let crate::test_helpers::TestEnv { ledger, private_key, .. } = crate::test_helpers::sample_test_env(rng);
+
+    // Sample recipient.
+    let recipient_private_key = PrivateKey::new(rng).unwrap();
+    let recipient_address = Address::try_from(&recipient_private_key).unwrap();
+
+    // Fund the recipient with 1 million credits.
+    {
+        let inputs =
+            [Value::from_str(&format!("{recipient_address}")).unwrap(), Value::from_str("1000000000000u64").unwrap()];
+        let transaction = ledger
+            .vm
+            .execute(&private_key, ("credits.aleo", "transfer_public"), inputs.into_iter(), None, 0, None, rng)
+            .unwrap();
+
+        let block =
+            ledger.prepare_advance_to_next_beacon_block(&private_key, vec![], vec![], vec![transaction], rng).unwrap();
+
+        // Check that the next block is valid.
+        ledger.check_next_block(&block).unwrap();
+        // Add the deployment block to the ledger.
+        ledger.advance_to_next_block(&block).unwrap();
+    }
+
+    println!("-----------");
+
+    // Attempt to bond the node with insufficient public fees.
+    {
+        let inputs =
+            [Value::from_str(&format!("{recipient_address}")).unwrap(), Value::from_str("1000000000000u64").unwrap()];
+        let transaction = ledger
+            .vm
+            .execute(&recipient_private_key, ("credits.aleo", "bond_public"), inputs.into_iter(), None, 0, None, rng)
+            .unwrap();
+
+        let block =
+            ledger.prepare_advance_to_next_beacon_block(&private_key, vec![], vec![], vec![transaction], rng).unwrap();
+
+        // Check that the next block is valid.
+        ledger.check_next_block(&block).unwrap();
+        // Add the deployment block to the ledger.
+        ledger.advance_to_next_block(&block).unwrap();
     }
 }
 

@@ -187,18 +187,26 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// Returns a new genesis block for a beacon chain.
     pub fn genesis_beacon<R: Rng + CryptoRng>(&self, private_key: &PrivateKey<N>, rng: &mut R) -> Result<Block<N>> {
+        let private_keys = [*private_key, PrivateKey::new(rng)?, PrivateKey::new(rng)?, PrivateKey::new(rng)?];
+
         // Construct the committee members.
         let members = indexmap::indexmap! {
-            Address::try_from(private_key)? => (ledger_committee::MIN_VALIDATOR_STAKE, true),
-            Address::try_from(PrivateKey::new(rng)?)? => (ledger_committee::MIN_VALIDATOR_STAKE, true),
-            Address::try_from(PrivateKey::new(rng)?)? => (ledger_committee::MIN_VALIDATOR_STAKE, true),
-            Address::try_from(PrivateKey::new(rng)?)? => (ledger_committee::MIN_VALIDATOR_STAKE, true),
+            Address::try_from(private_keys[0])? => (ledger_committee::MIN_VALIDATOR_STAKE, true),
+            Address::try_from(private_keys[1])? => (ledger_committee::MIN_VALIDATOR_STAKE, true),
+            Address::try_from(private_keys[2])? => (ledger_committee::MIN_VALIDATOR_STAKE, true),
+            Address::try_from(private_keys[3])? => (ledger_committee::MIN_VALIDATOR_STAKE, true),
         };
         // Construct the committee.
         let committee = Committee::<N>::new_genesis(members)?;
+
+        // Compute the remaining supply.
+        let remaining_supply = N::STARTING_SUPPLY - (ledger_committee::MIN_VALIDATOR_STAKE * 4);
         // Construct the public balances.
         let public_balances = indexmap::indexmap! {
-            Address::try_from(private_key)? => N::STARTING_SUPPLY - (ledger_committee::MIN_VALIDATOR_STAKE * 4),
+            Address::try_from(private_keys[0])? => remaining_supply / 4,
+            Address::try_from(private_keys[1])? => remaining_supply / 4,
+            Address::try_from(private_keys[2])? => remaining_supply / 4,
+            Address::try_from(private_keys[3])? => remaining_supply / 4,
         };
         // Return the genesis block.
         self.genesis_quorum(private_key, committee, public_balances, rng)

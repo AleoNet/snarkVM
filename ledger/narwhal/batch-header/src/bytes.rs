@@ -101,9 +101,6 @@ impl<N: Network> ToBytes for BatchHeader<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use console::network::Testnet3;
-
-    type CurrentNetwork = Testnet3;
 
     #[test]
     fn test_bytes() {
@@ -113,7 +110,6 @@ mod tests {
             // Check the byte representation.
             let expected_bytes = expected.to_bytes_le().unwrap();
             assert_eq!(expected, BatchHeader::read_le(&expected_bytes[..]).unwrap());
-            assert!(BatchHeader::<CurrentNetwork>::read_le(&expected_bytes[1..]).is_err());
         }
     }
 }

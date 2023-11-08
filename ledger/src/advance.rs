@@ -135,14 +135,20 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                             .verify(coinbase_verifying_key, &latest_epoch_challenge, self.latest_proof_target())
                             .unwrap_or(false)
                     });
-                // Construct the solutions.
-                let solutions = CoinbaseSolution::new(valid_candidate_solutions)?;
-                // Compute the solutions root.
-                let solutions_root = solutions.to_accumulator_point()?;
-                // Compute the combined proof target.
-                let combined_proof_target = solutions.to_combined_proof_target()?;
-                // Output the solutions, solutions root, and combined proof target.
-                (Some(solutions), solutions_root, combined_proof_target)
+                // Check if there are any valid solutions.
+                match valid_candidate_solutions.is_empty() {
+                    true => (None, Field::<N>::zero(), 0u128),
+                    false => {
+                        // Construct the solutions.
+                        let solutions = CoinbaseSolution::new(valid_candidate_solutions)?;
+                        // Compute the solutions root.
+                        let solutions_root = solutions.to_accumulator_point()?;
+                        // Compute the combined proof target.
+                        let combined_proof_target = solutions.to_combined_proof_target()?;
+                        // Output the solutions, solutions root, and combined proof target.
+                        (Some(solutions), solutions_root, combined_proof_target)
+                    }
+                }
             }
         };
 

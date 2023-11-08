@@ -420,11 +420,15 @@ impl<F: Field> CheckedDiv for DensePolynomial<F> {
     fn checked_div(&self, divisor: &DensePolynomial<F>) -> Option<DensePolynomial<F>> {
         let a: Polynomial<_> = self.into();
         let b: Polynomial<_> = divisor.into();
-        let res = a.divide_with_q_and_r(&b);
-        if let Some((divisor, remainder)) = res {
-            if remainder.is_zero() { Some(divisor) } else { None }
-        } else {
-            None
+        match a.divide_with_q_and_r(&b) {
+            Some((divisor, remainder)) => {
+                if remainder.is_zero() {
+                    Some(divisor)
+                } else {
+                    None
+                }
+            }
+            None => None,
         }
     }
 }
