@@ -3323,6 +3323,7 @@ dependencies = [
  "snarkvm-ledger-test-helpers",
  "snarkvm-synthesizer-program",
  "snarkvm-synthesizer-snark",
+ "snarkvm-utilities",
  "tempfile",
 ]
 
