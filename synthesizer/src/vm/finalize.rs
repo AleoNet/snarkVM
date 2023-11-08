@@ -204,13 +204,11 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             let mut confirmed = Vec::with_capacity(num_transactions);
             // Initialize a list of the aborted transactions.
             let mut aborted = Vec::new();
+            // Initialize a counter for the confirmed transactions.
+            let mut counter = 0u32;
 
             // Finalize the transactions.
-            'outer: for (index, transaction) in transactions.enumerate() {
-                // Convert the transaction index to a u32.
-                // Note: On failure, this will abort the entire atomic batch.
-                let index = u32::try_from(index).map_err(|_| "Failed to convert transaction index".to_string())?;
-
+            'outer: for transaction in transactions {
                 // Process the transaction in an isolated atomic batch.
                 // - If the transaction succeeds, the finalize operations are stored.
                 // - If the transaction fails, the atomic batch is aborted and no finalize operations are stored.
@@ -221,7 +219,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                         match process.finalize_deployment(state, store, deployment, fee) {
                             // Construct the accepted deploy transaction.
                             Ok((_, finalize)) => {
-                                ConfirmedTransaction::accepted_deploy(index, transaction.clone(), finalize)
+                                ConfirmedTransaction::accepted_deploy(counter, transaction.clone(), finalize)
                                     .map_err(|e| e.to_string())
                             }
                             // Construct the rejected deploy transaction.
@@ -234,7 +232,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                                         // Construct the rejected deployment.
                                         let rejected = Rejected::new_deployment(*program_owner, *deployment.clone());
                                         // Construct the rejected deploy transaction.
-                                        ConfirmedTransaction::rejected_deploy(index, fee_tx, rejected, finalize)
+                                        ConfirmedTransaction::rejected_deploy(counter, fee_tx, rejected, finalize)
                                             .map_err(|e| e.to_string())
                                     }
                                     Err(error) => {
@@ -256,7 +254,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                         match process.finalize_execution(state, store, execution, fee.as_ref()) {
                             // Construct the accepted execute transaction.
                             Ok(finalize) => {
-                                ConfirmedTransaction::accepted_execute(index, transaction.clone(), finalize)
+                                ConfirmedTransaction::accepted_execute(counter, transaction.clone(), finalize)
                                     .map_err(|e| e.to_string())
                             }
                             // Construct the rejected execute transaction.
@@ -270,7 +268,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                                             // Construct the rejected execution.
                                             let rejected = Rejected::new_execution(execution.clone());
                                             // Construct the rejected execute transaction.
-                                            ConfirmedTransaction::rejected_execute(index, fee_tx, rejected, finalize)
+                                            ConfirmedTransaction::rejected_execute(counter, fee_tx, rejected, finalize)
                                                 .map_err(|e| e.to_string())
                                         }
                                         Err(error) => {
@@ -298,7 +296,11 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
                 match outcome {
                     // If the transaction succeeded, store it and continue to the next transaction.
-                    Ok(confirmed_transaction) => confirmed.push(confirmed_transaction),
+                    Ok(confirmed_transaction) => {
+                        confirmed.push(confirmed_transaction);
+                        // Increment the transaction counter.
+                        counter = counter.saturating_add(1);
+                    }
                     // If the transaction failed, abort the entire batch.
                     Err(error) => {
                         eprintln!("Critical bug in speculate: {error}\n\n{transaction}");
