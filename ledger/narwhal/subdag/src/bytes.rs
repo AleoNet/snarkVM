@@ -42,7 +42,7 @@ impl<N: Network> FromBytes for Subdag<N> {
                 return Err(error("Number of certificates exceeds maximum"));
             }
             // Read the certificates.
-            let mut certificates = IndexSet::with_capacity(num_certificates as usize);
+            let mut certificates = IndexSet::new();
             for _ in 0..num_certificates {
                 // Read the certificate.
                 certificates.insert(BatchCertificate::read_le(&mut reader)?);

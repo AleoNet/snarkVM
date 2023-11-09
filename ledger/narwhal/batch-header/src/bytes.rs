@@ -53,7 +53,7 @@ impl<N: Network> FromBytes for BatchHeader<N> {
             return Err(error("Number of previous certificate ids exceeds maximum"));
         }
         // Read the previous certificate IDs.
-        let mut previous_certificate_ids = IndexSet::with_capacity(num_previous_certificate_ids as usize);
+        let mut previous_certificate_ids = IndexSet::new();
         for _ in 0..num_previous_certificate_ids {
             // Read the certificate ID.
             previous_certificate_ids.insert(Field::read_le(&mut reader)?);
