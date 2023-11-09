@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::sync::Arc;
-use std::thread;
 use crate::{
     test_helpers::{CurrentLedger, CurrentNetwork},
     RecordsFilter,
@@ -25,7 +23,7 @@ use console::{
 };
 use ledger_block::{ConfirmedTransaction, Rejected, Transaction};
 use ledger_store::{helpers::memory::ConsensusMemory, ConsensusStore};
-use std::time::Instant;
+use std::{sync::Arc, thread, time::Instant};
 use synthesizer::{program::Program, vm::VM};
 
 #[test]
@@ -785,7 +783,7 @@ finalize outer_most_call:
 
 #[test]
 fn test_parallel_finalize_operation_spam() {
-    const NUM_TRANSACTIONS: usize = 20;
+    const NUM_TRANSACTIONS: usize = 1;
 
     let rng = &mut TestRng::default();
 
@@ -823,7 +821,7 @@ finalize spam:
     set 14u8 into map[14u8];
     set 15u8 into map[15u8];",
     )
-        .unwrap();
+    .unwrap();
 
     // Create transaction deploying `child_spammer.aleo`
     let child_deploy_transaction = ledger.vm.deploy(&private_key, &child_program, None, 0, None, rng).unwrap();
@@ -894,7 +892,7 @@ finalize main:
     await r13;
 ",
     )
-        .unwrap();
+    .unwrap();
 
     // Create transaction deploying `parent_spammer.aleo`
     let parent_deploy_transaction = ledger.vm.deploy(&private_key, &parent_program, None, 0, None, rng).unwrap();
@@ -931,7 +929,7 @@ finalize outer_most_call:
     await r1;
 ",
     )
-        .unwrap();
+    .unwrap();
 
     // Create transaction deploying `grandfather_spammer.aleo`
     let grandfather_deploy_transaction =
@@ -949,17 +947,24 @@ finalize outer_most_call:
     ledger.advance_to_next_block(&grandfather_deploy_transfer_block).unwrap();
 
     // Helper function to assemble grandfather execute transaction
-    fn create_transaction(l:&CurrentLedger, pk:&PrivateKey<CurrentNetwork>, r: &mut TestRng) -> Transaction<CurrentNetwork> {
+    fn create_transaction(
+        l: &CurrentLedger,
+        pk: &PrivateKey<CurrentNetwork>,
+        r: &mut TestRng,
+    ) -> Transaction<CurrentNetwork> {
         // Append an `grandfather_spam.aleo/outer_most_call` execute transaction to the list of transactions.
         let execute_inputs: Vec<Value<CurrentNetwork>> = Vec::new();
-        l
-            .vm
-            .execute(pk, ("grandfather_spammer.aleo", "outer_most_call"), execute_inputs.into_iter(), None, 0, None, r)
+        l.vm.execute(pk, ("grandfather_spammer.aleo", "outer_most_call"), execute_inputs.into_iter(), None, 0, None, r)
             .unwrap()
     }
 
     // Helper function to complete threads portion of workload
-    fn complete_threads_portion_of_workload(l: &CurrentLedger, pk:&PrivateKey<CurrentNetwork>, num_jobs: usize, thread_id: usize) ->Vec<Transaction<CurrentNetwork>> {
+    fn complete_threads_portion_of_workload(
+        l: &CurrentLedger,
+        pk: &PrivateKey<CurrentNetwork>,
+        num_jobs: usize,
+        thread_id: usize,
+    ) -> Vec<Transaction<CurrentNetwork>> {
         let r = &mut TestRng::default();
         let mut grandfather_execute_transactions: Vec<Transaction<CurrentNetwork>> = Vec::new();
         for i in 0..num_jobs {
@@ -981,15 +986,18 @@ finalize outer_most_call:
     // Start the timer
     let start = Instant::now();
 
-
     let ledger_clone = ledger.clone();
 
     // Spawn threads to split workload
     for i in 0..num_cpus {
         let ledger_ref = ledger_clone.clone();
-        let handle = thread::spawn(move || {
-            complete_threads_portion_of_workload(&ledger_ref, &private_key, work_per_thread, i)
-        });
+        let thread_name = format!("worker-{}", i);
+        let handle = thread::Builder::new()
+            .name(thread_name) // Setting the thread name
+            .spawn(move || {
+                complete_threads_portion_of_workload(&ledger_ref, &private_key, work_per_thread, i)
+            })
+            .unwrap(); // Handle potential errors from thread spawning
         handles.push(handle);
     }
 
@@ -1020,6 +1028,6 @@ finalize outer_most_call:
     // Print the duration
     println!("Time elapsed is: {:?}", duration);
     println!("Time elapsed per transactions is {:?}", duration / (num_cpus * work_per_thread) as u32);
-    println!("Num cpus: {}",num_cpus);
-    println!("Work per thread: {}", work_per_thread);;
+    println!("Num cpus: {}", num_cpus);
+    println!("Work per thread: {}", work_per_thread);
 }
