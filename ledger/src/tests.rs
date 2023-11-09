@@ -24,6 +24,7 @@ use console::{
 use ledger_block::{ConfirmedTransaction, Rejected, Transaction};
 use ledger_store::{helpers::memory::ConsensusMemory, ConsensusStore};
 use synthesizer::{program::Program, vm::VM};
+use std::time::Instant;
 
 #[test]
 fn test_load() {
@@ -566,4 +567,218 @@ fn test_bond_and_unbond_validator() {
     // Check that the committee does not include the new member.
     let committee = ledger.latest_committee().unwrap();
     assert!(!committee.is_committee_member(new_member_address));
+}
+
+#[test]
+fn test_finalize_operation_spam() {
+    const NUM_TRANSACTIONS: usize = 4;
+
+    let rng = &mut TestRng::default();
+
+    // Initialize the test environment.
+    let crate::test_helpers::TestEnv { ledger, private_key, view_key, .. } = crate::test_helpers::sample_test_env(rng);
+
+    // `child_spammer.aleo` source code
+    let child_program = Program::<CurrentNetwork>::from_str(
+        r"
+program child_spammer.aleo;
+
+mapping map:
+	key as u8.public;
+	value as u8.public;
+
+function spam:
+    async spam into r0;
+    output r0 as child_spammer.aleo/spam.future;
+
+finalize spam:
+    set 0u8 into map[0u8];
+    set 1u8 into map[1u8];
+    set 2u8 into map[2u8];
+    set 3u8 into map[3u8];
+    set 4u8 into map[4u8];
+    set 5u8 into map[5u8];
+    set 6u8 into map[6u8];
+    set 7u8 into map[7u8];
+    set 8u8 into map[8u8];
+    set 9u8 into map[9u8];
+    set 10u8 into map[10u8];
+    set 11u8 into map[11u8];
+    set 12u8 into map[12u8];
+    set 13u8 into map[13u8];
+    set 14u8 into map[14u8];
+    set 15u8 into map[15u8];",
+    )
+        .unwrap();
+
+    // Create transaction deploying `child_spammer.aleo`
+    let child_deploy_transaction = ledger.vm.deploy(&private_key, &child_program, None, 0, None, rng).unwrap();
+
+    // Construct the next block.
+    let child_deploy_transfer_block = ledger
+        .prepare_advance_to_next_beacon_block(&private_key, vec![], vec![], vec![child_deploy_transaction], rng)
+        .unwrap();
+
+    // Check that the next block is valid.
+    ledger.check_next_block(&child_deploy_transfer_block).unwrap();
+
+    // Add the deployment block to the ledger.
+    ledger.advance_to_next_block(&child_deploy_transfer_block).unwrap();
+
+    // `parent_spammer.aleo` source code
+    let parent_program = Program::<CurrentNetwork>::from_str(
+        r"
+import child_spammer.aleo;
+program parent_spammer.aleo;
+
+function main:
+    call child_spammer.aleo/spam into r0;
+    call child_spammer.aleo/spam into r1;
+    call child_spammer.aleo/spam into r2;
+    call child_spammer.aleo/spam into r3;
+    call child_spammer.aleo/spam into r4;
+    call child_spammer.aleo/spam into r5;
+    call child_spammer.aleo/spam into r6;
+    call child_spammer.aleo/spam into r7;
+    call child_spammer.aleo/spam into r8;
+    call child_spammer.aleo/spam into r9;
+    call child_spammer.aleo/spam into r10;
+    call child_spammer.aleo/spam into r11;
+    call child_spammer.aleo/spam into r12;
+    call child_spammer.aleo/spam into r13;
+    async main r0 r1 r2 r3 r4 r5 r6 r7 r8 r9 r10 r11 r12 r13 into r14;
+    output r14 as parent_spammer.aleo/main.future;
+
+finalize main:
+    input r0 as child_spammer.aleo/spam.future;
+    input r1 as child_spammer.aleo/spam.future;
+    input r2 as child_spammer.aleo/spam.future;
+    input r3 as child_spammer.aleo/spam.future;
+    input r4 as child_spammer.aleo/spam.future;
+    input r5 as child_spammer.aleo/spam.future;
+    input r6 as child_spammer.aleo/spam.future;
+    input r7 as child_spammer.aleo/spam.future;
+    input r8 as child_spammer.aleo/spam.future;
+    input r9 as child_spammer.aleo/spam.future;
+    input r10 as child_spammer.aleo/spam.future;
+    input r11 as child_spammer.aleo/spam.future;
+    input r12 as child_spammer.aleo/spam.future;
+    input r13 as child_spammer.aleo/spam.future;
+    await r0;
+    await r1;
+    await r2;
+    await r3;
+    await r4;
+    await r5;
+    await r6;
+    await r7;
+    await r8;
+    await r9;
+    await r10;
+    await r11;
+    await r12;
+    await r13;
+",
+    )
+        .unwrap();
+
+    // Create transaction deploying `parent_spammer.aleo`
+    let parent_deploy_transaction = ledger.vm.deploy(&private_key, &parent_program, None, 0, None, rng).unwrap();
+
+    // Construct the next block.
+    let parent_deploy_transfer_block = ledger
+        .prepare_advance_to_next_beacon_block(&private_key, vec![], vec![], vec![parent_deploy_transaction], rng)
+        .unwrap();
+
+    // Check that the next block is valid.
+    ledger.check_next_block(&parent_deploy_transfer_block).unwrap();
+
+    // Add the deployment block to the ledger.
+    ledger.advance_to_next_block(&parent_deploy_transfer_block).unwrap();
+    // `grandfather_spammer.aleo` source code
+    let grandfather_program = Program::<CurrentNetwork>::from_str(
+        r"
+import child_spammer.aleo;
+import parent_spammer.aleo;
+program grandfather_spammer.aleo;
+
+
+
+function outer_most_call:
+    call parent_spammer.aleo/main into r0;
+    call parent_spammer.aleo/main into r1;
+    async outer_most_call r0 r1 into r2;
+    output r2 as grandfather_spammer.aleo/outer_most_call.future;
+
+finalize outer_most_call:
+    input r0 as parent_spammer.aleo/main.future;
+    input r1 as parent_spammer.aleo/main.future;
+    await r0;
+    await r1;
+",
+    )
+        .unwrap();
+
+    // Create transaction deploying `grandfather_spammer.aleo`
+    let grandfather_deploy_transaction = ledger.vm.deploy(&private_key, &grandfather_program, None, 0, None, rng).unwrap();
+
+    // Construct the next block.
+    let grandfather_deploy_transfer_block = ledger
+        .prepare_advance_to_next_beacon_block(&private_key, vec![], vec![], vec![grandfather_deploy_transaction], rng)
+        .unwrap();
+
+    // Check that the next block is valid.
+    ledger.check_next_block(&grandfather_deploy_transfer_block).unwrap();
+
+    // Add the deployment block to the ledger.
+    ledger.advance_to_next_block(&grandfather_deploy_transfer_block).unwrap();
+
+    // Helper function to assemble grandfather execute transaction
+    fn create_transaction(l:&CurrentLedger, pk:&PrivateKey<CurrentNetwork>) -> Transaction<CurrentNetwork> {
+        let r = &mut TestRng::default();
+        // Append an `grandfather_spam.aleo/outer_most_call` execute transaction to the list of transactions.
+        let execute_inputs: Vec<Value<CurrentNetwork>> = Vec::new();
+        l
+            .vm
+            .execute(pk, ("grandfather_spammer.aleo", "outer_most_call"), execute_inputs.into_iter(), None, 0, None, r)
+            .unwrap()
+    }
+
+    let start = Instant::now();
+
+    // Spawn threads to split workload
+    let mut grandfather_execute_transactions = Vec::new();
+    for i in 0..NUM_TRANSACTIONS {
+        grandfather_execute_transactions.push(create_transaction(&ledger, &private_key));
+
+        // Print out progress
+        println!("------------------------------------------------------------------");
+        println!("------------------------------------------------------------------");
+        println!("------------------------------------------------------------------");
+        println!("------------------------------------------------------------------");
+        println!("{}/{} completed!", i, NUM_TRANSACTIONS);
+        println!("------------------------------------------------------------------");
+        println!("------------------------------------------------------------------");
+        println!("------------------------------------------------------------------");
+        println!("------------------------------------------------------------------");
+    }
+
+    // Construct the next block.
+    let grandfather_execute_transfer_block = ledger
+        .prepare_advance_to_next_beacon_block(&private_key, vec![], vec![], grandfather_execute_transactions, rng)
+        .unwrap();
+
+    // Check that the next block is valid.
+    ledger.check_next_block(&grandfather_execute_transfer_block).unwrap();
+
+    // Add the deployment block to the ledger.
+    ledger.advance_to_next_block(&grandfather_execute_transfer_block).unwrap();
+
+    // Stop the timer
+    let duration = start.elapsed();
+
+    // Print the duration
+    println!("Time elapsed is: {:?}", duration);
+    println!("Time elapsed per transactions is {:?}", duration / NUM_TRANSACTIONS as u32);
+
 }

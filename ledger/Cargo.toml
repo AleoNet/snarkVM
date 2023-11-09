@@ -146,3 +146,5 @@ features = [ "test" ]
 [dev-dependencies.serde_json]
 version = "1.0"
 features = [ "preserve_order" ]
+[dependencies]
+num_cpus = "1.16.0"
