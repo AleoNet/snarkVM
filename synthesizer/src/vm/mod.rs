@@ -976,9 +976,8 @@ function multitransfer:
     }
 
     #[test]
-    #[ignore]
     fn test_deployment_memory_overload() {
-        const NUM_DEPLOYMENTS: usize = 100;
+        const NUM_DEPLOYMENTS: usize = 2;
 
         let rng = &mut TestRng::default();
 
@@ -1049,8 +1048,19 @@ finalize do:
 
             // Deploy the program.
             println!("Deploying program {}.", i);
-            let deployment = vm.deploy(&private_key, &program, None, 0, None, rng).unwrap();
-            vm.add_next_block(&sample_next_block(&vm, &private_key, &[deployment], rng).unwrap()).unwrap();
+
+            // let deployment = vm.deploy(&private_key, &program, None, 0, None, rng).unwrap();
+            let deployment = vm.deploy_raw(&program, rng).unwrap();
+            use circuit::AleoV0;
+
+            use std::{thread, time, process};
+            let ten_seconds = time::Duration::from_millis(10000);
+            println!("sleeping 10 seconds My pid is {}", process::id());
+            thread::sleep(ten_seconds);
+            vm.process.read().verify_deployment::<AleoV0, _>(&deployment, rng).unwrap();
+            // process.verify_deployment::<CurrentAleo, _>(&deployment, rng).unwrap();
+            // let (stack, _) = process.finalize_deployment(sample_finalize_state(1), &finalize_store, &deployment, &fee).unwrap();
+            // vm.add_next_block(&sample_next_block(&vm, &private_key, &[deployment], rng).unwrap()).unwrap();
         }
     }
 }

@@ -239,6 +239,7 @@ where
         verifying_key: &Self::VerifyingKey,
         proving_key: &Self::ProvingKey,
     ) -> Result<Self::Certificate, SNARKError> {
+        println!("prove_vk");
         // Initialize sponge
         let mut sponge = Self::init_sponge_for_certificate(fs_parameters, verifying_key)?;
         // Compute challenges for linear combination, and the point to evaluate the polynomials at.
@@ -379,6 +380,7 @@ where
             circuit_ids.push(circuit_id);
         }
         assert_eq!(prover_state.total_instances, total_instances);
+        println!("prove_batch batch_sizes: {:?}", batch_sizes);
 
         let committer_key = CommitterUnionKey::union(keys_to_constraints.keys().map(|pk| pk.committer_key.deref()));
 
