@@ -145,8 +145,9 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         let timer = timer!("Ledger::load_unchecked");
 
         // Initialize the consensus store.
-        let Ok(store) = ConsensusStore::<N, C>::open(dev) else {
-            bail!("Failed to load ledger (run 'snarkos clean' and try again)");
+        let store = match ConsensusStore::<N, C>::open(dev) {
+            Ok(store) => store,
+            Err(e) => bail!("Failed to load ledger (run 'snarkos clean' and try again)\n\n{e}\n"),
         };
         lap!(timer, "Load consensus store");
 
