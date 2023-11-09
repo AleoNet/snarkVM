@@ -1031,3 +1031,9 @@ finalize outer_most_call:
     println!("Num cpus: {}", num_cpus);
     println!("Work per thread: {}", work_per_thread);
 }
+
+#[test]
+fn test_num_cpus() {
+    let num_cpus = num_cpus::get();
+    println!("Num cpus: {}", num_cpus);
+}
