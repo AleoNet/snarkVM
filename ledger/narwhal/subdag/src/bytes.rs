@@ -26,6 +26,10 @@ impl<N: Network> FromBytes for Subdag<N> {
 
         // Read the number of rounds.
         let num_rounds = u32::read_le(&mut reader)?;
+        // Ensure the number of rounds is within bounds.
+        if num_rounds > i32::MAX as u32 {
+            return Err(error("Number of rounds exceeds maximum"));
+        }
         // Read the round certificates.
         let mut subdag = BTreeMap::new();
         for _ in 0..num_rounds {
@@ -33,6 +37,10 @@ impl<N: Network> FromBytes for Subdag<N> {
             let round = u64::read_le(&mut reader)?;
             // Read the number of certificates.
             let num_certificates = u32::read_le(&mut reader)?;
+            // Ensure the number of certificates is within bounds.
+            if num_certificates > i32::MAX as u32 {
+                return Err(error("Number of certificates exceeds maximum"));
+            }
             // Read the certificates.
             let mut certificates = IndexSet::with_capacity(num_certificates as usize);
             for _ in 0..num_certificates {

@@ -34,16 +34,24 @@ impl<N: Network> FromBytes for BatchHeader<N> {
         let timestamp = i64::read_le(&mut reader)?;
 
         // Read the number of transmission IDs.
-        let num_transmissions = u32::read_le(&mut reader)?;
+        let num_transmission_ids = u32::read_le(&mut reader)?;
+        // Ensure the number of transmission ids is within bounds.
+        if num_transmission_ids > i32::MAX as u32 {
+            return Err(error("Number of transmission ids exceeds maximum"));
+        }
         // Read the transmission IDs.
         let mut transmission_ids = IndexSet::new();
-        for _ in 0..num_transmissions {
+        for _ in 0..num_transmission_ids {
             // Insert the transmission ID.
             transmission_ids.insert(TransmissionID::read_le(&mut reader)?);
         }
 
         // Read the number of previous certificate IDs.
         let num_previous_certificate_ids = u32::read_le(&mut reader)?;
+        // Ensure the number of previous certificate ids is within bounds.
+        if num_previous_certificate_ids > i32::MAX as u32 {
+            return Err(error("Number of previous certificate ids exceeds maximum"));
+        }
         // Read the previous certificate IDs.
         let mut previous_certificate_ids = IndexSet::with_capacity(num_previous_certificate_ids as usize);
         for _ in 0..num_previous_certificate_ids {
