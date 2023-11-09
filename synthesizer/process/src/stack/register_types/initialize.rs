@@ -305,6 +305,7 @@ impl<N: Network> RegisterTypes<N> {
         operand: &Operand<N>,
         register_type: &RegisterType<N>,
     ) -> Result<()> {
+        #[cfg(feature = "aleo-cli")]
         match operand {
             // Inform the user the output operand is an input register, to ensure this is intended behavior.
             Operand::Register(register) if self.is_input(register) => {
