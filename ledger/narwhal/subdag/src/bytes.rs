@@ -21,14 +21,14 @@ impl<N: Network> FromBytes for Subdag<N> {
         let version = u8::read_le(&mut reader)?;
         // Ensure the version is valid.
         if version != 1 {
-            return Err(error("Invalid batch version"));
+            return Err(error(format!("Invalid subdag version ({version})")));
         }
 
         // Read the number of rounds.
         let num_rounds = u32::read_le(&mut reader)?;
         // Ensure the number of rounds is within bounds.
-        if num_rounds > i32::MAX as u32 {
-            return Err(error("Number of rounds exceeds maximum"));
+        if num_rounds as usize > Self::MAX_ROUNDS {
+            return Err(error(format!("Number of rounds ({num_rounds}) exceeds the maximum ({})", Self::MAX_ROUNDS)));
         }
         // Read the round certificates.
         let mut subdag = BTreeMap::new();
@@ -38,8 +38,11 @@ impl<N: Network> FromBytes for Subdag<N> {
             // Read the number of certificates.
             let num_certificates = u32::read_le(&mut reader)?;
             // Ensure the number of certificates is within bounds.
-            if num_certificates > i32::MAX as u32 {
-                return Err(error("Number of certificates exceeds maximum"));
+            if num_certificates as usize > BatchHeader::<N>::MAX_CERTIFICATES {
+                return Err(error(format!(
+                    "Number of certificates ({num_certificates}) exceeds the maximum ({})",
+                    BatchHeader::<N>::MAX_CERTIFICATES
+                )));
             }
             // Read the certificates.
             let mut certificates = IndexSet::new();
@@ -51,7 +54,7 @@ impl<N: Network> FromBytes for Subdag<N> {
             subdag.insert(round, certificates);
         }
         // Return the subdag.
-        Self::from(subdag).map_err(|e| error(e.to_string()))
+        Self::from(subdag).map_err(error)
     }
 }
 
@@ -61,13 +64,13 @@ impl<N: Network> ToBytes for Subdag<N> {
         // Write the version.
         1u8.write_le(&mut writer)?;
         // Write the number of rounds.
-        u32::try_from(self.subdag.len()).map_err(|e| error(e.to_string()))?.write_le(&mut writer)?;
+        u32::try_from(self.subdag.len()).map_err(error)?.write_le(&mut writer)?;
         // Write the round certificates.
         for (round, certificates) in &self.subdag {
             // Write the round.
             round.write_le(&mut writer)?;
             // Write the number of certificates.
-            u32::try_from(certificates.len()).map_err(|e| error(e.to_string()))?.write_le(&mut writer)?;
+            u32::try_from(certificates.len()).map_err(error)?.write_le(&mut writer)?;
             // Write the certificates.
             for certificate in certificates {
                 // Write the certificate.

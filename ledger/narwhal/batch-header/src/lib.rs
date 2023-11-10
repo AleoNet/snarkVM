@@ -47,6 +47,8 @@ pub struct BatchHeader<N: Network> {
 }
 
 impl<N: Network> BatchHeader<N> {
+    /// The maximum number of certificates in a batch.
+    pub const MAX_CERTIFICATES: usize = 200;
     /// The maximum number of solutions in a batch.
     pub const MAX_SOLUTIONS: usize = N::MAX_SOLUTIONS;
     /// The maximum number of transactions in a batch.
