@@ -47,6 +47,15 @@ pub struct BatchHeader<N: Network> {
 }
 
 impl<N: Network> BatchHeader<N> {
+    /// The maximum number of solutions in a batch.
+    pub const MAX_SOLUTIONS: usize = N::MAX_SOLUTIONS;
+    /// The maximum number of transactions in a batch.
+    pub const MAX_TRANSACTIONS: usize = usize::pow(2, console::program::TRANSACTIONS_DEPTH as u32);
+    /// The maximum number of transmissions in a batch.
+    pub const MAX_TRANSMISSIONS: usize = Self::MAX_SOLUTIONS + Self::MAX_TRANSACTIONS;
+}
+
+impl<N: Network> BatchHeader<N> {
     /// Initializes a new batch header.
     pub fn new<R: Rng + CryptoRng>(
         private_key: &PrivateKey<N>,

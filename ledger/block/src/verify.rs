@@ -271,10 +271,10 @@ impl<N: Network> Block<N> {
             Some(coinbase) => {
                 // Ensure the number of solutions is within the allowed range.
                 ensure!(
-                    coinbase.len() <= N::MAX_PROVER_SOLUTIONS,
+                    coinbase.len() <= N::MAX_SOLUTIONS,
                     "Block {height} contains too many prover solutions (found '{}', expected '{}')",
                     coinbase.len(),
-                    N::MAX_PROVER_SOLUTIONS
+                    N::MAX_SOLUTIONS
                 );
                 // Ensure the solutions are not accepted after the block height at year 10.
                 if height > block_height_at_year(N::BLOCK_TIME, 10) {
