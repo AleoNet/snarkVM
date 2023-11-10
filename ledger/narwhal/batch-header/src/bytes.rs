@@ -48,7 +48,7 @@ impl<N: Network> FromBytes for BatchHeader<N> {
 
         // Read the number of previous certificate IDs.
         let num_previous_certificate_ids = u32::read_le(&mut reader)?;
-        // Ensure the number of previous certificate ids is within bounds.
+        // Ensure the number of previous certificate IDs is within bounds.
         if num_previous_certificate_ids > i32::MAX as u32 {
             return Err(error("Number of previous certificate ids exceeds maximum"));
         }
