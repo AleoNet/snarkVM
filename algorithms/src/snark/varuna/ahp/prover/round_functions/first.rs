@@ -15,13 +15,18 @@
 use std::collections::BTreeMap;
 
 use crate::{
-    fft::{DensePolynomial, EvaluationDomain, Evaluations as EvaluationsOnDomain, SparsePolynomial},
+    fft::{
+        domain::{FFTPrecomputation, IFFTPrecomputation},
+        DensePolynomial,
+        EvaluationDomain,
+        Evaluations as EvaluationsOnDomain,
+        SparsePolynomial,
+    },
     polycommit::sonic_pc::{LabeledPolynomial, PolynomialInfo, PolynomialLabel},
     snark::varuna::{
         ahp::{AHPError, AHPForR1CS},
         prover,
         witness_label,
-        Circuit,
         CircuitId,
         SNARKMode,
     },
@@ -62,6 +67,8 @@ impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
         rng: &mut R,
     ) -> Result<prover::State<'a, F, SM>, AHPError> {
         let round_time = start_timer!(|| "AHP::Prover::FirstRound");
+        let fft_precomp = state.fft_precomputation;
+        let ifft_precomp = state.ifft_precomputation;
         let mut job_pool = snarkvm_utilities::ExecutionPool::with_capacity(state.total_instances);
         for (circuit, circuit_state) in state.circuit_specific_states.iter_mut() {
             let batch_size = circuit_state.batch_size;
@@ -76,7 +83,9 @@ impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
 
             for (j, (private_vars, x_poly)) in itertools::izip!(private_variables, x_polys).enumerate() {
                 let w_label = witness_label(circuit.id, "w", j);
-                job_pool.add_job(move || Self::calculate_w(w_label, private_vars, x_poly, v_domain, i_domain, circuit));
+                job_pool.add_job(move || {
+                    Self::calculate_w(w_label, private_vars, x_poly, v_domain, i_domain, fft_precomp, ifft_precomp)
+                });
             }
         }
         let mut batches =
@@ -123,13 +132,14 @@ impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
         LabeledPolynomial::new("mask_poly".to_string(), mask_poly, None, None)
     }
 
-    fn calculate_w(
+    fn calculate_w<'a>(
         label: String,
         private_variables: Vec<F>,
         x_poly: DensePolynomial<F>,
         variable_domain: EvaluationDomain<F>,
         input_domain: EvaluationDomain<F>,
-        circuit: &Circuit<F, SM>,
+        fft_precomp: &'a FFTPrecomputation<F>,
+        ifft_precomp: &'a IFFTPrecomputation<F>,
     ) -> Witness<F> {
         let mut w_extended = private_variables;
         let ratio = variable_domain.size() / input_domain.size();
@@ -138,7 +148,7 @@ impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
         let x_evals = {
             let mut coeffs = x_poly.coeffs;
             coeffs.resize(variable_domain.size(), F::zero());
-            variable_domain.in_order_fft_in_place_with_pc(&mut coeffs, &circuit.fft_precomputation);
+            variable_domain.in_order_fft_in_place_with_pc(&mut coeffs, fft_precomp);
             coeffs
         };
 
@@ -149,8 +159,8 @@ impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
                 _ => w_extended[k - (k / ratio) - 1] - x_evals[k],
             })
             .collect();
-        let w_poly = EvaluationsOnDomain::from_vec_and_domain(w_poly_evals, variable_domain)
-            .interpolate_with_pc(&circuit.ifft_precomputation);
+        let w_poly =
+            EvaluationsOnDomain::from_vec_and_domain(w_poly_evals, variable_domain).interpolate_with_pc(ifft_precomp);
         let (w_poly, remainder) = w_poly.divide_by_vanishing_poly(input_domain).unwrap();
         assert!(remainder.is_zero());
 

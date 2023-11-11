@@ -15,19 +15,8 @@
 use core::marker::PhantomData;
 
 use crate::{
-    fft::{
-        domain::{FFTPrecomputation, IFFTPrecomputation},
-        EvaluationDomain,
-    },
     polycommit::sonic_pc::LabeledPolynomial,
-    snark::varuna::{
-        ahp::matrices::MatrixEvals,
-        matrices::MatrixArithmetization,
-        AHPForR1CS,
-        CircuitInfo,
-        Matrix,
-        SNARKMode,
-    },
+    snark::varuna::{ahp::matrices::MatrixEvals, matrices::MatrixArithmetization, CircuitInfo, Matrix, SNARKMode},
 };
 use blake2::Digest;
 use hex::FromHex;
@@ -78,8 +67,6 @@ pub struct Circuit<F: PrimeField, SM: SNARKMode> {
     pub b_arith: MatrixEvals<F>,
     pub c_arith: MatrixEvals<F>,
 
-    pub fft_precomputation: FFTPrecomputation<F>,
-    pub ifft_precomputation: IFFTPrecomputation<F>,
     pub(crate) _mode: PhantomData<SM>,
     pub(crate) id: CircuitId,
 }
@@ -116,21 +103,6 @@ impl<F: PrimeField, SM: SNARKMode> Circuit<F, SM> {
         b.serialize_uncompressed(&mut blake2)?;
         c.serialize_uncompressed(&mut blake2)?;
         Ok(CircuitId(blake2.finalize().into()))
-    }
-
-    /// The maximum degree required to represent polynomials of this index.
-    pub fn max_degree(&self) -> usize {
-        self.index_info.max_degree::<F, SM>()
-    }
-
-    /// The size of the constraint domain in this R1CS instance.
-    pub fn constraint_domain_size(&self) -> usize {
-        crate::fft::EvaluationDomain::<F>::new(self.index_info.num_constraints).unwrap().size()
-    }
-
-    /// The size of the variable domain in this R1CS instance.
-    pub fn variable_domain_size(&self) -> usize {
-        crate::fft::EvaluationDomain::<F>::new(self.index_info.num_variables).unwrap().size()
     }
 
     pub fn interpolate_matrix_evals(&self) -> impl Iterator<Item = LabeledPolynomial<F>> {
@@ -193,25 +165,7 @@ impl<F: PrimeField, SM: SNARKMode> CanonicalDeserialize for Circuit<F, SM> {
         validate: Validate,
     ) -> Result<Self, SerializationError> {
         let index_info: CircuitInfo = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
-        let constraint_domain_size = EvaluationDomain::<F>::compute_size_of_domain(index_info.num_constraints)
-            .ok_or(SerializationError::InvalidData)?;
-        let variable_domain_size = EvaluationDomain::<F>::compute_size_of_domain(index_info.num_variables)
-            .ok_or(SerializationError::InvalidData)?;
-        let non_zero_a_domain_size = EvaluationDomain::<F>::compute_size_of_domain(index_info.num_non_zero_a)
-            .ok_or(SerializationError::InvalidData)?;
-        let non_zero_b_domain_size = EvaluationDomain::<F>::compute_size_of_domain(index_info.num_non_zero_b)
-            .ok_or(SerializationError::InvalidData)?;
-        let non_zero_c_domain_size = EvaluationDomain::<F>::compute_size_of_domain(index_info.num_non_zero_c)
-            .ok_or(SerializationError::InvalidData)?;
 
-        let (fft_precomputation, ifft_precomputation) = AHPForR1CS::<F, SM>::fft_precomputation(
-            variable_domain_size,
-            constraint_domain_size,
-            non_zero_a_domain_size,
-            non_zero_b_domain_size,
-            non_zero_c_domain_size,
-        )
-        .ok_or(SerializationError::InvalidData)?;
         let a = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
         let b = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
         let c = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
@@ -224,8 +178,6 @@ impl<F: PrimeField, SM: SNARKMode> CanonicalDeserialize for Circuit<F, SM> {
             a_arith: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
             b_arith: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
             c_arith: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
-            fft_precomputation,
-            ifft_precomputation,
             _mode: PhantomData,
             id,
         })

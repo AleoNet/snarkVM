@@ -15,14 +15,19 @@
 use std::collections::BTreeMap;
 
 use crate::{
-    fft::{polynomial::PolyMultiplier, DensePolynomial, EvaluationDomain, Evaluations as EvaluationsOnDomain},
+    fft::{
+        domain::IFFTPrecomputation,
+        polynomial::PolyMultiplier,
+        DensePolynomial,
+        EvaluationDomain,
+        Evaluations as EvaluationsOnDomain,
+    },
     polycommit::sonic_pc::{LabeledPolynomial, PolynomialInfo, PolynomialLabel},
     snark::varuna::{
         ahp::{verifier, AHPForR1CS},
         prover,
         selectors::apply_randomized_selector,
         witness_label,
-        Circuit,
         CircuitId,
         SNARKMode,
     },
@@ -79,6 +84,9 @@ impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
         let mut job_pool = ExecutionPool::with_capacity(state.circuit_specific_states.len());
         let max_constraint_domain = state.max_constraint_domain;
 
+        let fft_precomp = state.fft_precomputation;
+        let ifft_precomp = state.ifft_precomputation;
+
         for (circuit, circuit_specific_state) in state.circuit_specific_states.iter_mut() {
             let z_a = circuit_specific_state.z_a.take().unwrap();
             let z_b = circuit_specific_state.z_b.take().unwrap();
@@ -87,8 +95,6 @@ impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
             let circuit_combiner = batch_combiners[&circuit.id].circuit_combiner;
             let instance_combiners = batch_combiners[&circuit.id].instance_combiners.clone();
             let constraint_domain = circuit_specific_state.constraint_domain;
-            let fft_precomputation = &circuit.fft_precomputation;
-            let ifft_precomputation = &circuit.ifft_precomputation;
 
             let _circuit_id = &circuit.id; // seems like a compiler bug marks this as unused
 
@@ -100,11 +106,11 @@ impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
                     let za_label = witness_label(circuit.id, "z_a", j);
                     let zb_label = witness_label(circuit.id, "z_b", j);
                     let zc_label = witness_label(circuit.id, "z_c", j);
-                    let z_a = Self::calculate_z_m(za_label, z_a, constraint_domain, circuit);
-                    let z_b = Self::calculate_z_m(zb_label, z_b, constraint_domain, circuit);
-                    let z_c = Self::calculate_z_m(zc_label, z_c, constraint_domain, circuit);
+                    let z_a = Self::calculate_z_m(za_label, z_a, constraint_domain, ifft_precomp);
+                    let z_b = Self::calculate_z_m(zb_label, z_b, constraint_domain, ifft_precomp);
+                    let z_c = Self::calculate_z_m(zc_label, z_c, constraint_domain, ifft_precomp);
                     let mut multiplier_2 = PolyMultiplier::new();
-                    multiplier_2.add_precomputation(fft_precomputation, ifft_precomputation);
+                    multiplier_2.add_precomputation(fft_precomp, ifft_precomp);
                     multiplier_2.add_polynomial(z_a, "z_a");
                     multiplier_2.add_polynomial(z_b, "z_b");
                     let mut rowcheck = multiplier_2.multiply().unwrap();
@@ -144,13 +150,13 @@ impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
         label: impl ToString,
         evaluations: Vec<F>,
         constraint_domain: EvaluationDomain<F>,
-        circuit: &Circuit<F, SM>,
+        ifft_precomp: &IFFTPrecomputation<F>,
     ) -> DensePolynomial<F> {
         let label = label.to_string();
         let poly_time = start_timer!(|| format!("Computing {label}"));
 
         let evals = EvaluationsOnDomain::from_vec_and_domain(evaluations, constraint_domain);
-        let poly = evals.interpolate_with_pc_by_ref(&circuit.ifft_precomputation);
+        let poly = evals.interpolate_with_pc_by_ref(ifft_precomp);
 
         debug_assert!(
             poly.evaluate_over_domain_by_ref(constraint_domain)

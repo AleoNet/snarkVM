@@ -24,7 +24,7 @@ use itertools::Itertools;
 use snarkvm_curves::traits::{AffineCurve, PairingCurve, PairingEngine, ProjectiveCurve};
 use snarkvm_fields::{One, Zero};
 
-use anyhow::{bail, Result};
+use anyhow::Result;
 use core::{convert::TryInto, marker::PhantomData, ops::Mul};
 use rand_core::{RngCore, SeedableRng};
 use std::{
@@ -58,107 +58,6 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
         kzg10::KZG10::load_srs(max_degree).map_err(Into::into)
     }
 
-    pub fn trim(
-        pp: &UniversalParams<E>,
-        supported_degree: usize,
-        supported_lagrange_sizes: impl IntoIterator<Item = usize>,
-        supported_hiding_bound: usize,
-        enforced_degree_bounds: Option<&[usize]>,
-    ) -> Result<(CommitterKey<E>, UniversalVerifier<E>)> {
-        let trim_time = start_timer!(|| "Trimming public parameters");
-        let max_degree = pp.max_degree();
-
-        let enforced_degree_bounds = enforced_degree_bounds.map(|bounds| {
-            let mut v = bounds.to_vec();
-            v.sort_unstable();
-            v.dedup();
-            v
-        });
-
-        let (shifted_powers_of_beta_g, shifted_powers_of_beta_times_gamma_g) = if let Some(enforced_degree_bounds) =
-            enforced_degree_bounds.as_ref()
-        {
-            if enforced_degree_bounds.is_empty() {
-                (None, None)
-            } else {
-                let highest_enforced_degree_bound = *enforced_degree_bounds.last().unwrap();
-                if highest_enforced_degree_bound > supported_degree {
-                    bail!(
-                        "The highest enforced degree bound {highest_enforced_degree_bound} is larger than the supported degree {supported_degree}"
-                    );
-                }
-
-                let lowest_shift_degree = max_degree - highest_enforced_degree_bound;
-
-                let shifted_ck_time = start_timer!(|| format!(
-                    "Constructing `shifted_powers_of_beta_g` of size {}",
-                    max_degree - lowest_shift_degree + 1
-                ));
-
-                let shifted_powers_of_beta_g = pp.powers_of_beta_g(lowest_shift_degree, pp.max_degree() + 1)?.to_vec();
-                let mut shifted_powers_of_beta_times_gamma_g = BTreeMap::new();
-                // Also add degree 0.
-                for degree_bound in enforced_degree_bounds {
-                    let shift_degree = max_degree - degree_bound;
-                    let mut powers_for_degree_bound = Vec::with_capacity((max_degree + 2).saturating_sub(shift_degree));
-                    for i in 0..=supported_hiding_bound + 1 {
-                        // We have an additional degree in `powers_of_beta_times_gamma_g` beyond `powers_of_beta_g`.
-                        if shift_degree + i < max_degree + 2 {
-                            powers_for_degree_bound.push(pp.powers_of_beta_times_gamma_g()[&(shift_degree + i)]);
-                        }
-                    }
-                    shifted_powers_of_beta_times_gamma_g.insert(*degree_bound, powers_for_degree_bound);
-                }
-
-                end_timer!(shifted_ck_time);
-
-                (Some(shifted_powers_of_beta_g), Some(shifted_powers_of_beta_times_gamma_g))
-            }
-        } else {
-            (None, None)
-        };
-
-        let powers_of_beta_g = pp.powers_of_beta_g(0, supported_degree + 1)?.to_vec();
-        let powers_of_beta_times_gamma_g = (0..=(supported_hiding_bound + 1))
-            .map(|i| {
-                pp.powers_of_beta_times_gamma_g()
-                    .get(&i)
-                    .copied()
-                    .ok_or(PCError::HidingBoundToolarge { hiding_poly_degree: supported_hiding_bound, num_powers: 0 })
-            })
-            .collect::<Result<Vec<_>, _>>()?;
-
-        let mut lagrange_bases_at_beta_g = BTreeMap::new();
-        for size in supported_lagrange_sizes {
-            let lagrange_time = start_timer!(|| format!("Constructing `lagrange_bases` of size {size}"));
-            if !size.is_power_of_two() {
-                bail!("The Lagrange basis size ({size}) is not a power of two")
-            }
-            if size > pp.max_degree() + 1 {
-                bail!("The Lagrange basis size ({size}) is larger than the supported degree ({})", pp.max_degree() + 1)
-            }
-            let domain = crate::fft::EvaluationDomain::new(size).unwrap();
-            let lagrange_basis_at_beta_g = pp.lagrange_basis(domain)?;
-            assert!(lagrange_basis_at_beta_g.len().is_power_of_two());
-            lagrange_bases_at_beta_g.insert(domain.size(), lagrange_basis_at_beta_g);
-            end_timer!(lagrange_time);
-        }
-
-        let ck = CommitterKey {
-            powers_of_beta_g,
-            lagrange_bases_at_beta_g,
-            powers_of_beta_times_gamma_g,
-            shifted_powers_of_beta_g,
-            shifted_powers_of_beta_times_gamma_g,
-            enforced_degree_bounds,
-        };
-
-        let vk = pp.to_universal_verifier()?;
-
-        end_timer!(trim_time);
-        Ok((ck, vk))
-    }
-
     /// Outputs a commitments to `polynomials`.
     ///
     /// If `polynomials[i].is_hiding()`, then the `i`-th commitment is hiding
@@ -174,7 +73,6 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
     #[allow(clippy::format_push_string)]
     pub fn commit<'b>(
         universal_prover: &UniversalProver<E>,
-        ck: &CommitterUnionKey<E>,
         polynomials: impl IntoIterator<Item = LabeledPolynomialWithBasis<'b, E::Fr>>,
         rng: Option<&mut dyn RngCore>,
     ) -> Result<(Vec<LabeledCommitment<Commitment<E>>>, Vec<Randomness<E>>), PCError> {
@@ -182,6 +80,7 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
         let commit_time = start_timer!(|| "Committing to polynomials");
         let mut labeled_comms: Vec<LabeledCommitment<Commitment<E>>> = Vec::new();
         let mut randomness: Vec<Randomness<E>> = Vec::new();
+        let ck = &universal_prover.committer_key;
 
         let mut pool = snarkvm_utilities::ExecutionPool::<Result<_, _>>::new();
         for p in polynomials {
@@ -265,7 +164,6 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
 
     pub fn combine_for_open<'a>(
         universal_prover: &UniversalProver<E>,
-        ck: &CommitterUnionKey<E>,
         labeled_polynomials: impl IntoIterator<Item = &'a LabeledPolynomial<E::Fr>>,
         rands: impl IntoIterator<Item = &'a Randomness<E>>,
         fs_rng: &mut S,
@@ -274,6 +172,7 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
         Randomness<E>: 'a,
         Commitment<E>: 'a,
     {
+        let ck = &universal_prover.committer_key;
         Ok(Self::combine_polynomials(labeled_polynomials.into_iter().zip_eq(rands).map(|(p, r)| {
             let enforced_degree_bounds: Option<&[usize]> = ck.enforced_degree_bounds.as_deref();
 
@@ -288,7 +187,6 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
     /// of the polynomials at the points in the query set.
     pub fn batch_open<'a>(
         universal_prover: &UniversalProver<E>,
-        ck: &CommitterUnionKey<E>,
         labeled_polynomials: impl IntoIterator<Item = &'a LabeledPolynomial<E::Fr>>,
         query_set: &QuerySet<E::Fr>,
         rands: impl IntoIterator<Item = &'a Randomness<E>>,
@@ -298,6 +196,7 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
         Randomness<E>: 'a,
         Commitment<E>: 'a,
     {
+        let ck = &universal_prover.committer_key;
         let poly_rand: HashMap<_, _> =
             labeled_polynomials.into_iter().zip_eq(rands).map(|(poly, r)| (poly.label(), (poly, r))).collect();
 
@@ -326,7 +225,7 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
                 query_polys.push(*polynomial);
                 query_rands.push(*rand);
             }
-            let (polynomial, rand) = Self::combine_for_open(universal_prover, ck, query_polys, query_rands, fs_rng)?;
+            let (polynomial, rand) = Self::combine_for_open(universal_prover, query_polys, query_rands, fs_rng)?;
             let _randomizer = fs_rng.squeeze_short_nonnative_field_element::<E::Fr>();
 
             pool.add_job(move || {
@@ -412,7 +311,6 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
 
     pub fn open_combinations<'a>(
         universal_prover: &UniversalProver<E>,
-        ck: &CommitterUnionKey<E>,
         linear_combinations: impl IntoIterator<Item = &'a LinearCombination<E::Fr>>,
         polynomials: impl IntoIterator<Item = LabeledPolynomial<E::Fr>>,
         rands: impl IntoIterator<Item = &'a Randomness<E>>,
@@ -438,7 +336,7 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
             let mut hiding_bound = None;
 
             let num_polys = lc.len();
-            // We filter out l.is_one() entries because those constants are not committed to and used directly by the verifier.
+            // We filter out l.is_one() entries because those constants are not committed to but used directly by the verifier.
             for (coeff, label) in lc.iter().filter(|(_, l)| !l.is_one()) {
                 let label: &String = label.try_into().expect("cannot be one!");
                 let (cur_poly, cur_rand) =
@@ -466,8 +364,7 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
             lc_info.push((lc_label, degree_bound));
         }
 
-        let proof =
-            Self::batch_open(universal_prover, ck, lc_polynomials.iter(), query_set, lc_randomness.iter(), fs_rng)?;
+        let proof = Self::batch_open(universal_prover, lc_polynomials.iter(), query_set, lc_randomness.iter(), fs_rng)?;
 
         Ok(BatchLCProof { proof })
     }
@@ -680,7 +577,10 @@ mod tests {
     #![allow(non_camel_case_types)]
 
     use super::{CommitterKey, SonicKZG10};
-    use crate::{crypto_hash::PoseidonSponge, polycommit::test_templates::*};
+    use crate::{
+        crypto_hash::PoseidonSponge,
+        polycommit::{kzg10::DegreeInfo, test_templates::*},
+    };
     use snarkvm_curves::bls12_377::{Bls12_377, Fq};
     use snarkvm_utilities::{rand::TestRng, FromBytes, ToBytes};
 
@@ -693,13 +593,15 @@ mod tests {
     fn test_committer_key_serialization() {
         let rng = &mut TestRng::default();
         let max_degree = rand::distributions::Uniform::from(8..=64).sample(rng);
-        let supported_degree = rand::distributions::Uniform::from(1..=max_degree).sample(rng);
-
-        let lagrange_size = |d: usize| if d.is_power_of_two() { d } else { d.next_power_of_two() >> 1 };
-
         let pp = PC_Bls12_377::load_srs(max_degree).unwrap();
 
-        let (ck, _vk) = PC_Bls12_377::trim(&pp, supported_degree, [lagrange_size(supported_degree)], 0, None).unwrap();
+        let supported_degree = rand::distributions::Uniform::from(1..=max_degree).sample(rng);
+        let hiding_bound = 0;
+        let lagrange_size = |d: usize| if d.is_power_of_two() { d } else { d.next_power_of_two() >> 1 };
+        let lagrange_sizes = Some([lagrange_size(supported_degree)].into_iter().collect());
+        let degree_info = DegreeInfo::new(supported_degree, supported_degree, None, hiding_bound, lagrange_sizes);
+
+        let ck = pp.to_committer_key(&degree_info).unwrap();
 
         let ck_bytes = ck.to_bytes_le().unwrap();
         let ck_recovered: CommitterKey<Bls12_377> = FromBytes::read_le(&ck_bytes[..]).unwrap();

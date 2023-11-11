@@ -18,7 +18,7 @@
 #![cfg_attr(not(feature = "aleo-cli"), allow(unused_variables))]
 
 use console::network::{prelude::*, FiatShamir};
-use snarkvm_algorithms::{snark::varuna, traits::SNARK};
+use snarkvm_algorithms::{polycommit::kzg10::DegreeInfo, snark::varuna, traits::SNARK};
 
 use once_cell::sync::OnceCell;
 use std::sync::Arc;

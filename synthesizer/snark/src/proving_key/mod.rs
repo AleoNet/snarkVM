@@ -43,11 +43,12 @@ impl<N: Network> ProvingKey<N> {
         let timer = std::time::Instant::now();
 
         // Retrieve the proving parameters.
-        let universal_prover = N::varuna_universal_prover();
+        let degree_info = self.circuit.index_info.degree_info::<N::Field, varuna::VarunaHidingMode>();
+        let universal_prover = N::varuna_universal_prover(degree_info);
         let fiat_shamir = N::varuna_fs_parameters();
 
         // Compute the proof.
-        let proof = Proof::new(Varuna::<N>::prove(universal_prover, fiat_shamir, self, assignment, rng)?);
+        let proof = Proof::new(Varuna::<N>::prove(&universal_prover, fiat_shamir, self, assignment, rng)?);
 
         #[cfg(feature = "aleo-cli")]
         println!("{}", format!(" • Executed '{function_name}' (in {} ms)", timer.elapsed().as_millis()).dimmed());
@@ -61,6 +62,9 @@ impl<N: Network> ProvingKey<N> {
         assignments: &[(ProvingKey<N>, Vec<circuit::Assignment<N::Field>>)],
         rng: &mut R,
     ) -> Result<Proof<N>> {
+        // Ensure that the assignments are not empty.
+        ensure!(!assignments.is_empty(), "Cannot prove an empty batch");
+
         #[cfg(feature = "aleo-cli")]
         let timer = std::time::Instant::now();
 
@@ -71,11 +75,19 @@ impl<N: Network> ProvingKey<N> {
             .collect();
 
         // Retrieve the proving parameters.
-        let universal_prover = N::varuna_universal_prover();
+        let mut degree_info: Option<DegreeInfo> = None;
+        for (pk, _) in assignments {
+            let degree_info_i = pk.circuit.index_info.degree_info::<N::Field, varuna::VarunaHidingMode>();
+            degree_info = match degree_info {
+                Some(degree_info) => Some(degree_info.union(&degree_info_i)),
+                None => Some(degree_info_i),
+            };
+        }
+        let universal_prover = N::varuna_universal_prover(degree_info.unwrap());
         let fiat_shamir = N::varuna_fs_parameters();
 
         // Compute the proof.
-        let batch_proof = Proof::new(Varuna::<N>::prove_batch(universal_prover, fiat_shamir, &instances, rng)?);
+        let batch_proof = Proof::new(Varuna::<N>::prove_batch(&universal_prover, fiat_shamir, &instances, rng)?);
 
         #[cfg(feature = "aleo-cli")]
         println!("{}", format!(" • Executed '{locator}' (in {} ms)", timer.elapsed().as_millis()).dimmed());
