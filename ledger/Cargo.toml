@@ -45,7 +45,7 @@ serial = [
   "ledger-store/serial",
   "synthesizer/serial"
 ]
-test = [ "ledger-block/test" ]
+test = [ "ledger-block/test", "ledger-store/test" ]
 test-helpers = [
   "ledger-test-helpers",
   "ledger-committee/test-helpers",
