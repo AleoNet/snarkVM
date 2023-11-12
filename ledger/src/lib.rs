@@ -28,6 +28,9 @@ pub use ledger_store as store;
 
 pub use crate::block::*;
 
+#[cfg(feature = "test-helpers")]
+pub use ledger_test_helpers;
+
 mod helpers;
 pub use helpers::*;
 
@@ -45,18 +48,7 @@ mod tests;
 use console::{
     account::{Address, GraphKey, PrivateKey, ViewKey},
     network::prelude::*,
-    program::{
-        Ciphertext,
-        Entry,
-        Identifier,
-        Literal,
-        Plaintext,
-        ProgramID,
-        Record,
-        StatePath,
-        Value,
-        RATIFICATIONS_DEPTH,
-    },
+    program::{Ciphertext, Entry, Identifier, Literal, Plaintext, ProgramID, Record, StatePath, Value},
     types::{Field, Group},
 };
 use ledger_authority::Authority;
@@ -153,8 +145,9 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         let timer = timer!("Ledger::load_unchecked");
 
         // Initialize the consensus store.
-        let Ok(store) = ConsensusStore::<N, C>::open(dev) else {
-            bail!("Failed to load ledger (run 'snarkos clean' and try again)");
+        let store = match ConsensusStore::<N, C>::open(dev) {
+            Ok(store) => store,
+            Err(e) => bail!("Failed to load ledger (run 'snarkos clean' and try again)\n\n{e}\n"),
         };
         lap!(timer, "Load consensus store");
 
@@ -400,11 +393,23 @@ pub(crate) mod test_helpers {
         prelude::*,
     };
     use ledger_block::Block;
-    use ledger_store::{helpers::memory::ConsensusMemory, ConsensusStore};
+    use ledger_store::ConsensusStore;
     use synthesizer::vm::VM;
 
     pub(crate) type CurrentNetwork = Testnet3;
-    pub(crate) type CurrentLedger = Ledger<CurrentNetwork, ConsensusMemory<CurrentNetwork>>;
+
+    #[cfg(not(feature = "rocks"))]
+    pub(crate) type CurrentLedger =
+        Ledger<CurrentNetwork, ledger_store::helpers::memory::ConsensusMemory<CurrentNetwork>>;
+    #[cfg(feature = "rocks")]
+    pub(crate) type CurrentLedger = Ledger<CurrentNetwork, ledger_store::helpers::rocksdb::ConsensusDB<CurrentNetwork>>;
+
+    #[cfg(not(feature = "rocks"))]
+    pub(crate) type CurrentConsensusStore =
+        ConsensusStore<CurrentNetwork, ledger_store::helpers::memory::ConsensusMemory<CurrentNetwork>>;
+    #[cfg(feature = "rocks")]
+    pub(crate) type CurrentConsensusStore =
+        ConsensusStore<CurrentNetwork, ledger_store::helpers::rocksdb::ConsensusDB<CurrentNetwork>>;
 
     #[allow(dead_code)]
     pub(crate) struct TestEnv {
@@ -434,7 +439,7 @@ pub(crate) mod test_helpers {
         rng: &mut (impl Rng + CryptoRng),
     ) -> CurrentLedger {
         // Initialize the store.
-        let store = ConsensusStore::<_, ConsensusMemory<_>>::open(None).unwrap();
+        let store = CurrentConsensusStore::open(None).unwrap();
         // Create a genesis block.
         let genesis = VM::from(store).unwrap().genesis_beacon(&private_key, rng).unwrap();
         // Initialize the ledger with the genesis block.

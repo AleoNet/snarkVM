@@ -30,8 +30,9 @@ impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> LeafHash for 
 
     /// Returns the hash of the given leaf node.
     fn hash_leaf(&self, leaf: &Self::Leaf) -> Self::Hash {
+        let mut input = Vec::with_capacity(1 + leaf.len());
         // Prepend the leaf with a `false` bit.
-        let mut input = vec![Boolean::constant(false)];
+        input.push(Boolean::constant(false));
         input.extend_from_slice(leaf);
         // Hash the input.
         Hash::hash(self, &input)
@@ -44,8 +45,9 @@ impl<E: Environment, const RATE: usize> LeafHash for Poseidon<E, RATE> {
 
     /// Returns the hash of the given leaf node.
     fn hash_leaf(&self, leaf: &Self::Leaf) -> Self::Hash {
+        let mut input = Vec::with_capacity(1 + leaf.len());
         // Prepend the leaf with a `0field` element.
-        let mut input = vec![Self::Hash::zero()];
+        input.push(Self::Hash::zero());
         input.extend_from_slice(leaf);
         // Hash the input.
         Hash::hash(self, &input)
@@ -58,11 +60,10 @@ impl<E: Environment, const TYPE: u8, const VARIANT: usize> LeafHash for Keccak<E
 
     /// Returns the hash of the given leaf node.
     fn hash_leaf(&self, leaf: &Self::Leaf) -> Self::Hash {
+        let mut input = Vec::with_capacity(1 + leaf.len());
         // Prepend the leaf with a `false` bit.
-        // Also zero-extend to byte, because this is what the console implementation of Keccak does.
-        let mut input = vec![Boolean::constant(false)];
+        input.push(Boolean::constant(false));
         input.extend_from_slice(leaf);
-        input.resize((input.len() + 7) / 8 * 8, Boolean::constant(false));
         // Hash the input.
         let output = Hash::hash(self, &input);
         // Read the first VARIANT bits.

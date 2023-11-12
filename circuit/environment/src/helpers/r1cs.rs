@@ -27,7 +27,7 @@ pub struct R1CS<F: PrimeField> {
     constants: Vec<Variable<F>>,
     public: Vec<Variable<F>>,
     private: Vec<Variable<F>>,
-    constraints: Vec<Constraint<F>>,
+    constraints: Vec<Rc<Constraint<F>>>,
     counter: Counter<F>,
     nonzeros: (u64, u64, u64),
 }
@@ -86,12 +86,13 @@ impl<F: PrimeField> R1CS<F> {
         self.nonzeros.1 += b_nonzeros;
         self.nonzeros.2 += c_nonzeros;
 
-        self.constraints.push(constraint.clone());
+        let constraint = Rc::new(constraint);
+        self.constraints.push(Rc::clone(&constraint));
         self.counter.add_constraint(constraint);
     }
 
     /// Returns `true` if all constraints in the environment are satisfied.
-    pub(crate) fn is_satisfied(&self) -> bool {
+    pub fn is_satisfied(&self) -> bool {
         self.constraints.iter().all(|constraint| constraint.is_satisfied())
     }
 
@@ -106,27 +107,27 @@ impl<F: PrimeField> R1CS<F> {
     }
 
     /// Returns the number of constants in the constraint system.
-    pub(crate) fn num_constants(&self) -> u64 {
+    pub fn num_constants(&self) -> u64 {
         self.constants.len() as u64
     }
 
     /// Returns the number of public variables in the constraint system.
-    pub(crate) fn num_public(&self) -> u64 {
+    pub fn num_public(&self) -> u64 {
         self.public.len() as u64
     }
 
     /// Returns the number of private variables in the constraint system.
-    pub(crate) fn num_private(&self) -> u64 {
+    pub fn num_private(&self) -> u64 {
         self.private.len() as u64
     }
 
     /// Returns the number of constraints in the constraint system.
-    pub(crate) fn num_constraints(&self) -> u64 {
+    pub fn num_constraints(&self) -> u64 {
         self.constraints.len() as u64
     }
 
     /// Returns the number of nonzeros in the constraint system.
-    pub(crate) fn num_nonzeros(&self) -> (u64, u64, u64) {
+    pub fn num_nonzeros(&self) -> (u64, u64, u64) {
         self.nonzeros
     }
 
@@ -166,7 +167,7 @@ impl<F: PrimeField> R1CS<F> {
     }
 
     /// Returns the constraints in the constraint system.
-    pub fn to_constraints(&self) -> &Vec<Constraint<F>> {
+    pub fn to_constraints(&self) -> &Vec<Rc<Constraint<F>>> {
         &self.constraints
     }
 }

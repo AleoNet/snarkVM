@@ -70,7 +70,28 @@ impl<E: Environment> Elligator2<E> {
             let x2 = x.square();
             let x3 = &x2 * &x;
             let rhs = &x3 + (&a * &x2) + (&b * &x);
-            let y = -&e * rhs.square_root();
+
+            // Witness the even square root of `rhs`.
+            let rhs_square_root: Field<E> = witness!(|rhs| {
+                match rhs.square_root() {
+                    Ok(sqrt) => {
+                        // Get the least significant bit of the square root.
+                        // Note that the unwrap is safe since the number of bits is always greater than zero.
+                        match *sqrt.to_bits_be().last().unwrap() {
+                            // If the lsb is set, return the negated square root.
+                            true => -sqrt,
+                            // Otherwise, return the square root.
+                            false => sqrt,
+                        }
+                    }
+                    Err(_) => console::Field::zero(),
+                }
+            });
+            // Verify that the square root is even.
+            // Note that the unwrap is safe since the number of bits is always greater than zero,
+            E::assert(!rhs_square_root.to_bits_be().last().unwrap());
+
+            let y = -&e * rhs_square_root;
 
             // Ensure v * e * x * y != 0.
             E::assert_neq(&v * &e * &x * &y, Field::<E>::zero());
@@ -138,16 +159,16 @@ mod tests {
 
     #[test]
     fn test_encode_constant() {
-        check_encode(Mode::Constant, 274, 0, 0, 0);
+        check_encode(Mode::Constant, 527, 0, 0, 0);
     }
 
     #[test]
     fn test_encode_public() {
-        check_encode(Mode::Public, 263, 0, 370, 373);
+        check_encode(Mode::Public, 263, 0, 875, 880);
     }
 
     #[test]
     fn test_encode_private() {
-        check_encode(Mode::Private, 263, 0, 370, 373);
+        check_encode(Mode::Private, 263, 0, 875, 880);
     }
 }

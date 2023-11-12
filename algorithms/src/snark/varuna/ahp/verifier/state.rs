@@ -23,7 +23,7 @@ use crate::{
     },
 };
 use snarkvm_fields::PrimeField;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 
 #[derive(Debug)]
 /// Circuit Specific State of the Verifier
@@ -61,4 +61,21 @@ pub struct State<F: PrimeField, SM: SNARKMode> {
     /// The verifier's random challenge in the last round of the AHP
     pub(crate) gamma: Option<F>,
     pub(crate) mode: PhantomData<SM>,
+}
+
+impl<F: PrimeField, MM: SNARKMode> State<F, MM> {
+    pub(crate) fn constraint_domains(&self) -> HashSet<EvaluationDomain<F>> {
+        self.circuit_specific_states.values().map(|s| s.constraint_domain).collect()
+    }
+
+    pub(crate) fn variable_domains(&self) -> HashSet<EvaluationDomain<F>> {
+        self.circuit_specific_states.values().map(|s| s.variable_domain).collect()
+    }
+
+    pub(crate) fn non_zero_domains(&self) -> HashSet<EvaluationDomain<F>> {
+        self.circuit_specific_states
+            .values()
+            .flat_map(|s| [s.non_zero_a_domain, s.non_zero_b_domain, s.non_zero_c_domain])
+            .collect()
+    }
 }

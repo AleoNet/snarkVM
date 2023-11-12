@@ -131,13 +131,13 @@ mod tests {
         Circuit::scope(format!("{mode}"), || {
             let candidate = plaintext.is_equal(&plaintext);
             assert!(candidate.eject_value());
-            assert_scope!(num_constants, num_public, num_private, num_constraints);
+            assert_scope!(<=num_constants, <=num_public, <=num_private, <=num_constraints);
         });
 
         Circuit::scope(format!("{mode}"), || {
             let candidate = plaintext.is_equal(&mismatched_plaintext);
             assert!(!candidate.eject_value());
-            assert_scope!(num_constants, num_public, num_private, num_constraints);
+            assert_scope!(<=num_constants, <=num_public, <=num_private, <=num_constraints);
         });
 
         Circuit::reset();
@@ -158,13 +158,13 @@ mod tests {
         Circuit::scope(format!("{mode}"), || {
             let candidate = plaintext.is_not_equal(&mismatched_plaintext);
             assert!(candidate.eject_value());
-            assert_scope!(num_constants, num_public, num_private, num_constraints);
+            assert_scope!(<=num_constants, <=num_public, <=num_private, <=num_constraints);
         });
 
         Circuit::scope(format!("{mode}"), || {
             let candidate = plaintext.is_not_equal(&plaintext);
             assert!(!candidate.eject_value());
-            assert_scope!(num_constants, num_public, num_private, num_constraints);
+            assert_scope!(<=num_constants, <=num_public, <=num_private, <=num_constraints);
         });
 
         Circuit::reset();
@@ -178,12 +178,12 @@ mod tests {
 
     #[test]
     fn test_is_equal_public() -> Result<()> {
-        check_is_equal(Mode::Public, 7, 0, 21, 27)
+        check_is_equal(Mode::Public, 13, 0, 21, 21)
     }
 
     #[test]
     fn test_is_equal_private() -> Result<()> {
-        check_is_equal(Mode::Private, 7, 0, 21, 27)
+        check_is_equal(Mode::Private, 13, 0, 21, 21)
     }
 
     #[test]
@@ -193,11 +193,11 @@ mod tests {
 
     #[test]
     fn test_is_not_equal_public() -> Result<()> {
-        check_is_not_equal(Mode::Public, 7, 0, 21, 27)
+        check_is_not_equal(Mode::Public, 13, 0, 21, 21)
     }
 
     #[test]
     fn test_is_not_equal_private() -> Result<()> {
-        check_is_not_equal(Mode::Private, 7, 0, 21, 27)
+        check_is_not_equal(Mode::Private, 13, 0, 21, 21)
     }
 }

@@ -55,7 +55,7 @@ impl<E: Environment, I: IntegerType> Metrics<dyn Equal<Integer<E, I>, Output = B
     fn count(case: &Self::Case) -> Count {
         match case.0.is_constant() && case.1.is_constant() {
             true => Count::is(0, 0, 0, 0),
-            false => Count::is(0, 0, 2, 3),
+            false => Count::is(0, 0, 2, 2),
         }
     }
 }

@@ -46,7 +46,7 @@ impl<E: Environment> Ternary for Field<E> {
             // -------------------------------------------------------
             //    witness = condition * a + (1 - condition) * b
             // => witness = b + condition * (a - b)
-            // => condition * (a - b) = witness - b
+            // => (a - b) * condition = witness - b
             //
             //
             // Assumption
@@ -58,32 +58,32 @@ impl<E: Environment> Ternary for Field<E> {
             //
             // Case 1: condition = 0 AND witness = a (dishonest)
             // -------------------------------------------------------
-            // 0 * (a - b) = a - b
+            // (a - b) * 0 = a - b
             //           0 = a - b
             // => if a != b, as LHS != RHS, the witness is incorrect.
             //
             //
             // Case 2: condition = 0 AND witness = b (honest)
             // -------------------------------------------------------
-            // 0 * (a - b) = b - b
+            // (a - b) * 0 = b - b
             //           0 = 0
             // => as LHS == RHS, the witness is correct.
             //
             //
             // Case 3: condition = 1 AND witness = a (honest)
             // -------------------------------------------------------
-            // 1 * (a - b) = a - b
+            // (a - b) * 1 = a - b
             //       a - b = a - b
             // => as LHS == RHS, the witness is correct.
             //
             //
             // Case 4: condition = 1 AND witness = b (dishonest)
             // -------------------------------------------------------
-            // 1 * (a - b) = b - b
+            // (a - b) * 1 = b - b
             //       a - b = 0
             // => if a != b, as LHS != RHS, the witness is incorrect.
             //
-            E::enforce(|| (condition, (first - second), (&witness - second)));
+            E::enforce(|| ((first - second), condition, (&witness - second)));
 
             witness
         }

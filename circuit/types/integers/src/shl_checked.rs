@@ -66,33 +66,92 @@ impl<E: Environment, I: IntegerType, M: Magnitude> ShlChecked<Integer<E, M>> for
 
     #[inline]
     fn shl_checked(&self, rhs: &Integer<E, M>) -> Self::Output {
+        // Retrieve the index for the first upper bit from the RHS that we mask.
+        let first_upper_bit_index = I::BITS.trailing_zeros() as usize;
+        // Initialize a constant `two`.
         let two = Self::one() + Self::one();
         match I::is_signed() {
             true => {
-                // Compute 2 ^ `lhs` as unsigned integer of the size I::BITS.
-                // This is necessary to avoid a spurious overflow when `rhs` is I::BITS - 1.
-                // For example, 2i8 ^ 7i8 overflows, however -1i8 << 7i8 ==> -1i8 * 2i8 ^ 7i8 ==> -128i8, which is a valid i8 value.
-                let unsigned_two = two.cast_as_dual();
-                // Note that `pow_checked` is used to enforce that `rhs` < I::BITS.
-                let unsigned_factor = unsigned_two.pow_checked(rhs);
-                // For all values of `rhs` such that `rhs` < I::BITS,
-                //  - if `rhs` == I::BITS - 1, `signed_factor` == I::MIN,
-                //  - otherwise, `signed_factor` is the same as `unsigned_factor`.
-                let signed_factor = Self { bits_le: unsigned_factor.bits_le, phantom: Default::default() };
+                if 3 * I::BITS < E::BaseField::size_in_data_bits() as u64 {
+                    // Enforce that the upper bits of `rhs` are all zero.
+                    Boolean::assert_bits_are_zero(&rhs.bits_le[first_upper_bit_index..]);
 
-                // If `signed_factor` is I::MIN, then negate `self` in order to balance the sign of I::MIN.
-                let signed_factor_is_min = &signed_factor.is_equal(&Self::constant(console::Integer::MIN));
-                // - If `signed_factor` is I::MIN,
-                //     - and `self` is zero or I::MIN, then `lhs` is equal to `self`.
-                //     - otherwise, `lhs` is equal to `-self`.
-                // - Otherwise, `lhs` is equal to `self`.
-                let lhs = Self::ternary(signed_factor_is_min, &Self::zero().sub_wrapped(self), self);
+                    // Sign-extend `self` to 2 * I::BITS.
+                    let mut bits_le = self.to_bits_le();
+                    bits_le.resize(2 * I::BITS as usize, self.msb().clone());
 
-                // Compute `lhs` * `factor`, which is equivalent to `lhs` * 2 ^ `rhs`.
-                lhs.mul_checked(&signed_factor)
+                    // Calculate the result directly in the field.
+                    // Since 2^{rhs} < Integer::MAX and 3 * I::BITS is less than E::BaseField::size in data bits,
+                    // we know that the operation will not overflow the field modulus.
+                    let mut result = Field::from_bits_le(&bits_le);
+                    for (i, bit) in rhs.bits_le[..first_upper_bit_index].iter().enumerate() {
+                        // In each iteration, multiple the result by 2^(1<<i), if the bit is set.
+                        // Note that instantiating the field from a u128 is safe since it is larger than all eligible integer types.
+                        let constant = Field::constant(console::Field::from_u128(2u128.pow(1 << i)));
+                        let product = &result * &constant;
+                        result = Field::ternary(bit, &product, &result);
+                    }
+                    // Extract the bits of the result, including the carry bits.
+                    let bits_le = result.to_lower_bits_le(3 * I::BITS as usize);
+                    // Split the bits into the lower and upper bits.
+                    let (lower_bits_le, upper_bits_le) = bits_le.split_at(I::BITS as usize);
+                    // Initialize the integer from the lower bits.
+                    let result = Self { bits_le: lower_bits_le.to_vec(), phantom: Default::default() };
+                    // Ensure that the sign of the first I::BITS upper bits match the sign of the result.
+                    for bit in &upper_bits_le[..(I::BITS as usize)] {
+                        E::assert_eq(bit, result.msb());
+                    }
+                    // Return the result.
+                    result
+                } else {
+                    // Compute 2 ^ `rhs` as unsigned integer of the size I::BITS.
+                    // This is necessary to avoid a spurious overflow when `rhs` is I::BITS - 1.
+                    // For example, 2i8 ^ 7i8 overflows, however -1i8 << 7i8 ==> -1i8 * 2i8 ^ 7i8 ==> -128i8, which is a valid i8 value.
+                    let unsigned_two = two.cast_as_dual();
+                    // Note that `pow_checked` is used to enforce that `rhs` < I::BITS.
+                    let unsigned_factor = unsigned_two.pow_checked(rhs);
+                    // For all values of `rhs` such that `rhs` < I::BITS,
+                    //  - if `rhs` == I::BITS - 1, `signed_factor` == I::MIN,
+                    //  - otherwise, `signed_factor` is the same as `unsigned_factor`.
+                    let signed_factor = Self { bits_le: unsigned_factor.bits_le, phantom: Default::default() };
+
+                    // If `signed_factor` is I::MIN, then negate `self` in order to balance the sign of I::MIN.
+                    let signed_factor_is_min = &signed_factor.is_equal(&Self::constant(console::Integer::MIN));
+                    let lhs = Self::ternary(signed_factor_is_min, &Self::zero().sub_wrapped(self), self);
+
+                    // Compute `lhs` * `factor`, which is equivalent to `lhs` * 2 ^ `rhs`.
+                    lhs.mul_checked(&signed_factor)
+                }
             }
-            // Compute `lhs` * 2 ^ `rhs`.
-            false => self.mul_checked(&two.pow_checked(rhs)),
+            false => {
+                if 2 * I::BITS < E::BaseField::size_in_data_bits() as u64 {
+                    // Enforce that the upper bits of `rhs` are all zero.
+                    Boolean::assert_bits_are_zero(&rhs.bits_le[first_upper_bit_index..]);
+
+                    // Calculate the result directly in the field.
+                    // Since 2^{rhs} < Integer::MAX and 2 * I::BITS is less than E::BaseField::size in data bits,
+                    // we know that the operation will not overflow Integer::MAX or the field modulus.
+                    let mut result = self.to_field();
+                    for (i, bit) in rhs.bits_le[..first_upper_bit_index].iter().enumerate() {
+                        // In each iteration, multiply the result by 2^(1<<i), if the bit is set.
+                        // Note that instantiating the field from a u128 is safe since it is larger than all eligible integer types.
+                        let constant = Field::constant(console::Field::from_u128(2u128.pow(1 << i)));
+                        let product = &result * &constant;
+                        result = Field::ternary(bit, &product, &result);
+                    }
+                    // Extract the bits of the result, including the carry bits.
+                    let bits_le = result.to_lower_bits_le(2 * I::BITS as usize);
+                    // Split the bits into the lower and upper bits.
+                    let (lower_bits_le, upper_bits_le) = bits_le.split_at(I::BITS as usize);
+                    // Ensure that the carry bits are all zero.
+                    Boolean::assert_bits_are_zero(upper_bits_le);
+                    // Initialize the integer from the lower bits
+                    Self { bits_le: lower_bits_le.to_vec(), phantom: Default::default() }
+                } else {
+                    // Compute `lhs` * 2 ^ `rhs`.
+                    self.mul_checked(&two.pow_checked(rhs))
+                }
+            }
         }
     }
 }
@@ -116,7 +175,7 @@ impl<E: Environment, I: IntegerType> OutputMode<dyn Shl<Integer<E, I>, Output = 
 impl<E: Environment, I: IntegerType, M: Magnitude> Metrics<dyn ShlChecked<Integer<E, M>, Output = Integer<E, I>>>
     for Integer<E, I>
 {
-    type Case = (Mode, Mode);
+    type Case = (Mode, Mode, bool, bool);
 
     fn count(case: &Self::Case) -> Count {
         // A quick hack that matches `(u8 -> 0, u16 -> 1, u32 -> 2, u64 -> 3, u128 -> 4)`.

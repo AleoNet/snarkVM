@@ -87,7 +87,6 @@ impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
         for (circuit, state) in state.circuit_specific_states.iter_mut() {
             let batches = batches.drain(0..state.batch_size).collect_vec();
             circuit_specific_batches.insert(circuit.id, batches);
-            end_timer!(round_time);
         }
         let mask_poly = SM::ZK.then(|| Self::calculate_mask_poly(state.max_variable_domain, rng));
         let oracles = prover::FirstOracles { batches: circuit_specific_batches, mask_poly };
@@ -95,6 +94,7 @@ impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
             state.circuit_specific_states.iter().map(|(c, s)| (&c.id, &s.batch_size))
         )));
         state.first_round_oracles = Some(oracles);
+        end_timer!(round_time);
         Ok(state)
     }
 

@@ -56,18 +56,32 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         &self,
         private_key: &PrivateKey<N>,
         credits: Record<N, Plaintext<N>>,
-        fee_in_microcredits: u64,
+        base_fee_in_microcredits: u64,
+        priority_fee_in_microcredits: u64,
         deployment_or_execution_id: Field<N>,
         rng: &mut R,
     ) -> Result<Authorization<N>> {
+        macro_rules! logic {
+            ($process:expr, $network:path, $aleo:path) => {{
+                // Compute the authorization.
+                let authorization = $process.authorize_fee_private::<$aleo, _>(
+                    cast_ref!(&private_key as PrivateKey<$network>),
+                    cast_ref!(credits as Record<$network, Plaintext<$network>>).clone(),
+                    base_fee_in_microcredits,
+                    priority_fee_in_microcredits,
+                    *cast_ref!(deployment_or_execution_id as Field<$network>),
+                    rng,
+                )?;
+                // Prepare the authorization.
+                Ok(cast_ref!(authorization as Authorization<N>).clone())
+            }};
+        }
+
         // Compute the authorization.
-        self.process.read().authorize_fee_private(
-            private_key,
-            credits,
-            fee_in_microcredits,
-            deployment_or_execution_id,
-            rng,
-        )
+        let timer = timer!("VM::authorize_fee_private");
+        let result = process!(self, logic);
+        finish!(timer, "Compute the authorization");
+        result
     }
 
     /// Authorizes the fee given the the fee amount (in microcredits) and the deployment or execution ID.
@@ -75,12 +89,31 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     pub fn authorize_fee_public<R: Rng + CryptoRng>(
         &self,
         private_key: &PrivateKey<N>,
-        fee_in_microcredits: u64,
+        base_fee_in_microcredits: u64,
+        priority_fee_in_microcredits: u64,
         deployment_or_execution_id: Field<N>,
         rng: &mut R,
     ) -> Result<Authorization<N>> {
+        macro_rules! logic {
+            ($process:expr, $network:path, $aleo:path) => {{
+                // Compute the authorization.
+                let authorization = $process.authorize_fee_public::<$aleo, _>(
+                    cast_ref!(&private_key as PrivateKey<$network>),
+                    base_fee_in_microcredits,
+                    priority_fee_in_microcredits,
+                    *cast_ref!(deployment_or_execution_id as Field<$network>),
+                    rng,
+                )?;
+                // Prepare the authorization.
+                Ok(cast_ref!(authorization as Authorization<N>).clone())
+            }};
+        }
+
         // Compute the authorization.
-        self.process.read().authorize_fee_public(private_key, fee_in_microcredits, deployment_or_execution_id, rng)
+        let timer = timer!("VM::authorize_fee_public");
+        let result = process!(self, logic);
+        finish!(timer, "Compute the authorization");
+        result
     }
 }
 

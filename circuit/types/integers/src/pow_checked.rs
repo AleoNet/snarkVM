@@ -60,11 +60,8 @@ impl<E: Environment, I: IntegerType, M: Magnitude> PowChecked<Integer<E, M>> for
 
                 let result_times_self = if I::is_signed() {
                     // Multiply the absolute value of `self` and `other` in the base field.
-                    // Note that it is safe to use abs_wrapped since we want Integer::MIN to be interpreted as an unsigned number.
-                    let (product, carry) = Self::mul_with_carry(&(&result).abs_wrapped(), &self.abs_wrapped());
-
-                    // We need to check that the abs(a) * abs(b) did not exceed the unsigned maximum.
-                    let carry_bits_nonzero = carry.iter().fold(Boolean::constant(false), |a, b| a | b);
+                    // Note: it is safe to use `abs_wrapped` since we want `Integer::MIN` to be interpreted as an unsigned number.
+                    let (product, overflow) = Self::mul_with_flags(&(&result).abs_wrapped(), &self.abs_wrapped());
 
                     // If the product should be positive, then it cannot exceed the signed maximum.
                     let operands_same_sign = &result.msb().is_equal(self.msb());
@@ -80,16 +77,15 @@ impl<E: Environment, I: IntegerType, M: Magnitude> PowChecked<Integer<E, M>> for
                         !operands_same_sign & !negative_product_lt_or_eq_signed_min
                     };
 
-                    let overflow = carry_bits_nonzero | positive_product_overflows | negative_product_underflows;
+                    let overflow = overflow | positive_product_overflows | negative_product_underflows;
                     E::assert_eq(overflow & bit, E::zero());
 
                     // Return the product of `self` and `other` with the appropriate sign.
                     Self::ternary(operands_same_sign, &product, &(!&product).add_wrapped(&Self::one()))
                 } else {
-                    let (product, carry) = Self::mul_with_carry(&result, self);
+                    let (product, overflow) = Self::mul_with_flags(&result, self);
 
-                    // For unsigned multiplication, check that the none of the carry bits are set.
-                    let overflow = carry.iter().fold(Boolean::constant(false), |a, b| a | b);
+                    // For unsigned multiplication, check that the overflow flag is not set.
                     E::assert_eq(overflow & bit, E::zero());
 
                     // Return the product of `self` and `other`.
@@ -103,10 +99,47 @@ impl<E: Environment, I: IntegerType, M: Magnitude> PowChecked<Integer<E, M>> for
     }
 }
 
+impl<E: Environment, I: IntegerType> Integer<E, I> {
+    /// Multiply the integer bits of `this` and `that`, returning a flag indicating whether the product overflowed.
+    /// This method assumes that the `this` and `that` are both positive.
+    #[inline]
+    fn mul_with_flags(this: &Integer<E, I>, that: &Integer<E, I>) -> (Integer<E, I>, Boolean<E>) {
+        // Case 1 - 2 integers fit in 1 field element (u8, u16, u32, u64, i8, i16, i32, i64).
+        if 2 * I::BITS < (E::BaseField::size_in_bits() - 1) as u64 {
+            // Instead of multiplying the bits of `self` and `other`, witness the integer product.
+            let product: Integer<E, I> = witness!(|this, that| this.mul_wrapped(&that));
+
+            // Check that the computed product is not equal to witnessed product, in the base field.
+            // Note: The multiplication is safe as the field twice as large as the maximum integer type supported.
+            let computed_product = this.to_field() * that.to_field();
+            let witnessed_product = product.to_field();
+            let flag = computed_product.is_not_equal(&witnessed_product);
+
+            // Return the product of `self` and `other` and the overflow flag.
+            (product, flag)
+        }
+        // Case 2 - 1.5 integers fit in 1 field element (u128, i128).
+        else if (I::BITS + I::BITS / 2) < (E::BaseField::size_in_bits() - 1) as u64 {
+            // Use Karatsuba multiplication to compute the product of `self` and `other` and the carry bits.
+            let (product, z_1_upper_bits, z2) = Self::karatsuba_multiply(this, that);
+            // Reconstruct the upper bits of z_1 in the field.
+            let z_1_upper_field = Field::from_bits_le(&z_1_upper_bits);
+            // Compute whether the sum of z_1_field and z_2 is zero.
+            let z_1_upper_field_plus_z_2 = &z_1_upper_field + &z2;
+            let flag = z_1_upper_field_plus_z_2.is_not_equal(&Field::zero());
+
+            // Return the product of `self` and `other` and the overflow flag.
+            (product, flag)
+        } else {
+            E::halt(format!("Multiplication of integers of size {} is not supported", I::BITS))
+        }
+    }
+}
+
 impl<E: Environment, I: IntegerType, M: Magnitude> Metrics<dyn PowChecked<Integer<E, M>, Output = Integer<E, I>>>
     for Integer<E, I>
 {
-    type Case = (Mode, Mode);
+    type Case = (Mode, Mode, bool, bool);
 
     fn count(case: &Self::Case) -> Count {
         match (case.0, case.1) {

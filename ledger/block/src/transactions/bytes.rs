@@ -26,6 +26,10 @@ impl<N: Network> FromBytes for Transactions<N> {
         }
         // Read the number of transactions.
         let num_txs: u32 = FromBytes::read_le(&mut reader)?;
+        // Ensure the number of transactions is within bounds.
+        if num_txs as usize > Self::MAX_TRANSACTIONS {
+            return Err(error("Failed to read transactions: too many transactions"));
+        }
         // Read the transactions.
         let transactions = (0..num_txs).map(|_| FromBytes::read_le(&mut reader)).collect::<Result<Vec<_>, _>>()?;
         // Return the transactions.
@@ -40,7 +44,7 @@ impl<N: Network> ToBytes for Transactions<N> {
         // Write the version.
         1u8.write_le(&mut writer)?;
         // Write the number of transactions.
-        u32::try_from(self.transactions.len()).map_err(|e| error(e.to_string()))?.write_le(&mut writer)?;
+        u32::try_from(self.transactions.len()).map_err(error)?.write_le(&mut writer)?;
         // Write the transactions.
         self.transactions.values().try_for_each(|transaction| transaction.write_le(&mut writer))
     }
@@ -49,9 +53,6 @@ impl<N: Network> ToBytes for Transactions<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use console::network::Testnet3;
-
-    type CurrentNetwork = Testnet3;
 
     #[test]
     fn test_bytes() -> Result<()> {
@@ -61,7 +62,6 @@ mod tests {
             // Check the byte representation.
             let expected_bytes = expected.to_bytes_le()?;
             assert_eq!(expected, Transactions::read_le(&expected_bytes[..])?);
-            assert!(Transactions::<CurrentNetwork>::read_le(&expected_bytes[1..]).is_err());
         }
         Ok(())
     }

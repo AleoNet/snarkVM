@@ -299,13 +299,7 @@ mod tests {
 
                 // Prepare the preimage.
                 let native_input = (0..num_inputs).map(|_| Uniform::rand(rng)).collect::<Vec<bool>>();
-                let mut input =
-                    native_input.iter().map(|v| Boolean::<Circuit>::new(Mode::Private, *v)).collect::<Vec<_>>();
-                // Since the implementation of the native hash zero-extends the bits to be byte-aligned,
-                // while circuit hash operates on bits according to FIPS,
-                // we need to zero-extend the circuit hash input to be byte-aligned
-                // in order to make an apple-to-apple comparison in the tests.
-                input.resize((input.len() + 7) / 8 * 8, Boolean::constant(false));
+                let input = native_input.iter().map(|v| Boolean::<Circuit>::new(Mode::Private, *v)).collect::<Vec<_>>();
 
                 // Compute the console hash.
                 let expected = $console.hash(&native_input).expect("Failed to hash console input");
@@ -335,12 +329,7 @@ mod tests {
         for i in 0..ITERATIONS {
             // Prepare the preimage.
             let native_input = (0..num_inputs).map(|_| Uniform::rand(rng)).collect::<Vec<bool>>();
-            let mut input = native_input.iter().map(|v| Boolean::<Circuit>::new(mode, *v)).collect::<Vec<_>>();
-            // Since the implementation of the native hash zero-extends the bits to be byte-aligned,
-            // while circuit hash operates on bits according to FIPS,
-            // we need to zero-extend the circuit hash input to be byte-aligned
-            // in order to make an apple-to-apple comparison in the tests.
-            input.resize((input.len() + 7) / 8 * 8, Boolean::constant(false));
+            let input = native_input.iter().map(|v| Boolean::<Circuit>::new(mode, *v)).collect::<Vec<_>>();
 
             // Compute the native hash.
             let expected = native.hash(&native_input).expect("Failed to hash native input");

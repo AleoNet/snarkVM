@@ -19,7 +19,7 @@ use crate::{
 use console::{
     account::{Address, PrivateKey},
     network::prelude::*,
-    program::{Entry, Identifier, Literal, Plaintext, Value},
+    program::{Entry, Identifier, Literal, Plaintext, ProgramID, Value},
 };
 use ledger_block::{ConfirmedTransaction, Rejected, Transaction};
 use ledger_store::{helpers::memory::ConsensusMemory, ConsensusStore};
@@ -81,7 +81,7 @@ fn test_state_path() {
 }
 
 #[test]
-fn test_insufficient_fees() {
+fn test_insufficient_private_fees() {
     let rng = &mut TestRng::default();
 
     // Initialize the test environment.
@@ -136,6 +136,7 @@ fn test_insufficient_fees() {
                 &private_key,
                 record_2.clone(),
                 10_000_000,
+                1_000,
                 execution.to_execution_id().unwrap(),
                 rng,
             )
@@ -147,7 +148,7 @@ fn test_insufficient_fees() {
         // Check that a transaction with insufficient fee will fail.
         let insufficient_fee_authorization = ledger
             .vm
-            .authorize_fee_private(&private_key, record_2.clone(), 1, execution.to_execution_id().unwrap(), rng)
+            .authorize_fee_private(&private_key, record_2.clone(), 1, 0, execution.to_execution_id().unwrap(), rng)
             .unwrap();
         let insufficient_fee = ledger.vm.execute_fee_authorization(insufficient_fee_authorization, None, rng).unwrap();
         let insufficient_fee_transaction =
@@ -180,12 +181,62 @@ finalize foo:
         let deployment = transaction.deployment().unwrap();
         let insufficient_fee_authorization = ledger
             .vm
-            .authorize_fee_private(&private_key, record_2, 1, deployment.to_deployment_id().unwrap(), rng)
+            .authorize_fee_private(&private_key, record_2, 1, 0, deployment.to_deployment_id().unwrap(), rng)
             .unwrap();
         let insufficient_fee = ledger.vm.execute_fee_authorization(insufficient_fee_authorization, None, rng).unwrap();
         let insufficient_fee_transaction =
             Transaction::from_deployment(*transaction.owner().unwrap(), deployment.clone(), insufficient_fee).unwrap();
         assert!(ledger.check_transaction_basic(&insufficient_fee_transaction, None).is_err());
+    }
+}
+
+#[test]
+fn test_insufficient_public_fees() {
+    let rng = &mut TestRng::default();
+
+    // Initialize the test environment.
+    let crate::test_helpers::TestEnv { ledger, private_key, .. } = crate::test_helpers::sample_test_env(rng);
+
+    // Sample recipient.
+    let recipient_private_key = PrivateKey::new(rng).unwrap();
+    let recipient_address = Address::try_from(&recipient_private_key).unwrap();
+
+    // Fund the recipient with 1 million credits.
+    {
+        let inputs =
+            [Value::from_str(&format!("{recipient_address}")).unwrap(), Value::from_str("1000000000000u64").unwrap()];
+        let transaction = ledger
+            .vm
+            .execute(&private_key, ("credits.aleo", "transfer_public"), inputs.into_iter(), None, 0, None, rng)
+            .unwrap();
+
+        let block =
+            ledger.prepare_advance_to_next_beacon_block(&private_key, vec![], vec![], vec![transaction], rng).unwrap();
+
+        // Check that the next block is valid.
+        ledger.check_next_block(&block).unwrap();
+        // Add the deployment block to the ledger.
+        ledger.advance_to_next_block(&block).unwrap();
+    }
+
+    println!("-----------");
+
+    // Attempt to bond the node with insufficient public fees.
+    {
+        let inputs =
+            [Value::from_str(&format!("{recipient_address}")).unwrap(), Value::from_str("1000000000000u64").unwrap()];
+        let transaction = ledger
+            .vm
+            .execute(&recipient_private_key, ("credits.aleo", "bond_public"), inputs.into_iter(), None, 0, None, rng)
+            .unwrap();
+
+        let block =
+            ledger.prepare_advance_to_next_beacon_block(&private_key, vec![], vec![], vec![transaction], rng).unwrap();
+
+        // Check that the next block is valid.
+        ledger.check_next_block(&block).unwrap();
+        // Add the deployment block to the ledger.
+        ledger.advance_to_next_block(&block).unwrap();
     }
 }
 
@@ -232,7 +283,7 @@ finalize foo:
     // Deploy.
     let transaction = ledger.vm.deploy(&private_key, &program, credits, 0, None, rng).unwrap();
     // Verify.
-    assert!(ledger.vm().verify_transaction(&transaction, None));
+    ledger.vm().check_transaction(&transaction, None).unwrap();
 
     // Construct the next block.
     let block =
@@ -286,7 +337,7 @@ finalize foo:
     let transaction =
         ledger.vm.execute(&private_key, ("dummy.aleo", "foo"), inputs, Some(sufficient_record), 0, None, rng).unwrap();
     // Verify.
-    assert!(ledger.vm.verify_transaction(&transaction, None));
+    ledger.vm.check_transaction(&transaction, None).unwrap();
     // Ensure that the ledger deems the transaction valid.
     assert!(ledger.check_transaction_basic(&transaction, None).is_ok());
 }
@@ -378,19 +429,57 @@ finalize failed_assert:
     if let Transaction::Execute(_, execution, fee) = failed_assert_transaction {
         let fee_transaction = Transaction::from_fee(fee.unwrap()).unwrap();
         let expected_confirmed_transaction =
-            ConfirmedTransaction::RejectedExecute(0, fee_transaction, Rejected::new_execution(execution));
+            ConfirmedTransaction::RejectedExecute(0, fee_transaction, Rejected::new_execution(execution), vec![]);
 
         assert_eq!(confirmed_transaction, &expected_confirmed_transaction);
     }
 
     // Check that the unconfirmed transaction ID of the rejected execution is correct.
-    assert_eq!(confirmed_transaction.unconfirmed_id().unwrap(), failed_assert_transaction_id);
+    assert_eq!(confirmed_transaction.to_unconfirmed_transaction_id().unwrap(), failed_assert_transaction_id);
 
     // Check that the next block is valid.
     ledger.check_next_block(&next_block).unwrap();
 
     // Add the block with the rejected transaction to the ledger.
     ledger.advance_to_next_block(&next_block).unwrap();
+}
+
+#[test]
+fn test_deploy_with_public_fees() {
+    let rng = &mut TestRng::default();
+
+    // Initialize the test environment.
+    let crate::test_helpers::TestEnv { ledger, private_key, .. } = crate::test_helpers::sample_test_env(rng);
+
+    // Deploy a test program to the ledger.
+    let program_id = ProgramID::<CurrentNetwork>::from_str("dummy_program.aleo").unwrap();
+    let program = Program::<CurrentNetwork>::from_str(&format!(
+        "
+program {program_id};
+function foo:
+    input r0 as u8.private;
+    async foo r0 into r1;
+    output r1 as {program_id}/foo.future;
+finalize foo:
+    input r0 as u8.public;
+    add r0 r0 into r1;",
+    ))
+    .unwrap();
+
+    // Deploy.
+    let transaction = ledger.vm.deploy(&private_key, &program, None, 0, None, rng).unwrap();
+    // Verify.
+    ledger.vm().check_transaction(&transaction, None).unwrap();
+
+    // Construct the next block.
+    let block =
+        ledger.prepare_advance_to_next_beacon_block(&private_key, vec![], vec![], vec![transaction], rng).unwrap();
+    // Advance to the next block.
+    ledger.advance_to_next_block(&block).unwrap();
+    assert_eq!(ledger.latest_height(), 1);
+    assert_eq!(ledger.latest_hash(), block.hash());
+
+    assert_eq!(program, ledger.get_program(program_id).unwrap())
 }
 
 #[test]
@@ -477,4 +566,73 @@ fn test_bond_and_unbond_validator() {
     // Check that the committee does not include the new member.
     let committee = ledger.latest_committee().unwrap();
     assert!(!committee.is_committee_member(new_member_address));
+}
+
+#[test]
+fn test_aborted_transaction_indexing() {
+    let rng = &mut TestRng::default();
+
+    // Initialize the test environment.
+    let crate::test_helpers::TestEnv { ledger, private_key, .. } = crate::test_helpers::sample_test_env(rng);
+
+    // Sample a recipient account.
+    let recipient_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+    let recipient_address = Address::try_from(&recipient_private_key).unwrap();
+
+    // Sample another recipient account.
+    let recipient_private_key_2 = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+    let recipient_address_2 = Address::try_from(&recipient_private_key_2).unwrap();
+
+    // Fund a new address.
+    let inputs = [Value::from_str(&format!("{recipient_address}")).unwrap(), Value::from_str("185000u64").unwrap()];
+    let transfer_transaction = ledger
+        .vm
+        .execute(&private_key, ("credits.aleo", "transfer_public"), inputs.iter(), None, 0, None, rng)
+        .unwrap();
+
+    // Construct the next block.
+    let transfer_block = ledger
+        .prepare_advance_to_next_beacon_block(&private_key, vec![], vec![], vec![transfer_transaction], rng)
+        .unwrap();
+
+    // Check that the next block is valid.
+    ledger.check_next_block(&transfer_block).unwrap();
+
+    // Add the deployment block to the ledger.
+    ledger.advance_to_next_block(&transfer_block).unwrap();
+
+    // Send a transaction that will be aborted due to insufficient fee.
+    let inputs = [Value::from_str(&format!("{recipient_address_2}")).unwrap(), Value::from_str("1u64").unwrap()];
+    let transfer_transaction = ledger
+        .vm
+        .execute(&recipient_private_key_2, ("credits.aleo", "transfer_public"), inputs.iter(), None, 0, None, rng)
+        .unwrap();
+    let aborted_transaction_id = transfer_transaction.id();
+
+    // Create another arbitrary transaction.
+    let inputs = [Value::from_str(&format!("{recipient_address_2}")).unwrap(), Value::from_str("1u64").unwrap()];
+    let transfer_transaction_2 = ledger
+        .vm
+        .execute(&private_key, ("credits.aleo", "transfer_public"), inputs.iter(), None, 0, None, rng)
+        .unwrap();
+
+    // Create a block.
+    let block = ledger
+        .prepare_advance_to_next_beacon_block(
+            &private_key,
+            vec![],
+            vec![],
+            vec![transfer_transaction, transfer_transaction_2],
+            rng,
+        )
+        .unwrap();
+
+    // Check that the block contains the aborted transaction.
+    assert_eq!(block.aborted_transaction_ids(), &[aborted_transaction_id]);
+
+    // Check that the next block is valid.
+    ledger.check_next_block(&block).unwrap();
+
+    // Add the deployment block to the ledger.
+    ledger.advance_to_next_block(&block).unwrap();
 }

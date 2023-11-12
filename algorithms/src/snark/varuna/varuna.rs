@@ -139,7 +139,7 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, SM: SNARKMode> VarunaSNARK
         circuit_commitments: impl Iterator<Item = &'a [crate::polycommit::sonic_pc::Commitment<E>]>,
     ) -> FS {
         let mut sponge = FS::new_with_parameters(fs_parameters);
-        sponge.absorb_bytes(&to_bytes_le![&Self::PROTOCOL_NAME].unwrap());
+        sponge.absorb_bytes(Self::PROTOCOL_NAME);
         for (batch_size, inputs) in inputs_and_batch_sizes.values() {
             sponge.absorb_bytes(&(u64::try_from(*batch_size).unwrap()).to_le_bytes());
             for input in inputs.iter() {
@@ -618,6 +618,7 @@ where
             prover_fourth_message,
             pc_proof,
         )?;
+        proof.check_batch_sizes()?;
         assert_eq!(proof.pc_proof.is_hiding(), SM::ZK);
 
         end_timer!(prover_time);
@@ -637,7 +638,8 @@ where
             return Err(SNARKError::EmptyBatch);
         }
 
-        let batch_sizes_vec = proof.batch_sizes()?;
+        proof.check_batch_sizes()?;
+        let batch_sizes_vec = proof.batch_sizes();
         let mut batch_sizes = BTreeMap::new();
         for (i, (vk, public_inputs_i)) in keys_to_inputs.iter().enumerate() {
             batch_sizes.insert(vk.id, batch_sizes_vec[i]);
@@ -676,7 +678,8 @@ where
                     .iter()
                     .map(|input| {
                         let input = input.borrow().to_field_elements().unwrap();
-                        let mut new_input = vec![E::Fr::one()];
+                        let mut new_input = Vec::with_capacity((1 + input.len()).max(input_domain.size()));
+                        new_input.push(E::Fr::one());
                         new_input.extend_from_slice(&input);
                         new_input.resize(input.len().max(input_domain.size()), E::Fr::zero());
                         if cfg!(debug_assertions) {

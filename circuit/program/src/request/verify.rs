@@ -16,7 +16,7 @@ use super::*;
 
 impl<A: Aleo> Request<A> {
     /// Returns `true` if the input IDs are derived correctly, the input records all belong to the signer,
-    /// and the signature is valid.
+    /// and the signature is valid. tpk is passed separately so it can have a Mode different from Self.
     ///
     /// Verifies (challenge == challenge') && (address == address') && (serial_numbers == serial_numbers') where:
     ///     challenge' := HashToScalar(r * G, pk_sig, pr_sig, signer, \[tvk, tcm, function ID, input IDs\])
@@ -52,23 +52,15 @@ impl<A: Aleo> Request<A> {
             None => A::halt("Missing input elements in request verification"),
         }
 
-        // Verify the transition public key and transition view key are well-formed.
-        let tvk_checks = {
-            // Compute the transition public key `tpk` as `tsk * G`.
-            let candidate_tpk = A::g_scalar_multiply(&self.tsk);
-            // Compute the transition view key `tvk` as `tsk * signer`.
-            let tvk = (self.signer.to_group() * &self.tsk).to_x_coordinate();
+        // Verify the transition public key and commitment are well-formed.
+        let tpk_checks = {
             // Compute the transition commitment as `Hash(tvk)`.
-            let tcm = A::hash_psd2(&[tvk.clone()]);
+            let tcm = A::hash_psd2(&[self.tvk.clone()]);
 
-            // Ensure the computed transition public key matches the expected transition public key.
-            tpk.is_equal(&candidate_tpk)
-                // Ensure the transition public key matches with the derived one from the signature.
-                & tpk.is_equal(&self.to_tpk())
-                // Ensure the computed transition view key matches.
-                & tvk.is_equal(&self.tvk)
-                // Ensure the computed transition commitment matches.
-                & tcm.is_equal(&self.tcm)
+            // Ensure the transition public key matches with the saved one from the signature.
+            tpk.is_equal(&self.to_tpk())
+            // Ensure the computed transition commitment matches.
+            & tcm.is_equal(&self.tcm)
         };
 
         // Verify the signature.
@@ -94,8 +86,8 @@ impl<A: Aleo> Request<A> {
             self.signature.challenge().is_equal(&candidate_challenge) & self.signer.is_equal(&candidate_address)
         };
 
-        // Verify the signature, inputs, and `tvk` are valid.
-        signature_checks & input_checks & tvk_checks
+        // Verify the signature, inputs, and `tpk` are valid.
+        signature_checks & input_checks & tpk_checks
     }
 
     /// Returns `true` if the inputs match their input IDs.
@@ -144,7 +136,8 @@ impl<A: Aleo> Request<A> {
                         // Prepare the index as a constant field element.
                         let input_index = Field::constant(console::Field::from_u16(index as u16));
                         // Construct the preimage as `(function ID || input || tcm || index)`.
-                        let mut preimage = vec![function_id.clone()];
+                        let mut preimage = Vec::new();
+                        preimage.push(function_id.clone());
                         preimage.extend(input.to_fields());
                         preimage.push(tcm.clone());
                         preimage.push(input_index);
@@ -167,7 +160,8 @@ impl<A: Aleo> Request<A> {
                         // Prepare the index as a constant field element.
                         let input_index = Field::constant(console::Field::from_u16(index as u16));
                         // Construct the preimage as `(function ID || input || tcm || index)`.
-                        let mut preimage = vec![function_id.clone()];
+                        let mut preimage = Vec::new();
+                        preimage.push(function_id.clone());
                         preimage.extend(input.to_fields());
                         preimage.push(tcm.clone());
                         preimage.push(input_index);
@@ -276,7 +270,8 @@ impl<A: Aleo> Request<A> {
                         // Prepare the index as a constant field element.
                         let input_index = Field::constant(console::Field::from_u16(index as u16));
                         // Construct the preimage as `(function ID || input || tvk || index)`.
-                        let mut preimage = vec![function_id.clone()];
+                        let mut preimage = Vec::new();
+                        preimage.push(function_id.clone());
                         preimage.extend(record.to_fields());
                         preimage.push(tvk.clone());
                         preimage.push(input_index);
@@ -399,16 +394,16 @@ mod tests {
         // Note: This is correct. At this (high) level of a program, we override the default mode in the `Record` case,
         // based on the user-defined visibility in the record type. Thus, we have nonzero private and constraint values.
         // These bounds are determined experimentally.
-        check_verify(Mode::Constant, 48000, 0, 18000, 18000)
+        check_verify(Mode::Constant, 42520, 0, 17494, 17518)
     }
 
     #[test]
     fn test_sign_and_verify_public() -> Result<()> {
-        check_verify(Mode::Public, 41268, 0, 30403, 30447)
+        check_verify(Mode::Public, 40018, 0, 26401, 26429)
     }
 
     #[test]
     fn test_sign_and_verify_private() -> Result<()> {
-        check_verify(Mode::Private, 41268, 0, 30403, 30447)
+        check_verify(Mode::Private, 40018, 0, 26401, 26429)
     }
 }

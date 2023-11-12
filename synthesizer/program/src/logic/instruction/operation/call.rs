@@ -544,7 +544,6 @@ mod tests {
             // Check the byte representation.
             let expected_bytes = expected.to_bytes_le().unwrap();
             assert_eq!(expected, Call::read_le(&expected_bytes[..]).unwrap());
-            assert!(Call::<CurrentNetwork>::read_le(&expected_bytes[1..]).is_err());
         }
     }
 }

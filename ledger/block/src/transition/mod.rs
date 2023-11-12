@@ -225,7 +225,8 @@ impl<N: Network> Transition<N> {
                         // Construct the (console) output index as a field element.
                         let index = Field::from_u16(u16::try_from(num_inputs + index)?);
                         // Construct the preimage as `(function ID || output || tvk || index)`.
-                        let mut preimage = vec![function_id];
+                        let mut preimage = Vec::new();
+                        preimage.push(function_id);
                         preimage.extend(record.to_fields()?);
                         preimage.push(*request.tvk());
                         preimage.push(index);
@@ -312,7 +313,7 @@ impl<N: Network> Transition<N> {
     /// Returns `true` if this is a `fee_private` transition.
     #[inline]
     pub fn is_fee_private(&self) -> bool {
-        self.inputs.len() == 3
+        self.inputs.len() == 4
             && self.outputs.len() == 1
             && self.program_id.to_string() == "credits.aleo"
             && self.function_name.to_string() == "fee_private"
@@ -321,7 +322,7 @@ impl<N: Network> Transition<N> {
     /// Returns `true` if this is a `fee_public` transition.
     #[inline]
     pub fn is_fee_public(&self) -> bool {
-        self.inputs.len() == 2
+        self.inputs.len() == 3
             && self.outputs.len() == 1
             && self.program_id.to_string() == "credits.aleo"
             && self.function_name.to_string() == "fee_public"
@@ -381,7 +382,7 @@ impl<N: Network> Transition<N> {
     /* Input */
 
     /// Returns the input IDs.
-    pub fn input_ids(&self) -> impl '_ + Iterator<Item = &Field<N>> {
+    pub fn input_ids(&self) -> impl '_ + ExactSizeIterator<Item = &Field<N>> {
         self.inputs.iter().map(Input::id)
     }
 
@@ -398,7 +399,7 @@ impl<N: Network> Transition<N> {
     /* Output */
 
     /// Returns the output IDs.
-    pub fn output_ids(&self) -> impl '_ + Iterator<Item = &Field<N>> {
+    pub fn output_ids(&self) -> impl '_ + ExactSizeIterator<Item = &Field<N>> {
         self.outputs.iter().map(Output::id)
     }
 

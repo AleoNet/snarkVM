@@ -63,9 +63,6 @@ impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
             index_info,
             id,
         } = Self::index_helper(c).map_err(|e| anyhow!("{e:?}"))?;
-        let joint_arithmetization_time = start_timer!(|| format!("Arithmetizing A,B,C {id}"));
-
-        end_timer!(joint_arithmetization_time);
 
         let fft_precomp_time = start_timer!(|| format!("Precomputing roots of unity {id}"));
 
@@ -139,9 +136,9 @@ impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
 
         crate::snark::varuna::ahp::matrices::pad_input_for_indexer_and_prover(&mut ics);
 
-        let a = ics.a_matrix();
-        let b = ics.b_matrix();
-        let c = ics.c_matrix();
+        let a = ics.a_matrix()?;
+        let b = ics.b_matrix()?;
+        let c = ics.c_matrix()?;
 
         end_timer!(padding_time);
 

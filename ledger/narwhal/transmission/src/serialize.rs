@@ -18,23 +18,25 @@ impl<N: Network> Serialize for Transmission<N> {
     #[inline]
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
-            true => {
-                let mut transmission = serializer.serialize_struct("Transmission", 2)?;
-                match self {
-                    Self::Ratification => {
-                        transmission.serialize_field("type", "ratification")?;
-                    }
-                    Self::Solution(solution) => {
-                        transmission.serialize_field("type", "solution")?;
-                        transmission.serialize_field("transmission", solution)?;
-                    }
-                    Self::Transaction(transaction) => {
-                        transmission.serialize_field("type", "transaction")?;
-                        transmission.serialize_field("transmission", transaction)?;
-                    }
+            true => match self {
+                Self::Ratification => {
+                    let mut transmission = serializer.serialize_struct("Transmission", 1)?;
+                    transmission.serialize_field("type", "ratification")?;
+                    transmission.end()
                 }
-                transmission.end()
-            }
+                Self::Solution(solution) => {
+                    let mut transmission = serializer.serialize_struct("Transmission", 2)?;
+                    transmission.serialize_field("type", "solution")?;
+                    transmission.serialize_field("transmission", solution)?;
+                    transmission.end()
+                }
+                Self::Transaction(transaction) => {
+                    let mut transmission = serializer.serialize_struct("Transmission", 2)?;
+                    transmission.serialize_field("type", "transaction")?;
+                    transmission.serialize_field("transmission", transaction)?;
+                    transmission.end()
+                }
+            },
             false => ToBytesSerializer::serialize_with_size_encoding(self, serializer),
         }
     }

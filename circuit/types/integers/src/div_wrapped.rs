@@ -93,16 +93,16 @@ impl<E: Environment, I: IntegerType> Metrics<dyn DivWrapped<Integer<E, I>, Outpu
             (Mode::Constant, _) | (_, Mode::Constant) => {
                 match (I::is_signed(), 2 * I::BITS < E::BaseField::size_in_data_bits() as u64) {
                     (true, true) => Count::less_than(5 * I::BITS + 1, 0, (9 * I::BITS) + 6, (9 * I::BITS) + 12),
-                    (true, false) => Count::less_than(5 * I::BITS + 1, 0, 1611, 1814),
-                    (false, true) => Count::less_than(I::BITS + 1, 0, (3 * I::BITS) + 2, (3 * I::BITS) + 5),
-                    (false, false) => Count::less_than(I::BITS + 1, 0, 839, 1039),
+                    (true, false) => Count::less_than(6 * I::BITS + 1, 0, 1481, 1491),
+                    (false, true) => Count::less_than(2 * I::BITS + 1, 0, (3 * I::BITS) + 2, (3 * I::BITS) + 5),
+                    (false, false) => Count::less_than(2 * I::BITS + 1, 0, 839, 839),
                 }
             }
             (_, _) => match (I::is_signed(), 2 * I::BITS < E::BaseField::size_in_data_bits() as u64) {
                 (true, true) => Count::is(4 * I::BITS, 0, (9 * I::BITS) + 6, (9 * I::BITS) + 12),
-                (true, false) => Count::is(4 * I::BITS, 0, 1611, 1814),
+                (true, false) => Count::is(4 * I::BITS, 0, 1481, 1491),
                 (false, true) => Count::is(I::BITS, 0, (3 * I::BITS) + 2, (3 * I::BITS) + 5),
-                (false, false) => Count::is(I::BITS, 0, 839, 1039),
+                (false, false) => Count::less_than(2 * I::BITS, 0, 839, 839),
             },
         }
     }

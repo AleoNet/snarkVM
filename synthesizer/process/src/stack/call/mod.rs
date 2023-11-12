@@ -230,7 +230,7 @@ impl<N: Network> CallTrait<N> for Call<N> {
                         // Return the request and response.
                         (request, response)
                     }
-                    CallStack::CheckDeployment(_, private_key, ..) => {
+                    CallStack::CheckDeployment(_, private_key, ..) | CallStack::PackageRun(_, private_key, ..) => {
                         // Compute the request.
                         let request = Request::sign(
                             &private_key,
@@ -302,8 +302,12 @@ impl<N: Network> CallTrait<N> for Call<N> {
             let sk_tag = circuit::Field::new(circuit::Mode::Private, *request.sk_tag());
             // Inject the `tvk` (from the request) as `Mode::Private`.
             let tvk = circuit::Field::new(circuit::Mode::Private, *request.tvk());
-            // Inject the `tcm` (from the request) as `Mode::Private`.
-            let tcm = circuit::Field::new(circuit::Mode::Private, *request.tcm());
+            // Inject the `tcm` (from the request) as `Mode::Public`.
+            let tcm = circuit::Field::new(circuit::Mode::Public, *request.tcm());
+            // Compute the transition commitment as `Hash(tvk)`.
+            let candidate_tcm = A::hash_psd2(&[tvk.clone()]);
+            // Ensure the transition commitment matches the computed transition commitment.
+            A::assert_eq(&tcm, &candidate_tcm);
             // Inject the input IDs (from the request) as `Mode::Public`.
             let input_ids = request
                 .input_ids()
@@ -327,7 +331,7 @@ impl<N: Network> CallTrait<N> for Call<N> {
             );
             A::assert(check_input_ids);
 
-            // Inject the outputs as `Mode::Private` (with the output IDs as `Mode::Public`).
+            // Inject the outputs as `Mode::Private` (with the 'tcm' and output IDs as `Mode::Public`).
             let outputs = circuit::Response::process_outputs_from_callback(
                 &network_id,
                 &program_id,
