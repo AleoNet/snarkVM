@@ -62,12 +62,12 @@ version = "=0.16.9"
 [dependencies.ledger-narwhal-transmission]
 package = "snarkvm-ledger-narwhal-transmission"
 path = "../narwhal/transmission"
-version = "=0.16.6"
+version = "=0.16.9"
 
 [dependencies.ledger-narwhal-transmission-id]
 package = "snarkvm-ledger-narwhal-transmission-id"
 path = "../narwhal/transmission-id"
-version = "=0.16.6"
+version = "=0.16.9"
 
 [dependencies.synthesizer-program]
 package = "snarkvm-synthesizer-program"
