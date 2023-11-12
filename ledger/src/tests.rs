@@ -81,7 +81,7 @@ fn test_state_path() {
 }
 
 #[test]
-fn test_insufficient_fees() {
+fn test_insufficient_private_fees() {
     let rng = &mut TestRng::default();
 
     // Initialize the test environment.
@@ -187,6 +187,56 @@ finalize foo:
         let insufficient_fee_transaction =
             Transaction::from_deployment(*transaction.owner().unwrap(), deployment.clone(), insufficient_fee).unwrap();
         assert!(ledger.check_transaction_basic(&insufficient_fee_transaction, None).is_err());
+    }
+}
+
+#[test]
+fn test_insufficient_public_fees() {
+    let rng = &mut TestRng::default();
+
+    // Initialize the test environment.
+    let crate::test_helpers::TestEnv { ledger, private_key, .. } = crate::test_helpers::sample_test_env(rng);
+
+    // Sample recipient.
+    let recipient_private_key = PrivateKey::new(rng).unwrap();
+    let recipient_address = Address::try_from(&recipient_private_key).unwrap();
+
+    // Fund the recipient with 1 million credits.
+    {
+        let inputs =
+            [Value::from_str(&format!("{recipient_address}")).unwrap(), Value::from_str("1000000000000u64").unwrap()];
+        let transaction = ledger
+            .vm
+            .execute(&private_key, ("credits.aleo", "transfer_public"), inputs.into_iter(), None, 0, None, rng)
+            .unwrap();
+
+        let block =
+            ledger.prepare_advance_to_next_beacon_block(&private_key, vec![], vec![], vec![transaction], rng).unwrap();
+
+        // Check that the next block is valid.
+        ledger.check_next_block(&block).unwrap();
+        // Add the deployment block to the ledger.
+        ledger.advance_to_next_block(&block).unwrap();
+    }
+
+    println!("-----------");
+
+    // Attempt to bond the node with insufficient public fees.
+    {
+        let inputs =
+            [Value::from_str(&format!("{recipient_address}")).unwrap(), Value::from_str("1000000000000u64").unwrap()];
+        let transaction = ledger
+            .vm
+            .execute(&recipient_private_key, ("credits.aleo", "bond_public"), inputs.into_iter(), None, 0, None, rng)
+            .unwrap();
+
+        let block =
+            ledger.prepare_advance_to_next_beacon_block(&private_key, vec![], vec![], vec![transaction], rng).unwrap();
+
+        // Check that the next block is valid.
+        ledger.check_next_block(&block).unwrap();
+        // Add the deployment block to the ledger.
+        ledger.advance_to_next_block(&block).unwrap();
     }
 }
 
@@ -516,4 +566,73 @@ fn test_bond_and_unbond_validator() {
     // Check that the committee does not include the new member.
     let committee = ledger.latest_committee().unwrap();
     assert!(!committee.is_committee_member(new_member_address));
+}
+
+#[test]
+fn test_aborted_transaction_indexing() {
+    let rng = &mut TestRng::default();
+
+    // Initialize the test environment.
+    let crate::test_helpers::TestEnv { ledger, private_key, .. } = crate::test_helpers::sample_test_env(rng);
+
+    // Sample a recipient account.
+    let recipient_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+    let recipient_address = Address::try_from(&recipient_private_key).unwrap();
+
+    // Sample another recipient account.
+    let recipient_private_key_2 = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+    let recipient_address_2 = Address::try_from(&recipient_private_key_2).unwrap();
+
+    // Fund a new address.
+    let inputs = [Value::from_str(&format!("{recipient_address}")).unwrap(), Value::from_str("185000u64").unwrap()];
+    let transfer_transaction = ledger
+        .vm
+        .execute(&private_key, ("credits.aleo", "transfer_public"), inputs.iter(), None, 0, None, rng)
+        .unwrap();
+
+    // Construct the next block.
+    let transfer_block = ledger
+        .prepare_advance_to_next_beacon_block(&private_key, vec![], vec![], vec![transfer_transaction], rng)
+        .unwrap();
+
+    // Check that the next block is valid.
+    ledger.check_next_block(&transfer_block).unwrap();
+
+    // Add the deployment block to the ledger.
+    ledger.advance_to_next_block(&transfer_block).unwrap();
+
+    // Send a transaction that will be aborted due to insufficient fee.
+    let inputs = [Value::from_str(&format!("{recipient_address_2}")).unwrap(), Value::from_str("1u64").unwrap()];
+    let transfer_transaction = ledger
+        .vm
+        .execute(&recipient_private_key_2, ("credits.aleo", "transfer_public"), inputs.iter(), None, 0, None, rng)
+        .unwrap();
+    let aborted_transaction_id = transfer_transaction.id();
+
+    // Create another arbitrary transaction.
+    let inputs = [Value::from_str(&format!("{recipient_address_2}")).unwrap(), Value::from_str("1u64").unwrap()];
+    let transfer_transaction_2 = ledger
+        .vm
+        .execute(&private_key, ("credits.aleo", "transfer_public"), inputs.iter(), None, 0, None, rng)
+        .unwrap();
+
+    // Create a block.
+    let block = ledger
+        .prepare_advance_to_next_beacon_block(
+            &private_key,
+            vec![],
+            vec![],
+            vec![transfer_transaction, transfer_transaction_2],
+            rng,
+        )
+        .unwrap();
+
+    // Check that the block contains the aborted transaction.
+    assert_eq!(block.aborted_transaction_ids(), &[aborted_transaction_id]);
+
+    // Check that the next block is valid.
+    ledger.check_next_block(&block).unwrap();
+
+    // Add the deployment block to the ledger.
+    ledger.advance_to_next_block(&block).unwrap();
 }

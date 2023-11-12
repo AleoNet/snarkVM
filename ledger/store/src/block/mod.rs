@@ -405,10 +405,9 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         // Retrieve the certificate IDs to store.
         let certificates_to_store = match block.authority() {
             Authority::Beacon(_) => Vec::new(),
-            Authority::Quorum(subdag) => subdag
-                .iter()
-                .flat_map(|(round, certificates)| certificates.iter().map(|c| (c.certificate_id(), *round)))
-                .collect(),
+            Authority::Quorum(subdag) => {
+                subdag.iter().flat_map(|(round, certificates)| certificates.iter().map(|c| (c.id(), *round))).collect()
+            }
         };
 
         // Prepare the rejected transaction IDs and their corresponding unconfirmed transaction IDs.
@@ -529,7 +528,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
             Some(authority) => match authority {
                 Cow::Owned(Authority::Beacon(_)) | Cow::Borrowed(Authority::Beacon(_)) => Vec::new(),
                 Cow::Owned(Authority::Quorum(ref subdag)) | Cow::Borrowed(Authority::Quorum(ref subdag)) => {
-                    subdag.values().flatten().map(|c| c.certificate_id()).collect()
+                    subdag.values().flatten().map(|c| c.id()).collect()
                 }
             },
             None => bail!("Failed to remove block: missing authority for block '{block_height}' ('{block_hash}')"),
@@ -798,7 +797,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
                 match subdag.get(&round) {
                     Some(certificates) => {
                         // Retrieve the certificate for the given certificate ID.
-                        match certificates.iter().find(|certificate| &certificate.certificate_id() == certificate_id) {
+                        match certificates.iter().find(|certificate| &certificate.id() == certificate_id) {
                             Some(certificate) => Ok(Some(certificate.clone())),
                             None => bail!("The certificate '{certificate_id}' is missing in block storage"),
                         }

@@ -170,7 +170,7 @@ impl<F: PrimeField> Evaluations<F> {
 
         for (label, value) in map {
             if label == "g_1" {
-                break;
+                continue;
             }
 
             if label.contains("g_a") {

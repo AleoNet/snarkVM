@@ -137,16 +137,11 @@ impl<N: Network> Block<N> {
         previous_height: u32,
         current_committee: &Committee<N>,
     ) -> Result<(u64, u32, i64)> {
+        #[cfg(not(any(test, feature = "test")))]
+        ensure!(self.authority.is_quorum(), "The next block must be a quorum block");
+
         // Determine the expected height.
         let expected_height = previous_height.saturating_add(1);
-        // Ensure the block type is correct.
-        match expected_height == 0 {
-            true => ensure!(self.authority.is_beacon(), "The genesis block must be a beacon block"),
-            false => {
-                #[cfg(not(any(test, feature = "test")))]
-                ensure!(self.authority.is_quorum(), "The next block must be a quorum block");
-            }
-        }
 
         // Determine the expected round.
         let expected_round = match &self.authority {
@@ -271,10 +266,10 @@ impl<N: Network> Block<N> {
             Some(coinbase) => {
                 // Ensure the number of solutions is within the allowed range.
                 ensure!(
-                    coinbase.len() <= N::MAX_PROVER_SOLUTIONS,
+                    coinbase.len() <= N::MAX_SOLUTIONS,
                     "Block {height} contains too many prover solutions (found '{}', expected '{}')",
                     coinbase.len(),
-                    N::MAX_PROVER_SOLUTIONS
+                    N::MAX_SOLUTIONS
                 );
                 // Ensure the solutions are not accepted after the block height at year 10.
                 if height > block_height_at_year(N::BLOCK_TIME, 10) {

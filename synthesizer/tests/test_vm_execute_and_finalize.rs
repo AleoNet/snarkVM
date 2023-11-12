@@ -35,6 +35,7 @@ use snarkvm_synthesizer::{program::FinalizeOperation, VM};
 use synthesizer_program::FinalizeGlobalState;
 
 use anyhow::Result;
+use console::account::Address;
 use indexmap::IndexMap;
 use rayon::prelude::*;
 use std::borrow::Borrow;
@@ -69,34 +70,61 @@ fn run_test(test: &ProgramTest) -> serde_yaml::Mapping {
     let genesis_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
 
     // Initialize the VM.
-    let (vm, records) = initialize_vm(&genesis_private_key, rng);
+    let (vm, _) = initialize_vm(&genesis_private_key, rng);
 
-    // Pre-construct the necessary fee records.
-    let num_fee_records = test.programs().len() + test.cases().len();
-    let mut fee_records = construct_fee_records(&vm, &genesis_private_key, records, num_fee_records, rng);
+    // Fund the additional keys.
+    for key in test.keys() {
+        // Transfer 1_000_000_000_000
+        let transaction = vm
+            .execute(
+                &genesis_private_key,
+                ("credits.aleo", "transfer_public"),
+                vec![
+                    Value::Plaintext(Plaintext::from(Literal::Address(Address::try_from(key).unwrap()))),
+                    Value::Plaintext(Plaintext::from(Literal::U64(U64::new(1_000_000_000_000)))),
+                ]
+                .iter(),
+                None,
+                0,
+                None,
+                rng,
+            )
+            .unwrap();
+        let (ratifications, transactions, aborted_transaction_ids, ratified_finalize_operations) =
+            vm.speculate(construct_finalize_global_state(&vm), Some(0u64), vec![], None, [transaction].iter()).unwrap();
+        assert!(aborted_transaction_ids.is_empty());
+
+        let block = construct_next_block(
+            &vm,
+            &genesis_private_key,
+            ratifications,
+            transactions,
+            aborted_transaction_ids,
+            ratified_finalize_operations,
+            rng,
+        );
+        vm.add_next_block(&block.unwrap()).unwrap();
+    }
 
     // Deploy the programs.
     for program in test.programs() {
-        let transaction =
-            match vm.deploy(&genesis_private_key, program, Some(fee_records.pop().unwrap().0), 0, None, rng) {
-                Ok(transaction) => transaction,
-                Err(error) => {
-                    let mut output = serde_yaml::Mapping::new();
-                    output.insert(
-                        serde_yaml::Value::String("errors".to_string()),
-                        serde_yaml::Value::Sequence(vec![serde_yaml::Value::String(format!(
-                            "Failed to run `VM::deploy for program {}: {}",
-                            program.id(),
-                            error
-                        ))]),
-                    );
-                    output.insert(
-                        serde_yaml::Value::String("outputs".to_string()),
-                        serde_yaml::Value::Sequence(Vec::new()),
-                    );
-                    return output;
-                }
-            };
+        let transaction = match vm.deploy(&genesis_private_key, program, None, 0, None, rng) {
+            Ok(transaction) => transaction,
+            Err(error) => {
+                let mut output = serde_yaml::Mapping::new();
+                output.insert(
+                    serde_yaml::Value::String("errors".to_string()),
+                    serde_yaml::Value::Sequence(vec![serde_yaml::Value::String(format!(
+                        "Failed to run `VM::deploy for program {}: {}",
+                        program.id(),
+                        error
+                    ))]),
+                );
+                output
+                    .insert(serde_yaml::Value::String("outputs".to_string()), serde_yaml::Value::Sequence(Vec::new()));
+                return output;
+            }
+        };
 
         let (ratifications, transactions, aborted_transaction_ids, ratified_finalize_operations) =
             vm.speculate(construct_finalize_global_state(&vm), Some(0u64), vec![], None, [transaction].iter()).unwrap();
@@ -168,25 +196,18 @@ fn run_test(test: &ProgramTest) -> serde_yaml::Mapping {
             let mut other = serde_yaml::Mapping::new();
 
             // Execute the function, extracting the transaction.
-            let transaction = match vm.execute(
-                &private_key,
-                (program_id, function_name),
-                inputs.iter(),
-                Some(fee_records.pop().unwrap().0),
-                0u64,
-                None,
-                rng,
-            ) {
-                Ok(transaction) => transaction,
-                // If the execution fails, return the error.
-                Err(err) => {
-                    result.insert(
-                        serde_yaml::Value::String("execute".to_string()),
-                        serde_yaml::Value::String(err.to_string()),
-                    );
-                    return (serde_yaml::Value::Mapping(result), serde_yaml::Value::Mapping(Default::default()));
-                }
-            };
+            let transaction =
+                match vm.execute(&private_key, (program_id, function_name), inputs.iter(), None, 0u64, None, rng) {
+                    Ok(transaction) => transaction,
+                    // If the execution fails, return the error.
+                    Err(err) => {
+                        result.insert(
+                            serde_yaml::Value::String("execute".to_string()),
+                            serde_yaml::Value::String(err.to_string()),
+                        );
+                        return (serde_yaml::Value::Mapping(result), serde_yaml::Value::Mapping(Default::default()));
+                    }
+                };
 
             // Attempt to verify the transaction.
             let verified = vm.check_transaction(&transaction, None).is_ok();
@@ -333,6 +354,7 @@ fn initialize_vm<R: Rng + CryptoRng>(
 }
 
 // A helper function construct the desired number of fee records from an initial record, all owned by the same key.
+#[allow(unused)]
 fn construct_fee_records<C: ConsensusStorage<CurrentNetwork>, R: Rng + CryptoRng>(
     vm: &VM<CurrentNetwork, C>,
     private_key: &PrivateKey<CurrentNetwork>,
@@ -454,7 +476,7 @@ fn construct_next_block<C: ConsensusStorage<CurrentNetwork>, R: Rng + CryptoRng>
 }
 
 // A helper function to invoke `credits.aleo/split`.
-#[allow(clippy::type_complexity)]
+#[allow(clippy::type_complexity, unused)]
 fn split<C: ConsensusStorage<CurrentNetwork>, R: Rng + CryptoRng>(
     vm: &VM<CurrentNetwork, C>,
     private_key: &PrivateKey<CurrentNetwork>,

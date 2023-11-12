@@ -21,6 +21,7 @@ use synthesizer_program::{
     Contains,
     Get,
     GetOrUse,
+    MappingLocator,
     RandChaCha,
     Remove,
     Set,
@@ -174,8 +175,8 @@ impl<N: Network> FinalizeTypes<N> {
             Command::Instruction(instruction) => self.check_instruction(stack, finalize.name(), instruction)?,
             Command::Await(await_) => self.check_await(stack, await_)?,
             Command::Contains(contains) => self.check_contains(stack, finalize.name(), contains)?,
-            Command::Get(get) => self.check_get(stack, finalize.name(), get)?,
-            Command::GetOrUse(get_or_use) => self.check_get_or_use(stack, finalize.name(), get_or_use)?,
+            Command::Get(get) => self.check_get(stack, get)?,
+            Command::GetOrUse(get_or_use) => self.check_get_or_use(stack, get_or_use)?,
             Command::RandChaCha(rand_chacha) => self.check_rand_chacha(stack, finalize.name(), rand_chacha)?,
             Command::Remove(remove) => self.check_remove(stack, finalize.name(), remove)?,
             Command::Set(set) => self.check_set(stack, finalize.name(), set)?,
@@ -287,19 +288,42 @@ impl<N: Network> FinalizeTypes<N> {
 
     /// Ensures the given `get` command is well-formed.
     #[inline]
-    fn check_get(
-        &mut self,
-        stack: &(impl StackMatches<N> + StackProgram<N>),
-        finalize_name: &Identifier<N>,
-        get: &Get<N>,
-    ) -> Result<()> {
-        // Ensure the declared mapping in `get` is defined in the program.
-        if !stack.program().contains_mapping(get.mapping_name()) {
-            bail!("Mapping '{}' in '{}/{finalize_name}' is not defined.", get.mapping_name(), stack.program_id())
-        }
-        // Retrieve the mapping from the program.
-        // Note that the unwrap is safe, as we have already checked the mapping exists.
-        let mapping = stack.program().get_mapping(get.mapping_name()).unwrap();
+    fn check_get(&mut self, stack: &(impl StackMatches<N> + StackProgram<N>), get: &Get<N>) -> Result<()> {
+        // Retrieve the mapping.
+        let mapping = match get.mapping() {
+            MappingLocator::Locator(locator) => {
+                // Retrieve the program ID.
+                let program_id = locator.program_id();
+                // Retrieve the mapping_name.
+                let mapping_name = locator.resource();
+
+                // Ensure the locator does not reference the current program.
+                if stack.program_id() == program_id {
+                    bail!("Locator '{locator}' does not reference an external mapping.");
+                }
+                // Ensure the current program contains an import for this external program.
+                if !stack.program().imports().keys().contains(program_id) {
+                    bail!("External program '{program_id}' is not imported by '{}'.", stack.program_id());
+                }
+                // Retrieve the program.
+                let external = stack.get_external_program(program_id)?;
+                // Ensure the mapping exists in the program.
+                if !external.contains_mapping(mapping_name) {
+                    bail!("Mapping '{mapping_name}' in '{program_id}' is not defined.")
+                }
+                // Retrieve the mapping from the program.
+                external.get_mapping(mapping_name)?
+            }
+            MappingLocator::Resource(mapping_name) => {
+                // Ensure the declared mapping in `get` is defined in the current program.
+                if !stack.program().contains_mapping(mapping_name) {
+                    bail!("Mapping '{mapping_name}' in '{}' is not defined.", stack.program_id())
+                }
+                // Retrieve the mapping from the program.
+                stack.program().get_mapping(mapping_name)?
+            }
+        };
+
         // Get the mapping key type.
         let mapping_key_type = mapping.key().plaintext_type();
         // Get the mapping value type.
@@ -329,16 +353,43 @@ impl<N: Network> FinalizeTypes<N> {
     fn check_get_or_use(
         &mut self,
         stack: &(impl StackMatches<N> + StackProgram<N>),
-        finalize_name: &Identifier<N>,
         get_or_use: &GetOrUse<N>,
     ) -> Result<()> {
-        // Ensure the declared mapping in `get.or_use` is defined in the program.
-        if !stack.program().contains_mapping(get_or_use.mapping_name()) {
-            bail!("Mapping '{}' in '{}/{finalize_name}' is not defined.", get_or_use.mapping_name(), stack.program_id())
-        }
-        // Retrieve the mapping from the program.
-        // Note that the unwrap is safe, as we have already checked the mapping exists.
-        let mapping = stack.program().get_mapping(get_or_use.mapping_name()).unwrap();
+        // Retrieve the mapping.
+        let mapping = match get_or_use.mapping() {
+            MappingLocator::Locator(locator) => {
+                // Retrieve the program ID.
+                let program_id = locator.program_id();
+                // Retrieve the mapping_name.
+                let mapping_name = locator.resource();
+
+                // Ensure the locator does not reference the current program.
+                if stack.program_id() == program_id {
+                    bail!("Locator '{locator}' does not reference an external mapping.");
+                }
+                // Ensure the current program contains an import for this external program.
+                if !stack.program().imports().keys().contains(program_id) {
+                    bail!("External program '{locator}' is not imported by '{program_id}'.");
+                }
+                // Retrieve the program.
+                let external = stack.get_external_program(program_id)?;
+                // Ensure the mapping exists in the program.
+                if !external.contains_mapping(mapping_name) {
+                    bail!("Mapping '{mapping_name}' in '{program_id}' is not defined.")
+                }
+                // Retrieve the mapping from the program.
+                external.get_mapping(mapping_name)?
+            }
+            MappingLocator::Resource(mapping_name) => {
+                // Ensure the declared mapping in `get.or_use` is defined in the current program.
+                if !stack.program().contains_mapping(mapping_name) {
+                    bail!("Mapping '{mapping_name}' in '{}' is not defined.", stack.program_id())
+                }
+                // Retrieve the mapping from the program.
+                stack.program().get_mapping(mapping_name)?
+            }
+        };
+
         // Get the mapping key type.
         let mapping_key_type = mapping.key().plaintext_type();
         // Get the mapping value type.
