@@ -17,7 +17,7 @@ use super::*;
 impl<N: Network> Transactions<N> {
     /// Returns the finalize root of the transactions.
     pub fn to_finalize_root(&self, ratified_finalize_operations: Vec<FinalizeOperation<N>>) -> Result<Field<N>> {
-        // Prepare the finalize ids for the ratify-finalize operations.
+        // Prepare the finalize id for the ratified finalize operations.
         let ratified_finalize_id = *N::merkle_tree_bhp::<FINALIZE_ID_DEPTH>(
             &ratified_finalize_operations.iter().map(ToBits::to_bits_le).collect::<Vec<_>>(),
         )?
