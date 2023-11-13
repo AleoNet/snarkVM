@@ -32,6 +32,7 @@ use console::{
         Record,
         TransactionsPath,
         TransactionsTree,
+        FINALIZE_ID_DEPTH,
         FINALIZE_OPERATIONS_DEPTH,
         TRANSACTIONS_DEPTH,
     },

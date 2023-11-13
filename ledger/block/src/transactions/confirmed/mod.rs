@@ -17,7 +17,7 @@ mod serialize;
 mod string;
 
 use crate::{rejected::Rejected, Transaction};
-use console::{network::prelude::*, types::Field};
+use console::{network::prelude::*, program::FINALIZE_ID_DEPTH, types::Field};
 use synthesizer_program::FinalizeOperation;
 
 pub type NumFinalizeSize = u16;
@@ -313,6 +313,17 @@ impl<N: Network> ConfirmedTransaction<N> {
                 fee_transaction.fee_transition(),
             ),
         }
+    }
+
+    /// Returns the finalize id, by computing the root for a Merkle tree of the finalize operations.
+    pub fn to_finalize_id(&self) -> Result<Field<N>> {
+        // Prepare the leaves.
+        let leaves = self.finalize_operations().iter().map(ToBits::to_bits_le);
+        // Compute the finalize id tree.
+        // Note: This call will check the number of finalize operations is within the size of the Merkle tree.
+        let tree = N::merkle_tree_bhp::<FINALIZE_ID_DEPTH>(&leaves.collect::<Vec<_>>())?;
+        // Return the finalize id.
+        Ok(*tree.root())
     }
 }
 
