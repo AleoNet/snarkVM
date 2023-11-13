@@ -20,7 +20,7 @@ impl<N: Network> Serialize for Output<N> {
         match serializer.is_human_readable() {
             true => match self {
                 Self::Constant(id, value) => {
-                    let mut output = serializer.serialize_struct("Output", 3)?;
+                    let mut output = serializer.serialize_struct("Output", 2 + value.is_some() as usize)?;
                     output.serialize_field("type", "constant")?;
                     output.serialize_field("id", &id)?;
                     if let Some(value) = value {
@@ -29,7 +29,7 @@ impl<N: Network> Serialize for Output<N> {
                     output.end()
                 }
                 Self::Public(id, value) => {
-                    let mut output = serializer.serialize_struct("Output", 3)?;
+                    let mut output = serializer.serialize_struct("Output", 2 + value.is_some() as usize)?;
                     output.serialize_field("type", "public")?;
                     output.serialize_field("id", &id)?;
                     if let Some(value) = value {
@@ -38,7 +38,7 @@ impl<N: Network> Serialize for Output<N> {
                     output.end()
                 }
                 Self::Private(id, value) => {
-                    let mut output = serializer.serialize_struct("Output", 3)?;
+                    let mut output = serializer.serialize_struct("Output", 2 + value.is_some() as usize)?;
                     output.serialize_field("type", "private")?;
                     output.serialize_field("id", &id)?;
                     if let Some(value) = value {
@@ -47,7 +47,7 @@ impl<N: Network> Serialize for Output<N> {
                     output.end()
                 }
                 Self::Record(id, checksum, value) => {
-                    let mut output = serializer.serialize_struct("Output", 5)?;
+                    let mut output = serializer.serialize_struct("Output", 3 + value.is_some() as usize)?;
                     output.serialize_field("type", "record")?;
                     output.serialize_field("id", &id)?;
                     output.serialize_field("checksum", &checksum)?;
@@ -63,7 +63,7 @@ impl<N: Network> Serialize for Output<N> {
                     output.end()
                 }
                 Self::Future(id, value) => {
-                    let mut output = serializer.serialize_struct("Output", 3)?;
+                    let mut output = serializer.serialize_struct("Output", 2 + value.is_some() as usize)?;
                     output.serialize_field("type", "future")?;
                     output.serialize_field("id", &id)?;
                     if let Some(value) = value {

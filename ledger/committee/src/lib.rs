@@ -444,4 +444,12 @@ mod tests {
             }
         }
     }
+
+    #[test]
+    fn test_maximum_committee_size() {
+        assert_eq!(
+            Committee::<CurrentNetwork>::MAX_COMMITTEE_SIZE as usize,
+            ledger_narwhal_batch_header::BatchHeader::<CurrentNetwork>::MAX_CERTIFICATES
+        );
+    }
 }

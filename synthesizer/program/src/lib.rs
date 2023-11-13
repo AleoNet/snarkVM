@@ -589,6 +589,7 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Pro
         "owner",
         // Program
         "transition",
+        "import",
         "function",
         "struct",
         "closure",
