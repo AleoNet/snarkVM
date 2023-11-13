@@ -17,11 +17,24 @@ use super::*;
 impl<N: Network> Transactions<N> {
     /// Returns the finalize root of the transactions.
     pub fn to_finalize_root(&self, ratified_finalize_operations: Vec<FinalizeOperation<N>>) -> Result<Field<N>> {
+        // Prepare the finalize ids for the ratify-finalize operations.
+        let ratified_finalize_id = *N::merkle_tree_bhp::<FINALIZE_ID_DEPTH>(
+            &ratified_finalize_operations.iter().map(ToBits::to_bits_le).collect::<Vec<_>>(),
+        )?
+        .root();
+
         // Prepare the leaves.
-        let leaves = self.finalize_operations().chain(&ratified_finalize_operations).map(ToBits::to_bits_le);
+        let mut leaves = self
+            .iter()
+            .map(ConfirmedTransaction::to_finalize_id)
+            .map(|res| res.map(|id| id.to_bits_le()))
+            .collect::<Result<Vec<_>>>()?;
+        // Append the finalize id for the ratifications.
+        leaves.push(ratified_finalize_id.to_bits_le());
+
         // Compute the finalize tree.
         // Note: This call will check the number of finalize operations is within the size of the Merkle tree.
-        let tree = N::merkle_tree_bhp::<FINALIZE_OPERATIONS_DEPTH>(&leaves.collect::<Vec<_>>())?;
+        let tree = N::merkle_tree_bhp::<FINALIZE_OPERATIONS_DEPTH>(&leaves)?;
         // Return the finalize root.
         Ok(*tree.root())
     }
