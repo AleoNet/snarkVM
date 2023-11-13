@@ -158,15 +158,6 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
         // Perform the finalize operation on the preset finalize mode.
         atomic_finalize!(self.finalize_store(), FinalizeMode::DryRun, {
-            // Ensure the number of transactions does not exceed the maximum.
-            if num_transactions > Transactions::<N>::MAX_TRANSACTIONS {
-                // Note: This will abort the entire atomic batch.
-                return Err(format!(
-                    "Too many transactions in the block - {num_transactions} (max: {})",
-                    Transactions::<N>::MAX_TRANSACTIONS
-                ));
-            }
-
             // Initialize an iterator for ratifications before finalize.
             let pre_ratifications = ratifications.iter().filter(|r| match r {
                 Ratify::Genesis(_, _) => true,
@@ -209,6 +200,15 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
             // Finalize the transactions.
             'outer: for transaction in transactions {
+                // Ensure the number of confirmed transactions does not exceed the maximum.
+                // Upon reaching the maximum number of confirmed transactions, all remaining transactions are aborted.
+                if confirmed.len() > Transactions::<N>::MAX_TRANSACTIONS {
+                    // Store the aborted transaction.
+                    aborted.push((transaction.clone(), "Exceeds block transaction limit".to_string()));
+                    // Continue to the next transaction.
+                    continue 'outer;
+                }
+
                 // Process the transaction in an isolated atomic batch.
                 // - If the transaction succeeds, the finalize operations are stored.
                 // - If the transaction fails, the atomic batch is aborted and no finalize operations are stored.
