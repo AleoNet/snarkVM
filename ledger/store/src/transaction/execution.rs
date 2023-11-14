@@ -119,6 +119,7 @@ pub trait ExecutionStorage<N: Network>: Clone + Send + Sync {
 
     /// Stores the given `execution transaction` pair into storage.
     fn insert(&self, transaction: &Transaction<N>) -> Result<()> {
+        tracing::info!("{{\"event\": \"insert_execution_transaction\", \"transaction\":\"{:?}\"}}", transaction);
         // Ensure the transaction is a execution.
         let (transaction_id, execution, fee) = match transaction {
             Transaction::Deploy(..) => bail!("Attempted to insert a deploy transaction into execution storage."),
@@ -165,7 +166,7 @@ pub trait ExecutionStorage<N: Network>: Clone + Send + Sync {
         // Retrieve the transition IDs and fee boolean.
         let (transition_ids, has_fee) = match self.id_map().get_confirmed(transaction_id)? {
             Some(ids) => cow_to_cloned!(ids),
-            None => bail!("Failed to get the transition IDs for the transaction '{transaction_id}'"),
+            None => bail!("Failed to get the transition3 IDs for the transaction '{transaction_id}'"),
         };
 
         atomic_batch_scope!(self, {

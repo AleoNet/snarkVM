@@ -607,7 +607,15 @@ impl<N: Network, P: FinalizeStorage<N>> FinalizeStoreTrait<N> for FinalizeStore<
         mapping_name: Identifier<N>,
         key: &Plaintext<N>,
     ) -> Result<bool> {
-        self.storage.contains_key_speculative(program_id, mapping_name, key)
+        let contains_key = self.storage.contains_key_speculative(program_id, mapping_name, key);
+        tracing::info!(
+            "{{\"event\": \"contains_key_speculative\", \"program_id\":\"{:?}\", \"mapping\":\"{:?}\",\"key\":\"{:?}\", \"key_exists\":\"{:?}\"}}",
+            program_id,
+            mapping_name,
+            key,
+            contains_key
+        );
+        contains_key
     }
 
     /// Returns the speculative value for the given `program ID`, `mapping name`, and `key`.
@@ -617,6 +625,12 @@ impl<N: Network, P: FinalizeStorage<N>> FinalizeStoreTrait<N> for FinalizeStore<
         mapping_name: Identifier<N>,
         key: &Plaintext<N>,
     ) -> Result<Option<Value<N>>> {
+        tracing::info!(
+            "{{\"event\": \"get_value_speculative\", \"program_id\":\"{:?}\", \"mapping\":\"{:?}\",\"key\":\"{:?}\"}}",
+            program_id,
+            mapping_name,
+            key,
+        );
         self.storage.get_value_speculative(program_id, mapping_name, key)
     }
 
@@ -630,6 +644,13 @@ impl<N: Network, P: FinalizeStorage<N>> FinalizeStoreTrait<N> for FinalizeStore<
         key: Plaintext<N>,
         value: Value<N>,
     ) -> Result<FinalizeOperation<N>> {
+        tracing::info!(
+            "{{\"event\": \"insert_key_value\", \"program_id\":\"{:?}\", \"mapping\":\"{:?}\",\"key\":\"{:?}\", \"value\":\"{:?}\"}}",
+            program_id,
+            mapping_name,
+            key,
+            value,
+        );
         self.storage.insert_key_value(program_id, mapping_name, key, value)
     }
 
@@ -644,6 +665,13 @@ impl<N: Network, P: FinalizeStorage<N>> FinalizeStoreTrait<N> for FinalizeStore<
         key: Plaintext<N>,
         value: Value<N>,
     ) -> Result<FinalizeOperation<N>> {
+        tracing::info!(
+            "{{\"event\": \"update_key_value\", \"program_id\":\"{:?}\", \"mapping\":\"{:?}\",\"key\":\"{:?}\", \"value\":\"{:?}\"}}",
+            program_id,
+            mapping_name,
+            key,
+            value,
+        );
         self.storage.update_key_value(program_id, mapping_name, key, value)
     }
 
@@ -654,6 +682,12 @@ impl<N: Network, P: FinalizeStorage<N>> FinalizeStoreTrait<N> for FinalizeStore<
         mapping_name: Identifier<N>,
         key: &Plaintext<N>,
     ) -> Result<Option<FinalizeOperation<N>>> {
+        tracing::info!(
+            "{{\"event\": \"remove_key_value\", \"program_id\":\"{:?}\", \"mapping\":\"{:?}\",\"key\":\"{:?}\"}}",
+            program_id,
+            mapping_name,
+            key,
+        );
         self.storage.remove_key_value(program_id, mapping_name, key)
     }
 }

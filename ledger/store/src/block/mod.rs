@@ -418,6 +418,22 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
             .map(|tx| tx.to_unconfirmed_transaction_id())
             .collect::<Result<Vec<_>>>()?;
 
+        // Log the rejected transactions
+        {
+            let rejected_transactions = block
+                .transactions()
+                .iter()
+                .filter(|tx| tx.is_rejected())
+                .map(|tx| tx.to_unconfirmed_transaction())
+                .collect::<Result<Vec<_>>>()?;
+
+            tracing::info!(
+                "{{\"event\": \"rejected_transactions\", \"block_height:{}\", \"transactions\": {:?}}}",
+                block.height(),
+                rejected_transactions
+            );
+        }
+
         atomic_batch_scope!(self, {
             // Store the (block height, state root) pair.
             self.state_root_map().insert(block.height(), state_root)?;

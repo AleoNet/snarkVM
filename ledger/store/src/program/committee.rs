@@ -157,7 +157,18 @@ pub trait CommitteeStorage<N: Network>: 'static + Clone + Send + Sync {
             self.round_to_height_map().insert(next_round, next_height)?;
 
             // Store the committee.
+            tracing::info!(
+                "{{\"event\": \"store_committee\", \"height\": {}, \"round\": {}, \"num_members\": {}, \"total_stake\": {}, \"quorum_threshold\": {}, \"availability_threshold\": {}, \"first_member\":{:?} }}",
+                next_height,
+                next_round,
+                committee.num_members(),
+                committee.total_stake(),
+                committee.quorum_threshold(),
+                committee.availability_threshold(),
+                committee.members().first()
+            );
             self.committee_map().insert(next_height, committee)?;
+
             Ok(())
         })
     }

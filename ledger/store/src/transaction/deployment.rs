@@ -162,6 +162,7 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
 
     /// Stores the given `deployment transaction` pair into storage.
     fn insert(&self, transaction: &Transaction<N>) -> Result<()> {
+        tracing::info!("{{\"event\": \"insert_deployment_transaction\", \"transaction\":\"{:?}\"}}", transaction);
         // Ensure the transaction is a deployment.
         let (transaction_id, owner, deployment, fee) = match transaction {
             Transaction::Deploy(transaction_id, owner, deployment, fee) => (transaction_id, owner, deployment, fee),
