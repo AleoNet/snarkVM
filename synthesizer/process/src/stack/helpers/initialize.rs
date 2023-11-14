@@ -18,6 +18,8 @@ impl<N: Network> Stack<N> {
     /// Initializes a new stack, given the process and program.
     #[inline]
     pub(crate) fn initialize(process: &Process<N>, program: &Program<N>) -> Result<Self> {
+        let timer = timer!("Stack::initialize");
+
         // Construct the stack for the program.
         let mut stack = Self {
             program: program.clone(),
@@ -31,6 +33,7 @@ impl<N: Network> Stack<N> {
 
         // Add all of the imports into the stack.
         for import in program.imports().keys() {
+            lap!(timer, "insert external_stack");
             // Ensure the program imports all exist in the process already.
             if !process.contains_program(import) {
                 bail!("Cannot add program '{}' because its import '{import}' must be added first", program.id())
@@ -42,11 +45,13 @@ impl<N: Network> Stack<N> {
         }
         // Add the program closures to the stack.
         for closure in program.closures().values() {
+            lap!(timer, "insert closure");
             // Add the closure to the stack.
             stack.insert_closure(closure)?;
         }
         // Add the program functions to the stack.
         for function in program.functions().values() {
+            lap!(timer, "insert function");
             // Add the function to the stack.
             stack.insert_function(function)?;
         }

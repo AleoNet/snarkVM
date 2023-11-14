@@ -333,6 +333,7 @@ impl<N: Network, const VARIANT: u8> CastOperation<N, VARIANT> {
         stack: &(impl StackMatches<N> + StackProgram<N>),
         registers: &mut (impl RegistersSignerCircuit<N, A> + RegistersLoadCircuit<N, A> + RegistersStoreCircuit<N, A>),
     ) -> Result<()> {
+        println!("Instruction::execute");
         // TODO (howardwu & d0cd): Re-enable after stabilizing.
         if VARIANT == CastVariant::CastLossy as u8 {
             bail!("cast.lossy is not supported (yet)")

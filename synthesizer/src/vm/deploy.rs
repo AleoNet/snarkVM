@@ -78,7 +78,10 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 // Compute the deployment.
                 let deployment = $process.deploy::<$aleo, _>(program, rng)?;
                 // Prepare the deployment.
-                Ok(cast_ref!(deployment as Deployment<N>).clone())
+                let timer = timer!("clone deployement");
+                let res = cast_ref!(deployment as Deployment<N>).clone(); // TODO: this takes a lot of time
+                finish!(timer, "done cloning");
+                Ok(res)
             }};
         }
 

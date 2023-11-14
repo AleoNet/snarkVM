@@ -254,8 +254,10 @@ impl<N: Network> StackExecute<N> for Stack<N> {
 
         // Execute the instructions.
         for instruction in function.instructions() {
+            lap!(timer, "instruction");
             // If the circuit is in execute mode, then evaluate the instructions.
             if let CallStack::Execute(..) = registers.call_stack() {
+                lap!(timer, "got the call_stack");
                 // Evaluate the instruction.
                 let result = match instruction {
                     // If the instruction is a `call` instruction, we need to handle it separately.
@@ -263,11 +265,13 @@ impl<N: Network> StackExecute<N> for Stack<N> {
                     // Otherwise, evaluate the instruction normally.
                     _ => instruction.evaluate(self, &mut registers),
                 };
+                lap!(timer, "evaluated the instruction");
                 // If the evaluation fails, bail and return the error.
                 if let Err(error) = result {
                     bail!("Failed to evaluate instruction ({instruction}): {error}");
                 }
             }
+            lap!(timer, "after execution");
 
             // Execute the instruction.
             let result = match instruction {
