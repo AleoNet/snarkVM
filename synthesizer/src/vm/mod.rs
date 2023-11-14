@@ -1015,7 +1015,7 @@ finalize do:
     input r0 as u32.public;
     set r0 into m[0u8];",
         )
-        .unwrap();
+            .unwrap();
 
         let deployment = vm.deploy(&private_key, &program, None, 0, None, rng).unwrap();
         vm.add_next_block(&sample_next_block(&vm, &private_key, &[deployment], rng).unwrap()).unwrap();
@@ -1073,5 +1073,89 @@ finalize do:
 
         // Verify.
         vm.check_transaction(&transaction, None, rng).unwrap();
+    }
+
+    #[test]
+    #[ignore]
+    fn test_deployment_with_large_external_call() {
+        let rng = &mut TestRng::default();
+
+        // Initialize a new caller.
+        let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+
+        // Initialize the VM.
+        let vm = crate::vm::test_helpers::sample_vm();
+        // Initialize the genesis block.
+        let genesis = vm.genesis_beacon(&caller_private_key, rng).unwrap();
+        // Update the VM.
+        vm.add_next_block(&genesis).unwrap();
+
+        // Create the deployment for the first program.
+        let program = r"
+program big_transition.aleo;
+
+function main:
+    cast  0u16 0u16 0u16 0u16 0u16 0u16 0u16 0u16 0u16 0u16 0u16 0u16 0u16 0u16 0u16 0u16 0u16 0u16 0u16 0u16 0u16 0u16 0u16 0u16 0u16 0u16 0u16 0u16 0u16 0u16 0u16 0u16 into r0 as [u16; 32u32];
+    cast  r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 into r1 as [[u16; 32u32]; 32u32];
+    cast  r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 into r2 as [[[u16; 32u32]; 32u32]; 16u32];
+    cast  r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 into r3 as [[[u16; 32u32]; 32u32]; 16u32];
+    cast  r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 into r4 as [[[u16; 32u32]; 32u32]; 16u32];
+    cast  r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 into r5 as [[[u16; 32u32]; 32u32]; 16u32];
+    cast  r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 into r6 as [[[u16; 32u32]; 32u32]; 16u32];
+    cast  r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 into r7 as [[[u16; 32u32]; 32u32]; 16u32];
+    cast  r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 into r8 as [[[u16; 32u32]; 32u32]; 16u32];
+    cast  r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 into r9 as [[[u16; 32u32]; 32u32]; 16u32];
+    cast  r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 into r10 as [[[u16; 32u32]; 32u32]; 16u32];
+    cast  r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 into r11 as [[[u16; 32u32]; 32u32]; 16u32];
+    cast  r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 into r12 as [[[u16; 32u32]; 32u32]; 16u32];
+    cast  r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 into r13 as [[[u16; 32u32]; 32u32]; 16u32];
+    cast  r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 into r14 as [[[u16; 32u32]; 32u32]; 16u32];
+    cast  r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 into r15 as [[[u16; 32u32]; 32u32]; 16u32];
+    cast  r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 into r16 as [[[u16; 32u32]; 32u32]; 16u32];
+    cast  r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 into r17 as [[[u16; 32u32]; 32u32]; 16u32];
+    output r2 as [[[u16; 32u32]; 32u32]; 16u32].public;
+    output r3 as [[[u16; 32u32]; 32u32]; 16u32].public;
+    output r4 as [[[u16; 32u32]; 32u32]; 16u32].public;
+    output r5 as [[[u16; 32u32]; 32u32]; 16u32].public;
+    output r6 as [[[u16; 32u32]; 32u32]; 16u32].public;
+    output r7 as [[[u16; 32u32]; 32u32]; 16u32].public;
+    output r8 as [[[u16; 32u32]; 32u32]; 16u32].public;
+    output r9 as [[[u16; 32u32]; 32u32]; 16u32].public;
+    output r10 as [[[u16; 32u32]; 32u32]; 16u32].public;
+    output r11 as [[[u16; 32u32]; 32u32]; 16u32].public;
+    output r12 as [[[u16; 32u32]; 32u32]; 16u32].public;
+    output r13 as [[[u16; 32u32]; 32u32]; 16u32].public;
+    output r14 as [[[u16; 32u32]; 32u32]; 16u32].public;
+    output r15 as [[[u16; 32u32]; 32u32]; 16u32].public;
+    output r16 as [[[u16; 32u32]; 32u32]; 16u32].public;
+    output r17 as [[[u16; 32u32]; 32u32]; 16u32].public;
+        ";
+        let transaction =
+            vm.deploy(&caller_private_key, &Program::from_str(program).unwrap(), None, 0, None, rng).unwrap();
+
+        // Deploy the first program.
+        let block = sample_next_block(&vm, &caller_private_key, &[transaction], rng).unwrap();
+        vm.add_next_block(&block).unwrap();
+
+        // Create the deployment for the second program.
+        let program = r"
+import big_transition.aleo;
+program parent_big_transition.aleo;
+function outer:
+    call big_transition.aleo/main into r0 r1 r2 r3 r4 r5 r6 r7 r8 r9 r10 r11 r12 r13 r14 r15;
+        ";
+        println!("-----------------[TRACE] 1048");
+        let deployment =
+            vm.deploy(&caller_private_key, &Program::from_str(program).unwrap(), None, 0, None, rng).unwrap();
+
+        // Deploy the second program.
+        println!("-----------------[TRACE] 1054");
+        let deployment_block = sample_next_block(&vm, &caller_private_key, &[deployment], rng).unwrap();
+        println!("-----------------[TRACE] 1056");
+        vm.add_next_block(&deployment_block).unwrap();
+
+        // Enforce that the VM can load properly with the imports.
+        println!("-----------------[TRACE] 1060");
+        assert!(VM::from(vm.store.clone()).is_ok());
     }
 }
