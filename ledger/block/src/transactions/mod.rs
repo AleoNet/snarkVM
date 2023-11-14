@@ -167,10 +167,7 @@ impl<N: Network> Transactions<N> {
 
 impl<N: Network> Transactions<N> {
     /// The maximum number of transactions allowed in a block.
-    #[cfg(not(any(test, feature = "test")))]
     pub const MAX_TRANSACTIONS: usize = usize::pow(2, TRANSACTIONS_DEPTH as u32);
-    #[cfg(any(test, feature = "test"))]
-    pub const MAX_TRANSACTIONS: usize = 8;
 
     /// Returns an iterator over all transactions, for all transactions in `self`.
     pub fn iter(&self) -> impl '_ + ExactSizeIterator<Item = &ConfirmedTransaction<N>> {

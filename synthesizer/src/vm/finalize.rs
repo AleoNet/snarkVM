@@ -128,6 +128,11 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 }
 
 impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
+    #[cfg(not(any(test, feature = "test")))]
+    const MAXIMUM_CONFIRMED_TRANSACTIONS: usize = Transactions::<N>::MAX_TRANSACTIONS;
+    #[cfg(any(test, feature = "test"))]
+    const MAXIMUM_CONFIRMED_TRANSACTIONS: usize = 12;
+
     /// Performs atomic speculation over a list of transactions.
     ///
     /// Returns the ratifications, confirmed transactions, aborted transactions,
@@ -202,7 +207,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             'outer: for transaction in transactions {
                 // Ensure the number of confirmed transactions does not exceed the maximum.
                 // Upon reaching the maximum number of confirmed transactions, all remaining transactions are aborted.
-                if confirmed.len() >= Transactions::<N>::MAX_TRANSACTIONS {
+                if confirmed.len() >= Self::MAXIMUM_CONFIRMED_TRANSACTIONS {
                     // Store the aborted transaction.
                     aborted.push((transaction.clone(), "Exceeds block transaction limit".to_string()));
                     // Continue to the next transaction.
@@ -832,7 +837,7 @@ mod tests {
         program::{Ciphertext, Entry, Record},
         types::Field,
     };
-    use ledger_block::{Block, Header, Metadata, Transaction, Transactions, Transition};
+    use ledger_block::{Block, Header, Metadata, Transaction, Transition};
     use ledger_store::helpers::memory::ConsensusMemory;
     use synthesizer_program::Program;
 
@@ -1581,15 +1586,21 @@ finalize compute:
         // Add the splits block to the VM.
         vm.add_next_block(&splits_block).unwrap();
 
+        // Generate more records to use for the next block.
+        let splits_block = generate_splits(&vm, &caller_private_key, &splits_block, &mut unspent_records, rng).unwrap();
+
+        // Add the splits block to the VM.
+        vm.add_next_block(&splits_block).unwrap();
+
         // Generate the transactions.
         let mut transactions = Vec::new();
         let mut excess_transaction_ids = Vec::new();
 
-        for _ in 0..Transactions::<CurrentNetwork>::MAX_TRANSACTIONS + 1 {
+        for _ in 0..VM::<CurrentNetwork, ConsensusMemory<_>>::MAXIMUM_CONFIRMED_TRANSACTIONS + 1 {
             let transaction =
                 sample_mint_public(&vm, caller_private_key, &program_id, caller_address, 10, &mut unspent_records, rng);
             // Abort the transaction if the block is full.
-            if transactions.len() >= Transactions::<CurrentNetwork>::MAX_TRANSACTIONS {
+            if transactions.len() >= VM::<CurrentNetwork, ConsensusMemory<_>>::MAXIMUM_CONFIRMED_TRANSACTIONS {
                 excess_transaction_ids.push(transaction.id());
             }
 
@@ -1603,6 +1614,9 @@ finalize compute:
 
         // Ensure that the excess transactions were aborted.
         assert_eq!(next_block.aborted_transaction_ids(), &excess_transaction_ids);
-        assert_eq!(next_block.transactions().len(), Transactions::<CurrentNetwork>::MAX_TRANSACTIONS);
+        assert_eq!(
+            next_block.transactions().len(),
+            VM::<CurrentNetwork, ConsensusMemory<_>>::MAXIMUM_CONFIRMED_TRANSACTIONS
+        );
     }
 }
