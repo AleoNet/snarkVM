@@ -137,9 +137,6 @@ impl<N: Network> Block<N> {
         previous_height: u32,
         current_committee: &Committee<N>,
     ) -> Result<(u64, u32, i64)> {
-        #[cfg(not(any(test, feature = "test")))]
-        ensure!(self.authority.is_quorum(), "The next block must be a quorum block");
-
         // Determine the expected height.
         let expected_height = previous_height.saturating_add(1);
 
