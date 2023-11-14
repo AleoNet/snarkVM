@@ -385,9 +385,11 @@ impl<N: Network> Block<N> {
         ensure!(!self.transactions.is_empty(), "Block {height} must contain at least 1 transaction");
 
         // Ensure the number of transactions is within the allowed range.
-        if self.transactions.len() + self.aborted_transaction_ids.len() > Transactions::<N>::MAX_TRANSACTIONS {
+        if self.transactions.len() > Transactions::<N>::MAX_TRANSACTIONS {
             bail!("Cannot validate a block with more than {} transactions", Transactions::<N>::MAX_TRANSACTIONS);
         }
+
+        // TODO (raychu86): Add bound checks for the number of aborted transaction ids.
 
         // Ensure there are no duplicate transaction IDs.
         if has_duplicates(self.transaction_ids().chain(self.aborted_transaction_ids.iter())) {

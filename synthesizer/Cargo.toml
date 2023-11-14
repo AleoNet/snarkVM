@@ -43,7 +43,7 @@ serial = [
   "synthesizer-snark/serial"
 ]
 setup = [ ]
-test = [ ]
+test = [ "ledger-block/test" ]
 timer = [ "aleo-std/timer" ]
 wasm = [
   "process",
@@ -157,6 +157,11 @@ version = "0.5"
 
 [dev-dependencies.itertools]
 version = "0.11.0"
+
+[dev-dependencies.ledger-block]
+package = "snarkvm-ledger-block"
+path = "../ledger/block"
+features = [ "test" ]
 
 [dev-dependencies.ledger-committee]
 package = "snarkvm-ledger-committee"
