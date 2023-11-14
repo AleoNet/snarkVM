@@ -18,7 +18,7 @@ edition = "2021"
 
 [features]
 default = [ "indexmap/rayon", "rayon" ]
-rocks = [ "aleo-std", "once_cell", "rocksdb", "tracing" ]
+rocks = [ "aleo-std", "once_cell", "rocksdb" ]
 serial = [
   "console/serial",
   "ledger-block/serial",
@@ -107,7 +107,6 @@ version = "1.0"
 
 [dependencies.tracing]
 version = "0.1"
-optional = true
 
 [dev-dependencies.ledger-committee]
 package = "snarkvm-ledger-committee"
