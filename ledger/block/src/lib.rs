@@ -129,8 +129,19 @@ impl<N: Network> Block<N> {
         ensure!(!transactions.is_empty(), "Cannot create a block with zero transactions");
 
         // Ensure the number of transactions is within the allowed range.
-        if transactions.len() + aborted_transaction_ids.len() > Transactions::<N>::MAX_TRANSACTIONS {
-            bail!("Cannot initialize a block with {} transactions (w/ aborted)", Transactions::<N>::MAX_TRANSACTIONS);
+        if transactions.len() > Transactions::<N>::MAX_TRANSACTIONS {
+            bail!(
+                "Cannot initialize a block with more than {} confirmed transactions",
+                Transactions::<N>::MAX_TRANSACTIONS
+            );
+        }
+
+        // Ensure the number of aborted transaction IDs is within the allowed range.
+        if aborted_transaction_ids.len() > Transactions::<N>::MAX_TRANSACTIONS {
+            bail!(
+                "Cannot initialize a block with more than {} aborted transaction IDs",
+                Transactions::<N>::MAX_TRANSACTIONS
+            );
         }
 
         // Compute the block hash.
