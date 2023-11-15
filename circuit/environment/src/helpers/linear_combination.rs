@@ -549,7 +549,7 @@ mod tests {
         let two = one + one;
         let four = two + two;
 
-        let start = LinearCombination::from(Variable::Public(1, Rc::new(one)));
+        let start = LinearCombination::from(Variable::Public(Rc::new((1, one))));
         assert!(!start.is_constant());
         assert_eq!(one, start.value());
 

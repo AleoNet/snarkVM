@@ -50,13 +50,15 @@ impl<F: PrimeField> R1CS<F> {
         // Allocate the public variables.
         for (i, public) in self.to_public_variables().iter().enumerate() {
             match public {
-                Variable::Public(index, value) => {
+                Variable::Public(index_value) => {
+                    let (index, value) = index_value.as_ref();
+
                     assert_eq!(
                         i as u64, *index,
                         "Public variables in first system must be processed in lexicographic order"
                     );
 
-                    let gadget = cs.alloc_input(|| format!("Public {i}"), || Ok(**value))?;
+                    let gadget = cs.alloc_input(|| format!("Public {i}"), || Ok(*value))?;
 
                     assert_eq!(
                         snarkvm_algorithms::r1cs::Index::Public((index + 1) as usize),
@@ -75,13 +77,15 @@ impl<F: PrimeField> R1CS<F> {
         // Allocate the private variables.
         for (i, private) in self.to_private_variables().iter().enumerate() {
             match private {
-                Variable::Private(index, value) => {
+                Variable::Private(index_value) => {
+                    let (index, value) = index_value.as_ref();
+
                     assert_eq!(
                         i as u64, *index,
                         "Private variables in first system must be processed in lexicographic order"
                     );
 
-                    let gadget = cs.alloc(|| format!("Private {i}"), || Ok(**value))?;
+                    let gadget = cs.alloc(|| format!("Private {i}"), || Ok(*value))?;
 
                     assert_eq!(
                         snarkvm_algorithms::r1cs::Index::Private(i),
@@ -113,7 +117,8 @@ impl<F: PrimeField> R1CS<F> {
                                     "Failed during constraint translation. The first system by definition cannot have constant variables in the terms"
                                 )
                             }
-                            Variable::Public(index, _) => {
+                            Variable::Public(index_value) => {
+                                let (index, _value) = index_value.as_ref();
                                 let gadget = converter.public.get(index).unwrap();
                                 assert_eq!(
                                     snarkvm_algorithms::r1cs::Index::Public((index + 1) as usize),
@@ -122,7 +127,8 @@ impl<F: PrimeField> R1CS<F> {
                                 );
                                 linear_combination += (*coefficient, *gadget);
                             }
-                            Variable::Private(index, _) => {
+                            Variable::Private(index_value) => {
+                                let (index, _value) = index_value.as_ref();
                                 let gadget = converter.private.get(index).unwrap();
                                 assert_eq!(
                                     snarkvm_algorithms::r1cs::Index::Private(*index as usize),

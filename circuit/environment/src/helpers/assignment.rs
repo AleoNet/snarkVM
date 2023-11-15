@@ -29,8 +29,14 @@ impl<F: PrimeField> From<&crate::Variable<F>> for AssignmentVariable<F> {
     fn from(variable: &crate::Variable<F>) -> Self {
         match variable {
             crate::Variable::Constant(value) => Self::Constant(**value),
-            crate::Variable::Public(index, _) => Self::Public(*index),
-            crate::Variable::Private(index, _) => Self::Private(*index),
+            crate::Variable::Public(index_value) => {
+                let (index, _value) = index_value.as_ref();
+                Self::Public(*index)
+            }
+            crate::Variable::Private(index_value) => {
+                let (index, _value) = index_value.as_ref();
+                Self::Private(*index)
+            }
         }
     }
 }
