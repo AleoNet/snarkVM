@@ -74,15 +74,19 @@ impl<N: Network> Stack<N> {
         function_name: &Identifier<N>,
         assignment: &circuit::Assignment<N::Field>,
     ) -> Result<()> {
+        println!("-------------------- [TRACE] Stack::synthesize_from_assignment::77");
         // If the proving and verifying key already exist, skip the synthesis for this function.
         if self.contains_proving_key(function_name) && self.contains_verifying_key(function_name) {
             return Ok(());
         }
 
         // Synthesize the proving and verifying key.
+        println!("-------------------- [TRACE] Stack::synthesize_from_assignment::84");
         let (proving_key, verifying_key) = self.universal_srs.to_circuit_key(&function_name.to_string(), assignment)?;
+        println!("-------------------- [TRACE] Stack::synthesize_from_assignment::86");
         // Insert the proving key.
         self.insert_proving_key(function_name, proving_key)?;
+        println!("-------------------- [TRACE] Stack::synthesize_from_assignment::88");
         // Insert the verifying key.
         self.insert_verifying_key(function_name, verifying_key)
     }

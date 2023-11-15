@@ -31,7 +31,9 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         rng: &mut R,
     ) -> Result<Transaction<N>> {
         // Compute the deployment.
+        println!("-------------------- [TRACE] VM::deploy::34");
         let deployment = self.deploy_raw(program, rng)?;
+        println!("-------------------- [TRACE] VM::deploy::36");
         // Ensure the transaction is not empty.
         ensure!(!deployment.program().functions().is_empty(), "Attempted to create an empty transaction deployment");
         // Compute the deployment ID.

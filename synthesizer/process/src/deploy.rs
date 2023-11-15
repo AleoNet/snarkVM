@@ -29,7 +29,9 @@ impl<N: Network> Process<N> {
         lap!(timer, "Compute the stack");
 
         // Return the deployment.
+        println!("-------------------- [TRACE] Stack::deploy::32");
         let deployment = stack.deploy::<A, R>(rng);
+        println!("-------------------- [TRACE] Stack::deploy::34");
         lap!(timer, "Construct the deployment");
 
         finish!(timer);

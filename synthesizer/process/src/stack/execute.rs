@@ -394,6 +394,7 @@ impl<N: Network> StackExecute<N> for Stack<N> {
         }
 
         // Eject the circuit assignment and reset the circuit.
+        println!("-------------------- [TRACE] 396");
         let assignment = A::eject_assignment_and_reset();
 
         // If the circuit is in `Synthesize` or `Execute` mode, synthesize the circuit key, if it does not exist.
@@ -403,7 +404,9 @@ impl<N: Network> StackExecute<N> for Stack<N> {
             // If the proving key does not exist, then synthesize it.
             if !self.contains_proving_key(function.name()) {
                 // Add the circuit key to the mapping.
+                println!("-------------------- [TRACE] 406");
                 self.synthesize_from_assignment(function.name(), &assignment)?;
+                println!("-------------------- [TRACE] 408");
                 lap!(timer, "Synthesize the {} circuit key", function.name());
             }
         }
@@ -474,6 +477,7 @@ impl<N: Network> StackExecute<N> for Stack<N> {
         }
 
         finish!(timer);
+        println!("-------------------- [TRACE] FINISHED EXECUTING FUNCTION");
 
         // Return the response.
         Ok(response)

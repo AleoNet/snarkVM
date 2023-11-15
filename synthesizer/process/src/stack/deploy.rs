@@ -29,17 +29,27 @@ impl<N: Network> Stack<N> {
         let mut verifying_keys = Vec::with_capacity(self.program.functions().len());
 
         for function_name in self.program.functions().keys() {
+            println!("-------------------- [TRACE] {} Stack::deploy::30", function_name);
             // Synthesize the proving and verifying key.
             self.synthesize_key::<A, R>(function_name, rng)?;
             lap!(timer, "Synthesize key for {function_name}");
 
+            println!("-------------------- [TRACE] Stack::deploy::35");
+
             // Retrieve the proving key.
             let proving_key = self.get_proving_key(function_name)?;
+
+            println!("-------------------- [TRACE] Stack::deploy::40");
+            println!("-------------------- [TRACE] Proving key size: {}", proving_key.to_bytes_le().unwrap().len());
             // Retrieve the verifying key.
             let verifying_key = self.get_verifying_key(function_name)?;
+
+            println!("-------------------- [TRACE] Stack::deploy::45");
+            println!("-------------------- [TRACE] Verifying key size: {}", verifying_key.to_bytes_le().unwrap().len());
             lap!(timer, "Retrieve the keys for {function_name}");
 
             // Certify the circuit.
+            println!("-------------------- [TRACE] Stack::deploy::50");
             let certificate = Certificate::certify(&function_name.to_string(), &proving_key, &verifying_key)?;
             lap!(timer, "Certify the circuit");
 
