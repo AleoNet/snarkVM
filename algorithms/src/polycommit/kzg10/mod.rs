@@ -123,6 +123,8 @@ impl<E: PairingEngine> KZG10<E> {
 
                 let msm_time = start_timer!(|| "MSM to compute commitment to plaintext poly");
                 println!("-------------------- [TRACE] KZG10::commit::119");
+                println!("-------------------- [TRACE] KZG10::commit::120 bases.len(): {}", bases.len());
+                println!("-------------------- [TRACE] KZG10::commit::121 plain_coeffs.len(): {}", plain_coeffs.len());
                 let commitment = VariableBase::msm(bases, &plain_coeffs);
                 println!("-------------------- [TRACE] KZG10::commit::121");
                 end_timer!(msm_time);
