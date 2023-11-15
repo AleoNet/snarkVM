@@ -244,6 +244,7 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
                             }
                             PolynomialWithBasis::Monomial { polynomial, degree_bound } => {
                                 println!("-------------------- [TRACE] commit::239");
+                                println!("-------------------- [TRACE] commit::239, {:?}", degree_bound);
                                 let powers = if let Some(degree_bound) = degree_bound {
                                     ck.shifted_powers_of_beta_g(degree_bound).unwrap()
                                 } else {
