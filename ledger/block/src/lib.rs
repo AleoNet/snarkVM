@@ -130,7 +130,7 @@ impl<N: Network> Block<N> {
 
         // Ensure the number of transactions is within the allowed range.
         if transactions.len() > Transactions::<N>::MAX_TRANSACTIONS {
-            bail!("Cannot initialize a block with more than {} transactions", Transactions::<N>::MAX_TRANSACTIONS);
+            bail!("Cannot initialize a block with more than {} confirmed transactions", Transactions::<N>::MAX_TRANSACTIONS);
         }
 
         // Ensure the number of aborted transaction IDs is within the allowed range.
