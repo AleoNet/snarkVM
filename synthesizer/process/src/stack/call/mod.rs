@@ -36,7 +36,7 @@ pub trait CallTrait<N: Network> {
     ) -> Result<()>;
 
     /// Executes the instruction.
-    fn execute<A: circuit::Aleo<Network = N>>(
+    fn execute<A: circuit::Aleo<Network = N>, R: CryptoRng + Rng>(
         &self,
         stack: &(impl StackEvaluate<N> + StackExecute<N> + StackMatches<N> + StackProgram<N>),
         registers: &mut (
@@ -45,6 +45,7 @@ pub trait CallTrait<N: Network> {
                  + RegistersLoadCircuit<N, A>
                  + RegistersStoreCircuit<N, A>
              ),
+        rng: &mut R,
     ) -> Result<()>;
 }
 
@@ -122,7 +123,7 @@ impl<N: Network> CallTrait<N> for Call<N> {
 
     /// Executes the instruction.
     #[inline]
-    fn execute<A: circuit::Aleo<Network = N>>(
+    fn execute<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
         &self,
         stack: &(impl StackEvaluate<N> + StackExecute<N> + StackMatches<N> + StackProgram<N>),
         registers: &mut (
@@ -131,6 +132,7 @@ impl<N: Network> CallTrait<N> for Call<N> {
                  + RegistersLoadCircuit<N, A>
                  + RegistersStoreCircuit<N, A>
              ),
+        rng: &mut R,
     ) -> Result<()> {
         // Load the operands values.
         let inputs: Vec<_> =
@@ -196,9 +198,6 @@ impl<N: Network> CallTrait<N> for Call<N> {
                 // Eject the circuit inputs.
                 let inputs = inputs.eject_value();
 
-                // Initialize an RNG.
-                let rng = &mut rand::thread_rng();
-
                 // Set the (console) caller.
                 let console_caller = Some(*stack.program_id());
 
@@ -225,7 +224,7 @@ impl<N: Network> CallTrait<N> for Call<N> {
                         authorization.push(request.clone());
 
                         // Execute the request.
-                        let response = substack.execute_function::<A>(call_stack, console_caller)?;
+                        let response = substack.execute_function::<A, R>(call_stack, console_caller, rng)?;
 
                         // Return the request and response.
                         (request, response)
@@ -247,7 +246,7 @@ impl<N: Network> CallTrait<N> for Call<N> {
                         call_stack.push(request.clone())?;
 
                         // Execute the request.
-                        let response = substack.execute_function::<A>(call_stack, console_caller)?;
+                        let response = substack.execute_function::<A, R>(call_stack, console_caller, rng)?;
                         // Return the request and response.
                         (request, response)
                     }
@@ -269,7 +268,8 @@ impl<N: Network> CallTrait<N> for Call<N> {
                         let console_response =
                             substack.evaluate_function::<A>(registers.call_stack().replicate(), console_caller)?;
                         // Execute the request.
-                        let response = substack.execute_function::<A>(registers.call_stack(), console_caller)?;
+                        let response =
+                            substack.execute_function::<A, R>(registers.call_stack(), console_caller, rng)?;
                         // Ensure the values are equal.
                         if console_response.outputs() != response.outputs() {
                             #[cfg(debug_assertions)]

@@ -251,7 +251,7 @@ fn execute_function<F: FinalizeStorage<CurrentNetwork>>(
         process.authorize::<CurrentAleo, _>(caller_private_key, "credits.aleo", function, inputs.iter(), rng)?;
 
     // Construct the trace.
-    let (_, mut trace) = process.execute::<CurrentAleo>(authorization)?;
+    let (_, mut trace) = process.execute::<CurrentAleo, _>(authorization, rng)?;
 
     // Construct the block store.
     let block_store = BlockStore::<CurrentNetwork, BlockMemory<_>>::open(None)?;
@@ -1527,7 +1527,7 @@ mod sanity_checks {
         // Initialize the call stack.
         let call_stack = CallStack::CheckDeployment(vec![request], *private_key, assignments.clone());
         // Synthesize the circuit.
-        let _response = stack.execute_function::<A>(call_stack, None).unwrap();
+        let _response = stack.execute_function::<A, _>(call_stack, None, rng).unwrap();
         // Retrieve the assignment.
         let assignment = assignments.read().last().unwrap().0.clone();
         assignment
