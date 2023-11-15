@@ -596,7 +596,7 @@ fn test_aborted_transaction_indexing() {
         .unwrap();
 
     // Check that the next block is valid.
-    ledger.check_next_block(&transfer_block).unwrap();
+    ledger.check_next_block(&transfer_block, rng).unwrap();
 
     // Add the deployment block to the ledger.
     ledger.advance_to_next_block(&transfer_block).unwrap();
@@ -631,7 +631,7 @@ fn test_aborted_transaction_indexing() {
     assert_eq!(block.aborted_transaction_ids(), &[aborted_transaction_id]);
 
     // Check that the next block is valid.
-    ledger.check_next_block(&block).unwrap();
+    ledger.check_next_block(&block, rng).unwrap();
 
     // Add the deployment block to the ledger.
     ledger.advance_to_next_block(&block).unwrap();
