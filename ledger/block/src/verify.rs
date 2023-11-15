@@ -389,7 +389,13 @@ impl<N: Network> Block<N> {
             bail!("Cannot validate a block with more than {} transactions", Transactions::<N>::MAX_TRANSACTIONS);
         }
 
-        // TODO (raychu86): Add bound checks for the number of aborted transaction ids.
+        // Ensure the number of aborted transaction IDs is within the allowed range.
+        if self.aborted_transaction_ids.len() > Transactions::<N>::MAX_TRANSACTIONS {
+            bail!(
+                "Cannot validate a block with more than {} aborted transaction IDs",
+                Transactions::<N>::MAX_TRANSACTIONS
+            );
+        }
 
         // Ensure there are no duplicate transaction IDs.
         if has_duplicates(self.transaction_ids().chain(self.aborted_transaction_ids.iter())) {

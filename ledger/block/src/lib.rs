@@ -130,10 +130,16 @@ impl<N: Network> Block<N> {
 
         // Ensure the number of transactions is within the allowed range.
         if transactions.len() > Transactions::<N>::MAX_TRANSACTIONS {
-            bail!("Cannot initialize a block with {} transactions", Transactions::<N>::MAX_TRANSACTIONS);
+            bail!("Cannot initialize a block with more than {} transactions", Transactions::<N>::MAX_TRANSACTIONS);
         }
 
-        // TODO (raychu86): Add bound checks for the number of aborted transaction ids.
+        // Ensure the number of aborted transaction IDs is within the allowed range.
+        if aborted_transaction_ids.len() > Transactions::<N>::MAX_TRANSACTIONS {
+            bail!(
+                "Cannot initialize a block with more than {} aborted transaction IDs",
+                Transactions::<N>::MAX_TRANSACTIONS
+            );
+        }
 
         // Compute the block hash.
         let block_hash = N::hash_bhp1024(&to_bits_le![previous_hash, header.to_root()?])?;
