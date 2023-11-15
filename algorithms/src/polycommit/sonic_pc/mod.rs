@@ -178,19 +178,24 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
         polynomials: impl IntoIterator<Item = LabeledPolynomialWithBasis<'b, E::Fr>>,
         rng: Option<&mut dyn RngCore>,
     ) -> Result<(Vec<LabeledCommitment<Commitment<E>>>, Vec<Randomness<E>>), PCError> {
+        println!("-------------------- [TRACE] commit::181");
         let rng = &mut OptionalRng(rng);
         let commit_time = start_timer!(|| "Committing to polynomials");
         let mut labeled_comms: Vec<LabeledCommitment<Commitment<E>>> = Vec::new();
         let mut randomness: Vec<Randomness<E>> = Vec::new();
 
+        println!("-------------------- [TRACE] commit::187");
+
         let mut pool = snarkvm_utilities::ExecutionPool::<Result<_, _>>::new();
         for p in polynomials {
+            println!("-------------------- [TRACE] commit::191");
             let seed = rng.0.as_mut().map(|r| {
                 let mut seed = [0u8; 32];
                 r.fill_bytes(&mut seed);
                 seed
             });
 
+            println!("-------------------- [TRACE] commit::198");
             kzg10::KZG10::<E>::check_degrees_and_bounds(
                 universal_prover.max_degree,
                 ck.enforced_degree_bounds.as_deref(),
@@ -199,6 +204,8 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
             let degree_bound = p.degree_bound();
             let hiding_bound = p.hiding_bound();
             let label = p.label().to_string();
+
+            println!("-------------------- [TRACE] commit::207");
 
             pool.add_job(move || {
                 let mut rng = seed.map(rand::rngs::StdRng::from_seed);
@@ -210,18 +217,24 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
                     hiding_bound,
                 ));
 
+                println!("-------------------- [TRACE] commit::220");
+
                 let (comm, rand) = p
                     .sum()
                     .map(move |p| {
                         let rng_ref = rng.as_mut().map(|s| s as _);
                         match p {
                             PolynomialWithBasis::Lagrange { evaluations } => {
+                                println!("-------------------- [TRACE] commit::227");
                                 let domain = crate::fft::EvaluationDomain::new(evaluations.evaluations.len()).unwrap();
                                 let lagrange_basis = ck
                                     .lagrange_basis(domain)
                                     .ok_or(PCError::UnsupportedLagrangeBasisSize(domain.size()))?;
                                 assert!(domain.size().is_power_of_two());
                                 assert!(lagrange_basis.size().is_power_of_two());
+                                println!("-------------------- [TRACE] commit::235");
+                                println!("-------------------- [TRACE] commit::235, {}", domain.size());
+                                println!("-------------------- [TRACE] commit::235, {}", lagrange_basis.size());
                                 kzg10::KZG10::commit_lagrange(
                                     &lagrange_basis,
                                     &evaluations.evaluations,
@@ -230,12 +243,13 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
                                 )
                             }
                             PolynomialWithBasis::Monomial { polynomial, degree_bound } => {
+                                println!("-------------------- [TRACE] commit::239");
                                 let powers = if let Some(degree_bound) = degree_bound {
                                     ck.shifted_powers_of_beta_g(degree_bound).unwrap()
                                 } else {
                                     ck.powers()
                                 };
-
+                                println!("-------------------- [TRACE] commit::244");
                                 kzg10::KZG10::commit(&powers, &polynomial, hiding_bound, rng_ref)
                             }
                         }
@@ -252,12 +266,17 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
                 Ok((LabeledCommitment::new(label.to_string(), comm, degree_bound), rand))
             });
         }
+        println!("-------------------- [TRACE] commit::262");
         let results: Vec<Result<_, PCError>> = pool.execute_all();
+        println!("-------------------- [TRACE] commit::264");
         for result in results {
+            println!("-------------------- [TRACE] commit::266");
             let (comm, rand) = result?;
+            println!("-------------------- [TRACE] commit::268");
             labeled_comms.push(comm);
             randomness.push(rand);
         }
+        println!("-------------------- [TRACE] commit::269");
 
         end_timer!(commit_time);
         Ok((labeled_comms, randomness))

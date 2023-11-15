@@ -139,6 +139,7 @@ impl<F: PrimeField, SM: SNARKMode> Circuit<F, SM> {
     }
 
     pub fn interpolate_matrix_evals(&self) -> Result<impl Iterator<Item = LabeledPolynomial<F>>> {
+        println!("----------------- [TRACE] Interpolating matrix evals::137");
         Ok([("a", &self.a_arith), ("b", &self.b_arith), ("c", &self.c_arith)]
             .into_iter()
             .map(|(label, evals)| MatrixArithmetization::new(&self.id, label, evals))

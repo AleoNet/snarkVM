@@ -35,7 +35,9 @@ impl<N: Network> UniversalSRS<N> {
         #[cfg(feature = "aleo-cli")]
         let timer = std::time::Instant::now();
 
+        println!("-------------------- [TRACE] to_circuit_key::38");
         let (proving_key, verifying_key) = Varuna::<N>::circuit_setup(self, assignment)?;
+        println!("-------------------- [TRACE] to_circuit_key::40");
 
         #[cfg(feature = "aleo-cli")]
         println!("{}", format!(" • Built '{function_name}' (in {} ms)", timer.elapsed().as_millis()).dimmed());

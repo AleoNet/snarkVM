@@ -107,15 +107,24 @@ impl<E: PairingEngine> KZG10<E> {
             polynomial.degree(),
             hiding_bound,
         ));
+        println!(
+            "-------------------- [TRACE] Committing to polynomial of degree {} with hiding_bound: {:?}",
+            polynomial.degree(),
+            hiding_bound
+        );
 
         let mut commitment = match polynomial {
             Polynomial::Dense(polynomial) => {
+                println!("-------------------- [TRACE] KZG10::commit::114");
                 let (num_leading_zeros, plain_coeffs) = skip_leading_zeros_and_convert_to_bigints(polynomial);
 
+                println!("-------------------- [TRACE] KZG10::commit::116");
                 let bases = &powers.powers_of_beta_g[num_leading_zeros..(num_leading_zeros + plain_coeffs.len())];
 
                 let msm_time = start_timer!(|| "MSM to compute commitment to plaintext poly");
+                println!("-------------------- [TRACE] KZG10::commit::119");
                 let commitment = VariableBase::msm(bases, &plain_coeffs);
+                println!("-------------------- [TRACE] KZG10::commit::121");
                 end_timer!(msm_time);
 
                 commitment
@@ -123,7 +132,11 @@ impl<E: PairingEngine> KZG10<E> {
             Polynomial::Sparse(polynomial) => polynomial
                 .coeffs()
                 .map(|(i, coeff)| {
-                    powers.powers_of_beta_g[*i].mul_bits(BitIteratorBE::new_without_leading_zeros(coeff.to_bigint()))
+                    println!("-------------------- [TRACE] KZG10::commit::127");
+                    let result = powers.powers_of_beta_g[*i]
+                        .mul_bits(BitIteratorBE::new_without_leading_zeros(coeff.to_bigint()));
+                    println!("-------------------- [TRACE] KZG10::commit::129");
+                    result
                 })
                 .sum(),
         };
@@ -133,22 +146,31 @@ impl<E: PairingEngine> KZG10<E> {
             let mut rng = rng.ok_or(PCError::MissingRng)?;
             let sample_random_poly_time =
                 start_timer!(|| format!("Sampling a random polynomial of degree {hiding_degree}"));
+            println!("-------------------- [TRACE] KZG10::commit::137");
 
             randomness = KZGRandomness::rand(hiding_degree, false, &mut rng);
+            println!("-------------------- [TRACE] KZG10::commit::139");
             Self::check_hiding_bound(
                 randomness.blinding_polynomial.degree(),
                 powers.powers_of_beta_times_gamma_g.len(),
             )?;
+            println!("-------------------- [TRACE] KZG10::commit::141");
             end_timer!(sample_random_poly_time);
         }
 
+        println!("-------------------- [TRACE] KZG10::commit::144");
         let random_ints = convert_to_bigints(&randomness.blinding_polynomial.coeffs);
+        println!("-------------------- [TRACE] KZG10::commit::146");
         let msm_time = start_timer!(|| "MSM to compute commitment to random poly");
+        println!("-------------------- [TRACE] KZG10::commit::148");
         let random_commitment =
             VariableBase::msm(&powers.powers_of_beta_times_gamma_g, random_ints.as_slice()).to_affine();
+        println!("-------------------- [TRACE] KZG10::commit::150");
         end_timer!(msm_time);
 
+        println!("-------------------- [TRACE] KZG10::commit::153");
         commitment.add_assign_mixed(&random_commitment);
+        println!("-------------------- [TRACE] KZG10::commit::155");
 
         end_timer!(commit_time);
         Ok((KZGCommitment(commitment.into()), randomness))

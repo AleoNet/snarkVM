@@ -75,17 +75,21 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, SM: SNARKMode> VarunaSNARK
     ) -> Result<Vec<(CircuitProvingKey<E, SM>, CircuitVerifyingKey<E>)>> {
         let index_time = start_timer!(|| "Varuna::CircuitSetup");
 
+        println!("-------------------- [TRACE] batch_circuit_setup::78");
         let universal_prover = &universal_srs.to_universal_prover()?;
 
+        println!("-------------------- [TRACE] batch_circuit_setup::81");
         let mut circuit_keys = Vec::with_capacity(circuits.len());
         for circuit in circuits {
             let mut indexed_circuit = AHPForR1CS::<_, SM>::index(*circuit)?;
             // TODO: Add check that c is in the correct mode.
             // Ensure the universal SRS supports the circuit size.
+            println!("-------------------- [TRACE] batch_circuit_setup::87");
             universal_srs.download_powers_for(0..indexed_circuit.max_degree()?).map_err(|e| {
                 anyhow!("Failed to download powers for degree {}: {e}", indexed_circuit.max_degree().unwrap())
             })?;
             let coefficient_support = AHPForR1CS::<E::Fr, SM>::get_degree_bounds(&indexed_circuit.index_info)?;
+            println!("-------------------- [TRACE] batch_circuit_setup::92");
 
             // Varuna only needs degree 2 random polynomials.
             let supported_hiding_bound = 1;
@@ -98,10 +102,14 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, SM: SNARKMode> VarunaSNARK
                 Some(coefficient_support.as_slice()),
             )?;
 
+            println!("-------------------- [TRACE] batch_circuit_setup::101");
+
             let ck = CommitterUnionKey::union(std::iter::once(&committer_key));
 
             let commit_time = start_timer!(|| format!("Commit to index polynomials for {}", indexed_circuit.id));
             let setup_rng = None::<&mut dyn RngCore>; // We do not randomize the commitments
+
+            println!("-------------------- [TRACE] batch_circuit_setup::108");
 
             let (mut circuit_commitments, commitment_randomnesses): (_, _) = SonicKZG10::<E, FS>::commit(
                 universal_prover,
@@ -110,12 +118,17 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, SM: SNARKMode> VarunaSNARK
                 setup_rng,
             )?;
             let empty_randomness = Randomness::<E>::empty();
+            println!("-------------------- [TRACE] batch_circuit_setup::116");
             ensure!(commitment_randomnesses.iter().all(|r| r == &empty_randomness));
+
             end_timer!(commit_time);
 
             circuit_commitments.sort_by(|c1, c2| c1.label().cmp(c2.label()));
             let circuit_commitments = circuit_commitments.into_iter().map(|c| *c.commitment()).collect();
             indexed_circuit.prune_row_col_evals();
+
+            println!("-------------------- [TRACE] batch_circuit_setup::124");
+
             let circuit_verifying_key = CircuitVerifyingKey {
                 circuit_info: indexed_circuit.index_info,
                 circuit_commitments,
@@ -126,7 +139,9 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, SM: SNARKMode> VarunaSNARK
                 circuit: Arc::new(indexed_circuit),
                 committer_key: Arc::new(committer_key),
             };
+            println!("-------------------- [TRACE] batch_circuit_setup::134");
             circuit_keys.push((circuit_proving_key, circuit_verifying_key));
+            println!("-------------------- [TRACE] batch_circuit_setup::136");
         }
 
         end_timer!(index_time);
@@ -227,7 +242,9 @@ where
         universal_srs: &Self::UniversalSRS,
         circuit: &C,
     ) -> Result<(Self::ProvingKey, Self::VerifyingKey)> {
+        println!("-------------------- [TRACE] circuit_setup::230");
         let mut circuit_keys = Self::batch_circuit_setup::<C>(universal_srs, &[circuit])?;
+        println!("-------------------- [TRACE] circuit_setup::232");
         ensure!(circuit_keys.len() == 1);
         Ok(circuit_keys.pop().unwrap())
     }
