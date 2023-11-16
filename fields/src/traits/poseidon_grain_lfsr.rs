@@ -124,7 +124,11 @@ impl PoseidonGrainLFSR {
         let mut output = Vec::with_capacity(num_elems);
         for _ in 0..num_elems {
             // Obtain `n` bits and make it most-significant-bit first.
-            let mut bits = self.get_bits(self.field_size_in_bits as usize).collect::<Vec<_>>();
+            let bits_iter = self.get_bits(self.field_size_in_bits as usize);
+            let mut bits = Vec::with_capacity(bits_iter.len());
+            for bit in bits_iter {
+                bits.push(bit);
+            }
             bits.reverse();
 
             let bytes = bits
