@@ -27,6 +27,8 @@ pub enum Query<N: Network, B: BlockStorage<N>> {
     VM(BlockStore<N, B>),
     /// The base URL of the node.
     REST(String),
+    /// The hardcoded state root and path.
+    STATIC(Option<N::StateRoot>, Option<StatePath<N>>),
 }
 
 impl<N: Network, B: BlockStorage<N>> From<BlockStore<N, B>> for Query<N, B> {
@@ -69,6 +71,7 @@ impl<N: Network, B: BlockStorage<N>> QueryTrait<N> for Query<N, B> {
                 3 => Ok(Self::get_request(&format!("{url}/testnet3/latest/stateRoot"))?.into_json()?),
                 _ => bail!("Unsupported network ID in inclusion query"),
             },
+            Self::STATIC(state_root, _) => (*state_root).ok_or_else(|| anyhow!("State root is not set.")),
         }
     }
 
@@ -81,6 +84,7 @@ impl<N: Network, B: BlockStorage<N>> QueryTrait<N> for Query<N, B> {
                 3 => Ok(Self::get_request_async(&format!("{url}/testnet3/latest/stateRoot")).await?.json().await?),
                 _ => bail!("Unsupported network ID in inclusion query"),
             },
+            Self::STATIC(state_root, _) => (*state_root).ok_or_else(|| anyhow!("State root is not set.")),
         }
     }
 
@@ -92,6 +96,7 @@ impl<N: Network, B: BlockStorage<N>> QueryTrait<N> for Query<N, B> {
                 3 => Ok(Self::get_request(&format!("{url}/testnet3/statePath/{commitment}"))?.into_json()?),
                 _ => bail!("Unsupported network ID in inclusion query"),
             },
+            Self::STATIC(_, state_path) => state_path.clone().ok_or_else(|| anyhow!("State path is not set.")),
         }
     }
 
@@ -106,6 +111,7 @@ impl<N: Network, B: BlockStorage<N>> QueryTrait<N> for Query<N, B> {
                 }
                 _ => bail!("Unsupported network ID in inclusion query"),
             },
+            Self::STATIC(_, state_path) => state_path.clone().ok_or_else(|| anyhow!("State path is not set.")),
         }
     }
 }
@@ -121,6 +127,7 @@ impl<N: Network, B: BlockStorage<N>> Query<N, B> {
                 3 => Ok(Self::get_request(&format!("{url}/testnet3/program/{program_id}"))?.into_json()?),
                 _ => bail!("Unsupported network ID in inclusion query"),
             },
+            Self::STATIC(_, _) => bail!("Programs are not supported in static queries"),
         }
     }
 
@@ -135,6 +142,7 @@ impl<N: Network, B: BlockStorage<N>> Query<N, B> {
                 3 => Ok(Self::get_request_async(&format!("{url}/testnet3/program/{program_id}")).await?.json().await?),
                 _ => bail!("Unsupported network ID in inclusion query"),
             },
+            Self::STATIC(_, _) => bail!("Programs are not supported in static queries"),
         }
     }
 
