@@ -636,3 +636,77 @@ fn test_aborted_transaction_indexing() {
     // Add the deployment block to the ledger.
     ledger.advance_to_next_block(&block).unwrap();
 }
+
+#[test]
+fn test_duplicate_input_ids() {
+    let rng = &mut TestRng::default();
+
+    // Initialize the test environment.
+    let crate::test_helpers::TestEnv { ledger, private_key, view_key, .. } = crate::test_helpers::sample_test_env(rng);
+
+    // Sample recipient.
+    let recipient_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+    let recipient_address = Address::try_from(&recipient_private_key).unwrap();
+
+    // A helper function to find records.
+    let find_records = || {
+        let microcredits = Identifier::from_str("microcredits").unwrap();
+        ledger
+            .find_records(&view_key, RecordsFilter::SlowUnspent(private_key))
+            .unwrap()
+            .filter(|(_, record)| match record.data().get(&microcredits) {
+                Some(Entry::Private(Plaintext::Literal(Literal::U64(amount), _))) => !amount.is_zero(),
+                _ => false,
+            })
+            .collect::<indexmap::IndexMap<_, _>>()
+    };
+
+    // Fetch the unspent records.
+    let records = find_records();
+    let record_1 = records[0].clone();
+
+    // Construct the first `transfer_public` transaction with the same fee record.
+    let inputs = [Value::from_str(&format!("{recipient_address}")).unwrap(), Value::from_str("100000u64").unwrap()];
+    let transaction_with_same_fee_record = ledger
+        .vm
+        .execute(
+            &private_key,
+            ("credits.aleo", "transfer_public"),
+            inputs.into_iter(),
+            Some(record_1.clone()),
+            0,
+            None,
+            rng,
+        )
+        .unwrap();
+
+    // Construct the second `transfer_public` transaction with the same fee record input.
+    let inputs = [Value::from_str(&format!("{recipient_address}")).unwrap(), Value::from_str("100000u64").unwrap()];
+    let transaction_with_same_fee_record_2 = ledger
+        .vm
+        .execute(&private_key, ("credits.aleo", "transfer_public"), inputs.into_iter(), Some(record_1), 0, None, rng)
+        .unwrap();
+
+    let input_ids = transaction_with_same_fee_record.input_ids().collect::<Vec<_>>();
+    let input_ids_2 = transaction_with_same_fee_record.input_ids().collect::<Vec<_>>();
+
+    println!("\n\ninput_ids: {:?}\n\n", input_ids);
+    println!("\n\ninput_ids_2: {:?}\n\n", input_ids_2);
+
+    // Create a block.
+    let block = ledger
+        .prepare_advance_to_next_beacon_block(
+            &private_key,
+            vec![],
+            vec![],
+            vec![transaction_with_same_fee_record, transaction_with_same_fee_record_2],
+            rng,
+        )
+        .unwrap();
+
+    // Check that the next block is valid.
+    ledger.check_next_block(&block, rng).unwrap();
+
+    // Add the deployment block to the ledger.
+    ledger.advance_to_next_block(&block).unwrap();
+}
