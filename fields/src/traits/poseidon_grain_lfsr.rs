@@ -199,3 +199,9 @@ impl<'a> Iterator for LFSRIter<'a> {
         }
     }
 }
+
+impl<'a> ExactSizeIterator for LFSRIter<'a> {
+    fn len(&self) -> usize {
+        self.num_bits
+    }
+}
