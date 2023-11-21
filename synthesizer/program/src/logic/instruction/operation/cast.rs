@@ -206,9 +206,12 @@ impl<N: Network, const VARIANT: u8> CastOperation<N, VARIANT> {
         stack: &(impl StackMatches<N> + StackProgram<N>),
         registers: &mut (impl RegistersSigner<N> + RegistersLoad<N> + RegistersStore<N>),
     ) -> Result<()> {
-        // TODO (howardwu & d0cd): Re-enable after stabilizing.
+        // If the variant is `cast.lossy`, then check that the `cast_type` is a `PlaintextType::Literal`.
         if VARIANT == CastVariant::CastLossy as u8 {
-            bail!("cast.lossy is not supported (yet)")
+            ensure!(
+                matches!(self.cast_type, CastType::Plaintext(PlaintextType::Literal(..))),
+                "`cast.lossy` is only supported for casting to a literal"
+            )
         }
 
         // Load the operands values.
@@ -236,7 +239,17 @@ impl<N: Network, const VARIANT: u8> CastOperation<N, VARIANT> {
                 let value = match &inputs[0] {
                     Value::Plaintext(Plaintext::Literal(literal, ..)) => match VARIANT {
                         0 => literal.cast(*literal_type)?,
-                        1 => literal.cast_lossy(*literal_type)?,
+                        1 => {
+                            // TODO (@d0cd) Remove restriction on lossy casts to a group element.
+                            ensure!(
+                                !matches!(
+                                    &self.cast_type,
+                                    CastType::Plaintext(PlaintextType::Literal(LiteralType::Group))
+                                ),
+                                "Casting to a group element is not supported for `cast.lossy (yet)`"
+                            );
+                            literal.cast_lossy(*literal_type)?
+                        }
                         2.. => unreachable!("Invalid cast variant"),
                     },
                     _ => bail!("Casting to a literal requires a literal"),
@@ -333,9 +346,12 @@ impl<N: Network, const VARIANT: u8> CastOperation<N, VARIANT> {
         stack: &(impl StackMatches<N> + StackProgram<N>),
         registers: &mut (impl RegistersSignerCircuit<N, A> + RegistersLoadCircuit<N, A> + RegistersStoreCircuit<N, A>),
     ) -> Result<()> {
-        // TODO (howardwu & d0cd): Re-enable after stabilizing.
+        // If the variant is `cast.lossy`, then check that the `cast_type` is a `PlaintextType::Literal`.
         if VARIANT == CastVariant::CastLossy as u8 {
-            bail!("cast.lossy is not supported (yet)")
+            ensure!(
+                matches!(self.cast_type, CastType::Plaintext(PlaintextType::Literal(..))),
+                "`cast.lossy` is only supported for casting to a literal"
+            )
         }
 
         use circuit::{Eject, Inject};
@@ -378,7 +394,17 @@ impl<N: Network, const VARIANT: u8> CastOperation<N, VARIANT> {
                 let value = match &inputs[0] {
                     circuit::Value::Plaintext(circuit::Plaintext::Literal(literal, ..)) => match VARIANT {
                         0 => literal.cast(*literal_type)?,
-                        1 => literal.cast_lossy(*literal_type)?,
+                        1 => {
+                            // TODO (@d0cd) Remove restriction on lossy casts to a group element.
+                            ensure!(
+                                !matches!(
+                                    &self.cast_type,
+                                    CastType::Plaintext(PlaintextType::Literal(LiteralType::Group))
+                                ),
+                                "Casting to a group element is not supported for `cast.lossy (yet)`"
+                            );
+                            literal.cast_lossy(*literal_type)?
+                        }
                         2.. => unreachable!("Invalid cast variant"),
                     },
                     _ => bail!("Casting to a literal requires a literal"),
@@ -582,9 +608,12 @@ impl<N: Network, const VARIANT: u8> CastOperation<N, VARIANT> {
         stack: &(impl StackMatches<N> + StackProgram<N>),
         registers: &mut (impl RegistersLoad<N> + RegistersStore<N>),
     ) -> Result<()> {
-        // TODO (howardwu & d0cd): Re-enable after stabilizing.
+        // If the variant is `cast.lossy`, then check that the `cast_type` is a `PlaintextType::Literal`.
         if VARIANT == CastVariant::CastLossy as u8 {
-            bail!("cast.lossy is not supported (yet)")
+            ensure!(
+                matches!(self.cast_type, CastType::Plaintext(PlaintextType::Literal(..))),
+                "`cast.lossy` is only supported for casting to a literal"
+            )
         }
 
         // Load the operands values.
@@ -612,7 +641,17 @@ impl<N: Network, const VARIANT: u8> CastOperation<N, VARIANT> {
                 let value = match &inputs[0] {
                     Value::Plaintext(Plaintext::Literal(literal, ..)) => match VARIANT {
                         0 => literal.cast(*literal_type)?,
-                        1 => literal.cast_lossy(*literal_type)?,
+                        1 => {
+                            // TODO (@d0cd) Remove restriction on lossy casts to a group element.
+                            ensure!(
+                                !matches!(
+                                    &self.cast_type,
+                                    CastType::Plaintext(PlaintextType::Literal(LiteralType::Group))
+                                ),
+                                "Casting to a group element is not supported for `cast.lossy (yet)`"
+                            );
+                            literal.cast_lossy(*literal_type)?
+                        }
                         2.. => unreachable!("Invalid cast variant"),
                     },
                     _ => bail!("Casting to a literal requires a literal"),
@@ -641,6 +680,14 @@ impl<N: Network, const VARIANT: u8> CastOperation<N, VARIANT> {
         stack: &impl StackProgram<N>,
         input_types: &[RegisterType<N>],
     ) -> Result<Vec<RegisterType<N>>> {
+        // If the variant is `cast.lossy`, then check that the `cast_type` is a `PlaintextType::Literal`.
+        if VARIANT == CastVariant::CastLossy as u8 {
+            ensure!(
+                matches!(self.cast_type, CastType::Plaintext(PlaintextType::Literal(..))),
+                "`cast.lossy` is only supported for casting to a literal"
+            )
+        }
+
         // Ensure the number of operands is correct.
         ensure!(
             input_types.len() == self.operands.len(),
@@ -661,6 +708,13 @@ impl<N: Network, const VARIANT: u8> CastOperation<N, VARIANT> {
                 );
             }
             CastType::Plaintext(PlaintextType::Literal(..)) => {
+                // TODO (@d0cd) Remove restriction on lossy casts to a group element.
+                if VARIANT == CastVariant::CastLossy as u8 {
+                    ensure!(
+                        !matches!(&self.cast_type, CastType::Plaintext(PlaintextType::Literal(LiteralType::Group))),
+                        "Casting to a group element is not supported for `cast.lossy (yet)`"
+                    )
+                }
                 ensure!(input_types.len() == 1, "Casting to a literal requires exactly 1 operand");
             }
             CastType::Plaintext(PlaintextType::Struct(struct_name)) => {
