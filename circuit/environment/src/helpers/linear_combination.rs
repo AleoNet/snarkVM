@@ -555,7 +555,7 @@ mod tests {
         assert_eq!(zero, candidate.constant);
         assert_eq!(1, candidate.terms.len());
 
-        let (candidate_variable, candidate_coefficient) = candidate.terms.iter().next().unwrap();
+        let (candidate_variable, candidate_coefficient) = candidate.terms.first().unwrap();
         assert!(candidate_variable.is_public());
         assert_eq!(one, candidate_variable.value());
         assert_eq!(four, *candidate_coefficient);
