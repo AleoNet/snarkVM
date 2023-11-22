@@ -188,53 +188,122 @@ finalize bond_public:
     // Enforce the caller is *not* a validator.
     assert.eq r15 false;
 
+    // Check if the address specified in the stake is a validator.
+    contains committee[r1] into r16;
+    // If the address specified in the stake is a validator, jump to the `bond_exist_delegator` logic.
+    branch.eq r16 true to bond_exist_delegator;
+    // If the address specified in the stake is not a validator, jump to the `bond_new_delegator` logic.
+    branch.eq r16 false to bond_new_delegator;
+
+    /******* Bond Exist Delegator *******/
+
+    position bond_exist_delegator;
     // Get the stake for the specified validator.
-    // If the validator does not exist, this finalize scope will fail.
-    get committee[r1] into r16;
+    get committee[r1] into r17;
     // Ensure that the validator is open to stakers.
-    assert.eq r16.is_open true;
+    assert.eq r17.is_open true;
 
     // Increment the stake for the specified validator.
-    add r16.microcredits r2 into r17;
+    add r17.microcredits r2 into r18;
     // Construct the updated committee state.
-    cast r17 r16.is_open into r18 as committee_state;
+    cast r18 r17.is_open into r19 as committee_state;
 
     /* Bonded */
 
     // Construct the initial bond state.
-    cast r1 0u64 into r19 as bond_state;
+    cast r1 0u64 into r20 as bond_state;
     // Get the bond state for the caller, or default to the initial bond state.
-    get.or_use bonded[r0] r19 into r20;
+    get.or_use bonded[r0] r20 into r21;
     // Enforce the validator matches in the bond state.
-    assert.eq r20.validator r1;
+    assert.eq r21.validator r1;
 
     // Increment the microcredits in the bond state.
-    add r20.microcredits r2 into r21;
+    add r21.microcredits r2 into r22;
     // Determine if the amount is at least 10 credits.
-    gte r21 10_000_000u64 into r22;
+    gte r22 10_000_000u64 into r23;
     // Enforce the amount is at least 10 credits.
-    assert.eq r22 true;
+    assert.eq r23 true;
 
     // Construct the updated bond state.
-    cast r1 r21 into r23 as bond_state;
+    cast r1 r22 into r24 as bond_state;
 
     /* Account */
 
     // Get the balance of the caller.
     // If the account does not exist, this finalize scope will fail.
-    get account[r0] into r24;
+    get account[r0] into r25;
     // Decrement the balance of the caller.
-    sub r24 r2 into r25;
+    sub r25 r2 into r26;
 
     /* Writes */
 
     // Update the committee state for the specified validator.
-    set r18 into committee[r1];
+    set r19 into committee[r1];
     // Update the bond state for the caller.
-    set r23 into bonded[r0];
+    set r24 into bonded[r0];
     // Update the balance of the caller.
-    set r25 into account[r0];
+    set r26 into account[r0];
+    // Ends the `bond_exist_delegator` logic.
+    branch.eq true true to end;
 
+    /******* Bond New Delegator *******/
+
+    position bond_new_delegator;
+
+    /* Committee */
+
+    // Construct the initial committee state.
+    // Note: We set the initial 'is_open' state to 'true'.
+    cast 0u64 true into r27 as committee_state;
+    // Retrieve the committee state of the specified validator.
+    get.or_use committee[r1] r27 into r28;
+    // Ensure that the validator is open to stakers.
+    assert.eq r28.is_open true;
+
+    // Increment the stake for the specified validator.
+    add r28.microcredits r2 into r29;
+    // Construct the updated committee state.
+    cast r29 r28.is_open into r30 as committee_state;
+
+    /* Bonded */
+
+    // Check if the stake for the specified address never bond.
+    contains bonded[r1] into r31;
+    // Enforce the stake for the specified address never bond.
+    assert.eq r31 false;
+    // Construct the initial bond state.
+    cast r1 0u64 into r32 as bond_state;
+    // Get the bond state for the staker, or default to the initial bond state.
+    get.or_use bonded[r0] r32 into r33;
+    // Enforce the validator matches in the bond state.
+    assert.eq r33.validator r1;
+
+    // Increment the microcredits in the bond state.
+    add r33.microcredits r2 into r34;
+    // Determine if the amount is at least one million credits.
+    gte r34 1_000_000_000_000u64 into r35;
+    // Enforce the amount is at least one million credits.
+    assert.eq r35 true;
+
+    // Construct the updated bond state.
+    cast r1 r34 into r36 as bond_state;
+
+    /* Account */
+
+    // Get the balance of the caller.
+    // If the account does not exist, this finalize scope will fail.
+    get account[r0] into r37;
+    // Decrement the balance of the caller.
+    sub r37 r2 into r38;
+
+    /* Writes */
+
+    // Update the committee state of the specified validator.
+    set r30 into committee[r1];
+    // Update the bond state for the caller.
+    set r36 into bonded[r0];
+    // Update the balance of the caller.
+    set r38 into account[r0];
     // The terminus.
     position end;
 
@@ -296,7 +365,7 @@ finalize unbond_public:
     sub r8.microcredits r1 into r9;
 
     // Determine if the remaining bond is at least one million credits.
-    gte r9 1_000_000_000_000u64 into r10;
+    gte r7 1_000_000_000_000u64 into r10;
 
     // If the remaining balance is at least 1 million credits, jump to the `decrement_validator` logic.
     branch.eq r10 true to decrement_validator;
@@ -373,16 +442,57 @@ finalize unbond_public:
 
     // Get the bond state for the caller, or fail if it does not exist.
     get bonded[r0] into r17;
+
+    // Get the committee state for the specified validator.
+    get committee[r17.validator] into r18;
     // Decrement the microcredits in the bond state.
-    sub r17.microcredits r1 into r18;
+    sub r18.microcredits r1 into r19;
+    // Determine if the remaining bond is at least one million credits.
+    gte r19 1_000_000_000_000u64 into r20;
+
+    // If the remaining balance is at least 1 million credits, jump to the `process_delegator` logic.
+    branch.eq r20 true to process_delegator;
+    // If the remaining balance is at least 1 million credits, jump to the `remove_delegator_committee` logic.
+    branch.eq r20 false to remove_delegator_committee;
+
+    /******* Remove Delegator Committee *******/
+
+    // Starts the `remove_delegator_committee` logic.
+    position remove_delegator_committee;
+
+    // Ensure that the validator has no delegators.
+    assert.eq r6.microcredits r8.microcredits;
+
+    // Remove the validator from the committee.
+    remove committee[r17.validator];
+
+    // Remove the bond state for the validator.
+    remove bonded[r0];
+
+    // Increment the microcredits in the unbond state.
+    add r3.microcredits r17.microcredits into r21;
+
+    // Construct the updated unbond state.
+    cast r21 r4 into r22 as unbond_state;
+
+    // Update the unbond state for the caller.
+    set r22 into unbonding[r0];
+    // Ends the `remove_delegator_committee` logic.
+    branch.eq true true to end;
+
+    /******* Process Delegator *******/
+
+    position process_delegator;
+    // Decrement the microcredits in the bond state.
+    sub r17.microcredits r1 into r23;
 
     // Determine if the remaining bond is at least 10 credits.
-    gte r18 10_000_000u64 into r19;
+    gte r23 10_000_000u64 into r24;
 
     // If the remaining balance is at least 10 credits, jump to the `decrement_delegator` logic.
-    branch.eq r19 true to decrement_delegator;
+    branch.eq r24 true to decrement_delegator;
     // If the remaining balance is less than 10 credits, jump to the `remove_delegator` logic.
-    branch.eq r19 false to remove_delegator;
+    branch.eq r24 false to remove_delegator;
 
     /*** Decrement Delegator ***/
 
@@ -393,30 +503,30 @@ finalize unbond_public:
 
     // Get the stake for the specified validator.
     // If the validator does not exist, this finalize scope will fail.
-    get committee[r17.validator] into r20;
+    get committee[r17.validator] into r25;
     // Decrement the stake for the specified validator.
-    sub r20.microcredits r1 into r21;
+    sub r25.microcredits r1 into r26;
     // Construct the updated committee state.
-    cast r21 r20.is_open into r22 as committee_state;
+    cast r26 r25.is_open into r27 as committee_state;
     // Update the stake for the specified validator.
-    set r22 into committee[r17.validator];
+    set r27 into committee[r17.validator];
 
     /* Bonded */
 
     // Construct the updated bond state.
-    cast r17.validator r18 into r23 as bond_state;
+    cast r17.validator r23 into r28 as bond_state;
     // Update the bond state for the caller.
-    set r23 into bonded[r0];
+    set r28 into bonded[r0];
 
     /* Unbonding */
 
     // Increment the microcredits in the unbond state.
-    add r3.microcredits r1 into r24;
+    add r3.microcredits r1 into r29;
 
     // Construct the updated unbond state.
-    cast r24 r4 into r25 as unbond_state;
+    cast r29 r4 into r30 as unbond_state;
     // Update the unbond state for the caller.
-    set r25 into unbonding[r0];
+    set r30 into unbonding[r0];
 
     // Ends the `decrement_delegator` logic.
     branch.eq true true to end;
@@ -430,13 +540,13 @@ finalize unbond_public:
 
     // Get the stake for the specified validator.
     // If the validator does not exist, this finalize scope will fail.
-    get committee[r17.validator] into r26;
+    get committee[r17.validator] into r31;
     // Decrement the stake for the specified validator.
-    sub r26.microcredits r17.microcredits into r27;
+    sub r31.microcredits r17.microcredits into r32;
     // Construct the updated committee state.
-    cast r27 r26.is_open into r28 as committee_state;
+    cast r32 r31.is_open into r33 as committee_state;
     // Update the stake for the specified validator.
-    set r28 into committee[r17.validator];
+    set r33 into committee[r17.validator];
 
     /* Bonded */
 
@@ -446,12 +556,12 @@ finalize unbond_public:
     /* Unbonding */
 
     // Increment the microcredits in the unbond state.
-    add r3.microcredits r17.microcredits into r29;
+    add r3.microcredits r17.microcredits into r34;
 
     // Construct the updated unbond state.
-    cast r29 r4 into r30 as unbond_state;
+    cast r34 r4 into r35 as unbond_state;
     // Update the unbond state for the caller.
-    set r30 into unbonding[r0];
+    set r35 into unbonding[r0];
 
     // The terminus.
     position end;
