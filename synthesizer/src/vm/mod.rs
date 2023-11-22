@@ -1071,6 +1071,6 @@ finalize do:
             vm.execute(&private_key, ("program_layer_30.aleo", "do"), inputs, record, 0, None, rng).unwrap();
 
         // Verify.
-        vm.check_transaction(&transaction, None).unwrap();
+        vm.check_transaction(&transaction, None, rng).unwrap();
     }
 }

@@ -1544,7 +1544,7 @@ mod sanity_checks {
         // Construct a new process.
         let process = Process::load().unwrap();
         // Retrieve the stack.
-        let stack = process.get_stack(ProgramID::from_str("credits.aleo").unwrap()).unwrap();
+        let stack = process.get_stack_ref(ProgramID::from_str("credits.aleo").unwrap()).unwrap();
 
         // Declare the function name.
         let function_name = Identifier::from_str("transfer_private").unwrap();
@@ -1577,7 +1577,7 @@ mod sanity_checks {
         // Construct a new process.
         let process = Process::load().unwrap();
         // Retrieve the stack.
-        let stack = process.get_stack(ProgramID::from_str("credits.aleo").unwrap()).unwrap();
+        let stack = process.get_stack_ref(ProgramID::from_str("credits.aleo").unwrap()).unwrap();
 
         // Declare the function name.
         let function_name = Identifier::from_str("transfer_public").unwrap();
@@ -1605,7 +1605,7 @@ mod sanity_checks {
         // Construct a new process.
         let process = Process::load().unwrap();
         // Retrieve the stack.
-        let stack = process.get_stack(ProgramID::from_str("credits.aleo").unwrap()).unwrap();
+        let stack = process.get_stack_ref(ProgramID::from_str("credits.aleo").unwrap()).unwrap();
 
         // Declare the function name.
         let function_name = Identifier::from_str("fee_private").unwrap();
@@ -1638,7 +1638,7 @@ mod sanity_checks {
         // Construct a new process.
         let process = Process::load().unwrap();
         // Retrieve the stack.
-        let stack = process.get_stack(ProgramID::from_str("credits.aleo").unwrap()).unwrap();
+        let stack = process.get_stack_ref(ProgramID::from_str("credits.aleo").unwrap()).unwrap();
 
         // Declare the function name.
         let function_name = Identifier::from_str("fee_public").unwrap();
