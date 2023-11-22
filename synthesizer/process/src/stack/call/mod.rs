@@ -13,7 +13,7 @@
 // limitations under the License.
 
 use crate::{CallStack, Registers, RegistersCall, StackEvaluate, StackExecute};
-use aleo_std::prelude::{timer, lap, finish};
+use aleo_std::prelude::{finish, lap, timer};
 use console::{network::prelude::*, program::Request};
 use synthesizer_program::{
     Call,
@@ -61,14 +61,13 @@ impl<N: Network> CallTrait<N> for Call<N> {
         let timer = timer!("Call::evaluate");
 
         // Load the operands values.
-        let inputs: Vec<_> = self.operands().iter().map(|operand| registers.load(stack.deref(), operand)).try_collect()?;
+        let inputs: Vec<_> =
+            self.operands().iter().map(|operand| registers.load(stack.deref(), operand)).try_collect()?;
 
         // Retrieve the substack and resource.
         let (substack, resource) = match self.operator() {
             // Retrieve the call stack and resource from the locator.
-            CallOperator::Locator(locator) => {
-                (stack.get_external_stack_ref(locator.program_id())?, locator.resource())
-            }
+            CallOperator::Locator(locator) => (stack.get_external_stack_ref(locator.program_id())?, locator.resource()),
             CallOperator::Resource(resource) => {
                 // TODO (howardwu): Revisit this decision to forbid calling internal functions. A record cannot be spent again.
                 //  But there are legitimate uses for passing a record through to an internal function.

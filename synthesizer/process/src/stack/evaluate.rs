@@ -110,7 +110,7 @@ impl<N: Network> StackEvaluate<N> for Stack<N> {
             CallStack::CheckDeployment(requests, _, _) | CallStack::PackageRun(requests, _, _) => {
                 let last_request = requests.last().ok_or(anyhow!("CallStack does not contain request"))?.clone();
                 (last_request, call_stack)
-            },
+            }
             // If the evaluation is performed in the `Execute` mode, create a new `Evaluate` mode.
             // This is done to ensure that evaluation during execution is performed consistently.
             CallStack::Execute(authorization, _) => {
@@ -223,7 +223,6 @@ impl<N: Network> StackEvaluate<N> for Stack<N> {
             .collect::<Result<Vec<_>>>()?;
         lap!(timer, "Load the outputs");
 
-
         // Map the output operands to registers.
         let output_registers = output_operands
             .iter()
@@ -248,6 +247,6 @@ impl<N: Network> StackEvaluate<N> for Stack<N> {
         );
         finish!(timer);
 
-        response 
+        response
     }
 }

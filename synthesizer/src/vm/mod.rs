@@ -1057,23 +1057,18 @@ finalize do:
         }
 
         // Fetch the unspent records.
-        let records =
-            genesis.transitions().cloned().flat_map(Transition::into_records).collect::<IndexMap<_, _>>();
+        let records = genesis.transitions().cloned().flat_map(Transition::into_records).collect::<IndexMap<_, _>>();
         trace!("Unspent Records:\n{:#?}", records);
 
         // Select a record to spend.
         let record = Some(records.values().next().unwrap().decrypt(&view_key).unwrap());
 
         // Prepare the inputs.
-        let inputs = [
-            Value::<CurrentNetwork>::from_str("1u32").unwrap(),
-        ]
-        .into_iter();
+        let inputs = [Value::<CurrentNetwork>::from_str("1u32").unwrap()].into_iter();
 
         // Execute.
-        let transaction = vm
-            .execute(&private_key, ("program_layer_30.aleo", "do"), inputs, record, 0, None, rng)
-            .unwrap();
+        let transaction =
+            vm.execute(&private_key, ("program_layer_30.aleo", "do"), inputs, record, 0, None, rng).unwrap();
 
         // Verify.
         vm.check_transaction(&transaction, None).unwrap();

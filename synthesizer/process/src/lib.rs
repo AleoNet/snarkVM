@@ -206,7 +206,8 @@ impl<N: Network> Process<N> {
         // Prepare the program ID.
         let program_id = program_id.try_into().map_err(|_| anyhow!("Invalid program ID"))?;
         // Retrieve the stack.
-        let stack = self.stacks.get(&program_id).cloned().ok_or_else(|| anyhow!("Program '{program_id}' does not exist"))?;
+        let stack =
+            self.stacks.get(&program_id).cloned().ok_or_else(|| anyhow!("Program '{program_id}' does not exist"))?;
         // Ensure the program ID matches.
         ensure!(stack.program_id() == &program_id, "Expected program '{}', found '{program_id}'", stack.program_id());
         // Return the stack.
@@ -219,7 +220,8 @@ impl<N: Network> Process<N> {
         // Prepare the program ID.
         let program_id = program_id.try_into().map_err(|_| anyhow!("Invalid program ID"))?;
         // Retrieve the stack.
-        let stack = self.stacks.get(&program_id).ok_or_else(|| anyhow!("Program '{program_id}' does not exist"))?.deref();
+        let stack =
+            self.stacks.get(&program_id).ok_or_else(|| anyhow!("Program '{program_id}' does not exist"))?.deref();
         // Ensure the program ID matches.
         ensure!(stack.program_id() == &program_id, "Expected program '{}', found '{program_id}'", stack.program_id());
         // Return the stack.
