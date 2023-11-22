@@ -978,12 +978,15 @@ function multitransfer:
     #[test]
     #[ignore]
     fn test_deployment_memory_overload() {
-        const NUM_DEPLOYMENTS: usize = 100;
+        const NUM_DEPLOYMENTS: usize = 32;
 
         let rng = &mut TestRng::default();
 
         // Initialize a private key.
         let private_key = sample_genesis_private_key(rng);
+
+        // Initialize a view key.
+        let view_key = ViewKey::try_from(&private_key).unwrap();
 
         // Initialize the genesis block.
         let genesis = sample_genesis_block(rng);
@@ -1012,7 +1015,7 @@ finalize do:
     set r0 into m[0u8];",
         )
         .unwrap();
-        println!("Deploying the base program.");
+
         let deployment = vm.deploy(&private_key, &program, None, 0, None, rng).unwrap();
         vm.add_next_block(&sample_next_block(&vm, &private_key, &[deployment], rng).unwrap()).unwrap();
 
@@ -1048,9 +1051,31 @@ finalize do:
             let program = Program::from_str(&program_string).unwrap();
 
             // Deploy the program.
-            println!("Deploying program {}.", i);
             let deployment = vm.deploy(&private_key, &program, None, 0, None, rng).unwrap();
+
             vm.add_next_block(&sample_next_block(&vm, &private_key, &[deployment], rng).unwrap()).unwrap();
         }
+
+        // Fetch the unspent records.
+        let records =
+            genesis.transitions().cloned().flat_map(Transition::into_records).collect::<IndexMap<_, _>>();
+        trace!("Unspent Records:\n{:#?}", records);
+
+        // Select a record to spend.
+        let record = Some(records.values().next().unwrap().decrypt(&view_key).unwrap());
+
+        // Prepare the inputs.
+        let inputs = [
+            Value::<CurrentNetwork>::from_str("1u32").unwrap(),
+        ]
+        .into_iter();
+
+        // Execute.
+        let transaction = vm
+            .execute(&private_key, ("program_layer_30.aleo", "do"), inputs, record, 0, None, rng)
+            .unwrap();
+
+        // Verify.
+        vm.check_transaction(&transaction, None).unwrap();
     }
 }
