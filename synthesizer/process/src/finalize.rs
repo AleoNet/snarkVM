@@ -49,7 +49,7 @@ impl<N: Network> Process<N> {
             /* Finalize the fee. */
 
             // Retrieve the fee stack.
-            let fee_stack = self.get_stack(fee.program_id())?;
+            let fee_stack = self.get_stack_ref(fee.program_id())?;
             // Finalize the fee transition.
             finalize_operations.extend(finalize_fee_transition(state, store, fee_stack, fee)?);
             lap!(timer, "Finalize transition for '{}/{}'", fee.program_id(), fee.function_name());
@@ -90,7 +90,7 @@ impl<N: Network> Process<N> {
         // Retrieve the root transition (without popping it).
         let transition = execution.peek()?;
         // Retrieve the stack.
-        let stack = self.get_stack(transition.program_id())?;
+        let stack = self.get_stack_ref(transition.program_id())?;
         // Ensure the number of calls matches the number of transitions.
         let number_of_calls = stack.get_number_of_calls(transition.function_name())?;
         ensure!(
@@ -113,7 +113,7 @@ impl<N: Network> Process<N> {
 
             if let Some(fee) = fee {
                 // Retrieve the fee stack.
-                let fee_stack = self.get_stack(fee.program_id())?;
+                let fee_stack = self.get_stack_ref(fee.program_id())?;
                 // Finalize the fee transition.
                 finalize_operations.extend(finalize_fee_transition(state, store, fee_stack, fee)?);
                 lap!(timer, "Finalize transition for '{}/{}'", fee.program_id(), fee.function_name());
@@ -139,7 +139,7 @@ impl<N: Network> Process<N> {
 
         atomic_batch_scope!(store, {
             // Retrieve the stack.
-            let stack = self.get_stack(fee.program_id())?;
+            let stack = self.get_stack_ref(fee.program_id())?;
             // Finalize the fee transition.
             let result = finalize_fee_transition(state, store, stack, fee);
             finish!(timer, "Finalize transition for '{}/{}'", fee.program_id(), fee.function_name());
@@ -356,7 +356,7 @@ fn initialize_finalize_state<'a, N: Network>(
     let (finalize, stack) = match stack.program_id() == future.program_id() {
         true => (stack.get_function_ref(future.function_name())?.finalize_logic(), stack),
         false => {
-            let stack = stack.get_external_stack(future.program_id())?;
+            let stack = stack.get_external_stack_ref(future.program_id())?;
             (stack.get_function_ref(future.function_name())?.finalize_logic(), stack)
         }
     };

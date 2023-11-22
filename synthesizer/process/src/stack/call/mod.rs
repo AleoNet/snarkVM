@@ -13,6 +13,7 @@
 // limitations under the License.
 
 use crate::{CallStack, Registers, RegistersCall, StackEvaluate, StackExecute};
+use aleo_std::prelude::{timer, lap, finish};
 use console::{network::prelude::*, program::Request};
 use synthesizer_program::{
     Call,
@@ -57,14 +58,16 @@ impl<N: Network> CallTrait<N> for Call<N> {
         stack: &(impl StackEvaluate<N> + StackMatches<N> + StackProgram<N>),
         registers: &mut Registers<N, A>,
     ) -> Result<()> {
+        let timer = timer!("Call::evaluate");
+
         // Load the operands values.
-        let inputs: Vec<_> = self.operands().iter().map(|operand| registers.load(stack, operand)).try_collect()?;
+        let inputs: Vec<_> = self.operands().iter().map(|operand| registers.load(stack.deref(), operand)).try_collect()?;
 
         // Retrieve the substack and resource.
         let (substack, resource) = match self.operator() {
             // Retrieve the call stack and resource from the locator.
             CallOperator::Locator(locator) => {
-                (stack.get_external_stack(locator.program_id())?.clone(), locator.resource())
+                (stack.get_external_stack_ref(locator.program_id())?, locator.resource())
             }
             CallOperator::Resource(resource) => {
                 // TODO (howardwu): Revisit this decision to forbid calling internal functions. A record cannot be spent again.
@@ -74,9 +77,10 @@ impl<N: Network> CallTrait<N> for Call<N> {
                     bail!("Cannot call '{resource}'. Use a closure ('closure {resource}:') instead.")
                 }
 
-                (stack.clone(), resource)
+                (stack, resource)
             }
         };
+        lap!(timer, "get substack and resource");
 
         // If the operator is a closure, retrieve the closure and compute the output.
         let outputs = if let Ok(closure) = substack.program().get_closure(resource) {
@@ -111,12 +115,14 @@ impl<N: Network> CallTrait<N> for Call<N> {
         else {
             bail!("Call operator '{}' is invalid or unsupported.", self.operator())
         };
+        lap!(timer, "got outputs");
 
         // Assign the outputs to the destination registers.
         for (output, register) in outputs.into_iter().zip_eq(&self.destinations()) {
             // Assign the output to the register.
             registers.store(stack, register, output)?;
         }
+        finish!(timer);
 
         Ok(())
     }
@@ -134,6 +140,8 @@ impl<N: Network> CallTrait<N> for Call<N> {
              ),
         rng: &mut R,
     ) -> Result<()> {
+        let timer = timer!("Call::execute");
+
         // Load the operands values.
         let inputs: Vec<_> =
             self.operands().iter().map(|operand| registers.load_circuit(stack, operand)).try_collect()?;
@@ -142,6 +150,8 @@ impl<N: Network> CallTrait<N> for Call<N> {
         let (substack, resource) = match self.operator() {
             // Retrieve the call stack and resource from the locator.
             CallOperator::Locator(locator) => {
+                lap!(timer, "Locator");
+
                 // Check the external call locator.
                 let function_name = locator.name().to_string();
                 let is_credits_program = &locator.program_id().to_string() == "credits.aleo";
@@ -152,10 +162,11 @@ impl<N: Network> CallTrait<N> for Call<N> {
                 if is_credits_program && (is_fee_private || is_fee_public) {
                     bail!("Cannot perform an external call to 'credits.aleo/fee_private' or 'credits.aleo/fee_public'.")
                 } else {
-                    (stack.get_external_stack(locator.program_id())?.clone(), locator.resource())
+                    (stack.get_external_stack_ref(locator.program_id())?, locator.resource())
                 }
             }
             CallOperator::Resource(resource) => {
+                lap!(timer, "Resource");
                 // TODO (howardwu): Revisit this decision to forbid calling internal functions. A record cannot be spent again.
                 //  But there are legitimate uses for passing a record through to an internal function.
                 //  We could invoke the internal function without a state transition, but need to match visibility.
@@ -163,12 +174,13 @@ impl<N: Network> CallTrait<N> for Call<N> {
                     bail!("Cannot call '{resource}'. Use a closure ('closure {resource}:') instead.")
                 }
 
-                (stack.clone(), resource)
+                (stack, resource)
             }
         };
 
         // If the operator is a closure, retrieve the closure and compute the output.
         let outputs = if let Ok(closure) = substack.program().get_closure(resource) {
+            lap!(timer, "execute_closure");
             // Execute the closure, and load the outputs.
             substack.execute_closure(
                 &closure,
@@ -181,6 +193,7 @@ impl<N: Network> CallTrait<N> for Call<N> {
         }
         // If the operator is a function, retrieve the function and compute the output.
         else if let Ok(function) = substack.program().get_function(resource) {
+            lap!(timer, "execute_function");
             // Retrieve the number of inputs.
             let num_inputs = function.inputs().len();
             // Ensure the number of inputs matches the number of input statements.
@@ -205,6 +218,7 @@ impl<N: Network> CallTrait<N> for Call<N> {
                     // If the circuit is in authorize or synthesize mode, then add any external calls to the stack.
                     CallStack::Authorize(_, private_key, authorization)
                     | CallStack::Synthesize(_, private_key, authorization) => {
+                        lap!(timer, "CallStack::Authorize,Synthesize");
                         // Compute the request.
                         let request = Request::sign(
                             &private_key,
@@ -230,6 +244,7 @@ impl<N: Network> CallTrait<N> for Call<N> {
                         (request, response)
                     }
                     CallStack::CheckDeployment(_, private_key, ..) | CallStack::PackageRun(_, private_key, ..) => {
+                        lap!(timer, "CallStack::CheckDeployment,PackageRun");
                         // Compute the request.
                         let request = Request::sign(
                             &private_key,
@@ -256,6 +271,7 @@ impl<N: Network> CallTrait<N> for Call<N> {
                     }
                     // If the circuit is in execute mode, then evaluate and execute the instructions.
                     CallStack::Execute(authorization, ..) => {
+                        lap!(timer, "CallStack::Execute");
                         // Retrieve the next request (without popping it).
                         let request = authorization.peek_next()?;
                         // Ensure the inputs match the original inputs.
@@ -281,6 +297,7 @@ impl<N: Network> CallTrait<N> for Call<N> {
                     }
                 }
             };
+            lap!(timer, "got request and response");
             // Inject the existing circuit.
             A::inject_r1cs(r1cs);
 
@@ -330,6 +347,7 @@ impl<N: Network> CallTrait<N> for Call<N> {
                 None,
             );
             A::assert(check_input_ids);
+            lap!(timer, "checked input ids");
 
             // Inject the outputs as `Mode::Private` (with the 'tcm' and output IDs as `Mode::Public`).
             let outputs = circuit::Response::process_outputs_from_callback(
@@ -342,6 +360,7 @@ impl<N: Network> CallTrait<N> for Call<N> {
                 response.outputs().to_vec(),
                 &function.output_types(),
             );
+            lap!(timer, "checked outputs");
             // Return the circuit outputs.
             outputs
         }
@@ -355,6 +374,9 @@ impl<N: Network> CallTrait<N> for Call<N> {
             // Assign the output to the register.
             registers.store_circuit(stack, register, output)?;
         }
+        lap!(timer, "assigned outputs to registers");
+
+        finish!(timer);
 
         Ok(())
     }

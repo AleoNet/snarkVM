@@ -75,7 +75,7 @@ pub struct Process<N: Network> {
     /// The universal SRS.
     universal_srs: Arc<UniversalSRS<N>>,
     /// The mapping of program IDs to stacks.
-    stacks: IndexMap<ProgramID<N>, Stack<N>>,
+    stacks: IndexMap<ProgramID<N>, Arc<Stack<N>>>,
 }
 
 impl<N: Network> Process<N> {
@@ -129,7 +129,7 @@ impl<N: Network> Process<N> {
     #[inline]
     pub fn add_stack(&mut self, stack: Stack<N>) {
         // Add the stack to the process.
-        self.stacks.insert(*stack.program_id(), stack);
+        self.stacks.insert(*stack.program_id(), Arc::new(stack));
     }
 }
 
@@ -202,11 +202,24 @@ impl<N: Network> Process<N> {
 
     /// Returns the stack for the given program ID.
     #[inline]
-    pub fn get_stack(&self, program_id: impl TryInto<ProgramID<N>>) -> Result<&Stack<N>> {
+    pub fn get_stack(&self, program_id: impl TryInto<ProgramID<N>>) -> Result<Arc<Stack<N>>> {
         // Prepare the program ID.
         let program_id = program_id.try_into().map_err(|_| anyhow!("Invalid program ID"))?;
         // Retrieve the stack.
-        let stack = self.stacks.get(&program_id).ok_or_else(|| anyhow!("Program '{program_id}' does not exist"))?;
+        let stack = self.stacks.get(&program_id).cloned().ok_or_else(|| anyhow!("Program '{program_id}' does not exist"))?;
+        // Ensure the program ID matches.
+        ensure!(stack.program_id() == &program_id, "Expected program '{}', found '{program_id}'", stack.program_id());
+        // Return the stack.
+        Ok(stack)
+    }
+
+    /// Returns the stack for the given program ID.
+    #[inline]
+    pub fn get_stack_ref(&self, program_id: impl TryInto<ProgramID<N>>) -> Result<&Stack<N>> {
+        // Prepare the program ID.
+        let program_id = program_id.try_into().map_err(|_| anyhow!("Invalid program ID"))?;
+        // Retrieve the stack.
+        let stack = self.stacks.get(&program_id).ok_or_else(|| anyhow!("Program '{program_id}' does not exist"))?.deref();
         // Ensure the program ID matches.
         ensure!(stack.program_id() == &program_id, "Expected program '{}', found '{program_id}'", stack.program_id());
         // Return the stack.
@@ -216,7 +229,7 @@ impl<N: Network> Process<N> {
     /// Returns the program for the given program ID.
     #[inline]
     pub fn get_program(&self, program_id: impl TryInto<ProgramID<N>>) -> Result<&Program<N>> {
-        self.get_stack(program_id).map(Stack::program)
+        self.get_stack_ref(program_id).map(Stack::program)
     }
 
     /// Returns the proving key for the given program ID and function name.
