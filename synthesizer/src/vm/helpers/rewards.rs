@@ -23,8 +23,8 @@ use rayon::prelude::*;
 
 /// A safety bound (sanity-check) for the coinbase reward.
 const MAX_COINBASE_REWARD: u64 = ledger_block::MAX_COINBASE_REWARD; // Coinbase reward at block 1.
-const MAX_PERCENT: u128 = 100u128; 
-const MIN_PERCENT: u64 = 0u64; 
+const MAX_PERCENT: u128 = 100u128;
+const MIN_PERCENT: u64 = 0u64;
 
 /// Returns the updated stakers reflecting the staking rewards for the given committee and block reward.
 /// The staking reward is defined as: `block_reward * stake / total_stake`.
@@ -188,7 +188,8 @@ mod tests {
             let stakers = indexmap! {address => (address, 0u8, stake)};
             let next_stakers = staking_rewards::<CurrentNetwork>(&stakers, &committee, block_reward);
             assert_eq!(next_stakers.len(), 1);
-            let (candidate_address, (candidate_validator, _, candidate_stake)) = next_stakers.into_iter().next().unwrap();
+            let (candidate_address, (candidate_validator, _, candidate_stake)) =
+                next_stakers.into_iter().next().unwrap();
             assert_eq!(candidate_address, address);
             assert_eq!(candidate_validator, address);
             let reward = block_reward as u128 * stake as u128 / committee.total_stake() as u128;
@@ -240,7 +241,8 @@ mod tests {
             let stakers = indexmap! {address => (address, 0u8, stake)};
             let next_stakers = staking_rewards::<CurrentNetwork>(&stakers, &committee, block_reward);
             assert_eq!(next_stakers.len(), 1);
-            let (candidate_address, (candidate_validator, _, candidate_stake)) = next_stakers.into_iter().next().unwrap();
+            let (candidate_address, (candidate_validator, _, candidate_stake)) =
+                next_stakers.into_iter().next().unwrap();
             assert_eq!(candidate_address, address);
             assert_eq!(candidate_validator, address);
             assert_eq!(candidate_stake, stake);

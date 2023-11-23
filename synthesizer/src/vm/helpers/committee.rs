@@ -190,7 +190,14 @@ pub fn to_next_committee<N: Network>(
     let mut members = IndexMap::with_capacity(validator_map.len());
     // Iterate over the validators.
     for (validator, microcredits) in validator_map {
-        members.insert(validator, (current_committee.get_commission(validator), microcredits, current_committee.is_committee_member_open(validator)));
+        members.insert(
+            validator,
+            (
+                current_committee.get_commission(validator),
+                microcredits,
+                current_committee.is_committee_member_open(validator),
+            ),
+        );
     }
     // Return the next committee.
     Committee::new(next_round, members)
@@ -313,14 +320,19 @@ mod tests {
                 let is_open = Boolean::<N>::new(*is_open);
                 (
                     Plaintext::from(Literal::Address(*validator)),
-                    Value::from_str(&format!("{{ commission: {commission}, microcredits: {microcredits}, is_open: {is_open} }}")).unwrap(),
+                    Value::from_str(&format!(
+                        "{{ commission: {commission}, microcredits: {microcredits}, is_open: {is_open} }}"
+                    ))
+                    .unwrap(),
                 )
             })
             .collect()
     }
 
     /// Returns the bonded map, given the staker, validator and microcredits.
-    fn to_bonded_map<N: Network>(stakers: &IndexMap<Address<N>, (Address<N>, u8, u64)>) -> Vec<(Plaintext<N>, Value<N>)> {
+    fn to_bonded_map<N: Network>(
+        stakers: &IndexMap<Address<N>, (Address<N>, u8, u64)>,
+    ) -> Vec<(Plaintext<N>, Value<N>)> {
         // Prepare the identifiers.
         let validator_identifier = Identifier::from_str("validator").expect("Failed to parse 'validator'");
         let commission_identifier = Identifier::from_str("commission").expect("Failed to parse 'commission'");

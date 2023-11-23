@@ -64,7 +64,10 @@ impl Hash for Validator {
 }
 
 fn to_committee((round, ValidatorSet(validators)): (u64, ValidatorSet)) -> Result<Committee<CurrentNetwork>> {
-    Committee::new(round, validators.iter().map(|v: &Validator| (v.address, (v.commission, v.stake, v.is_open))).collect())
+    Committee::new(
+        round,
+        validators.iter().map(|v: &Validator| (v.address, (v.commission, v.stake, v.is_open))).collect(),
+    )
 }
 
 #[derive(Debug, Clone)]
