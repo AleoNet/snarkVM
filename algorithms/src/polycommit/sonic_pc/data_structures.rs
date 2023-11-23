@@ -309,17 +309,23 @@ impl<E: PairingEngine> CommitterKey<E> {
                 self.enforced_degree_bounds = None;
             }
             Some(enforced_degree_bounds) => {
-                let new_highest_degree_bound =
-                    *enforced_degree_bounds.last().ok_or(anyhow!("expecting new degree_bounds"))?;
+                // Retrieve new highest degree bound
+                let new_highest_degree_bound = *enforced_degree_bounds.last().ok_or(anyhow!("no bound found"))?;
                 ensure!(new_highest_degree_bound < supported_degree);
 
                 // Retrieve current degree bounds and shifted powers
                 let degree_bounds = self.enforced_degree_bounds.take().unwrap_or_default();
-                let highest_degree_bound =
-                    degree_bounds.iter().copied().sorted().last().map(|b| b + 1).unwrap_or_default();
+                let highest_degree_bound = degree_bounds.iter().copied().sorted().last().unwrap_or_default();
                 let mut shifted_powers_of_beta_g = self.shifted_powers_of_beta_g.take().unwrap_or_default();
                 let mut shifted_powers_of_beta_times_gamma_g =
                     self.shifted_powers_of_beta_times_gamma_g.take().unwrap_or_default();
+
+                // We add 1 to any existing upper bound, in congruence with `max_degree + 1` below.
+                // This is because the proof system assumes we need this extra degree.
+                // This can optionally be refactored to ensure the extra degree is already encoded in degree_bounds.
+                if highest_degree_bound > 0 {
+                    highest_degree_bound.checked_add(1).ok_or(error("overflow"))?;
+                }
 
                 let shifted_ck_time = start_timer!(|| "Constructing `shifted_powers_of_beta_g`");
                 match new_highest_degree_bound.cmp(&highest_degree_bound) {
@@ -351,7 +357,7 @@ impl<E: PairingEngine> CommitterKey<E> {
                             let shift_degree = max_degree - *degree_bound;
                             let mut powers_for_degree_bound =
                                 Vec::with_capacity((max_degree + 2).saturating_sub(shift_degree));
-                            for i in 0..=supported_hiding_bound + 1 {
+                            for i in 0..=supported_hiding_bound.checked_add(1).ok_or(anyhow!("overflow"))? {
                                 // We have an additional degree in `powers_of_beta_times_gamma_g` beyond `powers_of_beta_g`.
                                 if shift_degree + i < max_degree + 2 {
                                     powers_for_degree_bound
@@ -383,7 +389,7 @@ impl<E: PairingEngine> CommitterKey<E> {
         }
 
         // Set powers_of_beta_times_gamma_g
-        self.powers_of_beta_times_gamma_g = (0..=(supported_hiding_bound + 1))
+        self.powers_of_beta_times_gamma_g = (0..=(supported_hiding_bound.checked_add(1).ok_or(anyhow!("overflow"))?))
             .map(|i| {
                 srs.powers_of_beta_times_gamma_g()
                     .get(&i)
