@@ -25,11 +25,7 @@ impl<A: Aleo> Equal<Self> for ComputeKey<A> {
         // Determine if this operation is constant or variable.
         match self.is_constant() && other.is_constant() {
             true => Boolean::constant(self.eject_value() == other.eject_value()),
-            false => {
-                self.pk_sig.is_equal(other.pk_sig())
-                    & self.pr_sig.is_equal(other.pr_sig())
-                    & self.sk_prf.is_equal(other.sk_prf())
-            }
+            false => self.pk_sig.is_equal(other.pk_sig()) & self.pr_sig.is_equal(other.pr_sig()),
         }
     }
 

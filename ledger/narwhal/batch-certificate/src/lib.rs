@@ -82,7 +82,7 @@ impl<N: Network> BatchCertificate<N> {
         // Verify the signatures are valid.
         for (signature, timestamp) in &signatures {
             let preimage = [batch_header.batch_id(), Field::from_u64(*timestamp as u64)];
-            if !signature.verify(&signature.to_address(), &preimage) {
+            if !signature.verify(&signature.to_address()?, &preimage) {
                 bail!("Invalid batch certificate signature")
             }
         }
@@ -94,7 +94,7 @@ impl<N: Network> BatchCertificate<N> {
     pub fn from(batch_header: BatchHeader<N>, signatures: IndexSet<Signature<N>>) -> Result<Self> {
         // Verify the signatures are valid.
         for signature in &signatures {
-            if !signature.verify(&signature.to_address(), &[batch_header.batch_id()]) {
+            if !signature.verify(&signature.to_address()?, &[batch_header.batch_id()]) {
                 bail!("Invalid batch certificate signature")
             }
         }

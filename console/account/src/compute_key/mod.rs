@@ -36,8 +36,6 @@ pub struct ComputeKey<N: Network> {
     pk_sig: Group<N>,
     /// The signature public randomizer `pr_sig` := G^r_sig.
     pr_sig: Group<N>,
-    /// The PRF secret key `sk_prf` := HashToScalar(pk_sig || pr_sig).
-    sk_prf: Scalar<N>,
 }
 
 impl<N: Network> ComputeKey<N> {
@@ -51,8 +49,9 @@ impl<N: Network> ComputeKey<N> {
         self.pr_sig
     }
 
-    /// Returns a reference to the PRF secret key.
-    pub const fn sk_prf(&self) -> Scalar<N> {
-        self.sk_prf
+    /// Returns the PRF secret key.
+    pub fn sk_prf(&self) -> Result<Scalar<N>> {
+        // Compute sk_prf := hash(pk_sig || pr_sig).
+        N::hash_to_scalar_psd4(&[self.pk_sig.to_x_coordinate(), self.pr_sig.to_x_coordinate()])
     }
 }

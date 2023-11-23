@@ -32,8 +32,6 @@ pub struct ComputeKey<A: Aleo> {
     pk_sig: Group<A>,
     /// The signature public randomizer `pr_sig` := G^r_sig.
     pr_sig: Group<A>,
-    /// The PRF secret key `sk_prf` := RO(G^sk_sig || G^r_sig).
-    sk_prf: Scalar<A>,
 }
 
 #[cfg(console)]
@@ -63,8 +61,9 @@ impl<A: Aleo> ComputeKey<A> {
     }
 
     /// Returns the PRF secret key.
-    pub const fn sk_prf(&self) -> &Scalar<A> {
-        &self.sk_prf
+    pub fn sk_prf(&self) -> Scalar<A> {
+        // Compute sk_prf := HashToScalar(pk_sig || pr_sig).
+        A::hash_to_scalar_psd4(&[self.pk_sig.to_x_coordinate(), self.pr_sig.to_x_coordinate()])
     }
 }
 
@@ -74,7 +73,7 @@ impl<A: Aleo> Eject for ComputeKey<A> {
 
     /// Ejects the mode of the compute key.
     fn eject_mode(&self) -> Mode {
-        (&self.pk_sig, &self.pr_sig, &self.sk_prf).eject_mode()
+        (&self.pk_sig, &self.pr_sig).eject_mode()
     }
 
     /// Ejects the compute key.

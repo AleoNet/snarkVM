@@ -18,7 +18,7 @@ impl<A: Aleo> ComputeKey<A> {
     /// Returns the account address for this account compute key.
     pub fn to_address(&self) -> Address<A> {
         // Compute pk_prf := G^sk_prf.
-        let pk_prf = A::g_scalar_multiply(&self.sk_prf);
+        let pk_prf = A::g_scalar_multiply(&self.sk_prf());
         // Compute the address := pk_sig + pr_sig + pk_prf.
         Address::from_group(&self.pk_sig + &self.pr_sig + pk_prf)
     }

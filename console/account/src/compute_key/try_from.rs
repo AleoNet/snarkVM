@@ -44,10 +44,8 @@ impl<N: Network> TryFrom<(Group<N>, Group<N>)> for ComputeKey<N> {
 
     /// Derives the account compute key from a tuple `(pk_sig, pr_sig)`.
     fn try_from((pk_sig, pr_sig): (Group<N>, Group<N>)) -> Result<Self> {
-        // Compute sk_prf := HashToScalar(pk_sig || pr_sig).
-        let sk_prf = N::hash_to_scalar_psd4(&[pk_sig.to_x_coordinate(), pr_sig.to_x_coordinate()])?;
         // Output the compute key.
-        Ok(Self { pk_sig, pr_sig, sk_prf })
+        Ok(Self { pk_sig, pr_sig })
     }
 }
 
@@ -77,14 +75,6 @@ mod tests {
             // Sample a new compute key.
             let private_key = PrivateKey::<CurrentNetwork>::new(&mut rng)?;
             let candidate = ComputeKey::try_from(private_key)?;
-
-            // Check that sk_prf matches.
-            // Compute sk_prf := HashToScalar(pk_sig || pr_sig).
-            let candidate_sk_prf = CurrentNetwork::hash_to_scalar_psd4(&[
-                candidate.pk_sig().to_x_coordinate(),
-                candidate.pr_sig().to_x_coordinate(),
-            ])?;
-            assert_eq!(candidate.sk_prf(), candidate_sk_prf);
 
             // Check that compute key is derived correctly from the tuple `(pk_sig, pr_sig)`.
             assert_eq!(candidate, ComputeKey::try_from((candidate.pk_sig(), candidate.pr_sig()))?);

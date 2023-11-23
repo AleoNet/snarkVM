@@ -24,11 +24,9 @@ impl<A: Aleo> ComputeKey<A> {
         let pk_sig = A::g_scalar_multiply(sk_sig);
         // Compute `pr_sig` := G^r_sig.
         let pr_sig = A::g_scalar_multiply(r_sig);
-        // Compute `sk_prf` := RO(G^sk_sig || G^r_sig).
-        let sk_prf = A::hash_to_scalar_psd4(&[pk_sig.to_x_coordinate(), pr_sig.to_x_coordinate()]);
 
         // Return the compute key.
-        Self { pk_sig, pr_sig, sk_prf }
+        Self { pk_sig, pr_sig }
     }
 }
 

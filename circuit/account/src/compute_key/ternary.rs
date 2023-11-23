@@ -23,7 +23,6 @@ impl<A: Aleo> Ternary for ComputeKey<A> {
         Self {
             pk_sig: Group::ternary(condition, &first.pk_sig, &second.pk_sig),
             pr_sig: Group::ternary(condition, &first.pr_sig, &second.pr_sig),
-            sk_prf: Scalar::ternary(condition, &first.sk_prf, &second.sk_prf),
         }
     }
 }
