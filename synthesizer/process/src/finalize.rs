@@ -356,7 +356,7 @@ fn initialize_finalize_state<'a, N: Network>(
     let (finalize, stack) = match stack.program_id() == future.program_id() {
         true => (stack.get_function_ref(future.function_name())?.finalize_logic(), stack),
         false => {
-            let stack = stack.get_external_stack_ref(future.program_id())?;
+            let stack = stack.get_external_stack_ref(future.program_id())?.as_ref();
             (stack.get_function_ref(future.function_name())?.finalize_logic(), stack)
         }
     };

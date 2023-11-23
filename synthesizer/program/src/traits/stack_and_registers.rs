@@ -70,7 +70,7 @@ pub trait StackProgram<N: Network> {
     fn get_external_stack(&self, program_id: &ProgramID<N>) -> Result<Arc<Self>>;
 
     /// Returns the external stack ref for the given program ID.
-    fn get_external_stack_ref(&self, program_id: &ProgramID<N>) -> Result<&Self>;
+    fn get_external_stack_ref(&self, program_id: &ProgramID<N>) -> Result<&Arc<Self>>;
 
     /// Returns the external program for the given program ID.
     fn get_external_program(&self, program_id: &ProgramID<N>) -> Result<&Program<N>>;

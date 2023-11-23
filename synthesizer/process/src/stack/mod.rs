@@ -236,24 +236,14 @@ impl<N: Network> StackProgram<N> for Stack<N> {
     /// Returns the external stack for the given program ID.
     #[inline]
     fn get_external_stack(&self, program_id: &ProgramID<N>) -> Result<Arc<Stack<N>>> {
-        // Retrieve the external stack.
-        self.external_stacks
-            .get(program_id)
-            .cloned()
-            .ok_or_else(|| anyhow!("External program '{program_id}' does not exist."))
+        self.get_external_stack_ref(program_id).map(Arc::clone)
     }
 
     /// Returns the external stack ref for the given program ID.
     #[inline]
-    fn get_external_stack_ref(&self, program_id: &ProgramID<N>) -> Result<&Stack<N>> {
+    fn get_external_stack_ref(&self, program_id: &ProgramID<N>) -> Result<&Arc<Stack<N>>> {
         // Retrieve the external stack.
-        self.external_stacks
-            .get(program_id)
-            .ok_or_else(|| anyhow!("External program '{program_id}' does not exist."))
-            .map(|stack| {
-                // Return the external stack.
-                stack.as_ref()
-            })
+        self.external_stacks.get(program_id).ok_or_else(|| anyhow!("External program '{program_id}' does not exist."))
     }
 
     /// Returns the external program for the given program ID.
