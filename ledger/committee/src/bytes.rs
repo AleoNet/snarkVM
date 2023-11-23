@@ -40,14 +40,14 @@ impl<N: Network> FromBytes for Committee<N> {
         for _ in 0..num_members {
             // Read the address.
             let member = Address::read_le(&mut reader)?;
-            // Read the commission.
-            let commission = u8::read_le(&mut reader)?;
             // Read the stake.
             let stake = u64::read_le(&mut reader)?;
             // Read the is_open flag.
             let is_open = bool::read_le(&mut reader)?;
+            // Read the commission.
+            let commission = u8::read_le(&mut reader)?;
             // Insert the member and (stake, is_open).
-            members.insert(member, (commission, stake, is_open));
+            members.insert(member, (stake, is_open, commission));
         }
         // Read the total stake.
         let total_stake = u64::read_le(&mut reader)?;
@@ -71,15 +71,15 @@ impl<N: Network> ToBytes for Committee<N> {
         // Write the number of members.
         u16::try_from(self.members.len()).map_err(|e| error(e.to_string()))?.write_le(&mut writer)?;
         // Write the members.
-        for (address, (commission, stake, is_open)) in &self.members {
+        for (address, (stake, is_open, commission)) in &self.members {
             // Write the address.
             address.write_le(&mut writer)?;
-            // Write the commission.
-            commission.write_le(&mut writer)?;
             // Write the stake.
             stake.write_le(&mut writer)?;
             // Write the is_open flag.
             is_open.write_le(&mut writer)?;
+            // Write the commission.
+            commission.write_le(&mut writer)?;
         }
         // Write the total stake.
         self.total_stake.write_le(&mut writer)

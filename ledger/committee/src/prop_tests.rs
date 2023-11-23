@@ -35,9 +35,9 @@ type CurrentNetwork = console::network::Testnet3;
 pub struct Validator {
     pub private_key: PrivateKey<CurrentNetwork>,
     pub address: Address<CurrentNetwork>,
-    pub commission: u8,
     pub stake: u64,
     pub is_open: bool,
+    pub commission: u8,
 }
 
 impl Arbitrary for Validator {
@@ -64,10 +64,7 @@ impl Hash for Validator {
 }
 
 fn to_committee((round, ValidatorSet(validators)): (u64, ValidatorSet)) -> Result<Committee<CurrentNetwork>> {
-    Committee::new(
-        round,
-        validators.iter().map(|v: &Validator| (v.address, (v.commission, v.stake, v.is_open))).collect(),
-    )
+    Committee::new(round, validators.iter().map(|v| (v.address, (v.stake, v.is_open, v.commission))).collect())
 }
 
 #[derive(Debug, Clone)]
@@ -116,7 +113,7 @@ impl Default for ValidatorSet {
                     let rng = &mut rand_chacha::ChaChaRng::seed_from_u64(i);
                     let private_key = PrivateKey::new(rng).unwrap();
                     let address = Address::try_from(private_key).unwrap();
-                    Validator { private_key, address, commission: 0u8, stake: MIN_VALIDATOR_STAKE, is_open: false }
+                    Validator { private_key, address, stake: MIN_VALIDATOR_STAKE, is_open: false, commission: 0u8 }
                 })
                 .collect(),
         )
@@ -137,7 +134,7 @@ pub fn any_valid_validator() -> BoxedStrategy<Validator> {
     (MIN_VALIDATOR_STAKE..100_000_000_000_000, any_valid_private_key(), any::<bool>())
         .prop_map(|(stake, private_key, is_open)| {
             let address = Address::try_from(private_key).unwrap();
-            Validator { private_key, address, commission: 0u8, stake, is_open }
+            Validator { private_key, address, stake, is_open, commission: 0u8 }
         })
         .boxed()
 }
@@ -166,7 +163,7 @@ fn invalid_stake_validator() -> BoxedStrategy<Validator> {
     (0..MIN_VALIDATOR_STAKE, any_valid_private_key(), any::<bool>())
         .prop_map(|(stake, private_key, is_open)| {
             let address = Address::try_from(private_key).unwrap();
-            Validator { private_key, address, commission: 0u8, stake, is_open }
+            Validator { private_key, address, stake, is_open, commission: 0u8 }
         })
         .boxed()
 }
