@@ -202,13 +202,7 @@ impl<N: Network> Process<N> {
 
     /// Returns the stack for the given program ID.
     #[inline]
-    pub fn get_stack(&self, program_id: impl TryInto<ProgramID<N>>) -> Result<Arc<Stack<N>>> {
-        self.get_stack_ref(program_id).map(Arc::clone)
-    }
-
-    /// Returns the stack for the given program ID.
-    #[inline]
-    pub fn get_stack_ref(&self, program_id: impl TryInto<ProgramID<N>>) -> Result<&Arc<Stack<N>>> {
+    pub fn get_stack(&self, program_id: impl TryInto<ProgramID<N>>) -> Result<&Arc<Stack<N>>> {
         // Prepare the program ID.
         let program_id = program_id.try_into().map_err(|_| anyhow!("Invalid program ID"))?;
         // Retrieve the stack.
@@ -222,7 +216,7 @@ impl<N: Network> Process<N> {
     /// Returns the program for the given program ID.
     #[inline]
     pub fn get_program(&self, program_id: impl TryInto<ProgramID<N>>) -> Result<&Program<N>> {
-        Ok(self.get_stack_ref(program_id)?.program())
+        Ok(self.get_stack(program_id)?.program())
     }
 
     /// Returns the proving key for the given program ID and function name.
