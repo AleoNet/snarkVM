@@ -205,13 +205,7 @@ impl<N: Network> Committee<N> {
         let members = self.members.clone();
         members.sorted_unstable_by(|address1, stake1: &(u8, u64, bool), address2, stake2| {
             // Sort by stake in decreasing order.
-            let cmp = if stake2.1 > stake1.1 {
-                Ordering::Greater
-            } else if stake2.1 == stake1.1 {
-                Ordering::Equal
-            } else {
-                Ordering::Less
-            };
+            let cmp = stake2.1.cmp(&stake1.1);
 
             // If the stakes are equal, sort by x-coordinate in decreasing order.
             if cmp == Ordering::Equal { address2.to_x_coordinate().cmp(&address1.to_x_coordinate()) } else { cmp }
