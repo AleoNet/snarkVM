@@ -347,7 +347,7 @@ mod tests {
         });
         let leaders = leaders.read();
         // Ensure the leader distribution is uniform.
-        for (i, (address, (stake, _))) in committee.members.iter().enumerate() {
+        for (i, (address, (_, stake, _))) in committee.members.iter().enumerate() {
             // Get the leader count for the validator.
             let Some(leader_count) = leaders.get(address) else {
                 println!("{i}: 0 rounds");

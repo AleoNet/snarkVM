@@ -185,10 +185,10 @@ mod tests {
             // Sample a random stake.
             let stake = rng.gen_range(MIN_DELEGATOR_STAKE..committee.total_stake());
             // Construct the stakers.
-            let stakers = indexmap! {address => (address, stake)};
+            let stakers = indexmap! {address => (address, 0u8, stake)};
             let next_stakers = staking_rewards::<CurrentNetwork>(&stakers, &committee, block_reward);
             assert_eq!(next_stakers.len(), 1);
-            let (candidate_address, (candidate_validator, candidate_stake)) = next_stakers.into_iter().next().unwrap();
+            let (candidate_address, (candidate_validator, _, candidate_stake)) = next_stakers.into_iter().next().unwrap();
             assert_eq!(candidate_address, address);
             assert_eq!(candidate_validator, address);
             let reward = block_reward as u128 * stake as u128 / committee.total_stake() as u128;
@@ -213,7 +213,7 @@ mod tests {
         let next_stakers = staking_rewards::<CurrentNetwork>(&stakers, &committee, block_reward);
         println!("staking_rewards: {}ms", timer.elapsed().as_millis());
         assert_eq!(next_stakers.len(), stakers.len());
-        for ((staker, (validator, stake)), (next_staker, (next_validator, next_stake))) in
+        for ((staker, (validator, _, stake)), (next_staker, (next_validator, _, next_stake))) in
             stakers.into_iter().zip(next_stakers.into_iter())
         {
             assert_eq!(staker, next_staker);
@@ -237,10 +237,10 @@ mod tests {
             // Sample a random stake.
             let stake = rng.gen_range(0..MIN_DELEGATOR_STAKE);
             // Construct the stakers.
-            let stakers = indexmap! {address => (address, stake)};
+            let stakers = indexmap! {address => (address, 0u8, stake)};
             let next_stakers = staking_rewards::<CurrentNetwork>(&stakers, &committee, block_reward);
             assert_eq!(next_stakers.len(), 1);
-            let (candidate_address, (candidate_validator, candidate_stake)) = next_stakers.into_iter().next().unwrap();
+            let (candidate_address, (candidate_validator, _, candidate_stake)) = next_stakers.into_iter().next().unwrap();
             assert_eq!(candidate_address, address);
             assert_eq!(candidate_validator, address);
             assert_eq!(candidate_stake, stake);
@@ -256,7 +256,7 @@ mod tests {
         let address = *committee.members().iter().next().unwrap().0;
 
         // Construct the stakers.
-        let stakers = indexmap![address => (address, MIN_DELEGATOR_STAKE)];
+        let stakers = indexmap![address => (address, 0u8, MIN_DELEGATOR_STAKE)];
         // Check that a maxed out coinbase reward, returns empty.
         let next_stakers = staking_rewards::<CurrentNetwork>(&stakers, &committee, u64::MAX);
         assert_eq!(stakers, next_stakers);
@@ -268,7 +268,7 @@ mod tests {
             // Sample a random stake.
             let stake = rng.gen_range(MIN_DELEGATOR_STAKE..u64::MAX);
             // Construct the stakers.
-            let stakers = indexmap![address => (address, stake)];
+            let stakers = indexmap![address => (address, 0u8, stake)];
             // Check that an overly large block reward fails.
             let next_stakers = staking_rewards::<CurrentNetwork>(&stakers, &committee, block_reward);
             assert_eq!(stakers, next_stakers);

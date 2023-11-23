@@ -255,12 +255,12 @@ pub(crate) mod test_helpers {
     /// Returns the stakers, given the map of `(validator, (microcredits, is_open))` entries.
     /// This method simulates the existence of delegators for the members.
     pub(crate) fn to_stakers<N: Network, R: Rng + CryptoRng>(
-        members: &IndexMap<Address<N>, (u64, bool)>,
+        members: &IndexMap<Address<N>, (u8, u64, bool)>,
         rng: &mut R,
-    ) -> IndexMap<Address<N>, (Address<N>, u64)> {
+    ) -> IndexMap<Address<N>, (Address<N>, u8, u64)> {
         members
             .into_iter()
-            .flat_map(|(validator, (microcredits, _))| {
+            .flat_map(|(validator, (commission, microcredits, _))| {
                 // Keep a tally of the remaining microcredits.
                 let remaining_microcredits = microcredits.saturating_sub(MIN_VALIDATOR_STAKE);
                 // Set the staker amount to 10 credit.
@@ -275,18 +275,18 @@ pub(crate) mod test_helpers {
                         // Sample a random staker.
                         let staker = Address::<N>::new(rng.gen());
                         // Output the staker.
-                        (staker, (*validator, staker_amount))
+                        (staker, (*validator, *commission, staker_amount))
                     })
                     .collect();
 
                 // Insert the validator.
-                stakers.insert(*validator, (*validator, MIN_VALIDATOR_STAKE));
+                stakers.insert(*validator, (*validator, *commission, MIN_VALIDATOR_STAKE));
 
                 // Insert the last staker.
                 let final_amount = remaining_microcredits.saturating_sub(num_iterations * staker_amount);
                 if final_amount > 0 {
                     let staker = Address::<N>::new(rng.gen());
-                    stakers.insert(staker, (*validator, final_amount));
+                    stakers.insert(staker, (*validator, *commission, final_amount));
                 }
                 // Return the stakers.
                 stakers
@@ -305,32 +305,34 @@ mod tests {
     use std::str::FromStr;
 
     /// Returns the committee map, given the map of `(validator, (microcredits, is_open))` entries.
-    fn to_committee_map<N: Network>(members: &IndexMap<Address<N>, (u64, bool)>) -> Vec<(Plaintext<N>, Value<N>)> {
+    fn to_committee_map<N: Network>(members: &IndexMap<Address<N>, (u8, u64, bool)>) -> Vec<(Plaintext<N>, Value<N>)> {
         members
             .par_iter()
-            .map(|(validator, (microcredits, is_open))| {
+            .map(|(validator, (commission, microcredits, is_open))| {
                 let microcredits = U64::<N>::new(*microcredits);
                 let is_open = Boolean::<N>::new(*is_open);
                 (
                     Plaintext::from(Literal::Address(*validator)),
-                    Value::from_str(&format!("{{ microcredits: {microcredits}, is_open: {is_open} }}")).unwrap(),
+                    Value::from_str(&format!("{{ commission: {commission}, microcredits: {microcredits}, is_open: {is_open} }}")).unwrap(),
                 )
             })
             .collect()
     }
 
     /// Returns the bonded map, given the staker, validator and microcredits.
-    fn to_bonded_map<N: Network>(stakers: &IndexMap<Address<N>, (Address<N>, u64)>) -> Vec<(Plaintext<N>, Value<N>)> {
+    fn to_bonded_map<N: Network>(stakers: &IndexMap<Address<N>, (Address<N>, u8, u64)>) -> Vec<(Plaintext<N>, Value<N>)> {
         // Prepare the identifiers.
         let validator_identifier = Identifier::from_str("validator").expect("Failed to parse 'validator'");
+        let commission_identifier = Identifier::from_str("commission").expect("Failed to parse 'commission'");
         let microcredits_identifier = Identifier::from_str("microcredits").expect("Failed to parse 'microcredits'");
 
         stakers
             .par_iter()
-            .map(|(staker, (validator, microcredits))| {
+            .map(|(staker, (validator, commission, microcredits))| {
                 // Construct the bonded state.
                 let bonded_state = indexmap! {
                     validator_identifier => Plaintext::from(Literal::Address(*validator)),
+                    commission_identifier => Plaintext::from(Literal::U8(U8::new(*commission))),
                     microcredits_identifier => Plaintext::from(Literal::U64(U64::new(*microcredits))),
                 };
                 // Return the bonded state.
