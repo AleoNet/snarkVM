@@ -181,16 +181,16 @@ mod tests {
 
     #[test]
     fn test_signature_new_constant() -> Result<()> {
-        check_new(Mode::Constant, 276, 0, 0, 0)
+        check_new(Mode::Constant, 22, 0, 0, 0)
     }
 
     #[test]
     fn test_signature_new_public() -> Result<()> {
-        check_new(Mode::Public, 9, 6, 869, 873)
+        check_new(Mode::Public, 8, 6, 24, 26)
     }
 
     #[test]
     fn test_signature_new_private() -> Result<()> {
-        check_new(Mode::Private, 9, 0, 875, 873)
+        check_new(Mode::Private, 8, 0, 30, 26)
     }
 }

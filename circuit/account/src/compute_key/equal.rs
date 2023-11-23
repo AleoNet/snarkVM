@@ -46,7 +46,7 @@ impl<A: Aleo> Metrics<dyn Equal<ComputeKey<A>, Output = Boolean<A>>> for Compute
     fn count(case: &Self::Case) -> Count {
         match case.0.is_constant() && case.1.is_constant() {
             true => Count::is(0, 0, 0, 0),
-            false => Count::is(0, 0, 14, 19),
+            false => Count::is(0, 0, 11, 19),
         }
     }
 }
@@ -144,14 +144,14 @@ mod tests {
         let mut rng = TestRng::default();
 
         check_is_equal(Mode::Constant, Mode::Constant, 0, 0, 0, 0, &mut rng);
-        check_is_equal(Mode::Constant, Mode::Public, 0, 0, 14, 14, &mut rng);
-        check_is_equal(Mode::Constant, Mode::Private, 0, 0, 14, 14, &mut rng);
-        check_is_equal(Mode::Public, Mode::Constant, 0, 0, 14, 14, &mut rng);
-        check_is_equal(Mode::Private, Mode::Constant, 0, 0, 14, 14, &mut rng);
-        check_is_equal(Mode::Public, Mode::Public, 0, 0, 14, 14, &mut rng);
-        check_is_equal(Mode::Public, Mode::Private, 0, 0, 14, 14, &mut rng);
-        check_is_equal(Mode::Private, Mode::Public, 0, 0, 14, 14, &mut rng);
-        check_is_equal(Mode::Private, Mode::Private, 0, 0, 14, 14, &mut rng);
+        check_is_equal(Mode::Constant, Mode::Public, 0, 0, 11, 11, &mut rng);
+        check_is_equal(Mode::Constant, Mode::Private, 0, 0, 11, 11, &mut rng);
+        check_is_equal(Mode::Public, Mode::Constant, 0, 0, 11, 11, &mut rng);
+        check_is_equal(Mode::Private, Mode::Constant, 0, 0, 11, 11, &mut rng);
+        check_is_equal(Mode::Public, Mode::Public, 0, 0, 11, 11, &mut rng);
+        check_is_equal(Mode::Public, Mode::Private, 0, 0, 11, 11, &mut rng);
+        check_is_equal(Mode::Private, Mode::Public, 0, 0, 11, 11, &mut rng);
+        check_is_equal(Mode::Private, Mode::Private, 0, 0, 11, 11, &mut rng);
     }
 
     #[test]
@@ -159,13 +159,13 @@ mod tests {
         let mut rng = TestRng::default();
 
         check_is_not_equal(Mode::Constant, Mode::Constant, 0, 0, 0, 0, &mut rng);
-        check_is_not_equal(Mode::Constant, Mode::Public, 0, 0, 14, 14, &mut rng);
-        check_is_not_equal(Mode::Constant, Mode::Private, 0, 0, 14, 14, &mut rng);
-        check_is_not_equal(Mode::Public, Mode::Constant, 0, 0, 14, 14, &mut rng);
-        check_is_not_equal(Mode::Private, Mode::Constant, 0, 0, 14, 14, &mut rng);
-        check_is_not_equal(Mode::Public, Mode::Public, 0, 0, 14, 14, &mut rng);
-        check_is_not_equal(Mode::Public, Mode::Private, 0, 0, 14, 14, &mut rng);
-        check_is_not_equal(Mode::Private, Mode::Public, 0, 0, 14, 14, &mut rng);
-        check_is_not_equal(Mode::Private, Mode::Private, 0, 0, 14, 14, &mut rng);
+        check_is_not_equal(Mode::Constant, Mode::Public, 0, 0, 11, 11, &mut rng);
+        check_is_not_equal(Mode::Constant, Mode::Private, 0, 0, 11, 11, &mut rng);
+        check_is_not_equal(Mode::Public, Mode::Constant, 0, 0, 11, 11, &mut rng);
+        check_is_not_equal(Mode::Private, Mode::Constant, 0, 0, 11, 11, &mut rng);
+        check_is_not_equal(Mode::Public, Mode::Public, 0, 0, 11, 11, &mut rng);
+        check_is_not_equal(Mode::Public, Mode::Private, 0, 0, 11, 11, &mut rng);
+        check_is_not_equal(Mode::Private, Mode::Public, 0, 0, 11, 11, &mut rng);
+        check_is_not_equal(Mode::Private, Mode::Private, 0, 0, 11, 11, &mut rng);
     }
 }

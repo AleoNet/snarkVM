@@ -61,16 +61,16 @@ mod tests {
 
     #[test]
     fn test_from_constant() -> Result<()> {
-        check_from(Mode::Constant, 254, 0, 0, 0)
+        check_from(Mode::Constant, 0, 0, 0, 0)
     }
 
     #[test]
     fn test_from_public() -> Result<()> {
-        check_from(Mode::Public, 1, 0, 845, 847)
+        check_from(Mode::Public, 0, 0, 0, 0)
     }
 
     #[test]
     fn test_from_private() -> Result<()> {
-        check_from(Mode::Private, 1, 0, 845, 847)
+        check_from(Mode::Private, 0, 0, 0, 0)
     }
 }

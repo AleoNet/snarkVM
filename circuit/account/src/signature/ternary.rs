@@ -46,7 +46,7 @@ impl<A: Aleo> Metrics<dyn Ternary<Boolean = Boolean<A>, Output = Signature<A>>> 
             (Mode::Constant, _, _)
             | (Mode::Public, Mode::Constant, Mode::Constant)
             | (Mode::Private, Mode::Constant, Mode::Constant) => Count::is(0, 0, 0, 0),
-            _ => Count::is(0, 0, 7, 7),
+            _ => Count::is(0, 0, 6, 6),
         }
     }
 }

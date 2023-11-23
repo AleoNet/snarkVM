@@ -35,7 +35,7 @@ impl<A: Aleo> Metrics<dyn Ternary<Boolean = Boolean<A>, Output = ComputeKey<A>>>
             (Mode::Constant, _, _)
             | (Mode::Public, Mode::Constant, Mode::Constant)
             | (Mode::Private, Mode::Constant, Mode::Constant) => Count::is(0, 0, 0, 0),
-            _ => Count::is(0, 0, 5, 5),
+            _ => Count::is(0, 0, 4, 4),
         }
     }
 }

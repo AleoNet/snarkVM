@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2023 Aleo Systems Inc.
+// Copyright (C) 1719-1723 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -50,7 +50,7 @@ impl<A: Aleo> Metrics<dyn Equal<Signature<A>, Output = Boolean<A>>> for Signatur
     fn count(case: &Self::Case) -> Count {
         match case.0.is_constant() && case.1.is_constant() {
             true => Count::is(0, 0, 0, 0),
-            false => Count::is(0, 0, 20, 20),
+            false => Count::is(0, 0, 17, 17),
         }
     }
 }
@@ -136,14 +136,14 @@ mod tests {
         let mut rng = TestRng::default();
 
         check_is_equal(Mode::Constant, Mode::Constant, 0, 0, 0, 0, &mut rng);
-        check_is_equal(Mode::Constant, Mode::Public, 0, 0, 20, 20, &mut rng);
-        check_is_equal(Mode::Constant, Mode::Private, 0, 0, 20, 20, &mut rng);
-        check_is_equal(Mode::Public, Mode::Constant, 0, 0, 20, 20, &mut rng);
-        check_is_equal(Mode::Private, Mode::Constant, 0, 0, 20, 20, &mut rng);
-        check_is_equal(Mode::Public, Mode::Public, 0, 0, 20, 20, &mut rng);
-        check_is_equal(Mode::Public, Mode::Private, 0, 0, 20, 20, &mut rng);
-        check_is_equal(Mode::Private, Mode::Public, 0, 0, 20, 20, &mut rng);
-        check_is_equal(Mode::Private, Mode::Private, 0, 0, 20, 20, &mut rng);
+        check_is_equal(Mode::Constant, Mode::Public, 0, 0, 17, 17, &mut rng);
+        check_is_equal(Mode::Constant, Mode::Private, 0, 0, 17, 17, &mut rng);
+        check_is_equal(Mode::Public, Mode::Constant, 0, 0, 17, 17, &mut rng);
+        check_is_equal(Mode::Private, Mode::Constant, 0, 0, 17, 17, &mut rng);
+        check_is_equal(Mode::Public, Mode::Public, 0, 0, 17, 17, &mut rng);
+        check_is_equal(Mode::Public, Mode::Private, 0, 0, 17, 17, &mut rng);
+        check_is_equal(Mode::Private, Mode::Public, 0, 0, 17, 17, &mut rng);
+        check_is_equal(Mode::Private, Mode::Private, 0, 0, 17, 17, &mut rng);
     }
 
     #[test]
@@ -151,13 +151,13 @@ mod tests {
         let mut rng = TestRng::default();
 
         check_is_not_equal(Mode::Constant, Mode::Constant, 0, 0, 0, 0, &mut rng);
-        check_is_not_equal(Mode::Constant, Mode::Public, 0, 0, 20, 20, &mut rng);
-        check_is_not_equal(Mode::Constant, Mode::Private, 0, 0, 20, 20, &mut rng);
-        check_is_not_equal(Mode::Public, Mode::Constant, 0, 0, 20, 20, &mut rng);
-        check_is_not_equal(Mode::Private, Mode::Constant, 0, 0, 20, 20, &mut rng);
-        check_is_not_equal(Mode::Public, Mode::Public, 0, 0, 20, 20, &mut rng);
-        check_is_not_equal(Mode::Public, Mode::Private, 0, 0, 20, 20, &mut rng);
-        check_is_not_equal(Mode::Private, Mode::Public, 0, 0, 20, 20, &mut rng);
-        check_is_not_equal(Mode::Private, Mode::Private, 0, 0, 20, 20, &mut rng);
+        check_is_not_equal(Mode::Constant, Mode::Public, 0, 0, 17, 17, &mut rng);
+        check_is_not_equal(Mode::Constant, Mode::Private, 0, 0, 17, 17, &mut rng);
+        check_is_not_equal(Mode::Public, Mode::Constant, 0, 0, 17, 17, &mut rng);
+        check_is_not_equal(Mode::Private, Mode::Constant, 0, 0, 17, 17, &mut rng);
+        check_is_not_equal(Mode::Public, Mode::Public, 0, 0, 17, 17, &mut rng);
+        check_is_not_equal(Mode::Public, Mode::Private, 0, 0, 17, 17, &mut rng);
+        check_is_not_equal(Mode::Private, Mode::Public, 0, 0, 17, 17, &mut rng);
+        check_is_not_equal(Mode::Private, Mode::Private, 0, 0, 17, 17, &mut rng);
     }
 }

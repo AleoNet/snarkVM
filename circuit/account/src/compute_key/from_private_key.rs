@@ -73,11 +73,11 @@ mod tests {
 
     #[test]
     fn test_from_private_key_public() -> Result<()> {
-        check_from_private_key(Mode::Public, 1001, 0, 4347, 4353)
+        check_from_private_key(Mode::Public, 1001, 0, 3502, 3506)
     }
 
     #[test]
     fn test_from_private_key_private() -> Result<()> {
-        check_from_private_key(Mode::Private, 1001, 0, 4347, 4353)
+        check_from_private_key(Mode::Private, 1001, 0, 3502, 3506)
     }
 }

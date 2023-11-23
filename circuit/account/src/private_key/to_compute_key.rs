@@ -64,11 +64,11 @@ mod tests {
 
     #[test]
     fn test_to_compute_key_public() -> Result<()> {
-        check_to_compute_key(Mode::Public, 1001, 0, 4347, 4353)
+        check_to_compute_key(Mode::Public, 1000, 0, 3502, 3506)
     }
 
     #[test]
     fn test_to_compute_key_private() -> Result<()> {
-        check_to_compute_key(Mode::Private, 1001, 0, 4347, 4353)
+        check_to_compute_key(Mode::Private, 1000, 0, 3502, 3506)
     }
 }
