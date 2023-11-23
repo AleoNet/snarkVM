@@ -230,7 +230,7 @@ impl<N: Network> StackEvaluate<N> for Stack<N> {
                 _ => None,
             })
             .collect::<Vec<_>>();
-        lap!(timer, "Load the output_registers");
+        lap!(timer, "Loaded the output registers");
 
         // Compute the response.
         let response = Response::new(

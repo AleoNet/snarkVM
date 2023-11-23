@@ -233,7 +233,7 @@ impl<N: Network> StackProgram<N> for Stack<N> {
         }
     }
 
-    /// Returns the external stack ref for the given program ID.
+    /// Returns the external stack for the given program ID.
     #[inline]
     fn get_external_stack(&self, program_id: &ProgramID<N>) -> Result<&Arc<Stack<N>>> {
         // Retrieve the external stack.

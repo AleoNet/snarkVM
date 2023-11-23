@@ -66,7 +66,7 @@ pub trait StackProgram<N: Network> {
     /// Returns `true` if the stack contains the external record.
     fn contains_external_record(&self, locator: &Locator<N>) -> bool;
 
-    /// Returns the external stack ref for the given program ID.
+    /// Returns the external stack for the given program ID.
     fn get_external_stack(&self, program_id: &ProgramID<N>) -> Result<&Arc<Self>>;
 
     /// Returns the external program for the given program ID.
