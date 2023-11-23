@@ -73,6 +73,9 @@ impl_local!(ClaimUnbondPublicVerifier, "resources/", "claim_unbond_public", "ver
 // SetValidatorState
 impl_remote!(SetValidatorStateProver, REMOTE_URL, "resources/", "set_validator_state", "prover");
 impl_local!(SetValidatorStateVerifier, "resources/", "set_validator_state", "verifier");
+// SetValidatorCommission
+impl_remote!(SetValidatorCommissionProver, REMOTE_URL, "resources/", "set_validator_commission", "prover");
+impl_local!(SetValidatorCommissionVerifier, "resources/", "set_validator_commission", "verifier");
 // TransferPrivate
 impl_remote!(TransferPrivateProver, REMOTE_URL, "resources/", "transfer_private", "prover");
 impl_local!(TransferPrivateVerifier, "resources/", "transfer_private", "verifier");
@@ -108,6 +111,7 @@ macro_rules! insert_credit_keys {
             $crate::insert_key!($map, string, $type<$network>, ("unbond_delegator_as_validator", $crate::testnet3::[<UnbondDelegatorAsValidator $variant>]::load_bytes()));
             $crate::insert_key!($map, string, $type<$network>, ("claim_unbond_public", $crate::testnet3::[<ClaimUnbondPublic $variant>]::load_bytes()));
             $crate::insert_key!($map, string, $type<$network>, ("set_validator_state", $crate::testnet3::[<SetValidatorState $variant>]::load_bytes()));
+            $crate::insert_key!($map, string, $type<$network>, ("set_validator_commission", $crate::testnet3::[<SetValidatorCommission $variant>]::load_bytes()));
             $crate::insert_key!($map, string, $type<$network>, ("transfer_private", $crate::testnet3::[<TransferPrivate $variant>]::load_bytes()));
             $crate::insert_key!($map, string, $type<$network>, ("transfer_public", $crate::testnet3::[<TransferPublic $variant>]::load_bytes()));
             $crate::insert_key!($map, string, $type<$network>, ("transfer_private_to_public", $crate::testnet3::[<TransferPrivateToPublic $variant>]::load_bytes()));
@@ -165,6 +169,7 @@ mod tests {
             .expect("Failed to load unbond_delegator_as_validator verifier");
         ClaimUnbondPublicVerifier::load_bytes().expect("Failed to load claim_unbond_public verifier");
         SetValidatorStateVerifier::load_bytes().expect("Failed to load set_validator_state verifier");
+        SetValidatorCommissionVerifier::load_bytes().expect("Failed to load set_validator_commission verifier");
         TransferPrivateVerifier::load_bytes().expect("Failed to load transfer_private verifier");
         TransferPublicVerifier::load_bytes().expect("Failed to load transfer_public verifier");
         TransferPrivateToPublicVerifier::load_bytes().expect("Failed to load transfer_private_to_public verifier");

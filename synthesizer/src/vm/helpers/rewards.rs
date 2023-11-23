@@ -16,12 +16,15 @@ use console::{account::Address, network::prelude::*};
 use ledger_committee::{Committee, MIN_DELEGATOR_STAKE};
 
 use indexmap::IndexMap;
+use parking_lot::Mutex;
 
 #[cfg(not(feature = "serial"))]
 use rayon::prelude::*;
 
 /// A safety bound (sanity-check) for the coinbase reward.
 const MAX_COINBASE_REWARD: u64 = ledger_block::MAX_COINBASE_REWARD; // Coinbase reward at block 1.
+const MAX_PERCENT: u128 = 100u128; 
+const MIN_PERCENT: u64 = 0u64; 
 
 /// Returns the updated stakers reflecting the staking rewards for the given committee and block reward.
 /// The staking reward is defined as: `block_reward * stake / total_stake`.
@@ -34,27 +37,30 @@ const MAX_COINBASE_REWARD: u64 = ledger_block::MAX_COINBASE_REWARD; // Coinbase 
 /// since our security model adheres to 3f+1, where f=1. As such, we tolerate Byzantine behavior
 /// up to 33% of the total stake.
 pub fn staking_rewards<N: Network>(
-    stakers: &IndexMap<Address<N>, (Address<N>, u64)>,
+    stakers: &IndexMap<Address<N>, (Address<N>, u8, u64)>,
     committee: &Committee<N>,
     block_reward: u64,
-) -> IndexMap<Address<N>, (Address<N>, u64)> {
+) -> IndexMap<Address<N>, (Address<N>, u8, u64)> {
     // If the list of stakers is empty, there is no stake, or the block reward is 0, return the stakers.
     if stakers.is_empty() || committee.total_stake() == 0 || block_reward == 0 {
         return stakers.clone();
     }
 
+    // let total_commission = AtomicU64::new(0);
+    let map_commission: Mutex<IndexMap<Address<N>, u64>> = Default::default();
+
     // Compute the updated stakers.
-    cfg_iter!(stakers)
-        .map(|(staker, (validator, stake))| {
+    let stakers: IndexMap<Address<N>, (Address<N>, u8, u64)> = cfg_iter!(stakers)
+        .map(|(staker, (validator, commission, stake))| {
             // If the validator has more than 25% of the total stake, skip the staker.
             if committee.get_stake(*validator) > committee.total_stake().saturating_div(4) {
                 trace!("Validator {validator} has more than 25% of the total stake - skipping {staker}");
-                return (*staker, (*validator, *stake));
+                return (*staker, (*validator, *commission, *stake));
             }
             // If the staker has less than the minimum required stake, skip the staker.
             if *stake < MIN_DELEGATOR_STAKE {
                 trace!("Staker has less than {MIN_DELEGATOR_STAKE} microcredits - skipping {staker}");
-                return (*staker, (*validator, *stake));
+                return (*staker, (*validator, *commission, *stake));
             }
 
             // Compute the numerator.
@@ -67,13 +73,43 @@ pub fn staking_rewards<N: Network>(
             // Ensure the staking reward is within a safe bound.
             if quotient > MAX_COINBASE_REWARD as u128 {
                 error!("Staking reward ({quotient}) is too large - skipping {staker}");
-                return (*staker, (*validator, *stake));
+                return (*staker, (*validator, *commission, *stake));
             }
+
+            let mut commission_u128 = *commission as u128;
+            if commission_u128 > MAX_PERCENT {
+                commission_u128 = MAX_PERCENT
+            }
+            // The net income for a delegator
+            let net_income = quotient.saturating_mul(MAX_PERCENT - commission_u128).saturating_div(MAX_PERCENT);
+            let staker_commission = quotient.saturating_sub(net_income);
             // Cast the staking reward as a u64.
             // Note: This '.expect' is guaranteed to be safe, as we ensure the quotient is within a safe bound.
-            let staking_reward = u64::try_from(quotient).expect("Staking reward is too large");
+            let staking_reward = u64::try_from(net_income).expect("Staking reward is too large");
+            let commission_reward = u64::try_from(staker_commission).expect("Staking reward is too large");
+            let mut lock_map_commission = map_commission.lock();
+            let v = lock_map_commission.get(validator).unwrap_or(&MIN_PERCENT);
+            let total_commission_reward = *v;
+
+            lock_map_commission.insert(*validator, total_commission_reward + commission_reward);
+
+            // total_commission.fetch_add(commission_reward, Ordering::Relaxed);
             // Return the staker and the updated stake.
-            (*staker, (*validator, stake.saturating_add(staking_reward)))
+            (*staker, (*validator, *commission, stake.saturating_add(staking_reward)))
+        })
+        .collect();
+
+    cfg_iter!(stakers)
+        .map(|(staker, (validator, commission, stake))| {
+            if staker != validator {
+                // Return the staker and the updated stake.
+                (*staker, (*validator, *commission, *stake))
+            } else {
+                let total_map_commission = map_commission.lock();
+                let v = total_map_commission.get(validator).unwrap_or(&MIN_PERCENT);
+                let total_value = *v;
+                (*staker, (*validator, *commission, stake.saturating_add(total_value)))
+            }
         })
         .collect()
 }

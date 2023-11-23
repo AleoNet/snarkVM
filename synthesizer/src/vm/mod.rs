@@ -191,10 +191,10 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
         // Construct the committee members.
         let members = indexmap::indexmap! {
-            Address::try_from(private_keys[0])? => (ledger_committee::MIN_VALIDATOR_STAKE, true),
-            Address::try_from(private_keys[1])? => (ledger_committee::MIN_VALIDATOR_STAKE, true),
-            Address::try_from(private_keys[2])? => (ledger_committee::MIN_VALIDATOR_STAKE, true),
-            Address::try_from(private_keys[3])? => (ledger_committee::MIN_VALIDATOR_STAKE, true),
+            Address::try_from(private_keys[0])? => (0u8, ledger_committee::MIN_VALIDATOR_STAKE, true),
+            Address::try_from(private_keys[1])? => (0u8, ledger_committee::MIN_VALIDATOR_STAKE, true),
+            Address::try_from(private_keys[2])? => (0u8, ledger_committee::MIN_VALIDATOR_STAKE, true),
+            Address::try_from(private_keys[3])? => (0u8, ledger_committee::MIN_VALIDATOR_STAKE, true),
         };
         // Construct the committee.
         let committee = Committee::<N>::new_genesis(members)?;
