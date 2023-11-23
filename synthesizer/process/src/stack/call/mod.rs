@@ -68,7 +68,7 @@ impl<N: Network> CallTrait<N> for Call<N> {
         let (substack, resource) = match self.operator() {
             // Retrieve the call stack and resource from the locator.
             CallOperator::Locator(locator) => {
-                (stack.get_external_stack_ref(locator.program_id())?.as_ref(), locator.resource())
+                (stack.get_external_stack(locator.program_id())?.as_ref(), locator.resource())
             }
             CallOperator::Resource(resource) => {
                 // TODO (howardwu): Revisit this decision to forbid calling internal functions. A record cannot be spent again.
@@ -163,7 +163,7 @@ impl<N: Network> CallTrait<N> for Call<N> {
                 if is_credits_program && (is_fee_private || is_fee_public) {
                     bail!("Cannot perform an external call to 'credits.aleo/fee_private' or 'credits.aleo/fee_public'.")
                 } else {
-                    (stack.get_external_stack_ref(locator.program_id())?.as_ref(), locator.resource())
+                    (stack.get_external_stack(locator.program_id())?.as_ref(), locator.resource())
                 }
             }
             CallOperator::Resource(resource) => {
