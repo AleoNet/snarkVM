@@ -129,7 +129,7 @@ mod varuna {
                             for instance_input in vks_to_inputs.values() {
                                 let mut fake_instance_input = Vec::with_capacity(instance_input.len());
                                 for input in instance_input.iter() {
-                                    let fake_input = vec![Fr::rand(rng); input.len()];
+                                    let fake_input: Vec<_> = (0..input.len()).map(|_| Fr::rand(rng)).collect();
                                     fake_instance_input.push(fake_input);
                                 }
                                 fake_instance_inputs.push(fake_instance_input);
