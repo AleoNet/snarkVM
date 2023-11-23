@@ -316,6 +316,7 @@ mod tests {
         members
             .par_iter()
             .map(|(validator, (commission, microcredits, is_open))| {
+                let commission = U8::<N>::new(*commission);
                 let microcredits = U64::<N>::new(*microcredits);
                 let is_open = Boolean::<N>::new(*is_open);
                 (
