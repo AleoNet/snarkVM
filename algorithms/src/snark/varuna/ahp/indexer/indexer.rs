@@ -27,12 +27,12 @@ use crate::{
         SNARKMode,
     },
 };
-use itertools::Itertools;
 use snarkvm_fields::PrimeField;
 use snarkvm_utilities::cfg_into_iter;
 
 use anyhow::{anyhow, Result};
 use core::marker::PhantomData;
+use itertools::Itertools;
 use std::collections::BTreeMap;
 
 #[cfg(not(feature = "serial"))]
