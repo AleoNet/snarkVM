@@ -13,7 +13,7 @@
 // limitations under the License.
 
 use crate::fft::{DensePolynomial, EvaluationDomain};
-use anyhow::Result;
+use anyhow::{anyhow, ensure, Result};
 use snarkvm_fields::{batch_inversion, PrimeField};
 use snarkvm_utilities::{cfg_into_iter, cfg_iter_mut, serialize::*};
 
@@ -90,7 +90,7 @@ pub(crate) fn apply_randomized_selector<F: PrimeField>(
         let selector_time = start_timer!(|| "Compute selector without remainder witness");
         let (mut h_i, remainder) =
             poly.divide_by_vanishing_poly(*src_domain).ok_or(anyhow::anyhow!("could not divide by vanishing poly"))?;
-        assert!(remainder.is_zero());
+        ensure!(remainder.is_zero());
         let multiplier = combiner * src_domain.size_as_field_element * target_domain.size_inv;
         cfg_iter_mut!(h_i.coeffs).for_each(|c| *c *= multiplier);
         end_timer!(selector_time);
@@ -107,10 +107,12 @@ pub(crate) fn apply_randomized_selector<F: PrimeField>(
         let selector_time = start_timer!(|| "Compute selector with remainder witness");
         let multiplier = combiner * src_domain.size_as_field_element * target_domain.size_inv;
         cfg_iter_mut!(poly.coeffs).for_each(|c| *c *= multiplier);
-        let (h_i, mut xg_i) = poly.divide_by_vanishing_poly(*src_domain).unwrap();
+        let (h_i, mut xg_i) =
+            poly.divide_by_vanishing_poly(*src_domain).ok_or(anyhow!("Could not divide by vanishing poly"))?;
         xg_i = xg_i.mul_by_vanishing_poly(*target_domain);
-        let (xg_i, remainder) = xg_i.divide_by_vanishing_poly(*src_domain).unwrap();
-        assert!(remainder.is_zero());
+        let (xg_i, remainder) =
+            xg_i.divide_by_vanishing_poly(*src_domain).ok_or(anyhow!("Could not divide by vanishing poly"))?;
+        ensure!(remainder.is_zero());
         end_timer!(selector_time);
         Ok((h_i, Some(xg_i)))
     }
