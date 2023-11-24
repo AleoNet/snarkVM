@@ -94,7 +94,7 @@ impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
                                 rand_assignments,
                             )
                         });
-                        crate::snark::varuna::ahp::matrices::pad_input_for_indexer_and_prover(&mut pcs);
+                        crate::snark::varuna::ahp::matrices::pad_input_for_indexer_and_prover(&mut pcs)?;
 
                         end_timer!(padding_time);
 
