@@ -304,7 +304,7 @@ impl<'a, 'b, F: Field> Sub<&'a DensePolynomial<F>> for &'b DensePolynomial<F> {
 
     #[inline]
     fn sub(self, other: &'a DensePolynomial<F>) -> DensePolynomial<F> {
-        if self.is_zero() {
+        let mut result = if self.is_zero() {
             let mut result = other.clone();
             for coeff in &mut result.coeffs {
                 *coeff = -(*coeff);
@@ -316,10 +316,6 @@ impl<'a, 'b, F: Field> Sub<&'a DensePolynomial<F>> for &'b DensePolynomial<F> {
             let mut result = self.clone();
             // Zip safety: `result` and `other` could have different degrees.
             cfg_iter_mut!(result.coeffs).zip(&other.coeffs).for_each(|(a, b)| *a -= b);
-            // If the leading coefficient ends up being zero, pop it off.
-            while let Some(true) = result.coeffs.last().map(|c| c.is_zero()) {
-                result.coeffs.pop();
-            }
             result
         } else {
             let mut result = self.clone();
@@ -328,13 +324,13 @@ impl<'a, 'b, F: Field> Sub<&'a DensePolynomial<F>> for &'b DensePolynomial<F> {
             cfg_iter_mut!(result.coeffs).zip(&other.coeffs).for_each(|(a, b)| {
                 *a -= b;
             });
-            // If the leading coefficient ends up being zero, pop it off.
-            while let Some(true) = result.coeffs.last().map(|c| c.is_zero()) {
-                result.coeffs.pop();
-            }
-
             result
+        };
+        // If the leading coefficient ends up being zero, pop it off.
+        while let Some(true) = result.coeffs.last().map(|c| c.is_zero()) {
+            result.coeffs.pop();
         }
+        result
     }
 }
 
