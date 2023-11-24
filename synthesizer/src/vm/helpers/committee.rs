@@ -189,7 +189,7 @@ pub fn to_next_committee<N: Network>(
                 microcredits,
                 current_committee.is_committee_member_open(validator),
                 current_committee.get_committee_member_delegate_address(validator),
-            )
+            ),
         );
     }
     // Return the next committee.
