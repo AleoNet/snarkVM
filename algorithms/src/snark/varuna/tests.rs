@@ -778,8 +778,7 @@ mod varuna_test_vectors {
             create_test_vector("domain", "C", &format!("{:?}", variable_domain_elements), circuit);
         }
 
-        let fifth_oracles =
-            AHPForR1CS::<_, MM>::prover_fifth_round(verifier_fourth_msg.clone(), prover_state, rng).unwrap();
+        let fifth_oracles = AHPForR1CS::<_, MM>::prover_fifth_round(verifier_fourth_msg, prover_state, rng).unwrap();
 
         // Get coefficients of final oracle polynomial from round 5.
         let h_2 = format!("{:?}", fifth_oracles.h_2.coeffs().map(|(_, coeff)| coeff).collect::<Vec<_>>());

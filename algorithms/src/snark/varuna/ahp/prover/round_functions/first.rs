@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::collections::BTreeMap;
-
 use crate::{
     fft::{DensePolynomial, EvaluationDomain, Evaluations as EvaluationsOnDomain, SparsePolynomial},
     polycommit::sonic_pc::{LabeledPolynomial, PolynomialInfo, PolynomialLabel},
@@ -26,10 +24,12 @@ use crate::{
         SNARKMode,
     },
 };
-use itertools::Itertools;
-use rand_core::RngCore;
 use snarkvm_fields::PrimeField;
 use snarkvm_utilities::cfg_into_iter;
+
+use itertools::Itertools;
+use rand_core::RngCore;
+use std::collections::BTreeMap;
 
 #[cfg(not(feature = "serial"))]
 use rayon::prelude::*;
