@@ -102,7 +102,7 @@ impl<'a, F: PrimeField> PolyMultiplier<'a, F> {
                 }
                 let fft_pc = &self.fft_precomputation.unwrap();
                 let ifft_pc = &self.ifft_precomputation.unwrap();
-                let mut pool = ExecutionPool::new();
+                let mut pool = ExecutionPool::with_capacity(self.polynomials.len() + self.evaluations.len());
                 for (_, p) in self.polynomials {
                     pool.add_job(move || {
                         let mut p = p.clone().into_owned().coeffs;
@@ -146,7 +146,7 @@ impl<'a, F: PrimeField> PolyMultiplier<'a, F> {
                 Some(Cow::Owned(self.fft_precomputation.as_ref().unwrap().to_ifft_precomputation()));
         }
         let fft_pc = self.fft_precomputation.as_ref().unwrap();
-        let mut pool = ExecutionPool::new();
+        let mut pool = ExecutionPool::with_capacity(self.polynomials.len() + self.evaluations.len());
         for (l, p) in self.polynomials {
             pool.add_job(move || {
                 let mut p = p.clone().into_owned().coeffs;

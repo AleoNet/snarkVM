@@ -21,6 +21,7 @@ mod string;
 
 use console::{account::Address, prelude::*, program::SUBDAG_CERTIFICATES_DEPTH, types::Field};
 use narwhal_batch_certificate::BatchCertificate;
+use narwhal_batch_header::BatchHeader;
 use narwhal_transmission_id::TransmissionID;
 
 use indexmap::IndexSet;
@@ -99,6 +100,11 @@ impl<N: Network> Subdag<N> {
         // Ensure the leader certificate is an even round.
         Ok(Self { subdag })
     }
+}
+
+impl<N: Network> Subdag<N> {
+    /// The maximum number of rounds in a subdag (bounded up to GC depth).
+    pub const MAX_ROUNDS: usize = 50;
 }
 
 impl<N: Network> Subdag<N> {

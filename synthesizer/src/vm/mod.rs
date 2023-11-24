@@ -445,7 +445,7 @@ function compute:
                 // Deploy.
                 let transaction = vm.deploy(&caller_private_key, &program, credits, 10, None, rng).unwrap();
                 // Verify.
-                vm.check_transaction(&transaction, None).unwrap();
+                vm.check_transaction(&transaction, None, rng).unwrap();
                 // Return the transaction.
                 transaction
             })
@@ -488,7 +488,7 @@ function compute:
                 // Construct the execute transaction.
                 let transaction = vm.execute_authorization(authorization, None, None, rng).unwrap();
                 // Verify.
-                vm.check_transaction(&transaction, None).unwrap();
+                vm.check_transaction(&transaction, None, rng).unwrap();
                 // Return the transaction.
                 transaction
             })
@@ -532,7 +532,7 @@ function compute:
                     .execute(&caller_private_key, ("credits.aleo", "transfer_public"), inputs, record, 0, None, rng)
                     .unwrap();
                 // Verify.
-                vm.check_transaction(&transaction, None).unwrap();
+                vm.check_transaction(&transaction, None, rng).unwrap();
                 // Return the transaction.
                 transaction
             })
@@ -584,7 +584,7 @@ function compute:
                 // Construct the transaction.
                 let transaction = Transaction::from_execution(execution, Some(fee)).unwrap();
                 // Verify.
-                vm.check_transaction(&transaction, None).unwrap();
+                vm.check_transaction(&transaction, None, rng).unwrap();
                 // Return the transaction.
                 transaction
             })
@@ -974,5 +974,104 @@ function multitransfer:
             )
             .unwrap();
         vm.add_next_block(&sample_next_block(&vm, &caller_private_key, &[execution], rng).unwrap()).unwrap();
+    }
+
+    #[test]
+    #[ignore]
+    fn test_deployment_memory_overload() {
+        const NUM_DEPLOYMENTS: usize = 32;
+
+        let rng = &mut TestRng::default();
+
+        // Initialize a private key.
+        let private_key = sample_genesis_private_key(rng);
+
+        // Initialize a view key.
+        let view_key = ViewKey::try_from(&private_key).unwrap();
+
+        // Initialize the genesis block.
+        let genesis = sample_genesis_block(rng);
+
+        // Initialize the VM.
+        let vm = sample_vm();
+        // Update the VM.
+        vm.add_next_block(&genesis).unwrap();
+
+        // Deploy the base program.
+        let program = Program::from_str(
+            r"
+program program_layer_0.aleo;
+
+mapping m:
+    key as u8.public;
+    value as u32.public;
+
+function do:
+    input r0 as u32.public;
+    async do r0 into r1;
+    output r1 as program_layer_0.aleo/do.future;
+
+finalize do:
+    input r0 as u32.public;
+    set r0 into m[0u8];",
+        )
+        .unwrap();
+
+        let deployment = vm.deploy(&private_key, &program, None, 0, None, rng).unwrap();
+        vm.add_next_block(&sample_next_block(&vm, &private_key, &[deployment], rng).unwrap()).unwrap();
+
+        // For each layer, deploy a program that calls the program from the previous layer.
+        for i in 1..NUM_DEPLOYMENTS {
+            let mut program_string = String::new();
+            // Add the import statements.
+            for j in 0..i {
+                program_string.push_str(&format!("import program_layer_{}.aleo;\n", j));
+            }
+            // Add the program body.
+            program_string.push_str(&format!(
+                "program program_layer_{i}.aleo;
+
+mapping m:
+    key as u8.public;
+    value as u32.public;
+
+function do:
+    input r0 as u32.public;
+    call program_layer_{prev}.aleo/do r0 into r1;
+    async do r0 r1 into r2;
+    output r2 as program_layer_{i}.aleo/do.future;
+
+finalize do:
+    input r0 as u32.public;
+    input r1 as program_layer_{prev}.aleo/do.future;
+    await r1;
+    set r0 into m[0u8];",
+                prev = i - 1
+            ));
+            // Construct the program.
+            let program = Program::from_str(&program_string).unwrap();
+
+            // Deploy the program.
+            let deployment = vm.deploy(&private_key, &program, None, 0, None, rng).unwrap();
+
+            vm.add_next_block(&sample_next_block(&vm, &private_key, &[deployment], rng).unwrap()).unwrap();
+        }
+
+        // Fetch the unspent records.
+        let records = genesis.transitions().cloned().flat_map(Transition::into_records).collect::<IndexMap<_, _>>();
+        trace!("Unspent Records:\n{:#?}", records);
+
+        // Select a record to spend.
+        let record = Some(records.values().next().unwrap().decrypt(&view_key).unwrap());
+
+        // Prepare the inputs.
+        let inputs = [Value::<CurrentNetwork>::from_str("1u32").unwrap()].into_iter();
+
+        // Execute.
+        let transaction =
+            vm.execute(&private_key, ("program_layer_30.aleo", "do"), inputs, record, 0, None, rng).unwrap();
+
+        // Verify.
+        vm.check_transaction(&transaction, None, rng).unwrap();
     }
 }

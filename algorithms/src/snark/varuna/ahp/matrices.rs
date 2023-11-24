@@ -26,10 +26,11 @@ use crate::{
 use snarkvm_fields::{Field, PrimeField};
 use snarkvm_utilities::{cfg_iter, cfg_iter_mut, serialize::*};
 
-use anyhow::{ensure, Result};
-use itertools::Itertools;
+use anyhow::{anyhow, ensure, Result};
 use std::collections::BTreeMap;
 
+#[cfg(feature = "serial")]
+use itertools::Itertools;
 #[cfg(not(feature = "serial"))]
 use rayon::prelude::*;
 
@@ -60,7 +61,7 @@ pub(crate) fn to_matrix_helper<F: Field>(
 pub(crate) fn add_randomizing_variables<F: PrimeField, CS: ConstraintSystem<F>>(
     cs: &mut CS,
     rand_assignments: Option<[F; 3]>,
-) {
+) -> Result<()> {
     let mut assignments = [F::one(); 3];
     if let Some(r) = rand_assignments {
         assignments = r;
@@ -69,25 +70,27 @@ pub(crate) fn add_randomizing_variables<F: PrimeField, CS: ConstraintSystem<F>>(
     let zk_vars = assignments
         .into_iter()
         .enumerate()
-        .map(|(i, assignment)| cs.alloc(|| format!("random_{i}"), || Ok(assignment)).unwrap())
-        .collect_vec();
+        .map(|(i, assignment)| cs.alloc(|| format!("random_{i}"), || Ok(assignment)))
+        .collect::<Result<Vec<_>, _>>()?;
     cs.enforce(|| "constraint zk", |lc| lc + zk_vars[0], |lc| lc + zk_vars[1], |lc| lc + zk_vars[2]);
+    Ok(())
 }
 
 /// Pads the public variables up to the closest power of two.
-pub(crate) fn pad_input_for_indexer_and_prover<F: PrimeField, CS: ConstraintSystem<F>>(cs: &mut CS) {
+pub(crate) fn pad_input_for_indexer_and_prover<F: PrimeField, CS: ConstraintSystem<F>>(cs: &mut CS) -> Result<()> {
     let num_public_variables = cs.num_public_variables();
 
-    let power_of_two = EvaluationDomain::<F>::new(num_public_variables);
-    assert!(power_of_two.is_some());
+    let power_of_two =
+        EvaluationDomain::<F>::new(num_public_variables).ok_or(anyhow!("Could not create EvaluationDomain"))?;
 
     // Allocated `zero` variables to pad the public input up to the next power of two.
-    let padded_size = power_of_two.unwrap().size();
+    let padded_size = power_of_two.size();
     if padded_size > num_public_variables {
         for i in 0..(padded_size - num_public_variables) {
-            cs.alloc_input(|| format!("pad_input_{i}"), || Ok(F::zero())).unwrap();
+            cs.alloc_input(|| format!("pad_input_{i}"), || Ok(F::zero()))?;
         }
     }
+    Ok(())
 }
 
 #[derive(Clone, Debug, CanonicalSerialize, CanonicalDeserialize, PartialEq, Eq)]
@@ -105,11 +108,14 @@ pub struct MatrixEvals<F: PrimeField> {
 
 impl<F: PrimeField> MatrixEvals<F> {
     pub(crate) fn evaluate(&self, lagrange_coefficients_at_point: &[F]) -> Result<[F; 4]> {
-        ensure!(self.row_col.is_some(), "row_col evaluations are not available");
         Ok([
             self.row.evaluate_with_coeffs(lagrange_coefficients_at_point),
             self.col.evaluate_with_coeffs(lagrange_coefficients_at_point),
-            self.row_col.as_ref().unwrap().evaluate_with_coeffs(lagrange_coefficients_at_point),
+            self.row_col
+                .as_ref()
+                .ok_or("row_col evaluations are not available")
+                .map_err(anyhow::Error::msg)?
+                .evaluate_with_coeffs(lagrange_coefficients_at_point),
             self.row_col_val.evaluate_with_coeffs(lagrange_coefficients_at_point),
         ])
     }
