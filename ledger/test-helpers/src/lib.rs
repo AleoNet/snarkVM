@@ -65,7 +65,8 @@ pub fn sample_inputs() -> Vec<(<CurrentNetwork as Network>::TransitionID, Input<
     let plaintext = Plaintext::Literal(Literal::Field(Uniform::rand(rng)), Default::default());
     let plaintext_hash = CurrentNetwork::hash_bhp1024(&plaintext.to_bits_le()).unwrap();
     // Sample a random ciphertext.
-    let ciphertext = Ciphertext::from_fields(&vec![Uniform::rand(rng); 10]).unwrap();
+    let fields: Vec<_> = (0..10).map(|_| Uniform::rand(rng)).collect();
+    let ciphertext = Ciphertext::from_fields(&fields).unwrap();
     let ciphertext_hash = CurrentNetwork::hash_bhp1024(&ciphertext.to_bits_le()).unwrap();
 
     vec![
@@ -97,7 +98,8 @@ pub fn sample_outputs() -> Vec<(<CurrentNetwork as Network>::TransitionID, Outpu
     let plaintext = Plaintext::Literal(Literal::Field(Uniform::rand(rng)), Default::default());
     let plaintext_hash = CurrentNetwork::hash_bhp1024(&plaintext.to_bits_le()).unwrap();
     // Sample a random ciphertext.
-    let ciphertext = Ciphertext::from_fields(&vec![Uniform::rand(rng); 10]).unwrap();
+    let fields: Vec<_> = (0..10).map(|_| Uniform::rand(rng)).collect();
+    let ciphertext = Ciphertext::from_fields(&fields).unwrap();
     let ciphertext_hash = CurrentNetwork::hash_bhp1024(&ciphertext.to_bits_le()).unwrap();
     // Sample a random record.
     let randomizer = Uniform::rand(rng);
@@ -210,7 +212,7 @@ pub fn sample_fee_private(deployment_or_execution_id: Field<CurrentNetwork>, rng
         )
         .unwrap();
     // Construct the fee trace.
-    let (_, mut trace) = process.execute::<CurrentAleo>(authorization).unwrap();
+    let (_, mut trace) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
 
     // Initialize a new block store.
     let block_store = BlockStore::<CurrentNetwork, BlockMemory<_>>::open(None).unwrap();
@@ -263,7 +265,7 @@ pub fn sample_fee_public(deployment_or_execution_id: Field<CurrentNetwork>, rng:
         )
         .unwrap();
     // Construct the fee trace.
-    let (_, mut trace) = process.execute::<CurrentAleo>(authorization).unwrap();
+    let (_, mut trace) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
 
     // Initialize a new block store.
     let block_store = BlockStore::<CurrentNetwork, BlockMemory<_>>::open(None).unwrap();
@@ -393,7 +395,7 @@ fn sample_genesis_block_and_components_raw(
     let authorization =
         process.authorize::<CurrentAleo, _>(&private_key, locator.0, locator.1, inputs.iter(), rng).unwrap();
     // Execute the function.
-    let (_, mut trace) = process.execute::<CurrentAleo>(authorization).unwrap();
+    let (_, mut trace) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
 
     // Initialize a new block store.
     let block_store = BlockStore::<CurrentNetwork, BlockMemory<_>>::open(None).unwrap();

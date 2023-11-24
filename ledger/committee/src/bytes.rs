@@ -28,6 +28,13 @@ impl<N: Network> FromBytes for Committee<N> {
         let starting_round = u64::read_le(&mut reader)?;
         // Read the number of members.
         let num_members = u16::read_le(&mut reader)?;
+        // Ensure the number of members is within the allowed limit.
+        if num_members > Self::MAX_COMMITTEE_SIZE {
+            return Err(error(format!(
+                "Committee cannot exceed {} members, found {num_members}",
+                Self::MAX_COMMITTEE_SIZE,
+            )));
+        }
         // Read the members.
         let mut members = IndexMap::with_capacity(num_members as usize);
         for _ in 0..num_members {

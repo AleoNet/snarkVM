@@ -84,6 +84,7 @@ impl<ConstraintF: Field> ConstraintSynthesizer<ConstraintF> for TestCircuit<Cons
 }
 
 impl<F: Field> TestCircuit<F> {
+    // Generate a test circuit with a random witness.
     pub fn gen_rand<R: Rng + CryptoRng>(
         mul_depth: usize,
         num_constraints: usize,
@@ -94,6 +95,28 @@ impl<F: Field> TestCircuit<F> {
         let a = F::rand(rng);
         let b = F::rand(rng);
 
+        for j in 1..(mul_depth + 1) {
+            let mut new_var = a;
+            for _ in 0..j {
+                new_var.mul_assign(&b);
+            }
+            public_inputs.push(new_var);
+        }
+
+        (TestCircuit { a: Some(a), b: Some(b), num_constraints, num_variables, mul_depth }, public_inputs)
+    }
+
+    // Generate a test circuit with a fixed witness.
+    pub fn generate_circuit_with_fixed_witness(
+        a: u128,
+        b: u128,
+        mul_depth: usize,
+        num_constraints: usize,
+        num_variables: usize,
+    ) -> (Self, Vec<F>) {
+        let mut public_inputs: Vec<F> = Vec::with_capacity(mul_depth);
+        let a = F::from(a);
+        let b = F::from(b);
         for j in 1..(mul_depth + 1) {
             let mut new_var = a;
             for _ in 0..j {

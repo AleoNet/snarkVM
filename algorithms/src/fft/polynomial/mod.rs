@@ -68,7 +68,16 @@ impl<'a, F: Field> CanonicalSerialize for Polynomial<'a, F> {
 
 impl<'a, F: Field> Valid for Polynomial<'a, F> {
     fn check(&self) -> Result<(), SerializationError> {
-        Ok(())
+        // Check that the polynomial contains a trailing zero coefficient.
+        let has_trailing_zero = match self {
+            Sparse(p) => p.coeffs().last().map(|(_, c)| c.is_zero()),
+            Dense(p) => p.coeffs.last().map(|c| c.is_zero()),
+        };
+        // Fail if the trailing coefficient is zero.
+        match has_trailing_zero {
+            Some(true) => Err(SerializationError::InvalidData),
+            Some(false) | None => Ok(()),
+        }
     }
 }
 
