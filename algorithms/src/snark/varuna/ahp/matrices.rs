@@ -29,6 +29,8 @@ use snarkvm_utilities::{cfg_iter, cfg_iter_mut, serialize::*};
 use anyhow::{anyhow, ensure, Result};
 use std::collections::BTreeMap;
 
+#[cfg(feature = "serial")]
+use itertools::Itertools;
 #[cfg(not(feature = "serial"))]
 use rayon::prelude::*;
 
