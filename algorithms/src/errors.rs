@@ -43,22 +43,10 @@ pub enum SNARKError {
 
     #[error("Circuit not found")]
     CircuitNotFound,
-
-    #[error("terminated")]
-    Terminated,
 }
 
 impl From<AHPError> for SNARKError {
     fn from(err: AHPError) -> Self {
         SNARKError::Crate("AHPError", format!("{err:?}"))
-    }
-}
-
-impl From<crate::polycommit::PCError> for SNARKError {
-    fn from(err: crate::polycommit::PCError) -> Self {
-        match err {
-            crate::polycommit::PCError::Terminated => SNARKError::Terminated,
-            err => SNARKError::Crate("PCError", format!("{err:?}")),
-        }
     }
 }
