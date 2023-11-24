@@ -221,7 +221,7 @@ impl<N: Network> Block<N> {
         let height = self.height();
 
         // Ensure there are sufficient ratifications.
-        ensure!(!self.ratifications.len() >= 2, "Block {height} must contain at least 2 ratifications");
+        ensure!(self.ratifications.len() >= 2, "Block {height} must contain at least 2 ratifications");
 
         // Initialize a ratifications iterator.
         let mut ratifications_iter = self.ratifications.iter();

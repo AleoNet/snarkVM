@@ -28,6 +28,7 @@ use crate::{
     },
     AlgebraicSponge,
 };
+use anyhow::{ensure, Result};
 use smallvec::SmallVec;
 use snarkvm_fields::PrimeField;
 use std::collections::BTreeMap;
@@ -41,7 +42,7 @@ impl<TargetField: PrimeField, SM: SNARKMode> AHPForR1CS<TargetField, SM> {
         max_variable_domain: EvaluationDomain<TargetField>,
         max_non_zero_domain: EvaluationDomain<TargetField>,
         fs_rng: &mut R,
-    ) -> Result<(FirstMessage<TargetField>, State<TargetField, SM>), AHPError> {
+    ) -> Result<(FirstMessage<TargetField>, State<TargetField, SM>)> {
         let mut batch_combiners = BTreeMap::new();
         let mut circuit_specific_states = BTreeMap::new();
         let mut num_circuit_combiners = vec![1; batch_sizes.len()];
@@ -55,7 +56,7 @@ impl<TargetField: PrimeField, SM: SNARKMode> AHPForR1CS<TargetField, SM> {
             end_timer!(squeeze_time);
 
             let (instance_combiners, circuit_combiner) = elems.split_at(*batch_size - 1);
-            assert_eq!(circuit_combiner.len(), num_c_combiner);
+            ensure!(circuit_combiner.len() == num_c_combiner);
             let mut combiners =
                 BatchCombiners { circuit_combiner: TargetField::one(), instance_combiners: vec![TargetField::one()] };
             if num_c_combiner == 1 {
@@ -66,32 +67,27 @@ impl<TargetField: PrimeField, SM: SNARKMode> AHPForR1CS<TargetField, SM> {
 
             let constraint_domain_time = start_timer!(|| format!("Constructing constraint domain for {circuit_id}"));
             let constraint_domain =
-                EvaluationDomain::new(circuit_info.num_constraints).ok_or(AHPError::PolynomialDegreeTooLarge)?;
+                EvaluationDomain::new(circuit_info.num_constraints).ok_or(AHPError::PolyTooLarge)?;
             end_timer!(constraint_domain_time);
 
             let variable_domain_time = start_timer!(|| format!("Constructing constraint domain for {circuit_id}"));
-            let variable_domain =
-                EvaluationDomain::new(circuit_info.num_variables).ok_or(AHPError::PolynomialDegreeTooLarge)?;
+            let variable_domain = EvaluationDomain::new(circuit_info.num_variables).ok_or(AHPError::PolyTooLarge)?;
             end_timer!(variable_domain_time);
 
             let non_zero_a_time = start_timer!(|| format!("Constructing non-zero-a domain for {circuit_id}"));
-            let non_zero_a_domain =
-                EvaluationDomain::new(circuit_info.num_non_zero_a).ok_or(AHPError::PolynomialDegreeTooLarge)?;
+            let non_zero_a_domain = EvaluationDomain::new(circuit_info.num_non_zero_a).ok_or(AHPError::PolyTooLarge)?;
             end_timer!(non_zero_a_time);
 
             let non_zero_b_time = start_timer!(|| format!("Constructing non-zero-b domain {circuit_id}"));
-            let non_zero_b_domain =
-                EvaluationDomain::new(circuit_info.num_non_zero_b).ok_or(AHPError::PolynomialDegreeTooLarge)?;
+            let non_zero_b_domain = EvaluationDomain::new(circuit_info.num_non_zero_b).ok_or(AHPError::PolyTooLarge)?;
             end_timer!(non_zero_b_time);
 
             let non_zero_c_time = start_timer!(|| format!("Constructing non-zero-c domain for {circuit_id}"));
-            let non_zero_c_domain =
-                EvaluationDomain::new(circuit_info.num_non_zero_c).ok_or(AHPError::PolynomialDegreeTooLarge)?;
+            let non_zero_c_domain = EvaluationDomain::new(circuit_info.num_non_zero_c).ok_or(AHPError::PolyTooLarge)?;
             end_timer!(non_zero_c_time);
 
             let input_domain_time = start_timer!(|| format!("Constructing input domain {circuit_id}"));
-            let input_domain =
-                EvaluationDomain::new(circuit_info.num_public_inputs).ok_or(AHPError::PolynomialDegreeTooLarge)?;
+            let input_domain = EvaluationDomain::new(circuit_info.num_public_inputs).ok_or(AHPError::PolyTooLarge)?;
             end_timer!(input_domain_time);
 
             let circuit_specific_state = CircuitSpecificState {
@@ -130,13 +126,13 @@ impl<TargetField: PrimeField, SM: SNARKMode> AHPForR1CS<TargetField, SM> {
     pub fn verifier_second_round<BaseField: PrimeField, R: AlgebraicSponge<BaseField, 2>>(
         mut state: State<TargetField, SM>,
         fs_rng: &mut R,
-    ) -> Result<(SecondMessage<TargetField>, State<TargetField, SM>), AHPError> {
+    ) -> Result<(SecondMessage<TargetField>, State<TargetField, SM>)> {
         let elems = fs_rng.squeeze_nonnative_field_elements(3);
         let (first, _) = elems.split_at(3);
-        let [alpha, eta_b, eta_c]: [_; 3] = first.try_into().unwrap();
+        let [alpha, eta_b, eta_c]: [_; 3] = first.try_into().map_err(anyhow::Error::msg)?;
 
         let check_vanish_poly_time = start_timer!(|| "Evaluating vanishing polynomial");
-        assert!(!state.max_constraint_domain.evaluate_vanishing_polynomial(alpha).is_zero());
+        ensure!(!state.max_constraint_domain.evaluate_vanishing_polynomial(alpha).is_zero());
         end_timer!(check_vanish_poly_time);
 
         let message = SecondMessage { alpha, eta_b, eta_c };
@@ -149,10 +145,10 @@ impl<TargetField: PrimeField, SM: SNARKMode> AHPForR1CS<TargetField, SM> {
     pub fn verifier_third_round<BaseField: PrimeField, R: AlgebraicSponge<BaseField, 2>>(
         mut state: State<TargetField, SM>,
         fs_rng: &mut R,
-    ) -> Result<(ThirdMessage<TargetField>, State<TargetField, SM>), AHPError> {
+    ) -> Result<(ThirdMessage<TargetField>, State<TargetField, SM>)> {
         let elems = fs_rng.squeeze_nonnative_field_elements(1);
         let beta = elems[0];
-        assert!(!state.max_variable_domain.evaluate_vanishing_polynomial(beta).is_zero());
+        ensure!(!state.max_variable_domain.evaluate_vanishing_polynomial(beta).is_zero());
 
         let message = ThirdMessage { beta };
         state.third_round_message = Some(message);
@@ -164,7 +160,7 @@ impl<TargetField: PrimeField, SM: SNARKMode> AHPForR1CS<TargetField, SM> {
     pub fn verifier_fourth_round<BaseField: PrimeField, R: AlgebraicSponge<BaseField, 2>>(
         mut state: State<TargetField, SM>,
         fs_rng: &mut R,
-    ) -> Result<(FourthMessage<TargetField>, State<TargetField, SM>), AHPError> {
+    ) -> Result<(FourthMessage<TargetField>, State<TargetField, SM>)> {
         let num_circuits = state.circuit_specific_states.len();
         let mut delta_a = Vec::with_capacity(num_circuits);
         let mut delta_b = Vec::with_capacity(num_circuits);
@@ -189,10 +185,10 @@ impl<TargetField: PrimeField, SM: SNARKMode> AHPForR1CS<TargetField, SM> {
     pub fn verifier_fifth_round<BaseField: PrimeField, R: AlgebraicSponge<BaseField, 2>>(
         mut state: State<TargetField, SM>,
         fs_rng: &mut R,
-    ) -> Result<State<TargetField, SM>, AHPError> {
+    ) -> Result<State<TargetField, SM>> {
         let elems = fs_rng.squeeze_nonnative_field_elements(1);
         let gamma = elems[0];
-        assert!(!state.max_non_zero_domain.evaluate_vanishing_polynomial(gamma).is_zero());
+        ensure!(!state.max_non_zero_domain.evaluate_vanishing_polynomial(gamma).is_zero());
 
         state.gamma = Some(gamma);
         Ok(state)
