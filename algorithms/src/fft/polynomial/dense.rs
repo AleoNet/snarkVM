@@ -14,11 +14,12 @@
 
 //! A polynomial represented in coefficient form.
 
+use super::PolyMultiplier;
 use crate::fft::{EvaluationDomain, Evaluations, Polynomial};
-use anyhow::Result;
 use snarkvm_fields::{Field, PrimeField};
 use snarkvm_utilities::{cfg_iter_mut, serialize::*};
 
+use anyhow::Result;
 use num_traits::CheckedDiv;
 use rand::Rng;
 use std::{
@@ -31,8 +32,6 @@ use itertools::Itertools;
 
 #[cfg(not(feature = "serial"))]
 use rayon::prelude::*;
-
-use super::PolyMultiplier;
 
 /// Stores a polynomial in coefficient form.
 #[derive(Clone, PartialEq, Eq, Hash, Default, CanonicalSerialize, CanonicalDeserialize)]

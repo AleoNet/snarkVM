@@ -15,13 +15,12 @@
 //! Work with sparse and dense polynomials.
 
 use crate::fft::{EvaluationDomain, Evaluations};
-use anyhow::{ensure, Result};
 use snarkvm_fields::{Field, PrimeField};
 use snarkvm_utilities::{cfg_iter_mut, serialize::*, SerializationError};
-
-use std::{borrow::Cow, convert::TryInto};
-
 use Polynomial::*;
+
+use anyhow::{ensure, Result};
+use std::{borrow::Cow, convert::TryInto};
 
 #[cfg(not(feature = "serial"))]
 use rayon::prelude::*;
