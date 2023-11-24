@@ -32,7 +32,7 @@ use snarkvm_fields::{Field, PrimeField};
 
 use core::{borrow::Borrow, marker::PhantomData};
 use itertools::Itertools;
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, fmt::Write};
 
 /// The algebraic holographic proof defined in [CHMMVW19](https://eprint.iacr.org/2019/1047).
 /// Currently, this AHP only supports inputs of size one
@@ -43,7 +43,9 @@ pub struct AHPForR1CS<F: Field, SM: SNARKMode> {
 }
 
 pub(crate) fn witness_label(circuit_id: CircuitId, poly: &str, i: usize) -> String {
-    format!("circuit_{circuit_id}_{poly}_{i:0>8}")
+    let mut label = String::with_capacity(82 + poly.len());
+    let _ = write!(&mut label, "circuit_{circuit_id}_{poly}_{i:0>8}");
+    label
 }
 
 pub(crate) struct NonZeroDomains<F: PrimeField> {

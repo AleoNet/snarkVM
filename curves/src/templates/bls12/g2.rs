@@ -92,7 +92,7 @@ impl<P: Bls12Parameters> G2Prepared<P> {
         let mut r = G2HomProjective { x: q.x, y: q.y, z: Fp2::one() };
 
         let bit_iterator = BitIteratorBE::new(P::X);
-        let mut ell_coeffs = Vec::with_capacity(bit_iterator.len());
+        let mut ell_coeffs = Vec::with_capacity(bit_iterator.len() * 3 / 2);
 
         // `one_half` = 1/2 in the field.
         let one_half = P::Fp::half();
