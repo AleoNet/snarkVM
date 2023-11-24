@@ -62,6 +62,7 @@ impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> HashUncompres
             }
             // Hash the preimage for this iteration.
             digest = self.hasher.hash_uncompressed(&preimage);
+            // Clear the preimage vector for the next iteration.
             preimage.clear();
         }
 

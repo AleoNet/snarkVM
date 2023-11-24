@@ -37,13 +37,18 @@ impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> HashUncompres
             true => {
                 // Pad the input to a multiple of `BHP_CHUNK_SIZE` for hashing.
                 if input.len() % BHP_CHUNK_SIZE != 0 {
+                    // Compute the number of padding bits.
                     let padding = BHP_CHUNK_SIZE - (input.len() % BHP_CHUNK_SIZE);
+                    // Pad the input with `false` bits.
                     let mut padded_input = Vec::with_capacity(input.len() + padding);
                     padded_input.extend_from_slice(input);
                     padded_input.resize(input.len() + padding, Boolean::constant(false));
+                    // Ensure the input is a multiple of `BHP_CHUNK_SIZE`.
                     assert_eq!(padded_input.len() % BHP_CHUNK_SIZE, 0, "Input must be a multiple of {BHP_CHUNK_SIZE}");
+                    // Return the padded input.
                     Cow::Owned(padded_input)
                 } else {
+                    // Return the input as a borrowed slice.
                     Cow::Borrowed(input)
                 }
             }
