@@ -171,11 +171,11 @@ impl<N: Network> CoinbasePuzzle<N> {
         ensure!(!solutions.is_empty(), "There are no solutions to verify for the coinbase puzzle");
 
         // Ensure the number of partial solutions does not exceed `MAX_PROVER_SOLUTIONS`.
-        if solutions.len() > N::MAX_PROVER_SOLUTIONS {
+        if solutions.len() > N::MAX_SOLUTIONS {
             bail!(
                 "The solutions exceed the allowed number of partial solutions. ({} > {})",
                 solutions.len(),
-                N::MAX_PROVER_SOLUTIONS
+                N::MAX_SOLUTIONS
             );
         }
 

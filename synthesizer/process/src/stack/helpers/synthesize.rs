@@ -58,7 +58,7 @@ impl<N: Network> Stack<N> {
         // Initialize the call stack.
         let call_stack = CallStack::Synthesize(vec![request], burner_private_key, authorization);
         // Synthesize the circuit.
-        let _response = self.execute_function::<A>(call_stack, None)?;
+        let _response = self.execute_function::<A, R>(call_stack, None, rng)?;
 
         // Ensure the proving key exists.
         ensure!(self.contains_proving_key(function_name), "Function '{function_name}' is missing a proving key.");

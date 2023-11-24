@@ -17,6 +17,7 @@
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[repr(u16)]
 pub enum MapID {
+    BFT(BFTMap),
     Block(BlockMap),
     Committee(CommitteeMap),
     Deployment(DeploymentMap),
@@ -34,6 +35,7 @@ pub enum MapID {
 impl From<MapID> for u16 {
     fn from(id: MapID) -> u16 {
         match id {
+            MapID::BFT(id) => id as u16,
             MapID::Block(id) => id as u16,
             MapID::Committee(id) => id as u16,
             MapID::Deployment(id) => id as u16,
@@ -48,6 +50,15 @@ impl From<MapID> for u16 {
             MapID::Test(id) => id as u16,
         }
     }
+}
+
+/// The RocksDB map prefix for BFT-related entries.
+// Note: the order of these variants can be changed at any point in time,
+// as long as the corresponding DataID values remain the same.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[repr(u16)]
+pub enum BFTMap {
+    Transmissions = DataID::BFTTransmissionsMap as u16,
 }
 
 /// The RocksDB map prefix for block-related entries.
@@ -273,6 +284,7 @@ enum DataID {
 
     // TODO (howardwu): For mainnet - Reorder this up above.
     BlockRejectedDeploymentOrExecutionMap,
+    BFTTransmissionsMap,
 
     // Testing
     #[cfg(test)]
