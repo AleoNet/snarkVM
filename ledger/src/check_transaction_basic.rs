@@ -16,7 +16,12 @@ use super::*;
 
 impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
     /// Checks the given transaction is well-formed and unique.
-    pub fn check_transaction_basic(&self, transaction: &Transaction<N>, rejected_id: Option<Field<N>>) -> Result<()> {
-        self.vm().check_transaction(transaction, rejected_id)
+    pub fn check_transaction_basic<R: CryptoRng + Rng>(
+        &self,
+        transaction: &Transaction<N>,
+        rejected_id: Option<Field<N>>,
+        rng: &mut R,
+    ) -> Result<()> {
+        self.vm().check_transaction(transaction, rejected_id, rng)
     }
 }

@@ -192,7 +192,7 @@ pub(super) fn batch_add<G: AffineCurve>(
     let mut number_of_bases_in_batch = 0;
 
     let mut instr = Vec::<(u32, u32)>::with_capacity(batch_size);
-    let mut new_bases = Vec::with_capacity(bases.len() * 3 / 8);
+    let mut new_bases = Vec::with_capacity(bases.len());
     let mut scratch_space = Vec::with_capacity(batch_size / 2);
 
     // In the first loop, copy the results of the first in-place addition tree to the vector `new_bases`.

@@ -169,7 +169,7 @@ pub struct Stack<N: Network> {
     /// The program (record types, structs, functions).
     program: Program<N>,
     /// The mapping of external stacks as `(program ID, stack)`.
-    external_stacks: IndexMap<ProgramID<N>, Stack<N>>,
+    external_stacks: IndexMap<ProgramID<N>, Arc<Stack<N>>>,
     /// The mapping of closure and function names to their register types.
     register_types: IndexMap<Identifier<N>, RegisterTypes<N>>,
     /// The mapping of finalize names to their register types.
@@ -235,7 +235,7 @@ impl<N: Network> StackProgram<N> for Stack<N> {
 
     /// Returns the external stack for the given program ID.
     #[inline]
-    fn get_external_stack(&self, program_id: &ProgramID<N>) -> Result<&Stack<N>> {
+    fn get_external_stack(&self, program_id: &ProgramID<N>) -> Result<&Arc<Stack<N>>> {
         // Retrieve the external stack.
         self.external_stacks.get(program_id).ok_or_else(|| anyhow!("External program '{program_id}' does not exist."))
     }

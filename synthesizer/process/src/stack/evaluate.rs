@@ -106,6 +106,10 @@ impl<N: Network> StackEvaluate<N> for Stack<N> {
         // Retrieve the next request, based on the call stack mode.
         let (request, call_stack) = match &call_stack {
             CallStack::Evaluate(authorization) => (authorization.next()?, call_stack),
+            CallStack::CheckDeployment(requests, _, _) | CallStack::PackageRun(requests, _, _) => {
+                let last_request = requests.last().ok_or(anyhow!("CallStack does not contain request"))?.clone();
+                (last_request, call_stack)
+            }
             // If the evaluation is performed in the `Execute` mode, create a new `Evaluate` mode.
             // This is done to ensure that evaluation during execution is performed consistently.
             CallStack::Execute(authorization, _) => {
@@ -116,7 +120,7 @@ impl<N: Network> StackEvaluate<N> for Stack<N> {
                 let call_stack = CallStack::Evaluate(authorization);
                 (request, call_stack)
             }
-            _ => bail!("Illegal operation: call stack must be `Evaluate` or `Execute` in `evaluate_function`."),
+            _ => bail!("Illegal operation: call stack must not be `Synthesize` or `Authorize` in `evaluate_function`."),
         };
         lap!(timer, "Retrieve the next request");
 
@@ -218,8 +222,6 @@ impl<N: Network> StackEvaluate<N> for Stack<N> {
             .collect::<Result<Vec<_>>>()?;
         lap!(timer, "Load the outputs");
 
-        finish!(timer);
-
         // Map the output operands to registers.
         let output_registers = output_operands
             .iter()
@@ -228,9 +230,10 @@ impl<N: Network> StackEvaluate<N> for Stack<N> {
                 _ => None,
             })
             .collect::<Vec<_>>();
+        lap!(timer, "Loaded the output registers");
 
         // Compute the response.
-        Response::new(
+        let response = Response::new(
             request.network_id(),
             self.program.id(),
             function.name(),
@@ -240,6 +243,9 @@ impl<N: Network> StackEvaluate<N> for Stack<N> {
             outputs,
             &function.output_types(),
             &output_registers,
-        )
+        );
+        finish!(timer);
+
+        response
     }
 }

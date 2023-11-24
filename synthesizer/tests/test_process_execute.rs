@@ -114,7 +114,7 @@ fn test_process_execute() {
                             };
                             // Execute the authorization and extract the output as YAML.
                             std::panic::catch_unwind(AssertUnwindSafe(|| {
-                                match process.execute::<CurrentAleo>(authorization) {
+                                match process.execute::<CurrentAleo, _>(authorization, rng) {
                                     Ok((response, _)) => serde_yaml::Value::Sequence(
                                         response
                                             .outputs()
