@@ -44,7 +44,7 @@ impl<F: PrimeField> From<&crate::Variable<F>> for AssignmentVariable<F> {
 #[derive(Clone, Debug)]
 pub struct AssignmentLC<F: PrimeField> {
     constant: F,
-    terms: IndexMap<AssignmentVariable<F>, F>,
+    terms: Vec<(AssignmentVariable<F>, F)>,
 }
 
 impl<F: PrimeField> From<&crate::LinearCombination<F>> for AssignmentLC<F> {
@@ -66,7 +66,7 @@ impl<F: PrimeField> AssignmentLC<F> {
     }
 
     /// Returns the terms of the linear combination.
-    pub const fn terms(&self) -> &IndexMap<AssignmentVariable<F>, F> {
+    pub const fn terms(&self) -> &Vec<(AssignmentVariable<F>, F)> {
         &self.terms
     }
 
@@ -84,8 +84,8 @@ impl<F: PrimeField> AssignmentLC<F> {
 /// and constraint assignments.
 #[derive(Clone, Debug)]
 pub struct Assignment<F: PrimeField> {
-    public: IndexMap<Index, F>,
-    private: IndexMap<Index, F>,
+    public: Vec<(Index, F)>,
+    private: Vec<(Index, F)>,
     constraints: Vec<(AssignmentLC<F>, AssignmentLC<F>, AssignmentLC<F>)>,
 }
 
@@ -109,12 +109,12 @@ impl<F: PrimeField> From<crate::R1CS<F>> for Assignment<F> {
 
 impl<F: PrimeField> Assignment<F> {
     /// Returns the public inputs of the assignment.
-    pub const fn public_inputs(&self) -> &IndexMap<Index, F> {
+    pub const fn public_inputs(&self) -> &Vec<(Index, F)> {
         &self.public
     }
 
     /// Returns the private inputs of the assignment.
-    pub const fn private_inputs(&self) -> &IndexMap<Index, F> {
+    pub const fn private_inputs(&self) -> &Vec<(Index, F)> {
         &self.private
     }
 
