@@ -133,7 +133,7 @@ fn test_profiler() -> Result<()> {
     // Generate proof inputs
     let epoch_challenge = EpochChallenge::new(rng.next_u32(), Default::default(), degree).unwrap();
 
-    for batch_size in [10, 100, <Testnet3 as Network>::MAX_PROVER_SOLUTIONS] {
+    for batch_size in [10, 100, <Testnet3 as Network>::MAX_SOLUTIONS] {
         // Generate the solutions.
         let solutions = (0..batch_size)
             .map(|_| {

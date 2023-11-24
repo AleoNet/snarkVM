@@ -232,14 +232,16 @@ pub fn to_next_commitee_map_and_bonded_map<N: Network>(
 #[cfg(test)]
 pub(crate) mod test_helpers {
     use super::*;
+    use crate::vm::TestRng;
     use ledger_committee::MIN_VALIDATOR_STAKE;
 
-    use rand::Rng;
+    use rand::{CryptoRng, Rng};
 
     /// Returns the stakers, given the map of `(validator, (microcredits, is_open))` entries.
     /// This method simulates the existence of delegators for the members.
-    pub(crate) fn to_stakers<N: Network>(
+    pub(crate) fn to_stakers<N: Network, R: Rng + CryptoRng>(
         members: &IndexMap<Address<N>, (u64, bool)>,
+        rng: &mut R,
     ) -> IndexMap<Address<N>, (Address<N>, u64)> {
         members
             .into_iter()
@@ -252,9 +254,9 @@ pub(crate) mod test_helpers {
                 let num_iterations = (remaining_microcredits / staker_amount).saturating_sub(1);
 
                 // Construct the map of stakers.
-                let mut stakers: IndexMap<_, _> = cfg_into_iter!((0..num_iterations))
-                    .map(|_| {
-                        let rng = &mut rand::thread_rng();
+                let rngs = (0..num_iterations).map(|_| TestRng::from_seed(rng.gen())).collect::<Vec<_>>();
+                let mut stakers: IndexMap<_, _> = cfg_into_iter!(rngs)
+                    .map(|mut rng| {
                         // Sample a random staker.
                         let staker = Address::<N>::new(rng.gen());
                         // Output the staker.
@@ -268,7 +270,6 @@ pub(crate) mod test_helpers {
                 // Insert the last staker.
                 let final_amount = remaining_microcredits.saturating_sub(num_iterations * staker_amount);
                 if final_amount > 0 {
-                    let rng = &mut rand::thread_rng();
                     let staker = Address::<N>::new(rng.gen());
                     stakers.insert(staker, (*validator, final_amount));
                 }
@@ -351,7 +352,7 @@ mod tests {
         // Sample a committee.
         let committee = ledger_committee::test_helpers::sample_committee_for_round_and_size(1, 100, rng);
         // Convert the committee into stakers.
-        let expected_stakers = crate::committee::test_helpers::to_stakers(committee.members());
+        let expected_stakers = crate::committee::test_helpers::to_stakers(committee.members(), rng);
         // Initialize the bonded map.
         let bonded_map = to_bonded_map(&expected_stakers);
 
@@ -371,7 +372,7 @@ mod tests {
         // Sample a committee.
         let committee = ledger_committee::test_helpers::sample_committee_for_round_and_size(1, 100, rng);
         // Convert the committee into stakers.
-        let stakers = crate::committee::test_helpers::to_stakers(committee.members());
+        let stakers = crate::committee::test_helpers::to_stakers(committee.members(), rng);
 
         // Start a timer.
         let timer = std::time::Instant::now();
@@ -388,7 +389,7 @@ mod tests {
         // Sample a committee.
         let committee = ledger_committee::test_helpers::sample_committee_for_round_and_size(1, 100, rng);
         // Convert the committee into stakers.
-        let stakers = crate::committee::test_helpers::to_stakers(committee.members());
+        let stakers = crate::committee::test_helpers::to_stakers(committee.members(), rng);
 
         // Start a timer.
         let timer = std::time::Instant::now();
@@ -407,7 +408,7 @@ mod tests {
         // Sample a committee.
         let committee = ledger_committee::test_helpers::sample_committee(rng);
         // Convert the committee into stakers.
-        let stakers = crate::committee::test_helpers::to_stakers(committee.members());
+        let stakers = crate::committee::test_helpers::to_stakers(committee.members(), rng);
 
         // Start a timer.
         let timer = std::time::Instant::now();

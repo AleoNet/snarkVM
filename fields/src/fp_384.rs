@@ -612,6 +612,10 @@ impl<P: Fp384Parameters> ToBits for Fp384<P> {
         self.write_bits_le(vec);
         vec[initial_len..].reverse();
     }
+
+    fn num_bits() -> Option<usize> {
+        Some(384)
+    }
 }
 
 impl<P: Fp384Parameters> ToBytes for Fp384<P> {

@@ -140,10 +140,7 @@ impl<
                 let mut batch = rocksdb::WriteBatch::default();
 
                 // Construct an iterator over the DB with the specified prefix.
-                let iterator = self.database.iterator(rocksdb::IteratorMode::From(
-                    &self.create_prefixed_map(map)?,
-                    rocksdb::Direction::Forward,
-                ));
+                let iterator = self.database.prefix_iterator(&self.create_prefixed_map(map)?);
 
                 // Iterate over the entries in the DB with the specified prefix.
                 for entry in iterator {
@@ -284,10 +281,7 @@ impl<
                         let serialized_map = bincode::serialize(&map)?;
 
                         // Construct an iterator over the DB with the specified prefix.
-                        let iterator = self.database.iterator(rocksdb::IteratorMode::From(
-                            &self.create_prefixed_map(&map)?,
-                            rocksdb::Direction::Forward,
-                        ));
+                        let iterator = self.database.prefix_iterator(&self.create_prefixed_map(&map)?);
 
                         // Iterate over the entries in the DB with the specified prefix.
                         for entry in iterator {
@@ -402,9 +396,7 @@ impl<
         let mut entries = Vec::new();
 
         // Construct an iterator over the DB with the specified prefix.
-        let iterator = self
-            .database
-            .iterator(rocksdb::IteratorMode::From(&self.create_prefixed_map(map)?, rocksdb::Direction::Forward));
+        let iterator = self.database.prefix_iterator(&self.create_prefixed_map(map)?);
 
         // Iterate over the entries in the DB with the specified prefix.
         for entry in iterator {
