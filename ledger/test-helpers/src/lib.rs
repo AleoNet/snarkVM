@@ -65,7 +65,8 @@ pub fn sample_inputs() -> Vec<(<CurrentNetwork as Network>::TransitionID, Input<
     let plaintext = Plaintext::Literal(Literal::Field(Uniform::rand(rng)), Default::default());
     let plaintext_hash = CurrentNetwork::hash_bhp1024(&plaintext.to_bits_le()).unwrap();
     // Sample a random ciphertext.
-    let ciphertext = Ciphertext::from_fields(&vec![Uniform::rand(rng); 10]).unwrap();
+    let fields: Vec<_> = (0..10).map(|_| Uniform::rand(rng)).collect();
+    let ciphertext = Ciphertext::from_fields(&fields).unwrap();
     let ciphertext_hash = CurrentNetwork::hash_bhp1024(&ciphertext.to_bits_le()).unwrap();
 
     vec![
@@ -97,7 +98,8 @@ pub fn sample_outputs() -> Vec<(<CurrentNetwork as Network>::TransitionID, Outpu
     let plaintext = Plaintext::Literal(Literal::Field(Uniform::rand(rng)), Default::default());
     let plaintext_hash = CurrentNetwork::hash_bhp1024(&plaintext.to_bits_le()).unwrap();
     // Sample a random ciphertext.
-    let ciphertext = Ciphertext::from_fields(&vec![Uniform::rand(rng); 10]).unwrap();
+    let fields: Vec<_> = (0..10).map(|_| Uniform::rand(rng)).collect();
+    let ciphertext = Ciphertext::from_fields(&fields).unwrap();
     let ciphertext_hash = CurrentNetwork::hash_bhp1024(&ciphertext.to_bits_le()).unwrap();
     // Sample a random record.
     let randomizer = Uniform::rand(rng);
