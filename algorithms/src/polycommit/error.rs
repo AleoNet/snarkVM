@@ -69,7 +69,7 @@ pub enum PCError {
     #[error("The degree provided to `trim` was too large.")]
     TrimmingDegreeTooLarge,
 
-    #[error("the eqaution \"{0}\" contained degree-bounded polynomials")]
+    #[error("the equation \"{0}\" contained degree-bounded polynomials")]
     EquationHasDegreeBounds(String),
 
     #[error("the degree bound ({0}) is not supported by the parameters")]
