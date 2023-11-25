@@ -50,9 +50,9 @@ impl<N: Network> FromBytes for BatchHeader<N> {
         }
 
         // Read the number of previous certificate IDs.
-        let num_previous_certificate_ids = u32::read_le(&mut reader)?;
+        let num_previous_certificate_ids = u16::read_le(&mut reader)?;
         // Ensure the number of previous certificate IDs is within bounds.
-        if num_previous_certificate_ids as usize > Self::MAX_CERTIFICATES {
+        if num_previous_certificate_ids > Self::MAX_CERTIFICATES {
             return Err(error(format!(
                 "Number of previous certificate IDs ({num_previous_certificate_ids}) exceeds the maximum ({})",
                 Self::MAX_CERTIFICATES
@@ -101,7 +101,7 @@ impl<N: Network> ToBytes for BatchHeader<N> {
             transmission_id.write_le(&mut writer)?;
         }
         // Write the number of previous certificate IDs.
-        u32::try_from(self.previous_certificate_ids.len()).map_err(|e| error(e.to_string()))?.write_le(&mut writer)?;
+        u16::try_from(self.previous_certificate_ids.len()).map_err(|e| error(e.to_string()))?.write_le(&mut writer)?;
         // Write the previous certificate IDs.
         for certificate_id in &self.previous_certificate_ids {
             // Write the certificate ID.
