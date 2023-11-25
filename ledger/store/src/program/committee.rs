@@ -114,7 +114,10 @@ pub trait CommitteeStorage<N: Network>: 'static + Clone + Send + Sync {
             // If the current round is 0, ensure the next round is 0.
             Err(..) => ensure!(next_round == 0, "Next round must be block round 0"),
             // Otherwise, ensure the next round sequentially follows the current round.
-            Ok(current_round) => ensure!(next_round > current_round, "Next round must be greater than current round"),
+            Ok(current_round) => ensure!(
+                next_round > current_round,
+                "Next round {next_round} must be greater than current round {current_round}"
+            ),
         }
 
         // Check the next height.

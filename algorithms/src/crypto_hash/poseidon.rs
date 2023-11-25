@@ -18,6 +18,7 @@ use snarkvm_utilities::{BigInteger, FromBits, ToBits};
 
 use smallvec::SmallVec;
 use std::{
+    iter::Peekable,
     ops::{Index, IndexMut},
     sync::Arc,
 };
@@ -332,7 +333,11 @@ impl<F: PrimeField, const RATE: usize> PoseidonSponge<F, RATE, 1> {
 
     /// Compress every two elements if possible.
     /// Provides a vector of (limb, num_of_additions), both of which are F.
-    pub fn compress_elements<TargetField: PrimeField>(&self, src_limbs: &[(F, F)], ty: OptimizationType) -> Vec<F> {
+    pub fn compress_elements<TargetField: PrimeField, I: Iterator<Item = (F, F)>>(
+        &self,
+        mut src_limbs: Peekable<I>,
+        ty: OptimizationType,
+    ) -> Vec<F> {
         let capacity = F::size_in_bits() - 1;
         let mut dest_limbs = Vec::<F>::new();
 
@@ -341,11 +346,8 @@ impl<F: PrimeField, const RATE: usize> PoseidonSponge<F, RATE, 1> {
         // Prepare a reusable vector to be used in overhead calculation.
         let mut num_bits = Vec::new();
 
-        let mut i = 0;
-        let src_len = src_limbs.len();
-        while i < src_len {
-            let first = &src_limbs[i];
-            let second = if i + 1 < src_len { Some(&src_limbs[i + 1]) } else { None };
+        while let Some(first) = src_limbs.next() {
+            let second = src_limbs.peek();
 
             let first_max_bits_per_limb = params.bits_per_limb + crate::overhead!(first.1 + F::one(), &mut num_bits);
             let second_max_bits_per_limb = if let Some(second) = second {
@@ -359,14 +361,12 @@ impl<F: PrimeField, const RATE: usize> PoseidonSponge<F, RATE, 1> {
                     let adjustment_factor = &self.adjustment_factor_lookup_table[second_max_bits_per_limb];
 
                     dest_limbs.push(first.0 * adjustment_factor + second.0);
-                    i += 2;
+                    src_limbs.next();
                 } else {
                     dest_limbs.push(first.0);
-                    i += 1;
                 }
             } else {
                 dest_limbs.push(first.0);
-                i += 1;
             }
         }
 
@@ -405,7 +405,7 @@ impl<F: PrimeField, const RATE: usize> PoseidonSponge<F, RATE, 1> {
             cur_bits.clear();
         }
 
-        // then we reserve, so that the limbs are ``big limb first''
+        // then we reverse, so that the limbs are ``big limb first''
         limbs.reverse();
 
         limbs
@@ -417,17 +417,16 @@ impl<F: PrimeField, const RATE: usize> PoseidonSponge<F, RATE, 1> {
         src: impl IntoIterator<Item = TargetField>,
         ty: OptimizationType,
     ) {
-        let mut src_limbs = Vec::<(F, F)>::new();
-
-        for elem in src {
-            let limbs = Self::get_limbs_representations(&elem, ty);
-            for limb in limbs.iter() {
-                src_limbs.push((*limb, F::one()));
+        let src_limbs = src
+            .into_iter()
+            .flat_map(|elem| {
+                let limbs = Self::get_limbs_representations(&elem, ty);
+                limbs.into_iter().map(|limb| (limb, F::one()))
                 // specifically set to one, since most gadgets in the constraint world would not have zero noise (due to the relatively weak normal form testing in `alloc`)
-            }
-        }
+            })
+            .peekable();
 
-        let dest_limbs = self.compress_elements::<TargetField>(&src_limbs, ty);
+        let dest_limbs = self.compress_elements::<TargetField, _>(src_limbs, ty);
         self.absorb_native_field_elements(&dest_limbs);
     }
 
@@ -465,7 +464,7 @@ impl<F: PrimeField, const RATE: usize> PoseidonSponge<F, RATE, 1> {
         };
         let bits = self.get_bits(num_bits_per_nonnative * num_elements);
 
-        let mut lookup_table = Vec::<TargetField>::new();
+        let mut lookup_table = Vec::<TargetField>::with_capacity(num_bits_per_nonnative);
         let mut cur = TargetField::one();
         for _ in 0..num_bits_per_nonnative {
             lookup_table.push(cur);
