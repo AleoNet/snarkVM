@@ -42,7 +42,7 @@ impl<N: Network> Stack<N> {
         // Construct the call stack.
         let call_stack = CallStack::Authorize(vec![request], *private_key, authorization.clone());
         // Construct the authorization from the function.
-        let _response = self.execute_function::<A>(call_stack, None)?;
+        let _response = self.execute_function::<A, R>(call_stack, None, rng)?;
         finish!(timer, "Construct the authorization from the function");
 
         // Return the authorization.

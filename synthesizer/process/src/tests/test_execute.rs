@@ -85,7 +85,7 @@ pub fn sample_fee<N: Network, A: Aleo<Network = N>, B: BlockStorage<N>, P: Final
         .authorize_fee_public::<A, _>(&private_key, base_fee_in_microcredits, priority_fee_in_microcredits, id, rng)
         .unwrap();
     // Execute the fee.
-    let (_, mut trace) = process.execute::<A>(authorization).unwrap();
+    let (_, mut trace) = process.execute::<A, _>(authorization, rng).unwrap();
     // Prepare the assignments.
     trace.prepare(Query::from(block_store)).unwrap();
     // Compute the proof and construct the fee.
@@ -395,7 +395,7 @@ output r4 as field.private;",
     // Re-run to ensure state continues to work.
     let trace = Arc::new(RwLock::new(Trace::new()));
     let call_stack = CallStack::execute(authorization, trace).unwrap();
-    let response = stack.execute_function::<CurrentAleo>(call_stack, None).unwrap();
+    let response = stack.execute_function::<CurrentAleo, _>(call_stack, None, rng).unwrap();
     let candidate = response.outputs();
     assert_eq!(3, candidate.len());
     assert_eq!(r2, candidate[0]);
@@ -530,7 +530,7 @@ fn test_process_execute_transfer_public() {
     assert_eq!(authorization.len(), 1);
 
     // Execute the request.
-    let (response, _trace) = process.execute::<CurrentAleo>(authorization).unwrap();
+    let (response, _trace) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
     let candidate = response.outputs();
     assert_eq!(2, candidate.len());
     assert_eq!(r2, candidate[0]);
@@ -677,7 +677,7 @@ fn test_process_multirecords() {
     assert_eq!(authorization.len(), 1);
 
     // Execute the request.
-    let (response, _trace) = process.execute::<CurrentAleo>(authorization).unwrap();
+    let (response, _trace) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
     let candidate = response.outputs();
     assert_eq!(3, candidate.len());
     assert_eq!(output_a, candidate[0]);
@@ -758,7 +758,7 @@ fn test_process_self_caller() {
     assert_eq!(authorization.len(), 1);
 
     // Execute the request.
-    let (response, _trace) = process.execute::<CurrentAleo>(authorization).unwrap();
+    let (response, _trace) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
     let candidate = response.outputs();
     assert_eq!(1, candidate.len());
     assert_eq!(output, candidate[0]);
@@ -818,7 +818,7 @@ fn test_process_program_id() {
     assert_eq!(authorization.len(), 1);
 
     // Execute the request.
-    let (response, _trace) = process.execute::<CurrentAleo>(authorization).unwrap();
+    let (response, _trace) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
     let candidate = response.outputs();
     assert_eq!(1, candidate.len());
     assert_eq!(output, candidate[0]);
@@ -857,7 +857,7 @@ fn test_process_output_operand() {
         assert_eq!(authorization.len(), 1);
 
         // Execute the request.
-        let (response, _trace) = process.execute::<CurrentAleo>(authorization).unwrap();
+        let (response, _trace) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
         let candidate = response.outputs();
         assert_eq!(1, candidate.len());
         assert_eq!(output, candidate[0]);
@@ -880,7 +880,7 @@ fn test_process_output_operand() {
     )
     .unwrap();
 
-    // Initalize the RNG.
+    // Initialize the RNG.
     let rng = &mut TestRng::default();
 
     // Initialize a new caller account.
@@ -1020,7 +1020,7 @@ function compute:
     assert_eq!(authorization.len(), 1);
 
     // Execute the request.
-    let (response, _trace) = process.execute::<CurrentAleo>(authorization).unwrap();
+    let (response, _trace) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
     let candidate = response.outputs();
     assert_eq!(4, candidate.len());
     assert_eq!(r3, candidate[0]);
@@ -1170,7 +1170,7 @@ function transfer:
     assert_eq!(authorization.len(), 5);
 
     // Execute the request.
-    let (response, _trace) = process.execute::<CurrentAleo>(authorization).unwrap();
+    let (response, _trace) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
     let candidate = response.outputs();
     assert_eq!(2, candidate.len());
     assert_eq!(output_a, candidate[0]);
@@ -1280,7 +1280,7 @@ finalize compute:
     assert_eq!(authorization.len(), 1);
 
     // Execute the request.
-    let (response, mut trace) = process.execute::<CurrentAleo>(authorization).unwrap();
+    let (response, mut trace) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
     let candidate = response.outputs();
     assert_eq!(1, candidate.len());
 
@@ -1393,7 +1393,7 @@ finalize compute:
     assert_eq!(authorization.len(), 1);
 
     // Execute the request.
-    let (response, mut trace) = process.execute::<CurrentAleo>(authorization).unwrap();
+    let (response, mut trace) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
     let candidate = response.outputs();
     assert_eq!(1, candidate.len());
 
@@ -1524,7 +1524,7 @@ finalize mint_public:
     assert_eq!(authorization.len(), 1);
 
     // Execute the request.
-    let (response, mut trace) = process.execute::<CurrentAleo>(authorization).unwrap();
+    let (response, mut trace) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
     let candidate = response.outputs();
     assert_eq!(1, candidate.len());
 
@@ -1692,7 +1692,7 @@ finalize init:
     assert_eq!(authorization.len(), 2);
 
     // Execute the request.
-    let (response, mut trace) = process.execute::<CurrentAleo>(authorization).unwrap();
+    let (response, mut trace) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
     let candidate = response.outputs();
     assert_eq!(1, candidate.len());
 
@@ -1807,7 +1807,7 @@ finalize compute:
     assert_eq!(authorization.len(), 1);
 
     // Execute the request.
-    let (response, mut trace) = process.execute::<CurrentAleo>(authorization).unwrap();
+    let (response, mut trace) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
     let candidate = response.outputs();
     assert_eq!(1, candidate.len());
 
@@ -1919,7 +1919,7 @@ function a:
     assert_eq!(authorization.len(), 3);
 
     // Execute the request.
-    let (response, mut trace) = process.execute::<CurrentAleo>(authorization).unwrap();
+    let (response, mut trace) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
     let candidate = response.outputs();
     assert_eq!(1, candidate.len());
     assert_eq!(output, candidate[0]);
@@ -2101,7 +2101,7 @@ fn test_complex_execution_order() {
     assert_eq!(authorization.len(), 10);
 
     // Execute the request.
-    let (response, mut trace) = process.execute::<CurrentAleo>(authorization).unwrap();
+    let (response, mut trace) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
     let candidate = response.outputs();
     assert_eq!(1, candidate.len());
     assert_eq!(output, candidate[0]);
@@ -2235,7 +2235,7 @@ finalize compute:
     assert_eq!(authorization.len(), 1);
 
     // Execute the request.
-    let (response, mut trace) = process.execute::<CurrentAleo>(authorization).unwrap();
+    let (response, mut trace) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
     let candidate = response.outputs();
     assert_eq!(1, candidate.len());
 
@@ -2339,7 +2339,7 @@ function compute:
     assert_eq!(authorization.len(), 1);
 
     // Execute the request.
-    let (response, mut trace) = process.execute::<CurrentAleo>(authorization).unwrap();
+    let (response, mut trace) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
     let candidate = response.outputs();
     assert_eq!(3, candidate.len());
     assert_eq!(r2, candidate[0]);
@@ -2450,7 +2450,7 @@ function {function_name}:
             .unwrap();
 
         // Execute the request.
-        let (response, mut trace) = process.execute::<CurrentAleo>(authorization).unwrap();
+        let (response, mut trace) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
         assert_eq!(response.outputs().len(), 0);
 
         // Prepare the trace.
@@ -2469,7 +2469,7 @@ function {function_name}:
             .unwrap();
 
         // Execute the request.
-        let (response, mut trace) = process.execute::<CurrentAleo>(authorization).unwrap();
+        let (response, mut trace) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
         assert_eq!(response.outputs().len(), 0);
 
         // Prepare the trace.

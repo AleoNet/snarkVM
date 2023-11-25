@@ -27,8 +27,8 @@ pub type Index = u64;
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub enum Variable<F: PrimeField> {
     Constant(Rc<F>),
-    Public(Index, Rc<F>),
-    Private(Index, Rc<F>),
+    Public(Rc<(Index, F)>),
+    Private(Rc<(Index, F)>),
 }
 
 impl<F: PrimeField> Variable<F> {
@@ -70,8 +70,10 @@ impl<F: PrimeField> Variable<F> {
     pub fn index(&self) -> Index {
         match self {
             Self::Constant(..) => 0,
-            Self::Public(index, ..) => *index,
-            Self::Private(index, ..) => *index,
+            Self::Public(index_value) | Self::Private(index_value) => {
+                let (index, _value) = index_value.as_ref();
+                *index
+            }
         }
     }
 
@@ -81,8 +83,10 @@ impl<F: PrimeField> Variable<F> {
     pub fn value(&self) -> F {
         match self {
             Self::Constant(value) => **value,
-            Self::Public(_, value) => **value,
-            Self::Private(_, value) => **value,
+            Self::Public(index_value) | Self::Private(index_value) => {
+                let (_index, value) = index_value.as_ref();
+                *value
+            }
         }
     }
 }
@@ -259,8 +263,14 @@ impl<F: PrimeField> fmt::Debug for Variable<F> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", match self {
             Self::Constant(value) => format!("Constant({value})"),
-            Self::Public(index, value) => format!("Public({index}, {value})"),
-            Self::Private(index, value) => format!("Private({index}, {value})"),
+            Self::Public(index_value) => {
+                let (index, value) = index_value.as_ref();
+                format!("Public({index}, {value})")
+            }
+            Self::Private(index_value) => {
+                let (index, value) = index_value.as_ref();
+                format!("Private({index}, {value})")
+            }
         })
     }
 }
@@ -277,6 +287,6 @@ mod tests {
 
     #[test]
     fn test_size() {
-        assert_eq!(24, std::mem::size_of::<Variable<<Circuit as Environment>::BaseField>>());
+        assert_eq!(16, std::mem::size_of::<Variable<<Circuit as Environment>::BaseField>>());
     }
 }

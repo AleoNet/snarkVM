@@ -320,20 +320,18 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
     /// Creates a deploy transaction.
     ///
     /// The `priority_fee_in_microcredits` is an additional fee **on top** of the deployment fee.
-    pub fn create_deploy(
+    pub fn create_deploy<R: Rng + CryptoRng>(
         &self,
         private_key: &PrivateKey<N>,
         program: &Program<N>,
         priority_fee_in_microcredits: u64,
         query: Option<Query<N, C::BlockStorage>>,
+        rng: &mut R,
     ) -> Result<Transaction<N>> {
         // Fetch the unspent records.
         let records = self.find_unspent_credits_records(&ViewKey::try_from(private_key)?)?;
         ensure!(!records.len().is_zero(), "The Aleo account has no records to spend.");
         let mut records = records.values();
-
-        // Initialize an RNG.
-        let rng = &mut ::rand::thread_rng();
 
         // Prepare the fee record.
         let fee_record = Some(records.next().unwrap().clone());
@@ -345,21 +343,19 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
     /// Creates a transfer transaction.
     ///
     /// The `priority_fee_in_microcredits` is an additional fee **on top** of the execution fee.
-    pub fn create_transfer(
+    pub fn create_transfer<R: Rng + CryptoRng>(
         &self,
         private_key: &PrivateKey<N>,
         to: Address<N>,
         amount_in_microcredits: u64,
         priority_fee_in_microcredits: u64,
         query: Option<Query<N, C::BlockStorage>>,
+        rng: &mut R,
     ) -> Result<Transaction<N>> {
         // Fetch the unspent records.
         let records = self.find_unspent_credits_records(&ViewKey::try_from(private_key)?)?;
         ensure!(!records.len().is_zero(), "The Aleo account has no records to spend.");
         let mut records = records.values();
-
-        // Initialize an RNG.
-        let rng = &mut rand::thread_rng();
 
         // Prepare the inputs.
         let inputs = [

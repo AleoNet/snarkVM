@@ -16,7 +16,7 @@ use crate::{CallStack, Closure, FinalizeTypes, RegisterTypes};
 use console::{
     account::Address,
     network::Network,
-    prelude::Result,
+    prelude::{CryptoRng, Result, Rng},
     program::{Identifier, ProgramID, Response, Value},
     types::Field,
 };
@@ -68,10 +68,11 @@ pub trait StackExecute<N: Network> {
     ///
     /// # Errors
     /// This method will halt if the given inputs are not the same length as the input statements.
-    fn execute_function<A: circuit::Aleo<Network = N>>(
+    fn execute_function<A: circuit::Aleo<Network = N>, R: CryptoRng + Rng>(
         &self,
         call_stack: CallStack<N>,
         console_caller: Option<ProgramID<N>>,
+        rng: &mut R,
     ) -> Result<Response<N>>;
 }
 

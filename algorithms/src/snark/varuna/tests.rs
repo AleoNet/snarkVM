@@ -129,7 +129,7 @@ mod varuna {
                             for instance_input in vks_to_inputs.values() {
                                 let mut fake_instance_input = Vec::with_capacity(instance_input.len());
                                 for input in instance_input.iter() {
-                                    let fake_input = vec![Fr::rand(rng); input.len()];
+                                    let fake_input: Vec<_> = (0..input.len()).map(|_| Fr::rand(rng)).collect();
                                     fake_instance_input.push(fake_input);
                                 }
                                 fake_instance_inputs.push(fake_instance_input);
@@ -778,8 +778,7 @@ mod varuna_test_vectors {
             create_test_vector("domain", "C", &format!("{:?}", variable_domain_elements), circuit);
         }
 
-        let fifth_oracles =
-            AHPForR1CS::<_, MM>::prover_fifth_round(verifier_fourth_msg.clone(), prover_state, rng).unwrap();
+        let fifth_oracles = AHPForR1CS::<_, MM>::prover_fifth_round(verifier_fourth_msg, prover_state, rng).unwrap();
 
         // Get coefficients of final oracle polynomial from round 5.
         let h_2 = format!("{:?}", fifth_oracles.h_2.coeffs().map(|(_, coeff)| coeff).collect::<Vec<_>>());

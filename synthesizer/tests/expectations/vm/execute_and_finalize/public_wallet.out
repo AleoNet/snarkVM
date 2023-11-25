@@ -11,7 +11,7 @@ additional:
 - child_outputs:
     token.aleo/mint_public:
       outputs:
-      - '{"type":"future","id":"3040250960739602137216192760697867018750676343790464348994684811613512872895field","value":"{\n  program_id: token.aleo,\n  function_name: mint_public,\n  arguments: [\n    aleo1sry3pke49ykrf0aeshf889tr98r4c86p5f4ms766795ssdwfdyqq9jdg0j,\n    10u64\n  ]\n}"}'
+      - '{"type":"future","id":"2095235103073153862497986952383880687050623273703041876358116424903602929020field","value":"{\n  program_id: token.aleo,\n  function_name: mint_public,\n  arguments: [\n    aleo1sry3pke49ykrf0aeshf889tr98r4c86p5f4ms766795ssdwfdyqq9jdg0j,\n    10u64\n  ]\n}"}'
     credits.aleo/fee_public:
       outputs:
       - '{"type":"future","id":"4373249435479943424484888940718424132561120812144078253060284512525421799293field","value":"{\n  program_id: credits.aleo,\n  function_name: fee_public,\n  arguments: [\n    aleo1d3e2je2m2hsxwdsvntvf4jnnlj459ywfry6ch2qwrpy6l6r6yvpq8e88h5,\n    131201u64\n  ]\n}"}'
