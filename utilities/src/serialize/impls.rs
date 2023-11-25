@@ -424,6 +424,7 @@ impl<T: CanonicalDeserialize> CanonicalDeserialize for Vec<T> {
     ) -> Result<Self, SerializationError> {
         let len = u64::deserialize_with_mode(&mut reader, compress, validate)?;
         let mut values = Vec::new();
+        let _ = values.try_reserve(len as usize);
         for _ in 0..len {
             values.push(T::deserialize_with_mode(&mut reader, compress, Validate::No)?);
         }

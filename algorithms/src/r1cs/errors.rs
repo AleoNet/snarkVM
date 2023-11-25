@@ -34,7 +34,7 @@ pub enum SynthesisError {
     Unsatisfiable,
     /// During synthesis, our polynomials ended up being too high of degree
     #[error("Polynomial degree is too large")]
-    PolynomialDegreeTooLarge,
+    PolyTooLarge,
     /// During proof generation, we encountered an identity in the CRS
     #[error("Encountered an identity element in the CRS")]
     UnexpectedIdentity,
