@@ -49,12 +49,11 @@ pub struct BatchHeader<N: Network> {
 impl<N: Network> BatchHeader<N> {
     /// The maximum number of certificates in a batch.
     pub const MAX_CERTIFICATES: usize = 200;
-    /// The maximum number of solutions in a batch.
-    pub const MAX_SOLUTIONS: usize = N::MAX_SOLUTIONS;
-    /// The maximum number of transactions in a batch.
-    pub const MAX_TRANSACTIONS: usize = usize::pow(2, console::program::TRANSACTIONS_DEPTH as u32).saturating_sub(1);
     /// The maximum number of transmissions in a batch.
-    pub const MAX_TRANSMISSIONS: usize = Self::MAX_SOLUTIONS + Self::MAX_TRANSACTIONS;
+    /// Note: This limit is set to 100 as part of safety measures to prevent DoS attacks.
+    /// This limit can be increased in the future as performance improves. Alternatively,
+    /// the rate of block production can be sped up to compensate for the limit set here.
+    pub const MAX_TRANSMISSIONS_PER_BATCH: usize = 50;
 }
 
 impl<N: Network> BatchHeader<N> {

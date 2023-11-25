@@ -36,10 +36,10 @@ impl<N: Network> FromBytes for BatchHeader<N> {
         // Read the number of transmission IDs.
         let num_transmission_ids = u32::read_le(&mut reader)?;
         // Ensure the number of transmission IDs is within bounds.
-        if num_transmission_ids as usize > Self::MAX_TRANSMISSIONS {
+        if num_transmission_ids as usize > Self::MAX_TRANSMISSIONS_PER_BATCH {
             return Err(error(format!(
                 "Number of transmission IDs ({num_transmission_ids}) exceeds the maximum ({})",
-                Self::MAX_TRANSMISSIONS,
+                Self::MAX_TRANSMISSIONS_PER_BATCH,
             )));
         }
         // Read the transmission IDs.

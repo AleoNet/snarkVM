@@ -340,18 +340,3 @@ pub mod test_helpers {
         crate::test_helpers::sample_genesis_block(rng).transactions().clone()
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    type CurrentNetwork = console::network::Testnet3;
-
-    #[test]
-    fn test_max_transactions() {
-        assert_eq!(
-            Transactions::<CurrentNetwork>::MAX_TRANSACTIONS,
-            ledger_narwhal_batch_header::BatchHeader::<CurrentNetwork>::MAX_TRANSACTIONS
-        );
-    }
-}
