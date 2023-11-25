@@ -50,7 +50,7 @@ impl<N: Network> BatchHeader<N> {
     /// The maximum number of certificates in a batch.
     pub const MAX_CERTIFICATES: usize = 200;
     /// The maximum number of transmissions in a batch.
-    /// Note: This limit is set to 100 as part of safety measures to prevent DoS attacks.
+    /// Note: This limit is set to 50 as part of safety measures to prevent DoS attacks.
     /// This limit can be increased in the future as performance improves. Alternatively,
     /// the rate of block production can be sped up to compensate for the limit set here.
     pub const MAX_TRANSMISSIONS_PER_BATCH: usize = 50;
