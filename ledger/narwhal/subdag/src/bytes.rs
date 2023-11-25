@@ -27,7 +27,7 @@ impl<N: Network> FromBytes for Subdag<N> {
         // Read the number of rounds.
         let num_rounds = u32::read_le(&mut reader)?;
         // Ensure the number of rounds is within bounds.
-        if num_rounds as usize > Self::MAX_ROUNDS {
+        if num_rounds as u64 > Self::MAX_ROUNDS {
             return Err(error(format!("Number of rounds ({num_rounds}) exceeds the maximum ({})", Self::MAX_ROUNDS)));
         }
         // Read the round certificates.

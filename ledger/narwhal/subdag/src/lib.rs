@@ -104,7 +104,7 @@ impl<N: Network> Subdag<N> {
 
 impl<N: Network> Subdag<N> {
     /// The maximum number of rounds in a subdag (bounded up to GC depth).
-    pub const MAX_ROUNDS: usize = 50;
+    pub const MAX_ROUNDS: u64 = BatchHeader::<N>::MAX_GC_ROUNDS;
 }
 
 impl<N: Network> Subdag<N> {
