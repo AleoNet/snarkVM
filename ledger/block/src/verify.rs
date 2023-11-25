@@ -137,6 +137,7 @@ impl<N: Network> Block<N> {
         previous_height: u32,
         current_committee: &Committee<N>,
     ) -> Result<(u64, u32, i64)> {
+        // Note: Do not remove this. This ensures that all blocks after genesis are quorum blocks.
         #[cfg(not(any(test, feature = "test")))]
         ensure!(self.authority.is_quorum(), "The next block must be a quorum block");
 
