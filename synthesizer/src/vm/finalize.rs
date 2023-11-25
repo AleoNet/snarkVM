@@ -128,6 +128,14 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 }
 
 impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
+    /// The maximum number of confirmed transactions allowed in a block.
+    #[cfg(not(any(test, feature = "test")))]
+    pub const MAXIMUM_CONFIRMED_TRANSACTIONS: usize = Transactions::<N>::MAX_TRANSACTIONS;
+    /// The maximum number of confirmed transactions allowed in a block.
+    /// This is set to a deliberately low value (8) for testing purposes only.
+    #[cfg(any(test, feature = "test"))]
+    pub const MAXIMUM_CONFIRMED_TRANSACTIONS: usize = 8;
+
     /// Performs atomic speculation over a list of transactions.
     ///
     /// Returns the ratifications, confirmed transactions, aborted transactions,
@@ -159,11 +167,11 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         // Perform the finalize operation on the preset finalize mode.
         atomic_finalize!(self.finalize_store(), FinalizeMode::DryRun, {
             // Ensure the number of transactions does not exceed the maximum.
-            if num_transactions > Transactions::<N>::MAX_TRANSACTIONS {
+            if num_transactions > 2 * Transactions::<N>::MAX_TRANSACTIONS {
                 // Note: This will abort the entire atomic batch.
                 return Err(format!(
                     "Too many transactions in the block - {num_transactions} (max: {})",
-                    Transactions::<N>::MAX_TRANSACTIONS
+                    2 * Transactions::<N>::MAX_TRANSACTIONS
                 ));
             }
 
@@ -209,6 +217,15 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
             // Finalize the transactions.
             'outer: for transaction in transactions {
+                // Ensure the number of confirmed transactions does not exceed the maximum.
+                // Upon reaching the maximum number of confirmed transactions, all remaining transactions are aborted.
+                if confirmed.len() >= Self::MAXIMUM_CONFIRMED_TRANSACTIONS {
+                    // Store the aborted transaction.
+                    aborted.push((transaction.clone(), "Exceeds block transaction limit".to_string()));
+                    // Continue to the next transaction.
+                    continue 'outer;
+                }
+
                 // Process the transaction in an isolated atomic batch.
                 // - If the transaction succeeds, the finalize operations are stored.
                 // - If the transaction fails, the atomic batch is aborted and no finalize operations are stored.
@@ -920,7 +937,6 @@ finalize transfer_public:
         // Speculate on the candidate ratifications, solutions, and transactions.
         let (ratifications, transactions, aborted_transaction_ids, ratified_finalize_operations) =
             vm.speculate(sample_finalize_state(1), None, vec![], None, transactions.iter())?;
-        assert!(aborted_transaction_ids.is_empty());
 
         // Construct the metadata associated with the block.
         let metadata = Metadata::new(
@@ -1030,7 +1046,7 @@ finalize transfer_public:
             .execute(&caller_private_key, (program_id, function_name), inputs.into_iter(), credits, 1, None, rng)
             .unwrap();
         // Verify.
-        vm.check_transaction(&transaction, None).unwrap();
+        vm.check_transaction(&transaction, None, rng).unwrap();
 
         // Return the transaction.
         transaction
@@ -1543,5 +1559,76 @@ finalize compute:
             .unwrap();
         let expected = Value::<CurrentNetwork>::from_str("3u8").unwrap();
         assert_eq!(value, expected);
+    }
+
+    #[test]
+    fn test_excess_transactions_should_be_aborted() {
+        let rng = &mut TestRng::default();
+
+        // Sample a private key.
+        let caller_private_key = test_helpers::sample_genesis_private_key(rng);
+        let caller_address = Address::try_from(&caller_private_key).unwrap();
+
+        // Initialize the vm.
+        let vm = test_helpers::sample_vm_with_genesis_block(rng);
+
+        // Deploy a new program.
+        let genesis =
+            vm.block_store().get_block(&vm.block_store().get_block_hash(0).unwrap().unwrap()).unwrap().unwrap();
+
+        // Get the unspent records.
+        let mut unspent_records = genesis
+            .transitions()
+            .cloned()
+            .flat_map(Transition::into_records)
+            .map(|(_, record)| record)
+            .collect::<Vec<_>>();
+
+        // Construct the deployment block.
+        let (program_id, deployment_block) =
+            new_program_deployment(&vm, &caller_private_key, &genesis, &mut unspent_records, rng).unwrap();
+
+        // Add the deployment block to the VM.
+        vm.add_next_block(&deployment_block).unwrap();
+
+        // Generate more records to use for the next block.
+        let splits_block =
+            generate_splits(&vm, &caller_private_key, &deployment_block, &mut unspent_records, rng).unwrap();
+
+        // Add the splits block to the VM.
+        vm.add_next_block(&splits_block).unwrap();
+
+        // Generate more records to use for the next block.
+        let splits_block = generate_splits(&vm, &caller_private_key, &splits_block, &mut unspent_records, rng).unwrap();
+
+        // Add the splits block to the VM.
+        vm.add_next_block(&splits_block).unwrap();
+
+        // Generate the transactions.
+        let mut transactions = Vec::new();
+        let mut excess_transaction_ids = Vec::new();
+
+        for _ in 0..VM::<CurrentNetwork, ConsensusMemory<_>>::MAXIMUM_CONFIRMED_TRANSACTIONS + 1 {
+            let transaction =
+                sample_mint_public(&vm, caller_private_key, &program_id, caller_address, 10, &mut unspent_records, rng);
+            // Abort the transaction if the block is full.
+            if transactions.len() >= VM::<CurrentNetwork, ConsensusMemory<_>>::MAXIMUM_CONFIRMED_TRANSACTIONS {
+                excess_transaction_ids.push(transaction.id());
+            }
+
+            transactions.push(transaction);
+        }
+
+        // Construct the next block.
+        let next_block =
+            sample_next_block(&vm, &caller_private_key, &transactions, &splits_block, &mut unspent_records, rng)
+                .unwrap();
+
+        // Ensure that the excess transactions were aborted.
+        assert_eq!(next_block.aborted_transaction_ids(), &excess_transaction_ids);
+        assert_eq!(
+            next_block.transactions().len(),
+            VM::<CurrentNetwork, ConsensusMemory<_>>::MAXIMUM_CONFIRMED_TRANSACTIONS
+        );
     }
 }

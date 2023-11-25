@@ -55,6 +55,13 @@ impl TestRng {
         println!("\nInitializing 'TestRng' with seed '{seed}'\n");
 
         // Use the seed to initialize a fast, non-cryptographic Rng.
+        Self::from_seed(seed)
+    }
+
+    // This is the preferred method to use once the main instance of TestRng had already
+    // been initialized in a test or benchmark and an auxiliary one is desired without
+    // spamming the stdout.
+    pub fn from_seed(seed: u64) -> Self {
         Self(XorShiftRng::seed_from_u64(seed))
     }
 

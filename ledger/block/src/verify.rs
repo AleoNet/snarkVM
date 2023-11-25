@@ -221,7 +221,7 @@ impl<N: Network> Block<N> {
         let height = self.height();
 
         // Ensure there are sufficient ratifications.
-        ensure!(!self.ratifications.len() >= 2, "Block {height} must contain at least 2 ratifications");
+        ensure!(self.ratifications.len() >= 2, "Block {height} must contain at least 2 ratifications");
 
         // Initialize a ratifications iterator.
         let mut ratifications_iter = self.ratifications.iter();
@@ -385,8 +385,19 @@ impl<N: Network> Block<N> {
         ensure!(!self.transactions.is_empty(), "Block {height} must contain at least 1 transaction");
 
         // Ensure the number of transactions is within the allowed range.
-        if self.transactions.len() + self.aborted_transaction_ids.len() > Transactions::<N>::MAX_TRANSACTIONS {
-            bail!("Cannot validate a block with more than {} transactions", Transactions::<N>::MAX_TRANSACTIONS);
+        if self.transactions.len() > Transactions::<N>::MAX_TRANSACTIONS {
+            bail!(
+                "Cannot validate a block with more than {} confirmed transactions",
+                Transactions::<N>::MAX_TRANSACTIONS
+            );
+        }
+
+        // Ensure the number of aborted transaction IDs is within the allowed range.
+        if self.aborted_transaction_ids.len() > Transactions::<N>::MAX_TRANSACTIONS {
+            bail!(
+                "Cannot validate a block with more than {} aborted transaction IDs",
+                Transactions::<N>::MAX_TRANSACTIONS
+            );
         }
 
         // Ensure there are no duplicate transaction IDs.

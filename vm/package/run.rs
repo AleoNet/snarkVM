@@ -53,7 +53,7 @@ impl<N: Network> Package<N> {
         // Initialize the call stack.
         let call_stack = CallStack::PackageRun(vec![request], *private_key, assignments.clone());
         // Synthesize the circuit.
-        let response = stack.execute_function::<A>(call_stack, None)?;
+        let response = stack.execute_function::<A, R>(call_stack, None, rng)?;
         // Retrieve the call metrics.
         let call_metrics = assignments.read().iter().map(|(_, metrics)| *metrics).collect::<Vec<_>>();
         // Return the response and call metrics.

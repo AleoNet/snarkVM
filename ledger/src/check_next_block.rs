@@ -14,9 +14,11 @@
 
 use super::*;
 
+use rand::{rngs::StdRng, SeedableRng};
+
 impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
     /// Checks the given block is valid next block.
-    pub fn check_next_block(&self, block: &Block<N>) -> Result<()> {
+    pub fn check_next_block<R: CryptoRng + Rng>(&self, block: &Block<N>, rng: &mut R) -> Result<()> {
         let height = block.height();
 
         // Ensure the block hash does not already exist.
@@ -41,8 +43,9 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         // Ensure each transaction is well-formed and unique.
         // TODO: this intermediate allocation shouldn't be necessary; this is most likely https://github.com/rust-lang/rust/issues/89418.
         let transactions = block.transactions().iter().collect::<Vec<_>>();
-        cfg_iter!(transactions).try_for_each(|transaction| {
-            self.check_transaction_basic(*transaction, transaction.to_rejected_id()?)
+        let rngs = (0..transactions.len()).map(|_| StdRng::from_seed(rng.gen())).collect::<Vec<_>>();
+        cfg_iter!(transactions).zip(rngs).try_for_each(|(transaction, mut rng)| {
+            self.check_transaction_basic(*transaction, transaction.to_rejected_id()?, &mut rng)
                 .map_err(|e| anyhow!("Invalid transaction found in the transactions list: {e}"))
         })?;
 
