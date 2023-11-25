@@ -343,14 +343,21 @@ pub mod test_helpers {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ledger_narwhal_batch_header::BatchHeader;
 
     type CurrentNetwork = console::network::Testnet3;
 
     #[test]
-    fn test_max_transactions() {
-        assert_eq!(
-            Transactions::<CurrentNetwork>::MAX_TRANSACTIONS,
-            ledger_narwhal_batch_header::BatchHeader::<CurrentNetwork>::MAX_TRANSACTIONS
+    fn test_max_transmissions() {
+        // Determine the maximum number of transmissions in a batch.
+        let max_transmissions = BatchHeader::<CurrentNetwork>::MAX_TRANSMISSIONS_PER_BATCH
+            * BatchHeader::<CurrentNetwork>::MAX_CERTIFICATES
+            * 2; // 2 is for the BFT (1 block per 2 rounds)
+
+        // Note: The maximum number of *transmissions* in a round cannot exceed the maximum number of *transactions* in a block.
+        assert!(
+            max_transmissions <= Transactions::<CurrentNetwork>::MAX_TRANSACTIONS,
+            "The maximum number of transmissions in a batch is too large"
         );
     }
 }
