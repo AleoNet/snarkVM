@@ -34,7 +34,7 @@ impl<N: Network> RegisterTypes<N> {
 
         // Step 2. Check the instructions are well-formed.
         for instruction in closure.instructions() {
-            // Ensure the closure contains no aysnc instructions.
+            // Ensure the closure contains no async instructions.
             ensure!(instruction.opcode() != Opcode::Async, "An 'async' instruction is not allowed in closures");
             // Ensure the closure contains no call instructions.
             ensure!(instruction.opcode() != Opcode::Call, "A 'call' instruction is not allowed in closures");

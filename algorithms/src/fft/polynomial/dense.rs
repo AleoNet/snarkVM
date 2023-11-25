@@ -700,7 +700,7 @@ mod tests {
         multiplier.add_polynomial(a.clone(), "a");
         assert_eq!(multiplier.multiply().unwrap(), a);
 
-        // Note PolyMultiplier doesn't support a evluations with no polynomials
+        // Note PolyMultiplier doesn't support a evaluations with no polynomials
     }
 
     #[test]
