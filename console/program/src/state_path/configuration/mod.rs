@@ -26,7 +26,7 @@ pub const RATIFICATIONS_DEPTH: u8 = 16;
 /// The depth the Merkle tree for the subdag certificates in a block.
 pub const SUBDAG_CERTIFICATES_DEPTH: u8 = 16;
 /// The depth of the Merkle tree for transactions in a block.
-pub const TRANSACTIONS_DEPTH: u8 = 16;
+pub const TRANSACTIONS_DEPTH: u8 = 20;
 /// The depth of the Merkle tree for the transaction.
 pub const TRANSACTION_DEPTH: u8 = 5;
 /// The depth of the Merkle tree for the transition.

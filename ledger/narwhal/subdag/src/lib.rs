@@ -159,7 +159,7 @@ impl<N: Network> Subdag<N> {
         }
     }
 
-    /// Returns the subdag root of the transactions.
+    /// Returns the subdag root of the certificates.
     pub fn to_subdag_root(&self) -> Result<Field<N>> {
         // Prepare the leaves.
         let leaves = cfg_iter!(self.subdag)
@@ -168,10 +168,8 @@ impl<N: Network> Subdag<N> {
             })
             .collect::<Vec<_>>();
 
-        // Compute the subdag tree.
-        let tree = N::merkle_tree_bhp::<SUBDAG_CERTIFICATES_DEPTH>(&leaves)?;
-        // Return the subdag root.
-        Ok(*tree.root())
+        // Compute the subdag root.
+        Ok(*N::merkle_tree_bhp::<SUBDAG_CERTIFICATES_DEPTH>(&leaves)?.root())
     }
 }
 
@@ -253,5 +251,26 @@ pub mod test_helpers {
         }
         // Return the sample vector.
         sample
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use narwhal_batch_header::BatchHeader;
+
+    type CurrentNetwork = console::network::Testnet3;
+
+    #[test]
+    fn test_max_certificates() {
+        // Determine the maximum number of certificates in a block.
+        let max_certificates_per_block = usize::try_from(BatchHeader::<CurrentNetwork>::MAX_GC_ROUNDS).unwrap()
+            * BatchHeader::<CurrentNetwork>::MAX_CERTIFICATES;
+
+        // Note: The maximum number of certificates in a block must be able to be Merklized.
+        assert!(
+            max_certificates_per_block <= 2u32.checked_pow(SUBDAG_CERTIFICATES_DEPTH as u32).unwrap() as usize,
+            "The maximum number of certificates in a block is too large"
+        );
     }
 }
