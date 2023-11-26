@@ -39,7 +39,7 @@ version = "=0.16.11"
 [dependencies.snarkvm-metrics]
 package = "snarkvm-metrics"
 path = "../../metrics"
-version = "=0.15.4"
+version = "=0.16.11"
 optional = true
 
 [dependencies.indexmap]

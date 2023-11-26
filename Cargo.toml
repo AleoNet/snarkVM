@@ -179,7 +179,7 @@ optional = true
 
 [dependencies.snarkvm-metrics]
 path = "./metrics"
-version = "=0.15.4"
+version = "=0.16.11"
 optional = true
 
 [dependencies.snarkvm-parameters]
