@@ -32,6 +32,7 @@ use snarkvm_utilities::cfg_into_iter;
 
 use anyhow::{anyhow, Result};
 use core::marker::PhantomData;
+use itertools::Itertools;
 use std::collections::BTreeMap;
 
 #[cfg(not(feature = "serial"))]
@@ -119,7 +120,7 @@ impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
 
     /// Generate the indexed circuit evaluations for this constraint system.
     /// Used by both the Prover and Verifier
-    pub(crate) fn index_helper<C: ConstraintSynthesizer<F>>(c: &C) -> Result<IndexerState<F>, AHPError> {
+    pub(crate) fn index_helper<C: ConstraintSynthesizer<F>>(c: &C) -> Result<IndexerState<F>> {
         let index_time = start_timer!(|| "AHP::Index");
 
         let constraint_time = start_timer!(|| "Generating constraints");
@@ -134,7 +135,7 @@ impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
             crate::snark::varuna::ahp::matrices::add_randomizing_variables::<_, _>(&mut ics, random_assignments)
         });
 
-        crate::snark::varuna::ahp::matrices::pad_input_for_indexer_and_prover(&mut ics);
+        crate::snark::varuna::ahp::matrices::pad_input_for_indexer_and_prover(&mut ics)?;
 
         let a = ics.a_matrix()?;
         let b = ics.b_matrix()?;
@@ -171,18 +172,13 @@ impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
             num_non_zero_c,
         };
 
-        let constraint_domain =
-            EvaluationDomain::new(num_constraints).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
-        let variable_domain = EvaluationDomain::new(num_variables).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
-        let input_domain =
-            EvaluationDomain::new(num_padded_public_variables).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
+        let constraint_domain = EvaluationDomain::new(num_constraints).ok_or(SynthesisError::PolyTooLarge)?;
+        let variable_domain = EvaluationDomain::new(num_variables).ok_or(SynthesisError::PolyTooLarge)?;
+        let input_domain = EvaluationDomain::new(num_padded_public_variables).ok_or(SynthesisError::PolyTooLarge)?;
 
-        let non_zero_a_domain =
-            EvaluationDomain::new(num_non_zero_a).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
-        let non_zero_b_domain =
-            EvaluationDomain::new(num_non_zero_b).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
-        let non_zero_c_domain =
-            EvaluationDomain::new(num_non_zero_c).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
+        let non_zero_a_domain = EvaluationDomain::new(num_non_zero_a).ok_or(SynthesisError::PolyTooLarge)?;
+        let non_zero_b_domain = EvaluationDomain::new(num_non_zero_b).ok_or(SynthesisError::PolyTooLarge)?;
+        let non_zero_c_domain = EvaluationDomain::new(num_non_zero_c).ok_or(SynthesisError::PolyTooLarge)?;
 
         let constraint_domain_elements = constraint_domain.elements().collect::<Vec<_>>();
         let variable_domain_elements = variable_domain.elements().collect::<Vec<_>>();
@@ -203,7 +199,7 @@ impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
                 .try_into()
                 .unwrap();
 
-        let id = Circuit::<F, SM>::hash(&index_info, &a, &b, &c).unwrap();
+        let id = Circuit::<F, SM>::hash(&index_info, &a, &b, &c)?;
 
         let result = Ok(IndexerState {
             constraint_domain,
@@ -233,16 +229,18 @@ impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
         id: &CircuitId,
         point: F,
     ) -> Result<impl Iterator<Item = F>, AHPError> {
+        let labels = [["a"], ["b"], ["c"]];
         let mut evals = [
             (state.a_arith, state.non_zero_a_domain),
             (state.b_arith, state.non_zero_b_domain),
             (state.c_arith, state.non_zero_c_domain),
         ]
         .into_iter()
-        .flat_map(move |(evals, domain)| {
-            let labels = Self::index_polynomial_labels(&["a", "b", "c"], std::iter::once(id));
+        .zip_eq(&labels)
+        .flat_map(|((evals, domain), label)| {
+            let labels = Self::index_polynomial_labels(label, std::iter::once(id));
             let lagrange_coefficients_at_point = domain.evaluate_all_lagrange_coefficients(point);
-            labels.zip(evals.evaluate(&lagrange_coefficients_at_point).unwrap())
+            labels.zip_eq(evals.evaluate(&lagrange_coefficients_at_point).unwrap())
         })
         .collect::<Vec<_>>();
         evals.sort_by(|(l1, _), (l2, _)| l1.cmp(l2));

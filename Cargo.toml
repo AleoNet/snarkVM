@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm"
-version = "0.16.10"
+version = "0.16.11"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "A decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -149,32 +149,32 @@ metrics = [ "snarkvm-metrics", "snarkvm-ledger/metrics" ]
 
 [dependencies.snarkvm-algorithms]
 path = "./algorithms"
-version = "=0.16.10"
+version = "=0.16.11"
 optional = true
 
 [dependencies.snarkvm-circuit]
 path = "./circuit"
-version = "=0.16.10"
+version = "=0.16.11"
 optional = true
 
 [dependencies.snarkvm-console]
 path = "./console"
-version = "=0.16.10"
+version = "=0.16.11"
 optional = true
 
 [dependencies.snarkvm-curves]
 path = "./curves"
-version = "=0.16.10"
+version = "=0.16.11"
 optional = true
 
 [dependencies.snarkvm-fields]
 path = "./fields"
-version = "=0.16.10"
+version = "=0.16.11"
 optional = true
 
 [dependencies.snarkvm-ledger]
 path = "./ledger"
-version = "=0.16.10"
+version = "=0.16.11"
 optional = true
 
 [dependencies.snarkvm-metrics]
@@ -184,23 +184,23 @@ optional = true
 
 [dependencies.snarkvm-parameters]
 path = "./parameters"
-version = "=0.16.10"
+version = "=0.16.11"
 optional = true
 
 [dependencies.snarkvm-synthesizer]
 path = "./synthesizer"
-version = "=0.16.10"
+version = "=0.16.11"
 default-features = false
 optional = true
 
 [dependencies.snarkvm-utilities]
 path = "./utilities"
-version = "=0.16.10"
+version = "=0.16.11"
 optional = true
 
 [dependencies.snarkvm-wasm]
 path = "./wasm"
-version = "=0.16.10"
+version = "=0.16.11"
 optional = true
 
 [dependencies.anstyle]
