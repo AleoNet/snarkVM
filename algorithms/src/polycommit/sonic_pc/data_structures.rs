@@ -316,7 +316,7 @@ impl<E: PairingEngine> CommitterKey<E> {
 
                 // Retrieve current degree bounds and shifted powers
                 let degree_bounds = self.enforced_degree_bounds.take().unwrap_or_default();
-                let highest_degree_bound = degree_bounds.iter().copied().sorted().last().unwrap_or_default();
+                let mut highest_degree_bound = degree_bounds.iter().copied().sorted().last().unwrap_or_default();
                 let mut shifted_powers_of_beta_g = self.shifted_powers_of_beta_g.take().unwrap_or_default();
                 let mut shifted_powers_of_beta_times_gamma_g =
                     self.shifted_powers_of_beta_times_gamma_g.take().unwrap_or_default();
@@ -325,7 +325,8 @@ impl<E: PairingEngine> CommitterKey<E> {
                 // This is because the proof system assumes we need this extra degree.
                 // This can optionally be refactored to ensure the extra degree is already encoded in degree_bounds.
                 if highest_degree_bound > 0 {
-                    highest_degree_bound.checked_add(1).ok_or(error("Overflow highest_degree_bound"))?;
+                    highest_degree_bound =
+                        highest_degree_bound.checked_add(1).ok_or(error("Overflow highest_degree_bound"))?;
                 }
 
                 let shifted_ck_time = start_timer!(|| "Constructing `shifted_powers_of_beta_g`");
