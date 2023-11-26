@@ -12,8 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Re-export the metrics macros.
-pub use metrics::*;
+use metrics::*;
 
 pub const GAUGE_NAMES: [&str; 1] = [committee::TOTAL_STAKE];
 
@@ -21,8 +20,17 @@ pub mod committee {
     pub const TOTAL_STAKE: &str = "snarkvm_ledger_committee_total_stake";
 }
 
+/// Registers all metrics.
 pub fn register_metrics() {
     for name in GAUGE_NAMES {
         register_gauge!(name);
     }
+}
+
+/// Updates a gauge with the given name to the given value.
+///
+/// Gauges represent a single value that can go up or down over time,
+/// and always starts out with an initial value of zero.
+pub fn gauge<V: Into<f64>>(name: &'static str, value: V) {
+    gauge!(name, value.into());
 }

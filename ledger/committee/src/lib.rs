@@ -28,11 +28,6 @@ use console::{
 use indexmap::IndexMap;
 use std::collections::HashSet;
 
-#[cfg(feature = "metrics")]
-use metrics::gauge;
-#[cfg(feature = "metrics")]
-use snarkvm_metrics::committee::TOTAL_STAKE;
-
 /// The minimum amount of stake required for a validator to bond.
 pub const MIN_VALIDATOR_STAKE: u64 = 1_000_000_000_000u64; // microcredits
 /// The minimum amount of stake required for a delegator to bond.
@@ -78,7 +73,7 @@ impl<N: Network> Committee<N> {
         // Compute the total stake of the committee for this round.
         let total_stake = Self::compute_total_stake(&members)?;
         #[cfg(feature = "metrics")]
-        gauge!(TOTAL_STAKE, total_stake as f64);
+        metrics::gauge(metrics::committee::TOTAL_STAKE, total_stake as f64);
         // Return the new committee.
         Ok(Self { starting_round, members, total_stake })
     }

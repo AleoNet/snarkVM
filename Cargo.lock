@@ -3188,7 +3188,6 @@ dependencies = [
  "anyhow",
  "bincode",
  "indexmap 2.1.0",
- "metrics",
  "parking_lot",
  "proptest",
  "rand",
