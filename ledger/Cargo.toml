@@ -33,6 +33,7 @@ async = [
   "ledger-query/async",
   "synthesizer/async"
 ]
+metrics = [ "ledger-committee/metrics" ]
 rocks = [ "ledger-store/rocks" ]
 serial = [
   "console/serial",
@@ -52,7 +53,6 @@ test-helpers = [
   "ledger-narwhal/test-helpers"
 ]
 timer = [ "aleo-std/timer" ]
-metrics = [ "ledger-committee/metrics" ]
 
 [dependencies.console]
 package = "snarkvm-console"

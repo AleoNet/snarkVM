@@ -26,11 +26,12 @@ use console::{
 };
 
 use indexmap::IndexMap;
+use std::collections::HashSet;
+
 #[cfg(feature = "metrics")]
 use metrics::gauge;
 #[cfg(feature = "metrics")]
 use snarkvm_metrics::committee::TOTAL_STAKE;
-use std::collections::HashSet;
 
 /// The minimum amount of stake required for a validator to bond.
 pub const MIN_VALIDATOR_STAKE: u64 = 1_000_000_000_000u64; // microcredits

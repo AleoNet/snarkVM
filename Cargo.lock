@@ -3346,7 +3346,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-metrics"
-version = "0.15.4"
+version = "0.16.11"
 dependencies = [
  "metrics",
  "metrics-exporter-prometheus",

@@ -141,11 +141,11 @@ console = [ "snarkvm-console" ]
 curves = [ "snarkvm-curves" ]
 fields = [ "snarkvm-fields" ]
 ledger = [ "snarkvm-ledger" ]
+metrics = [ "snarkvm-metrics", "snarkvm-ledger/metrics" ]
 parameters = [ "snarkvm-parameters" ]
 synthesizer = [ "snarkvm-synthesizer" ]
 utilities = [ "snarkvm-utilities" ]
 wasm = [ "snarkvm-wasm" ]
-metrics = [ "snarkvm-metrics", "snarkvm-ledger/metrics" ]
 
 [dependencies.snarkvm-algorithms]
 path = "./algorithms"
