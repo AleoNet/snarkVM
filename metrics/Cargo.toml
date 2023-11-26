@@ -23,8 +23,14 @@ include = [ "Cargo.toml", "src", "README.md", "LICENSE.md" ]
 license = "Apache-2.0"
 edition = "2021"
 
+[features]
+default = [ "metrics", "metrics-exporter-prometheus" ]
+wasm = [ ]
+
 [dependencies.metrics]
 version = "0.21"
+optional = true
 
 [dependencies.metrics-exporter-prometheus]
 version = "0.12"
+optional = true

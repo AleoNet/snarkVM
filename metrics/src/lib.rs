@@ -31,6 +31,11 @@ pub fn register_metrics() {
 ///
 /// Gauges represent a single value that can go up or down over time,
 /// and always starts out with an initial value of zero.
+#[cfg(not(feature = "wasm"))]
 pub fn gauge<V: Into<f64>>(name: &'static str, value: V) {
     gauge!(name, value.into());
+}
+#[cfg(feature = "wasm")]
+pub fn gauge<V: Into<f64>>(_name: &'static str, _value: V) {
+    return;
 }
