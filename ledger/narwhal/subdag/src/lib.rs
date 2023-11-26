@@ -159,10 +159,6 @@ impl<N: Network> Subdag<N> {
         }
     }
 
-    pub fn commited_certificates(&self) -> u64 {
-        self.subdag.values().map(|round_cert| round_cert.len() as u64).sum()
-    }
-
     /// Returns the subdag root of the transactions.
     pub fn to_subdag_root(&self) -> Result<Field<N>> {
         // Prepare the leaves.
