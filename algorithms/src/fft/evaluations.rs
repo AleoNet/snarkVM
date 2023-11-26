@@ -15,7 +15,6 @@
 //! A polynomial represented in evaluations form.
 
 use crate::fft::{DensePolynomial, EvaluationDomain};
-use anyhow::Result;
 #[cfg(feature = "serial")]
 use itertools::Itertools;
 #[cfg(not(feature = "serial"))]
