@@ -19,7 +19,6 @@ use crate::{
     snark::varuna::{
         ahp::{
             indexer::{Circuit, CircuitId, CircuitInfo, ConstraintSystem as IndexerConstraintSystem},
-            AHPError,
             AHPForR1CS,
         },
         matrices::{matrix_evals, MatrixEvals},
@@ -30,7 +29,7 @@ use crate::{
 use snarkvm_fields::PrimeField;
 use snarkvm_utilities::cfg_into_iter;
 
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, ensure, Result};
 use core::marker::PhantomData;
 use itertools::Itertools;
 use std::collections::BTreeMap;
@@ -105,7 +104,7 @@ impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
     pub fn index_polynomial_labels<'a>(
         matrices: &'a [&str],
         ids: impl Iterator<Item = &'a CircuitId> + 'a,
-    ) -> impl Iterator<Item = PolynomialLabel> + 'a {
+    ) -> Vec<PolynomialLabel> {
         ids.flat_map(move |id| {
             matrices.iter().flat_map(move |matrix| {
                 [
@@ -116,6 +115,7 @@ impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
                 ]
             })
         })
+        .collect_vec()
     }
 
     /// Generate the indexed circuit evaluations for this constraint system.
@@ -228,23 +228,21 @@ impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
         state: IndexerState<F>,
         id: &CircuitId,
         point: F,
-    ) -> Result<impl Iterator<Item = F>, AHPError> {
-        let labels = [["a"], ["b"], ["c"]];
-        let mut evals = [
-            (state.a_arith, state.non_zero_a_domain),
-            (state.b_arith, state.non_zero_b_domain),
-            (state.c_arith, state.non_zero_c_domain),
-        ]
-        .into_iter()
-        .zip_eq(&labels)
-        .flat_map(|((evals, domain), label)| {
+    ) -> Result<impl ExactSizeIterator<Item = F>> {
+        let mut all_evals = Vec::with_capacity(12);
+        for (evals, domain, label) in [
+            (state.a_arith, state.non_zero_a_domain, &["a"]),
+            (state.b_arith, state.non_zero_b_domain, &["b"]),
+            (state.c_arith, state.non_zero_c_domain, &["c"]),
+        ] {
             let labels = Self::index_polynomial_labels(label, std::iter::once(id));
             let lagrange_coefficients_at_point = domain.evaluate_all_lagrange_coefficients(point);
-            labels.zip_eq(evals.evaluate(&lagrange_coefficients_at_point).unwrap())
-        })
-        .collect::<Vec<_>>();
-        evals.sort_by(|(l1, _), (l2, _)| l1.cmp(l2));
-        Ok(evals.into_iter().map(|(_, eval)| eval))
+            let evals_at_point = evals.evaluate(&lagrange_coefficients_at_point)?;
+            ensure!(labels.len() == evals_at_point.len());
+            all_evals.extend(labels.into_iter().zip_eq(evals_at_point.into_iter()));
+        }
+        all_evals.sort_by(|(l1, _), (l2, _)| l1.cmp(l2));
+        Ok(all_evals.into_iter().map(|(_, eval)| eval))
     }
 }
 

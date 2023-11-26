@@ -310,11 +310,14 @@ where
         let evaluations_at_point = AHPForR1CS::<E::Fr, SM>::evaluate_index_polynomials(state, circuit_id, point)?;
         let mut lc = crate::polycommit::sonic_pc::LinearCombination::empty("circuit_check");
         let mut evaluation = E::Fr::zero();
+        ensure!(poly_info.len() == challenges.len() + 1);
+        ensure!(poly_info.len() == evaluations_at_point.len());
         for ((label, &c), eval) in poly_info.keys().zip_eq(linear_combination_challenges).zip_eq(evaluations_at_point) {
             lc.add(c, label.as_str());
             evaluation += c * eval;
         }
 
+        ensure!(verifying_key.circuit_commitments.len() == poly_info.len());
         let commitments = verifying_key
             .iter()
             .cloned()
@@ -843,10 +846,11 @@ where
         // correct degree.
 
         // Gather commitments in one vector.
+        let poly_infos = AHPForR1CS::<E::Fr, SM>::index_polynomial_info(circuit_ids.iter());
         let commitments: Vec<_> = circuit_commitments
             .into_iter()
             .flatten()
-            .zip_eq(AHPForR1CS::<E::Fr, SM>::index_polynomial_info(circuit_ids.iter()).values())
+            .zip_eq(poly_infos.values())
             .map(|(c, info)| LabeledCommitment::new_with_info(info, *c))
             .chain(first_commitments)
             .chain(second_commitments)

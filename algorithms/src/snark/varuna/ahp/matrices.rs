@@ -213,6 +213,7 @@ impl<F: PrimeField> MatrixArithmetization<F> {
         let row_col = if let Some(row_col) = matrix_evals.row_col.as_ref() {
             row_col.clone().interpolate()
         } else {
+            ensure!(matrix_evals.row.evaluations.len() == matrix_evals.col.evaluations.len());
             let row_col_evals: Vec<F> = cfg_iter!(matrix_evals.row.evaluations)
                 .zip_eq(&matrix_evals.col.evaluations)
                 .map(|(&r, &c)| r * c)
@@ -224,17 +225,18 @@ impl<F: PrimeField> MatrixArithmetization<F> {
 
         let label = &[label];
         let mut labels = AHPForR1CS::<F, VarunaHidingMode>::index_polynomial_labels(label, std::iter::once(id));
+        ensure!(labels.len() == 4);
 
         Ok(MatrixArithmetization {
-            row: LabeledPolynomial::new(labels.next().unwrap(), row, None, None),
-            col: LabeledPolynomial::new(labels.next().unwrap(), col, None, None),
-            row_col: LabeledPolynomial::new(labels.next().unwrap(), row_col, None, None),
-            row_col_val: LabeledPolynomial::new(labels.next().unwrap(), row_col_val, None, None),
+            row_col_val: LabeledPolynomial::new(labels.pop().unwrap(), row_col_val, None, None),
+            row_col: LabeledPolynomial::new(labels.pop().unwrap(), row_col, None, None),
+            col: LabeledPolynomial::new(labels.pop().unwrap(), col, None, None),
+            row: LabeledPolynomial::new(labels.pop().unwrap(), row, None, None),
         })
     }
 
     /// Iterate over the indexed polynomials.
-    pub fn into_iter(self) -> impl Iterator<Item = LabeledPolynomial<F>> {
+    pub fn into_iter(self) -> impl ExactSizeIterator<Item = LabeledPolynomial<F>> {
         // Alphabetical order
         [self.col, self.row, self.row_col, self.row_col_val].into_iter()
     }
