@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#![forbid(unsafe_code)]
+#![warn(clippy::cast_possible_truncation)]
+
 mod bytes;
 mod serialize;
 mod string;
@@ -72,8 +75,8 @@ impl<N: Network> Committee<N> {
         );
         // Compute the total stake of the committee for this round.
         let total_stake = Self::compute_total_stake(&members)?;
-        #[cfg(feature = "metrics")]
-        metrics::gauge(metrics::committee::TOTAL_STAKE, total_stake as f64);
+        // #[cfg(all(not(feature = "wasm"), feature = "metrics"))]
+        // metrics::gauge(metrics::committee::TOTAL_STAKE, total_stake as f64);
         // Return the new committee.
         Ok(Self { starting_round, members, total_stake })
     }

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use metrics::*;
+#![forbid(unsafe_code)]
 
 pub const GAUGE_NAMES: [&str; 1] = [committee::TOTAL_STAKE];
 
@@ -22,8 +22,9 @@ pub mod committee {
 
 /// Registers all metrics.
 pub fn register_metrics() {
+    #[cfg(not(feature = "wasm"))]
     for name in GAUGE_NAMES {
-        register_gauge!(name);
+        ::metrics::register_gauge!(name);
     }
 }
 
@@ -31,11 +32,8 @@ pub fn register_metrics() {
 ///
 /// Gauges represent a single value that can go up or down over time,
 /// and always starts out with an initial value of zero.
-#[cfg(not(feature = "wasm"))]
+#[allow(unused_variables)]
 pub fn gauge<V: Into<f64>>(name: &'static str, value: V) {
-    gauge!(name, value.into());
-}
-#[cfg(feature = "wasm")]
-pub fn gauge<V: Into<f64>>(_name: &'static str, _value: V) {
-    return;
+    #[cfg(not(feature = "wasm"))]
+    ::metrics::gauge!(name, value.into());
 }

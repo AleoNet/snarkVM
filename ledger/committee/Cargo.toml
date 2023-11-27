@@ -26,8 +26,8 @@ edition = "2021"
 [features]
 default = [ ]
 serial = [ "console/serial" ]
-wasm = [ "console/wasm", "metrics/wasm" ]
-metrics = [ "dep:metrics" ]
+wasm = [ "console/wasm" ]
+#metrics = [ "dep:metrics", "metrics/default" ]
 prop-tests = [ "rand", "rand_chacha", "test-strategy", "proptest", "anyhow" ]
 test-helpers = [ "prop-tests", "rand_distr" ]
 
@@ -40,11 +40,12 @@ version = "=0.16.11"
 version = "2.0"
 features = [ "serde", "rayon" ]
 
-[dependencies.metrics]
-package = "snarkvm-metrics"
-path = "../../metrics"
-version = "=0.16.11"
-optional = true
+#[dependencies.metrics]
+#package = "snarkvm-metrics"
+#path = "../../metrics"
+#version = "=0.16.11"
+#default-features = false
+#optional = true
 
 [dependencies.serde_json]
 version = "1.0"

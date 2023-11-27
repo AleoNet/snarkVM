@@ -2596,7 +2596,6 @@ dependencies = [
  "snarkvm-curves",
  "snarkvm-fields",
  "snarkvm-ledger",
- "snarkvm-metrics",
  "snarkvm-parameters",
  "snarkvm-synthesizer",
  "snarkvm-utilities",
@@ -3198,7 +3197,6 @@ dependencies = [
  "snarkvm-console",
  "snarkvm-ledger-committee",
  "snarkvm-ledger-narwhal-batch-header",
- "snarkvm-metrics",
  "test-strategy",
 ]
 
