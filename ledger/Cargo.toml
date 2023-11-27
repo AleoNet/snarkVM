@@ -33,7 +33,6 @@ async = [
   "ledger-query/async",
   "synthesizer/async"
 ]
-#metrics = [ "ledger-committee/metrics" ]
 rocks = [ "ledger-store/rocks" ]
 serial = [
   "console/serial",

@@ -76,7 +76,7 @@ members = [
   "ledger/query",
   "ledger/store",
   "ledger/test-helpers",
-  "metrics",
+#  "metrics",
   "parameters",
   "synthesizer",
   "synthesizer/process",
@@ -124,8 +124,7 @@ cli = [
   "rand",
   "self_update",
   "serde_json",
-  "thiserror",
-  "ureq"
+  "thiserror"
 ]
 aleo-cli = [ "snarkvm-synthesizer/aleo-cli" ]
 async = [ "snarkvm-ledger/async", "snarkvm-synthesizer/async" ]
@@ -260,7 +259,6 @@ optional = true
 [dependencies.ureq]
 version = "2.7"
 features = [ "json" ]
-optional = true
 
 [dev-dependencies.bincode]
 version = "1.3"
