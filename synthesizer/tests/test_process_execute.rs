@@ -63,6 +63,10 @@ fn run_test(process: Process<CurrentNetwork>, test: &ProgramTest) -> serde_yaml:
                 .as_sequence_mut()
                 .unwrap()
                 .push(serde_yaml::Value::String(err.to_string()));
+            output.insert(
+                serde_yaml::Value::String("outputs".to_string()),
+                serde_yaml::Value::Sequence(serde_yaml::Sequence::new()),
+            );
             return output;
         }
     }
