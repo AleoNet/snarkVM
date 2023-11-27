@@ -235,8 +235,9 @@ impl<'a, F: PrimeField> LabeledPolynomialWithBasis<'a, F> {
                         match polynomial.as_ref() {
                             Dense(p) => {
                                 if let Some(e) = dense_polys.get_mut(degree_bound) {
-                                    // Zip safety: `p` could be of smaller degree than `e` (or vice versa),
+                                    // Zip safety: `p` could be of smaller degree than `e`,
                                     // so it's okay to just use `zip` here.
+                                    ensure!(e.len() >= p.coeffs.len());
                                     cfg_iter_mut!(e).zip(&p.coeffs).for_each(|(e, f)| *e += *c * f)
                                 } else {
                                     let mut e: DensePolynomial<F> = p.clone().into_owned();
