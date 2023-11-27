@@ -345,7 +345,6 @@ impl<F: FftField> EvaluationDomain<F> {
     /// Perform O(n) multiplication of two polynomials that are presented by their
     /// evaluations in the domain.
     /// Returns the evaluations of the product over the domain.
-    #[must_use]
     pub fn mul_polynomials_in_evaluation_domain(&self, self_evals: Vec<F>, other_evals: &[F]) -> Result<Vec<F>> {
         let mut result = self_evals;
 
