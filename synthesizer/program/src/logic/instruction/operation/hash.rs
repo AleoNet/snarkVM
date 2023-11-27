@@ -108,9 +108,9 @@ fn is_valid_destination_type<N: Network>(destination_type: &PlaintextType<N>) ->
     !matches!(
         destination_type,
         PlaintextType::Literal(LiteralType::Boolean)
-        | PlaintextType::Literal(LiteralType::String)
-        | PlaintextType::Struct(..)
-        | PlaintextType::Array(..)
+            | PlaintextType::Literal(LiteralType::String)
+            | PlaintextType::Struct(..)
+            | PlaintextType::Array(..)
     )
 }
 
