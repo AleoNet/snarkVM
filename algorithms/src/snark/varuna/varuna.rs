@@ -836,12 +836,10 @@ where
         // degree bounds because we know the committed index polynomial has the
         // correct degree.
 
-        // Gather commitments in one vector.
-        let poly_infos = AHPForR1CS::<E::Fr, SM>::index_polynomial_info(circuit_ids.iter());
         let commitments: Vec<_> = circuit_commitments
             .into_iter()
             .flatten()
-            .zip_eq(poly_infos.values())
+            .zip_eq(AHPForR1CS::<E::Fr, SM>::index_polynomial_info(circuit_ids.iter()).values())
             .map(|(c, info)| LabeledCommitment::new_with_info(info, *c))
             .chain(first_commitments)
             .chain(second_commitments)

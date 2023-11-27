@@ -243,7 +243,7 @@ impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
             (state.b_arith, state.non_zero_b_domain, "b"),
             (state.c_arith, state.non_zero_c_domain, "c"),
         ] {
-            let labels = Self::index_polynomial_labels_single(label, &id);
+            let labels = Self::index_polynomial_labels_single(label, id);
             let lagrange_coefficients_at_point = domain.evaluate_all_lagrange_coefficients(point);
             let evals_at_point = evals.evaluate(&lagrange_coefficients_at_point)?;
             ensure!(labels.len() == evals_at_point.len());

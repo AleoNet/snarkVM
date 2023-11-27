@@ -223,7 +223,7 @@ impl<F: PrimeField> MatrixArithmetization<F> {
         let row_col_val = matrix_evals.row_col_val.clone().interpolate();
         end_timer!(interpolate_time);
 
-        let mut labels = AHPForR1CS::<F, VarunaHidingMode>::index_polynomial_labels_single(&label, &id);
+        let mut labels = AHPForR1CS::<F, VarunaHidingMode>::index_polynomial_labels_single(label, id);
         ensure!(labels.len() == 4);
 
         Ok(MatrixArithmetization {
