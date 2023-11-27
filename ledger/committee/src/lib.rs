@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #![forbid(unsafe_code)]
+#![warn(clippy::cast_possible_truncation)]
 
 mod bytes;
 mod serialize;
@@ -287,13 +288,14 @@ pub mod test_helpers {
     }
 
     /// Samples a random committee.
+    #[allow(clippy::cast_possible_truncation)]
     pub fn sample_committee_custom(num_members: u16, rng: &mut TestRng) -> Committee<CurrentNetwork> {
         assert!(num_members >= 4);
         // Set the maximum amount staked in the node.
         const MAX_STAKE: u64 = 100_000_000_000_000;
         // Initialize the Exponential distribution.
         let distribution = Exp::new(2.0).unwrap();
-        // Initialize an RNG for the stake.
+        // Initialize maximum stake range.
         let range = (MAX_STAKE - MIN_VALIDATOR_STAKE) as f64;
         // Sample the members.
         let mut members = IndexMap::new();

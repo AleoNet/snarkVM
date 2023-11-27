@@ -22,7 +22,6 @@ pub mod committee {
 
 /// Registers all metrics.
 pub fn register_metrics() {
-    #[cfg(not(feature = "wasm"))]
     for name in GAUGE_NAMES {
         ::metrics::register_gauge!(name);
     }
@@ -32,8 +31,6 @@ pub fn register_metrics() {
 ///
 /// Gauges represent a single value that can go up or down over time,
 /// and always starts out with an initial value of zero.
-#[allow(unused_variables)]
 pub fn gauge<V: Into<f64>>(name: &'static str, value: V) {
-    #[cfg(not(feature = "wasm"))]
     ::metrics::gauge!(name, value.into());
 }
