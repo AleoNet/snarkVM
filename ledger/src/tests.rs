@@ -679,10 +679,12 @@ finalize foo2:
 
     // Create a deployment transaction for the first program.
     let deployment_1 = ledger.vm.deploy(&private_key, &program_1, None, 0, None, rng).unwrap();
+    let deployment_1_id = deployment_1.id();
     assert!(ledger.check_transaction_basic(&deployment_1, None, rng).is_ok());
 
     // Create a deployment transaction for the second program.
     let deployment_2 = ledger.vm.deploy(&private_key, &program_2, None, 0, None, rng).unwrap();
+    let deployment_2_id = deployment_2.id();
     assert!(ledger.check_transaction_basic(&deployment_2, None, rng).is_ok());
 
     // Create a block.
@@ -691,5 +693,17 @@ finalize foo2:
         .unwrap();
 
     // Check that the next block is valid.
-    assert!(ledger.check_next_block(&block, rng).is_err());
+    ledger.check_next_block(&block, rng).unwrap();
+
+    // Add the block to the ledger.
+    ledger.advance_to_next_block(&block).unwrap();
+
+    // Enforce that the block transactions were correct.
+    assert_eq!(block.transactions().num_accepted(), 1);
+    assert_eq!(block.transactions().num_rejected(), 1);
+
+    // Enforce that the first program was deployed and the second was rejected.
+    assert_eq!(ledger.get_program(*program_1.id()).unwrap(), program_1);
+    assert!(ledger.vm.transaction_store().contains_transaction_id(&deployment_1_id).unwrap());
+    assert!(ledger.vm.block_store().contains_rejected_or_aborted_transaction_id(&deployment_2_id).unwrap());
 }
