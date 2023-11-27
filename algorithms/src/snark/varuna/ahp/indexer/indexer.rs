@@ -14,7 +14,7 @@
 
 use crate::{
     fft::EvaluationDomain,
-    polycommit::sonic_pc::{PolynomialInfo, PolynomialLabel},
+    polycommit::sonic_pc::{LinearCombination, PolynomialInfo, PolynomialLabel},
     r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSystem},
     snark::varuna::{
         ahp::{
@@ -110,18 +110,15 @@ impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
             format!("circuit_{id}_col_{matrix}"),
             format!("circuit_{id}_row_col_{matrix}"),
             format!("circuit_{id}_row_col_val_{matrix}"),
-        ].into_iter()
+        ]
+        .into_iter()
     }
 
     pub fn index_polynomial_labels<'a>(
         matrices: &'a [&str],
         ids: impl Iterator<Item = &'a CircuitId> + 'a,
     ) -> impl Iterator<Item = PolynomialLabel> + 'a {
-        ids.flat_map(move |id| {
-            matrices.iter().flat_map(move |matrix| {
-                Self::index_polynomial_labels_single(matrix, id)
-            })
-        })
+        ids.flat_map(move |id| matrices.iter().flat_map(move |matrix| Self::index_polynomial_labels_single(matrix, id)))
     }
 
     /// Generate the indexed circuit evaluations for this constraint system.
@@ -230,12 +227,17 @@ impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
         result
     }
 
+    /// Evaluate the index polynomials for this constraint system at the given point.
+    /// Return the LinearCombination of the index polynomials and the sum of the evaluations.
     pub(crate) fn evaluate_index_polynomials(
         state: IndexerState<F>,
         id: &CircuitId,
         point: F,
-    ) -> Result<impl ExactSizeIterator<Item = F>> {
-        let mut all_evals = Vec::with_capacity(12);
+        mut combiners: impl Iterator<Item = F>,
+    ) -> Result<(LinearCombination<F>, F)> {
+        let mut lc = LinearCombination::empty("circuit_check");
+        let mut all_evals = Vec::with_capacity(3);
+        let mut sum = F::zero();
         for (evals, domain, label) in [
             (state.a_arith, state.non_zero_a_domain, "a"),
             (state.b_arith, state.non_zero_b_domain, "b"),
@@ -245,10 +247,15 @@ impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
             let lagrange_coefficients_at_point = domain.evaluate_all_lagrange_coefficients(point);
             let evals_at_point = evals.evaluate(&lagrange_coefficients_at_point)?;
             ensure!(labels.len() == evals_at_point.len());
-            all_evals.extend(labels.into_iter().zip_eq(evals_at_point.into_iter()));
+            all_evals.push(labels.into_iter().zip_eq(evals_at_point.into_iter()));
         }
-        all_evals.sort_by(|(l1, _), (l2, _)| l1.cmp(l2));
-        Ok(all_evals.into_iter().map(|(_, eval)| eval))
+        let sorted_evals = all_evals.into_iter().flatten().sorted_unstable_by(|(l1, _), (l2, _)| l1.cmp(l2));
+        for (label, eval) in sorted_evals {
+            let combiner = combiners.next().ok_or(anyhow!("No combiner left"))?;
+            lc.add(combiner, label.as_str());
+            sum += eval * combiner;
+        }
+        Ok((lc, sum))
     }
 }
 
