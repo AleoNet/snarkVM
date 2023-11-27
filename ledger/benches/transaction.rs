@@ -33,7 +33,7 @@ fn initialize_vm<R: Rng + CryptoRng>(
     private_key: &PrivateKey<Testnet3>,
     rng: &mut R,
 ) -> (VM<Testnet3, ConsensusMemory<Testnet3>>, Vec<Record<Testnet3, Plaintext<Testnet3>>>) {
-    let vm = VM::from(ConsensusStore::open(None).unwrap()).unwrap();
+    let vm = VM::from(ConsensusStore::open(None, None).unwrap()).unwrap();
 
     // Initialize the genesis block.
     let genesis = vm.genesis_beacon(private_key, rng).unwrap();

@@ -27,6 +27,7 @@ use console::{
 use ledger_committee::Committee;
 
 use indexmap::IndexSet;
+use std::path::PathBuf;
 
 /// A RocksDB finalize storage.
 #[derive(Clone)]
@@ -48,14 +49,14 @@ impl<N: Network> FinalizeStorage<N> for FinalizeDB<N> {
     type KeyValueMap = NestedDataMap<(ProgramID<N>, Identifier<N>), Plaintext<N>, Value<N>>;
 
     /// Initializes the finalize storage.
-    fn open(dev: Option<u16>) -> Result<Self> {
+    fn open(path: Option<PathBuf>, dev: Option<u16>) -> Result<Self> {
         // Initialize the committee store.
-        let committee_store = CommitteeStore::<N, CommitteeDB<N>>::open(dev)?;
+        let committee_store = CommitteeStore::<N, CommitteeDB<N>>::open(path.clone(), dev)?;
         // Return the finalize storage.
         Ok(Self {
             committee_store,
-            program_id_map: rocksdb::RocksDB::open_map(N::ID, dev, MapID::Program(ProgramMap::ProgramID))?,
-            key_value_map: rocksdb::RocksDB::open_nested_map(N::ID, dev, MapID::Program(ProgramMap::KeyValueID))?,
+            program_id_map: rocksdb::RocksDB::open_map(N::ID, path.clone(), dev, MapID::Program(ProgramMap::ProgramID))?,
+            key_value_map: rocksdb::RocksDB::open_nested_map(N::ID, path, dev, MapID::Program(ProgramMap::KeyValueID))?,
             dev,
         })
     }
@@ -115,11 +116,11 @@ impl<N: Network> CommitteeStorage<N> for CommitteeDB<N> {
     type CommitteeMap = DataMap<u32, Committee<N>>;
 
     /// Initializes the committee storage.
-    fn open(dev: Option<u16>) -> Result<Self> {
+    fn open(path: Option<PathBuf>, dev: Option<u16>) -> Result<Self> {
         Ok(Self {
-            current_round_map: rocksdb::RocksDB::open_map(N::ID, dev, MapID::Committee(CommitteeMap::CurrentRound))?,
-            round_to_height_map: rocksdb::RocksDB::open_map(N::ID, dev, MapID::Committee(CommitteeMap::RoundToHeight))?,
-            committee_map: rocksdb::RocksDB::open_map(N::ID, dev, MapID::Committee(CommitteeMap::Committee))?,
+            current_round_map: rocksdb::RocksDB::open_map(N::ID, path.clone(), dev, MapID::Committee(CommitteeMap::CurrentRound))?,
+            round_to_height_map: rocksdb::RocksDB::open_map(N::ID, path.clone(), dev, MapID::Committee(CommitteeMap::RoundToHeight))?,
+            committee_map: rocksdb::RocksDB::open_map(N::ID, path.clone(), dev, MapID::Committee(CommitteeMap::Committee))?,
             dev,
         })
     }

@@ -41,6 +41,8 @@ use console::{
 use synthesizer_program::Program;
 use synthesizer_snark::{Certificate, Proof, VerifyingKey};
 
+use std::path::PathBuf;
+
 /// A database transaction storage.
 #[derive(Clone)]
 pub struct TransactionDB<N: Network> {
@@ -63,15 +65,15 @@ impl<N: Network> TransactionStorage<N> for TransactionDB<N> {
     type TransitionStorage = TransitionDB<N>;
 
     /// Initializes the transaction storage.
-    fn open(transition_store: TransitionStore<N, Self::TransitionStorage>) -> Result<Self> {
+    fn open(path: Option<PathBuf>, transition_store: TransitionStore<N, Self::TransitionStorage>) -> Result<Self> {
         // Initialize the fee store.
-        let fee_store = FeeStore::<N, FeeDB<N>>::open(transition_store)?;
+        let fee_store = FeeStore::<N, FeeDB<N>>::open(path.clone(), transition_store)?;
         // Initialize the deployment store.
-        let deployment_store = DeploymentStore::<N, DeploymentDB<N>>::open(fee_store.clone())?;
+        let deployment_store = DeploymentStore::<N, DeploymentDB<N>>::open(path.clone(), fee_store.clone())?;
         // Initialize the execution store.
-        let execution_store = ExecutionStore::<N, ExecutionDB<N>>::open(fee_store.clone())?;
+        let execution_store = ExecutionStore::<N, ExecutionDB<N>>::open(path.clone(), fee_store.clone())?;
         // Return the transaction storage.
-        Ok(Self { id_map: rocksdb::RocksDB::open_map(N::ID, execution_store.dev(), MapID::Transaction(TransactionMap::ID))?, deployment_store, execution_store, fee_store })
+        Ok(Self { id_map: rocksdb::RocksDB::open_map(N::ID, path, execution_store.dev(), MapID::Transaction(TransactionMap::ID))?, deployment_store, execution_store, fee_store })
     }
 
     /// Returns the ID map.
@@ -129,17 +131,17 @@ impl<N: Network> DeploymentStorage<N> for DeploymentDB<N> {
     type FeeStorage = FeeDB<N>;
 
     /// Initializes the deployment storage.
-    fn open(fee_store: FeeStore<N, Self::FeeStorage>) -> Result<Self> {
+    fn open(path: Option<PathBuf>, fee_store: FeeStore<N, Self::FeeStorage>) -> Result<Self> {
         // Retrieve the optional development ID.
         let dev = fee_store.dev();
         Ok(Self {
-            id_map: rocksdb::RocksDB::open_map(N::ID, dev, MapID::Deployment(DeploymentMap::ID))?,
-            edition_map: rocksdb::RocksDB::open_map(N::ID, dev, MapID::Deployment(DeploymentMap::Edition))?,
-            reverse_id_map: rocksdb::RocksDB::open_map(N::ID, dev, MapID::Deployment(DeploymentMap::ReverseID))?,
-            owner_map: rocksdb::RocksDB::open_map(N::ID, dev, MapID::Deployment(DeploymentMap::Owner))?,
-            program_map: rocksdb::RocksDB::open_map(N::ID, dev, MapID::Deployment(DeploymentMap::Program))?,
-            verifying_key_map: rocksdb::RocksDB::open_map(N::ID, dev, MapID::Deployment(DeploymentMap::VerifyingKey))?,
-            certificate_map: rocksdb::RocksDB::open_map(N::ID, dev, MapID::Deployment(DeploymentMap::Certificate))?,
+            id_map: rocksdb::RocksDB::open_map(N::ID, path.clone(), dev, MapID::Deployment(DeploymentMap::ID))?,
+            edition_map: rocksdb::RocksDB::open_map(N::ID, path.clone(), dev, MapID::Deployment(DeploymentMap::Edition))?,
+            reverse_id_map: rocksdb::RocksDB::open_map(N::ID, path.clone(), dev, MapID::Deployment(DeploymentMap::ReverseID))?,
+            owner_map: rocksdb::RocksDB::open_map(N::ID, path.clone(), dev, MapID::Deployment(DeploymentMap::Owner))?,
+            program_map: rocksdb::RocksDB::open_map(N::ID, path.clone(), dev, MapID::Deployment(DeploymentMap::Program))?,
+            verifying_key_map: rocksdb::RocksDB::open_map(N::ID, path.clone(), dev, MapID::Deployment(DeploymentMap::VerifyingKey))?,
+            certificate_map: rocksdb::RocksDB::open_map(N::ID, path, dev, MapID::Deployment(DeploymentMap::Certificate))?,
             fee_store,
         })
     }
@@ -207,13 +209,13 @@ impl<N: Network> ExecutionStorage<N> for ExecutionDB<N> {
     type FeeStorage = FeeDB<N>;
 
     /// Initializes the execution storage.
-    fn open(fee_store: FeeStore<N, Self::FeeStorage>) -> Result<Self> {
+    fn open(path: Option<PathBuf>, fee_store: FeeStore<N, Self::FeeStorage>) -> Result<Self> {
         // Retrieve the optional development ID.
         let dev = fee_store.dev();
         Ok(Self {
-            id_map: rocksdb::RocksDB::open_map(N::ID, dev, MapID::Execution(ExecutionMap::ID))?,
-            reverse_id_map: rocksdb::RocksDB::open_map(N::ID, dev, MapID::Execution(ExecutionMap::ReverseID))?,
-            inclusion_map: rocksdb::RocksDB::open_map(N::ID, dev, MapID::Execution(ExecutionMap::Inclusion))?,
+            id_map: rocksdb::RocksDB::open_map(N::ID, path.clone(), dev, MapID::Execution(ExecutionMap::ID))?,
+            reverse_id_map: rocksdb::RocksDB::open_map(N::ID, path.clone(), dev, MapID::Execution(ExecutionMap::ReverseID))?,
+            inclusion_map: rocksdb::RocksDB::open_map(N::ID, path, dev, MapID::Execution(ExecutionMap::Inclusion))?,
             fee_store,
         })
     }
@@ -258,12 +260,12 @@ impl<N: Network> FeeStorage<N> for FeeDB<N> {
     type TransitionStorage = TransitionDB<N>;
 
     /// Initializes the fee storage.
-    fn open(transition_store: TransitionStore<N, Self::TransitionStorage>) -> Result<Self> {
+    fn open(path: Option<PathBuf>, transition_store: TransitionStore<N, Self::TransitionStorage>) -> Result<Self> {
         // Retrieve the optional development ID.
         let dev = transition_store.dev();
         Ok(Self {
-            fee_map: rocksdb::RocksDB::open_map(N::ID, dev, MapID::Fee(FeeMap::Fee))?,
-            reverse_fee_map: rocksdb::RocksDB::open_map(N::ID, dev, MapID::Fee(FeeMap::ReverseFee))?,
+            fee_map: rocksdb::RocksDB::open_map(N::ID, path.clone(), dev, MapID::Fee(FeeMap::Fee))?,
+            reverse_fee_map: rocksdb::RocksDB::open_map(N::ID, path, dev, MapID::Fee(FeeMap::ReverseFee))?,
             transition_store,
         })
     }

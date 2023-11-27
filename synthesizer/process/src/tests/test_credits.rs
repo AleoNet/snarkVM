@@ -54,7 +54,7 @@ macro_rules! sample_finalize_store {
         )
         .unwrap();
         #[cfg(not(feature = "rocks"))]
-        let store = FinalizeStore::<CurrentNetwork, FinalizeMemory<_>>::open(None).unwrap();
+        let store = FinalizeStore::<CurrentNetwork, FinalizeMemory<_>>::open(None, None).unwrap();
 
         (store, temp_dir)
     }};
@@ -254,7 +254,7 @@ fn execute_function<F: FinalizeStorage<CurrentNetwork>>(
     let (_, mut trace) = process.execute::<CurrentAleo, _>(authorization, rng)?;
 
     // Construct the block store.
-    let block_store = BlockStore::<CurrentNetwork, BlockMemory<_>>::open(None)?;
+    let block_store = BlockStore::<CurrentNetwork, BlockMemory<_>>::open(None, None)?;
 
     // Prepare the trace.
     trace.prepare(Query::from(&block_store))?;
@@ -1302,7 +1302,7 @@ fn test_unbond_delegator_as_validator() {
     let process = Process::<CurrentNetwork>::load().unwrap();
 
     // Initialize a new finalize store.
-    let finalize_store = FinalizeStore::<CurrentNetwork, FinalizeMemory<_>>::open(None).unwrap();
+    let finalize_store = FinalizeStore::<CurrentNetwork, FinalizeMemory<_>>::open(None, None).unwrap();
 
     // Initialize the validators and delegators.
     let (validators, delegators) = initialize_stakers(&finalize_store, 2, 1, rng).unwrap();
@@ -1359,7 +1359,7 @@ fn test_claim_unbond() {
     let process = Process::<CurrentNetwork>::load().unwrap();
 
     // Initialize a new finalize store.
-    let finalize_store = FinalizeStore::<CurrentNetwork, FinalizeMemory<_>>::open(None).unwrap();
+    let finalize_store = FinalizeStore::<CurrentNetwork, FinalizeMemory<_>>::open(None, None).unwrap();
 
     // Initialize the validators and delegators.
     let (validators, _) = initialize_stakers(&finalize_store, 1, 0, rng).unwrap();
@@ -1397,7 +1397,7 @@ fn test_set_validator_state() {
     let process = Process::<CurrentNetwork>::load().unwrap();
 
     // Initialize a new finalize store.
-    let finalize_store = FinalizeStore::<CurrentNetwork, FinalizeMemory<_>>::open(None).unwrap();
+    let finalize_store = FinalizeStore::<CurrentNetwork, FinalizeMemory<_>>::open(None, None).unwrap();
 
     // Initialize the validators.
     let (validators, _) = initialize_stakers(&finalize_store, 1, 0, rng).unwrap();
@@ -1433,7 +1433,7 @@ fn test_set_validator_state_for_non_validator_fails() {
     let process = Process::<CurrentNetwork>::load().unwrap();
 
     // Initialize a new finalize store.
-    let finalize_store = FinalizeStore::<CurrentNetwork, FinalizeMemory<_>>::open(None).unwrap();
+    let finalize_store = FinalizeStore::<CurrentNetwork, FinalizeMemory<_>>::open(None, None).unwrap();
 
     /* Ensure calling `set_validator_state` as a non-validator fails. */
 
@@ -1452,7 +1452,7 @@ fn test_bonding_to_closed_fails() {
     let process = Process::<CurrentNetwork>::load().unwrap();
 
     // Initialize a new finalize store.
-    let finalize_store = FinalizeStore::<CurrentNetwork, FinalizeMemory<_>>::open(None).unwrap();
+    let finalize_store = FinalizeStore::<CurrentNetwork, FinalizeMemory<_>>::open(None, None).unwrap();
 
     // Initialize the validators and delegators.
     let (validators, delegators) = initialize_stakers(&finalize_store, 1, 1, rng).unwrap();

@@ -215,7 +215,7 @@ pub fn sample_fee_private(deployment_or_execution_id: Field<CurrentNetwork>, rng
     let (_, mut trace) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
 
     // Initialize a new block store.
-    let block_store = BlockStore::<CurrentNetwork, BlockMemory<_>>::open(None).unwrap();
+    let block_store = BlockStore::<CurrentNetwork, BlockMemory<_>>::open(None, None).unwrap();
     // Insert the block into the block store.
     // Note: This is a testing-only hack to adhere to Rust's dependency cycle rules.
     block_store.insert(&FromStr::from_str(&block.to_string()).unwrap()).unwrap();
@@ -268,7 +268,7 @@ pub fn sample_fee_public(deployment_or_execution_id: Field<CurrentNetwork>, rng:
     let (_, mut trace) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
 
     // Initialize a new block store.
-    let block_store = BlockStore::<CurrentNetwork, BlockMemory<_>>::open(None).unwrap();
+    let block_store = BlockStore::<CurrentNetwork, BlockMemory<_>>::open(None, None).unwrap();
     // Insert the block into the block store.
     // Note: This is a testing-only hack to adhere to Rust's dependency cycle rules.
     block_store.insert(&FromStr::from_str(&block.to_string()).unwrap()).unwrap();
@@ -398,7 +398,7 @@ fn sample_genesis_block_and_components_raw(
     let (_, mut trace) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
 
     // Initialize a new block store.
-    let block_store = BlockStore::<CurrentNetwork, BlockMemory<_>>::open(None).unwrap();
+    let block_store = BlockStore::<CurrentNetwork, BlockMemory<_>>::open(None, None).unwrap();
 
     // Prepare the assignments.
     trace.prepare(Query::from(block_store)).unwrap();

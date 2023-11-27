@@ -69,7 +69,7 @@ fn write_metadata(filename: &str, metadata: &Value) -> Result<()> {
 #[allow(clippy::type_complexity)]
 pub fn sample_assignment<N: Network, A: Aleo<Network = N>>() -> Result<(Assignment<N::Field>, StatePath<N>, Field<N>)> {
     // Initialize the consensus store.
-    let store = ConsensusStore::<N, ConsensusMemory<N>>::open(None)?;
+    let store = ConsensusStore::<N, ConsensusMemory<N>>::open(None, None)?;
     // Initialize a new VM.
     let vm = VM::from(store)?;
 

@@ -26,6 +26,7 @@ use synthesizer_snark::Proof;
 
 use anyhow::Result;
 use core::marker::PhantomData;
+use std::path::PathBuf;
 
 /// A trait for fee storage.
 pub trait FeeStorage<N: Network>: Clone + Send + Sync {
@@ -38,7 +39,7 @@ pub trait FeeStorage<N: Network>: Clone + Send + Sync {
     type TransitionStorage: TransitionStorage<N>;
 
     /// Initializes the fee storage.
-    fn open(transition_store: TransitionStore<N, Self::TransitionStorage>) -> Result<Self>;
+    fn open(path: Option<PathBuf>, transition_store: TransitionStore<N, Self::TransitionStorage>) -> Result<Self>;
 
     /// Returns the fee map.
     fn fee_map(&self) -> &Self::FeeMap;
@@ -173,9 +174,9 @@ pub struct FeeStore<N: Network, F: FeeStorage<N>> {
 
 impl<N: Network, F: FeeStorage<N>> FeeStore<N, F> {
     /// Initializes the fee store.
-    pub fn open(transition_store: TransitionStore<N, F::TransitionStorage>) -> Result<Self> {
+    pub fn open(path: Option<PathBuf>, transition_store: TransitionStore<N, F::TransitionStorage>) -> Result<Self> {
         // Initialize the fee storage.
-        let storage = F::open(transition_store)?;
+        let storage = F::open(path, transition_store)?;
         // Return the fee store.
         Ok(Self { storage, _phantom: PhantomData })
     }
@@ -280,9 +281,9 @@ mod tests {
             };
 
             // Initialize a new transition store.
-            let transition_store = TransitionStore::open(None).unwrap();
+            let transition_store = TransitionStore::open(None, None).unwrap();
             // Initialize a new fee store.
-            let fee_store = FeeMemory::open(transition_store).unwrap();
+            let fee_store = FeeMemory::open(None, transition_store).unwrap();
 
             // Ensure the fee transaction does not exist.
             let candidate = fee_store.get_fee(&transaction_id).unwrap();
@@ -321,9 +322,9 @@ mod tests {
             let fee_transition_id = fee.id();
 
             // Initialize a new transition store.
-            let transition_store = TransitionStore::open(None).unwrap();
+            let transition_store = TransitionStore::open(None, None).unwrap();
             // Initialize a new fee store.
-            let fee_store = FeeMemory::open(transition_store).unwrap();
+            let fee_store = FeeMemory::open(None, transition_store).unwrap();
 
             // Ensure the fee does not exist.
             let candidate = fee_store.get_fee(&transaction_id).unwrap();

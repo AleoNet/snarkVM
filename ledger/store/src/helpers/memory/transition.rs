@@ -19,6 +19,8 @@ use console::{
     types::{Field, Group},
 };
 
+use std::path::PathBuf;
+
 /// An in-memory transition storage.
 #[derive(Clone)]
 pub struct TransitionMemory<N: Network> {
@@ -49,11 +51,11 @@ impl<N: Network> TransitionStorage<N> for TransitionMemory<N> {
     type ReverseTCMMap = MemoryMap<Field<N>, N::TransitionID>;
 
     /// Initializes the transition storage.
-    fn open(dev: Option<u16>) -> Result<Self> {
+    fn open(_path: Option<PathBuf>, dev: Option<u16>) -> Result<Self> {
         Ok(Self {
             locator_map: MemoryMap::default(),
-            input_store: InputStore::open(dev)?,
-            output_store: OutputStore::open(dev)?,
+            input_store: InputStore::open(_path.clone(), dev)?,
+            output_store: OutputStore::open(_path, dev)?,
             tpk_map: MemoryMap::default(),
             reverse_tpk_map: MemoryMap::default(),
             tcm_map: MemoryMap::default(),
@@ -132,7 +134,7 @@ impl<N: Network> InputStorage<N> for InputMemory<N> {
     type ExternalRecordMap = MemoryMap<Field<N>, ()>;
 
     /// Initializes the transition input storage.
-    fn open(dev: Option<u16>) -> Result<Self> {
+    fn open(_path: Option<PathBuf>, dev: Option<u16>) -> Result<Self> {
         Ok(Self {
             id_map: MemoryMap::default(),
             reverse_id_map: MemoryMap::default(),
@@ -231,7 +233,7 @@ impl<N: Network> OutputStorage<N> for OutputMemory<N> {
     type FutureMap = MemoryMap<Field<N>, Option<Future<N>>>;
 
     /// Initializes the transition output storage.
-    fn open(dev: Option<u16>) -> Result<Self> {
+    fn open(_path: Option<PathBuf>, dev: Option<u16>) -> Result<Self> {
         Ok(Self {
             id_map: Default::default(),
             reverse_id_map: Default::default(),

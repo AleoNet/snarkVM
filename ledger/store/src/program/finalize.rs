@@ -29,6 +29,7 @@ use synthesizer_program::{FinalizeOperation, FinalizeStoreTrait};
 use anyhow::Result;
 use core::marker::PhantomData;
 use indexmap::IndexSet;
+use std::path::PathBuf;
 
 /// TODO (howardwu): Remove this.
 /// Returns the mapping ID for the given `program ID` and `mapping name`.
@@ -78,7 +79,7 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
     type KeyValueMap: for<'a> NestedMap<'a, (ProgramID<N>, Identifier<N>), Plaintext<N>, Value<N>>;
 
     /// Initializes the program state storage.
-    fn open(dev: Option<u16>) -> Result<Self>;
+    fn open(path: Option<PathBuf>, dev: Option<u16>) -> Result<Self>;
 
     /// Initializes the test-variant of the storage.
     #[cfg(any(test, feature = "test"))]
@@ -530,8 +531,8 @@ pub struct FinalizeStore<N: Network, P: FinalizeStorage<N>> {
 
 impl<N: Network, P: FinalizeStorage<N>> FinalizeStore<N, P> {
     /// Initializes the finalize store.
-    pub fn open(dev: Option<u16>) -> Result<Self> {
-        Self::from(P::open(dev)?)
+    pub fn open(path: Option<PathBuf>, dev: Option<u16>) -> Result<Self> {
+        Self::from(P::open(path, dev)?)
     }
 
     /// Initializes the test-variant of the storage.
@@ -968,7 +969,7 @@ mod tests {
         let mapping_name = Identifier::from_str("account").unwrap();
 
         // Initialize a new finalize store.
-        let program_memory = FinalizeMemory::open(None).unwrap();
+        let program_memory = FinalizeMemory::open(None, None).unwrap();
         let finalize_store = FinalizeStore::from(program_memory).unwrap();
         // Check the operations.
         check_initialize_insert_remove(&finalize_store, program_id, mapping_name);
@@ -981,7 +982,7 @@ mod tests {
         let mapping_name = Identifier::from_str("account").unwrap();
 
         // Initialize a new finalize store.
-        let program_memory = FinalizeMemory::open(None).unwrap();
+        let program_memory = FinalizeMemory::open(None, None).unwrap();
         let finalize_store = FinalizeStore::from(program_memory).unwrap();
         // Check the operations.
         check_initialize_update_remove(&finalize_store, program_id, mapping_name);
@@ -994,7 +995,7 @@ mod tests {
         let mapping_name = Identifier::from_str("account").unwrap();
 
         // Initialize a new finalize store.
-        let program_memory = FinalizeMemory::open(None).unwrap();
+        let program_memory = FinalizeMemory::open(None, None).unwrap();
         let finalize_store = FinalizeStore::from(program_memory).unwrap();
         // Ensure the program ID does not exist.
         assert!(!finalize_store.contains_program_confirmed(&program_id).unwrap());
@@ -1083,7 +1084,7 @@ mod tests {
         let mapping_name = Identifier::from_str("account").unwrap();
 
         // Initialize a new finalize store.
-        let program_memory = FinalizeMemory::open(None).unwrap();
+        let program_memory = FinalizeMemory::open(None, None).unwrap();
         let finalize_store = FinalizeStore::from(program_memory).unwrap();
         // Ensure the program ID does not exist.
         assert!(!finalize_store.contains_program_confirmed(&program_id).unwrap());
@@ -1147,7 +1148,7 @@ mod tests {
         let mapping_name = Identifier::from_str("account").unwrap();
 
         // Initialize a new finalize store.
-        let program_memory = FinalizeMemory::open(None).unwrap();
+        let program_memory = FinalizeMemory::open(None, None).unwrap();
         let finalize_store = FinalizeStore::from(program_memory).unwrap();
         // Ensure the program ID does not exist.
         assert!(!finalize_store.contains_program_confirmed(&program_id).unwrap());
@@ -1211,7 +1212,7 @@ mod tests {
         let mapping_name = Identifier::from_str("account").unwrap();
 
         // Initialize a new finalize store.
-        let program_memory = FinalizeMemory::open(None).unwrap();
+        let program_memory = FinalizeMemory::open(None, None).unwrap();
         let finalize_store = FinalizeStore::from(program_memory).unwrap();
         // Ensure the program ID does not exist.
         assert!(!finalize_store.contains_program_confirmed(&program_id).unwrap());
@@ -1289,7 +1290,7 @@ mod tests {
         // Initialize a new finalize store.
         #[cfg(not(feature = "rocks"))]
         let finalize_store = {
-            let program_memory = FinalizeMemory::open(None).unwrap();
+            let program_memory = FinalizeMemory::open(None, None).unwrap();
             FinalizeStore::from(program_memory).unwrap()
         };
 

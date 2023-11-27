@@ -20,6 +20,8 @@ use crate::{
 };
 use console::prelude::*;
 
+use std::path::PathBuf;
+
 /// An RocksDB consensus storage.
 #[derive(Clone)]
 pub struct ConsensusDB<N: Network> {
@@ -37,11 +39,11 @@ impl<N: Network> ConsensusStorage<N> for ConsensusDB<N> {
     type TransitionStorage = TransitionDB<N>;
 
     /// Initializes the consensus storage.
-    fn open(dev: Option<u16>) -> Result<Self> {
+    fn open(path: Option<PathBuf>, dev: Option<u16>) -> Result<Self> {
         // Initialize the finalize store.
-        let finalize_store = FinalizeStore::<N, FinalizeDB<N>>::open(dev)?;
+        let finalize_store = FinalizeStore::<N, FinalizeDB<N>>::open(path.clone(), dev)?;
         // Initialize the block store.
-        let block_store = BlockStore::<N, BlockDB<N>>::open(dev)?;
+        let block_store = BlockStore::<N, BlockDB<N>>::open(path, dev)?;
         // Return the consensus storage.
         Ok(Self {
             finalize_store,

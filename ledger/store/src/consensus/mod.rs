@@ -26,6 +26,7 @@ use console::network::prelude::*;
 
 use anyhow::Result;
 use core::marker::PhantomData;
+use std::path::PathBuf;
 
 /// A trait for consensus storage.
 pub trait ConsensusStorage<N: Network>: 'static + Clone + Send + Sync {
@@ -39,7 +40,7 @@ pub trait ConsensusStorage<N: Network>: 'static + Clone + Send + Sync {
     type TransitionStorage: TransitionStorage<N>;
 
     /// Initializes the consensus storage.
-    fn open(dev: Option<u16>) -> Result<Self>;
+    fn open(path: Option<PathBuf>, dev: Option<u16>) -> Result<Self>;
 
     /// Returns the finalize storage.
     fn finalize_store(&self) -> &FinalizeStore<N, Self::FinalizeStorage>;
@@ -113,9 +114,9 @@ pub struct ConsensusStore<N: Network, C: ConsensusStorage<N>> {
 
 impl<N: Network, C: ConsensusStorage<N>> ConsensusStore<N, C> {
     /// Initializes the consensus store.
-    pub fn open(dev: Option<u16>) -> Result<Self> {
+    pub fn open(path: Option<PathBuf>, dev: Option<u16>) -> Result<Self> {
         // Initialize the consensus storage.
-        let storage = C::open(dev)?;
+        let storage = C::open(path, dev)?;
         // Return the consensus store.
         Ok(Self { storage, _phantom: PhantomData })
     }

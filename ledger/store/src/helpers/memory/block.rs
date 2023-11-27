@@ -24,6 +24,8 @@ use ledger_authority::Authority;
 use ledger_block::{Header, Ratifications, Rejected};
 use ledger_coinbase::{CoinbaseSolution, PuzzleCommitment};
 
+use std::path::PathBuf;
+
 /// An in-memory block storage.
 #[derive(Clone)]
 pub struct BlockMemory<N: Network> {
@@ -82,11 +84,11 @@ impl<N: Network> BlockStorage<N> for BlockMemory<N> {
     type TransitionStorage = TransitionMemory<N>;
 
     /// Initializes the block storage.
-    fn open(dev: Option<u16>) -> Result<Self> {
+    fn open(_path: Option<PathBuf>, dev: Option<u16>) -> Result<Self> {
         // Initialize the transition store.
-        let transition_store = TransitionStore::<N, TransitionMemory<N>>::open(dev)?;
+        let transition_store = TransitionStore::<N, TransitionMemory<N>>::open(_path.clone(), dev)?;
         // Initialize the transaction store.
-        let transaction_store = TransactionStore::<N, TransactionMemory<N>>::open(transition_store)?;
+        let transaction_store = TransactionStore::<N, TransactionMemory<N>>::open(_path, transition_store)?;
         // Return the block storage.
         Ok(Self {
             state_root_map: MemoryMap::default(),

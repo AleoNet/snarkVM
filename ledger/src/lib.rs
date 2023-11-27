@@ -69,7 +69,7 @@ use core::ops::Range;
 use indexmap::IndexMap;
 use parking_lot::RwLock;
 use rand::{prelude::IteratorRandom, rngs::OsRng};
-use std::{borrow::Cow, sync::Arc};
+use std::{borrow::Cow, path::PathBuf, sync::Arc};
 use time::OffsetDateTime;
 
 #[cfg(not(feature = "serial"))]
@@ -109,13 +109,13 @@ pub struct Ledger<N: Network, C: ConsensusStorage<N>> {
 
 impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
     /// Loads the ledger from storage.
-    pub fn load(genesis_block: Block<N>, dev: Option<u16>) -> Result<Self> {
+    pub fn load(genesis_block: Block<N>, path: Option<PathBuf>, dev: Option<u16>) -> Result<Self> {
         let timer = timer!("Ledger::load");
 
         // Retrieve the genesis hash.
         let genesis_hash = genesis_block.hash();
         // Initialize the ledger.
-        let ledger = Self::load_unchecked(genesis_block, dev)?;
+        let ledger = Self::load_unchecked(genesis_block, path, dev)?;
 
         // Ensure the ledger contains the correct genesis block.
         if !ledger.contains_block_hash(&genesis_hash)? {
@@ -141,11 +141,11 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
     }
 
     /// Loads the ledger from storage, without performing integrity checks.
-    pub fn load_unchecked(genesis_block: Block<N>, dev: Option<u16>) -> Result<Self> {
+    pub fn load_unchecked(genesis_block: Block<N>, path: Option<PathBuf>, dev: Option<u16>) -> Result<Self> {
         let timer = timer!("Ledger::load_unchecked");
 
         // Initialize the consensus store.
-        let store = match ConsensusStore::<N, C>::open(dev) {
+        let store = match ConsensusStore::<N, C>::open(path, dev) {
             Ok(store) => store,
             Err(e) => bail!("Failed to load ledger (run 'snarkos clean' and try again)\n\n{e}\n"),
         };
@@ -435,11 +435,11 @@ pub(crate) mod test_helpers {
         rng: &mut (impl Rng + CryptoRng),
     ) -> CurrentLedger {
         // Initialize the store.
-        let store = CurrentConsensusStore::open(None).unwrap();
+        let store = CurrentConsensusStore::open(None, None).unwrap();
         // Create a genesis block.
         let genesis = VM::from(store).unwrap().genesis_beacon(&private_key, rng).unwrap();
         // Initialize the ledger with the genesis block.
-        let ledger = CurrentLedger::load(genesis.clone(), None).unwrap();
+        let ledger = CurrentLedger::load(genesis.clone(), None, None).unwrap();
         // Ensure the genesis block is correct.
         assert_eq!(genesis, ledger.get_block(0).unwrap());
         // Return the ledger.

@@ -336,7 +336,7 @@ pub(crate) mod test_helpers {
 
     pub(crate) fn sample_vm() -> VM<CurrentNetwork, ConsensusMemory<CurrentNetwork>> {
         // Initialize a new VM.
-        VM::from(ConsensusStore::open(None).unwrap()).unwrap()
+        VM::from(ConsensusStore::open(None, None).unwrap()).unwrap()
     }
 
     pub(crate) fn sample_genesis_private_key(rng: &mut TestRng) -> PrivateKey<CurrentNetwork> {

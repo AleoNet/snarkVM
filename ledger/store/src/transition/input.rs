@@ -24,7 +24,7 @@ use console::{
 use ledger_block::Input;
 
 use anyhow::Result;
-use std::borrow::Cow;
+use std::{borrow::Cow, path::PathBuf};
 
 /// A trait for transition input storage.
 pub trait InputStorage<N: Network>: Clone + Send + Sync {
@@ -46,7 +46,7 @@ pub trait InputStorage<N: Network>: Clone + Send + Sync {
     type ExternalRecordMap: for<'a> Map<'a, Field<N>, ()>;
 
     /// Initializes the transition input storage.
-    fn open(dev: Option<u16>) -> Result<Self>;
+    fn open(path: Option<PathBuf>, dev: Option<u16>) -> Result<Self>;
 
     /// Returns the ID map.
     fn id_map(&self) -> &Self::IDMap;
@@ -305,9 +305,9 @@ pub struct InputStore<N: Network, I: InputStorage<N>> {
 
 impl<N: Network, I: InputStorage<N>> InputStore<N, I> {
     /// Initializes the transition input store.
-    pub fn open(dev: Option<u16>) -> Result<Self> {
+    pub fn open(path: Option<PathBuf>, dev: Option<u16>) -> Result<Self> {
         // Initialize a new transition input storage.
-        let storage = I::open(dev)?;
+        let storage = I::open(path, dev)?;
         // Return the transition input store.
         Ok(Self {
             constant: storage.constant_map().clone(),
@@ -496,7 +496,7 @@ mod tests {
         // Sample the transition inputs.
         for (transition_id, input) in ledger_test_helpers::sample_inputs() {
             // Initialize a new input store.
-            let input_store = InputMemory::open(None).unwrap();
+            let input_store = InputMemory::open(None, None).unwrap();
 
             // Ensure the transition input does not exist.
             let candidate = input_store.get(&transition_id).unwrap();
@@ -523,7 +523,7 @@ mod tests {
         // Sample the transition inputs.
         for (transition_id, input) in ledger_test_helpers::sample_inputs() {
             // Initialize a new input store.
-            let input_store = InputMemory::open(None).unwrap();
+            let input_store = InputMemory::open(None, None).unwrap();
 
             // Ensure the transition input does not exist.
             let candidate = input_store.get(&transition_id).unwrap();

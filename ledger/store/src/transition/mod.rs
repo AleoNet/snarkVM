@@ -32,7 +32,7 @@ use console::{
 use ledger_block::{Input, Output, Transition};
 
 use anyhow::Result;
-use std::borrow::Cow;
+use std::{borrow::Cow, path::PathBuf};
 
 /// A trait for transition storage.
 pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
@@ -52,7 +52,7 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
     type ReverseTCMMap: for<'a> Map<'a, Field<N>, N::TransitionID>;
 
     /// Initializes the transition storage.
-    fn open(dev: Option<u16>) -> Result<Self>;
+    fn open(path: Option<PathBuf>, dev: Option<u16>) -> Result<Self>;
 
     /// Returns the transition program IDs and function names.
     fn locator_map(&self) -> &Self::LocatorMap;
@@ -270,9 +270,9 @@ pub struct TransitionStore<N: Network, T: TransitionStorage<N>> {
 
 impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
     /// Initializes the transition store.
-    pub fn open(dev: Option<u16>) -> Result<Self> {
+    pub fn open(path: Option<PathBuf>, dev: Option<u16>) -> Result<Self> {
         // Initialize the transition storage.
-        let storage = T::open(dev)?;
+        let storage = T::open(path, dev)?;
         // Return the transition store.
         Ok(Self {
             locator: storage.locator_map().clone(),
@@ -638,7 +638,7 @@ mod tests {
             assert!(transitions.len() > 1, "\n\nNumber of transitions: {}\n", transitions.len());
 
             // Initialize a new transition store.
-            let transition_store = TransitionMemory::open(None).unwrap();
+            let transition_store = TransitionMemory::open(None, None).unwrap();
 
             // Test each transition in isolation.
             for transition in transitions.iter() {

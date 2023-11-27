@@ -38,7 +38,7 @@ use synthesizer_snark::{Certificate, VerifyingKey};
 
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
-use std::borrow::Cow;
+use std::{borrow::Cow, path::PathBuf};
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum TransactionType {
@@ -64,7 +64,7 @@ pub trait TransactionStorage<N: Network>: Clone + Send + Sync {
     type TransitionStorage: TransitionStorage<N>;
 
     /// Initializes the transaction storage.
-    fn open(transition_store: TransitionStore<N, Self::TransitionStorage>) -> Result<Self>;
+    fn open(path: Option<PathBuf>, transition_store: TransitionStore<N, Self::TransitionStorage>) -> Result<Self>;
 
     /// Returns the ID map.
     fn id_map(&self) -> &Self::IDMap;
@@ -239,9 +239,9 @@ pub struct TransactionStore<N: Network, T: TransactionStorage<N>> {
 
 impl<N: Network, T: TransactionStorage<N>> TransactionStore<N, T> {
     /// Initializes the transaction store.
-    pub fn open(transition_store: TransitionStore<N, T::TransitionStorage>) -> Result<Self> {
+    pub fn open(path: Option<PathBuf>, transition_store: TransitionStore<N, T::TransitionStorage>) -> Result<Self> {
         // Initialize the transaction storage.
-        let storage = T::open(transition_store)?;
+        let storage = T::open(path, transition_store)?;
         // Return the transaction store.
         Ok(Self { transaction_ids: storage.id_map().clone(), storage })
     }
@@ -497,9 +497,9 @@ mod tests {
             let transaction_id = transaction.id();
 
             // Initialize a new transition store.
-            let transition_store = TransitionStore::<_, TransitionMemory<_>>::open(None).unwrap();
+            let transition_store = TransitionStore::<_, TransitionMemory<_>>::open(None, None).unwrap();
             // Initialize a new transaction store.
-            let transaction_store = TransactionStore::<_, TransactionMemory<_>>::open(transition_store).unwrap();
+            let transaction_store = TransactionStore::<_, TransactionMemory<_>>::open(None, transition_store).unwrap();
 
             // Ensure the transaction does not exist.
             let candidate = transaction_store.get_transaction(&transaction_id).unwrap();
@@ -538,9 +538,9 @@ mod tests {
             let transition_ids = transaction.transition_ids();
 
             // Initialize a new transition store.
-            let transition_store = TransitionStore::<_, TransitionMemory<_>>::open(None).unwrap();
+            let transition_store = TransitionStore::<_, TransitionMemory<_>>::open(None, None).unwrap();
             // Initialize a new transaction store.
-            let transaction_store = TransactionStore::<_, TransactionMemory<_>>::open(transition_store).unwrap();
+            let transaction_store = TransactionStore::<_, TransactionMemory<_>>::open(None, transition_store).unwrap();
 
             // Ensure the execution transaction does not exist.
             let candidate = transaction_store.get_transaction(&transaction_id).unwrap();

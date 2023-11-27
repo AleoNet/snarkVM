@@ -27,6 +27,7 @@ use console::{
 use ledger_committee::Committee;
 
 use indexmap::IndexSet;
+use std::path::PathBuf;
 
 /// An in-memory finalize storage.
 #[derive(Clone)]
@@ -48,9 +49,9 @@ impl<N: Network> FinalizeStorage<N> for FinalizeMemory<N> {
     type KeyValueMap = NestedMemoryMap<(ProgramID<N>, Identifier<N>), Plaintext<N>, Value<N>>;
 
     /// Initializes the finalize storage.
-    fn open(dev: Option<u16>) -> Result<Self> {
+    fn open(_path: Option<PathBuf>, dev: Option<u16>) -> Result<Self> {
         // Initialize the committee store.
-        let committee_store = CommitteeStore::<N, CommitteeMemory<N>>::open(dev)?;
+        let committee_store = CommitteeStore::<N, CommitteeMemory<N>>::open(_path, dev)?;
         // Return the finalize store.
         Ok(Self {
             committee_store,
@@ -63,7 +64,7 @@ impl<N: Network> FinalizeStorage<N> for FinalizeMemory<N> {
     /// Initializes the test-variant of the storage.
     #[cfg(any(test, feature = "test"))]
     fn open_testing(_: std::path::PathBuf, dev: Option<u16>) -> Result<Self> {
-        Self::open(dev)
+        Self::open(None, dev)
     }
 
     /// Returns the committee store.
@@ -107,7 +108,7 @@ impl<N: Network> CommitteeStorage<N> for CommitteeMemory<N> {
     type CommitteeMap = MemoryMap<u32, Committee<N>>;
 
     /// Initializes the committee storage.
-    fn open(dev: Option<u16>) -> Result<Self> {
+    fn open(_path: Option<PathBuf>, dev: Option<u16>) -> Result<Self> {
         Ok(Self {
             current_round_map: MemoryMap::default(),
             round_to_height_map: MemoryMap::default(),
@@ -119,7 +120,7 @@ impl<N: Network> CommitteeStorage<N> for CommitteeMemory<N> {
     /// Initializes the test-variant of the storage.
     #[cfg(any(test, feature = "test"))]
     fn open_testing(_: std::path::PathBuf, dev: Option<u16>) -> Result<Self> {
-        Self::open(dev)
+        Self::open(None, dev)
     }
 
     /// Returns the current round map.

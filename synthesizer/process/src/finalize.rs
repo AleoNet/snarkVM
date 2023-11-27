@@ -495,9 +495,9 @@ function compute:
         let deployment = process.deploy::<CurrentAleo, _>(&program, rng).unwrap();
 
         // Initialize a new block store.
-        let block_store = BlockStore::<CurrentNetwork, BlockMemory<_>>::open(None).unwrap();
+        let block_store = BlockStore::<CurrentNetwork, BlockMemory<_>>::open(None, None).unwrap();
         // Initialize a new finalize store.
-        let finalize_store = FinalizeStore::<_, FinalizeMemory<_>>::open(None).unwrap();
+        let finalize_store = FinalizeStore::<_, FinalizeMemory<_>>::open(None, None).unwrap();
 
         // Ensure the program does not exist.
         assert!(!process.contains_program(program.id()));

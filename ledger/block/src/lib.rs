@@ -621,7 +621,7 @@ pub mod test_helpers {
         let (_, mut trace) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
 
         // Initialize a new block store.
-        let block_store = BlockStore::<CurrentNetwork, BlockMemory<_>>::open(None).unwrap();
+        let block_store = BlockStore::<CurrentNetwork, BlockMemory<_>>::open(None, None).unwrap();
 
         // Prepare the assignments.
         trace.prepare(Query::from(block_store)).unwrap();

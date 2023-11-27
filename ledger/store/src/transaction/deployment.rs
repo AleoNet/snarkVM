@@ -30,7 +30,7 @@ use synthesizer_snark::{Certificate, VerifyingKey};
 
 use anyhow::Result;
 use core::marker::PhantomData;
-use std::borrow::Cow;
+use std::{borrow::Cow, path::PathBuf};
 
 /// A trait for deployment storage.
 pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
@@ -52,7 +52,7 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
     type FeeStorage: FeeStorage<N>;
 
     /// Initializes the deployment storage.
-    fn open(fee_store: FeeStore<N, Self::FeeStorage>) -> Result<Self>;
+    fn open(path: Option<PathBuf>, fee_store: FeeStore<N, Self::FeeStorage>) -> Result<Self>;
 
     /// Returns the ID map.
     fn id_map(&self) -> &Self::IDMap;
@@ -490,9 +490,9 @@ pub struct DeploymentStore<N: Network, D: DeploymentStorage<N>> {
 
 impl<N: Network, D: DeploymentStorage<N>> DeploymentStore<N, D> {
     /// Initializes the deployment store.
-    pub fn open(fee_store: FeeStore<N, D::FeeStorage>) -> Result<Self> {
+    pub fn open(path: Option<PathBuf>, fee_store: FeeStore<N, D::FeeStorage>) -> Result<Self> {
         // Initialize the deployment storage.
-        let storage = D::open(fee_store)?;
+        let storage = D::open(path, fee_store)?;
         // Return the deployment store.
         Ok(Self { storage, _phantom: PhantomData })
     }
@@ -680,11 +680,11 @@ mod tests {
             let transaction_id = transaction.id();
 
             // Initialize a new transition store.
-            let transition_store = TransitionStore::open(None).unwrap();
+            let transition_store = TransitionStore::open(None, None).unwrap();
             // Initialize a new fee store.
-            let fee_store = FeeStore::open(transition_store).unwrap();
+            let fee_store = FeeStore::open(None, transition_store).unwrap();
             // Initialize a new deployment store.
-            let deployment_store = DeploymentMemory::open(fee_store).unwrap();
+            let deployment_store = DeploymentMemory::open(None, fee_store).unwrap();
 
             // Ensure the deployment transaction does not exist.
             let candidate = deployment_store.get_transaction(&transaction_id).unwrap();
@@ -723,11 +723,11 @@ mod tests {
             };
 
             // Initialize a new transition store.
-            let transition_store = TransitionStore::open(None).unwrap();
+            let transition_store = TransitionStore::open(None, None).unwrap();
             // Initialize a new fee store.
-            let fee_store = FeeStore::open(transition_store).unwrap();
+            let fee_store = FeeStore::open(None, transition_store).unwrap();
             // Initialize a new deployment store.
-            let deployment_store = DeploymentMemory::open(fee_store).unwrap();
+            let deployment_store = DeploymentMemory::open(None, fee_store).unwrap();
 
             // Ensure the deployment transaction does not exist.
             let candidate = deployment_store.get_transaction(&transaction_id).unwrap();

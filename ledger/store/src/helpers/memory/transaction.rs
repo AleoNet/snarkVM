@@ -31,6 +31,8 @@ use console::{
 use synthesizer_program::Program;
 use synthesizer_snark::{Certificate, Proof, VerifyingKey};
 
+use std::path::PathBuf;
+
 /// An in-memory transaction storage.
 #[derive(Clone)]
 pub struct TransactionMemory<N: Network> {
@@ -53,13 +55,13 @@ impl<N: Network> TransactionStorage<N> for TransactionMemory<N> {
     type TransitionStorage = TransitionMemory<N>;
 
     /// Initializes the transaction storage.
-    fn open(transition_store: TransitionStore<N, Self::TransitionStorage>) -> Result<Self> {
+    fn open(_path: Option<PathBuf>, transition_store: TransitionStore<N, Self::TransitionStorage>) -> Result<Self> {
         // Initialize the fee store.
-        let fee_store = FeeStore::<N, FeeMemory<N>>::open(transition_store)?;
+        let fee_store = FeeStore::<N, FeeMemory<N>>::open(_path.clone(), transition_store)?;
         // Initialize the deployment store.
-        let deployment_store = DeploymentStore::<N, DeploymentMemory<N>>::open(fee_store.clone())?;
+        let deployment_store = DeploymentStore::<N, DeploymentMemory<N>>::open(_path.clone(), fee_store.clone())?;
         // Initialize the execution store.
-        let execution_store = ExecutionStore::<N, ExecutionMemory<N>>::open(fee_store.clone())?;
+        let execution_store = ExecutionStore::<N, ExecutionMemory<N>>::open(_path, fee_store.clone())?;
         // Return the transaction storage.
         Ok(Self { id_map: MemoryMap::default(), deployment_store, execution_store, fee_store })
     }
@@ -119,7 +121,7 @@ impl<N: Network> DeploymentStorage<N> for DeploymentMemory<N> {
     type FeeStorage = FeeMemory<N>;
 
     /// Initializes the deployment storage.
-    fn open(fee_store: FeeStore<N, Self::FeeStorage>) -> Result<Self> {
+    fn open(_path: Option<PathBuf>, fee_store: FeeStore<N, Self::FeeStorage>) -> Result<Self> {
         Ok(Self {
             id_map: MemoryMap::default(),
             edition_map: MemoryMap::default(),
@@ -195,7 +197,7 @@ impl<N: Network> ExecutionStorage<N> for ExecutionMemory<N> {
     type FeeStorage = FeeMemory<N>;
 
     /// Initializes the execution storage.
-    fn open(fee_store: FeeStore<N, Self::FeeStorage>) -> Result<Self> {
+    fn open(_path: Option<PathBuf>, fee_store: FeeStore<N, Self::FeeStorage>) -> Result<Self> {
         Ok(Self {
             id_map: MemoryMap::default(),
             reverse_id_map: MemoryMap::default(),
@@ -244,7 +246,7 @@ impl<N: Network> FeeStorage<N> for FeeMemory<N> {
     type TransitionStorage = TransitionMemory<N>;
 
     /// Initializes the fee storage.
-    fn open(transition_store: TransitionStore<N, Self::TransitionStorage>) -> Result<Self> {
+    fn open(_path: Option<PathBuf>, transition_store: TransitionStore<N, Self::TransitionStorage>) -> Result<Self> {
         Ok(Self {
             fee_map: MemoryMap::default(),
             reverse_fee_map: MemoryMap::default(),

@@ -24,7 +24,7 @@ use console::{
 use ledger_block::Output;
 
 use anyhow::Result;
-use std::borrow::Cow;
+use std::{borrow::Cow, path::PathBuf};
 
 /// A trait for transition output storage.
 pub trait OutputStorage<N: Network>: Clone + Send + Sync {
@@ -48,7 +48,7 @@ pub trait OutputStorage<N: Network>: Clone + Send + Sync {
     type FutureMap: for<'a> Map<'a, Field<N>, Option<Future<N>>>;
 
     /// Initializes the transition output storage.
-    fn open(dev: Option<u16>) -> Result<Self>;
+    fn open(path: Option<PathBuf>, dev: Option<u16>) -> Result<Self>;
 
     /// Returns the ID map.
     fn id_map(&self) -> &Self::IDMap;
@@ -326,9 +326,9 @@ pub struct OutputStore<N: Network, O: OutputStorage<N>> {
 
 impl<N: Network, O: OutputStorage<N>> OutputStore<N, O> {
     /// Initializes the transition output store.
-    pub fn open(dev: Option<u16>) -> Result<Self> {
+    pub fn open(path: Option<PathBuf>, dev: Option<u16>) -> Result<Self> {
         // Initialize a new transition output storage.
-        let storage = O::open(dev)?;
+        let storage = O::open(path, dev)?;
         // Return the transition output store.
         Ok(Self {
             constant: storage.constant_map().clone(),
@@ -571,7 +571,7 @@ mod tests {
         // Sample the transition outputs.
         for (transition_id, output) in ledger_test_helpers::sample_outputs() {
             // Initialize a new output store.
-            let output_store = OutputMemory::open(None).unwrap();
+            let output_store = OutputMemory::open(None, None).unwrap();
 
             // Ensure the transition output does not exist.
             let candidate = output_store.get(&transition_id).unwrap();
@@ -598,7 +598,7 @@ mod tests {
         // Sample the transition outputs.
         for (transition_id, output) in ledger_test_helpers::sample_outputs() {
             // Initialize a new output store.
-            let output_store = OutputMemory::open(None).unwrap();
+            let output_store = OutputMemory::open(None, None).unwrap();
 
             // Ensure the transition output does not exist.
             let candidate = output_store.get(&transition_id).unwrap();

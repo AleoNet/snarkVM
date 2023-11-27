@@ -20,6 +20,8 @@ use crate::{
 };
 use console::prelude::*;
 
+use std::path::PathBuf;
+
 /// An in-memory consensus storage.
 #[derive(Clone)]
 pub struct ConsensusMemory<N: Network> {
@@ -37,11 +39,11 @@ impl<N: Network> ConsensusStorage<N> for ConsensusMemory<N> {
     type TransitionStorage = TransitionMemory<N>;
 
     /// Initializes the consensus storage.
-    fn open(dev: Option<u16>) -> Result<Self> {
+    fn open(_path: Option<PathBuf>, dev: Option<u16>) -> Result<Self> {
         // Initialize the finalize store.
-        let finalize_store = FinalizeStore::<N, FinalizeMemory<N>>::open(dev)?;
+        let finalize_store = FinalizeStore::<N, FinalizeMemory<N>>::open(_path.clone(), dev)?;
         // Initialize the block store.
-        let block_store = BlockStore::<N, BlockMemory<N>>::open(dev)?;
+        let block_store = BlockStore::<N, BlockMemory<N>>::open(_path, dev)?;
         // Return the consensus storage.
         Ok(Self {
             finalize_store,

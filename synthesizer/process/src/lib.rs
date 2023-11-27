@@ -364,7 +364,7 @@ function compute:
                 let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
 
                 // Initialize a new block store.
-                let block_store = BlockStore::<CurrentNetwork, BlockMemory<_>>::open(None).unwrap();
+                let block_store = BlockStore::<CurrentNetwork, BlockMemory<_>>::open(None, None).unwrap();
 
                 // Construct the process.
                 let process = sample_process(&program);

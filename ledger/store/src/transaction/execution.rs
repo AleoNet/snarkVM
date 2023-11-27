@@ -27,7 +27,7 @@ use synthesizer_snark::Proof;
 
 use anyhow::Result;
 use core::marker::PhantomData;
-use std::borrow::Cow;
+use std::{borrow::Cow, path::PathBuf};
 
 /// A trait for execution storage.
 pub trait ExecutionStorage<N: Network>: Clone + Send + Sync {
@@ -41,7 +41,7 @@ pub trait ExecutionStorage<N: Network>: Clone + Send + Sync {
     type FeeStorage: FeeStorage<N>;
 
     /// Initializes the execution storage.
-    fn open(fee_store: FeeStore<N, Self::FeeStorage>) -> Result<Self>;
+    fn open(path: Option<PathBuf>, fee_store: FeeStore<N, Self::FeeStorage>) -> Result<Self>;
 
     /// Returns the ID map.
     fn id_map(&self) -> &Self::IDMap;
@@ -296,9 +296,9 @@ pub struct ExecutionStore<N: Network, E: ExecutionStorage<N>> {
 
 impl<N: Network, E: ExecutionStorage<N>> ExecutionStore<N, E> {
     /// Initializes the execution store.
-    pub fn open(fee_store: FeeStore<N, E::FeeStorage>) -> Result<Self> {
+    pub fn open(path: Option<PathBuf>, fee_store: FeeStore<N, E::FeeStorage>) -> Result<Self> {
         // Initialize the execution storage.
-        let storage = E::open(fee_store)?;
+        let storage = E::open(path, fee_store)?;
         // Return the execution store.
         Ok(Self { storage, _phantom: PhantomData })
     }
@@ -399,11 +399,11 @@ mod tests {
         let transaction_id = transaction.id();
 
         // Initialize a new transition store.
-        let transition_store = TransitionStore::open(None)?;
+        let transition_store = TransitionStore::open(None, None)?;
         // Initialize a new fee store.
-        let fee_store = FeeStore::open(transition_store).unwrap();
+        let fee_store = FeeStore::open(None, transition_store).unwrap();
         // Initialize a new execution store.
-        let execution_store = ExecutionMemory::open(fee_store)?;
+        let execution_store = ExecutionMemory::open(None, fee_store)?;
 
         // Ensure the execution transaction does not exist.
         let candidate = execution_store.get_transaction(&transaction_id)?;
@@ -435,11 +435,11 @@ mod tests {
         }
 
         // Initialize a new transition store.
-        let transition_store = TransitionStore::open(None)?;
+        let transition_store = TransitionStore::open(None, None)?;
         // Initialize a new fee store.
-        let fee_store = FeeStore::open(transition_store).unwrap();
+        let fee_store = FeeStore::open(None, transition_store).unwrap();
         // Initialize a new execution store.
-        let execution_store = ExecutionMemory::open(fee_store)?;
+        let execution_store = ExecutionMemory::open(None, fee_store)?;
 
         // Ensure the execution transaction does not exist.
         let candidate = execution_store.get_transaction(&transaction_id)?;

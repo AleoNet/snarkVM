@@ -337,7 +337,7 @@ fn initialize_vm<R: Rng + CryptoRng>(
 ) -> (VM<CurrentNetwork, ConsensusMemory<CurrentNetwork>>, Vec<Record<CurrentNetwork, Plaintext<CurrentNetwork>>>) {
     // Initialize a VM.
     let vm: VM<CurrentNetwork, ConsensusMemory<CurrentNetwork>> =
-        VM::from(ConsensusStore::open(None).unwrap()).unwrap();
+        VM::from(ConsensusStore::open(None, None).unwrap()).unwrap();
 
     // Initialize the genesis block.
     let genesis = vm.genesis_beacon(private_key, rng).unwrap();

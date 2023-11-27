@@ -256,7 +256,7 @@ pub mod test_helpers {
         let (_, mut trace) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
 
         // Initialize a new block store.
-        let block_store = BlockStore::<CurrentNetwork, BlockMemory<_>>::open(None).unwrap();
+        let block_store = BlockStore::<CurrentNetwork, BlockMemory<_>>::open(None, None).unwrap();
         // Insert the block into the block store.
         // Note: This is a testing-only hack to adhere to Rust's dependency cycle rules.
         block_store.insert(&FromStr::from_str(&block.to_string()).unwrap()).unwrap();
@@ -312,7 +312,7 @@ pub mod test_helpers {
         let (_, mut trace) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
 
         // Initialize a new block store.
-        let block_store = BlockStore::<CurrentNetwork, BlockMemory<_>>::open(None).unwrap();
+        let block_store = BlockStore::<CurrentNetwork, BlockMemory<_>>::open(None, None).unwrap();
         // Insert the block into the block store.
         // Note: This is a testing-only hack to adhere to Rust's dependency cycle rules.
         block_store.insert(&FromStr::from_str(&block.to_string()).unwrap()).unwrap();
