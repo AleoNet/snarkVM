@@ -24,11 +24,11 @@ use crate::{
     msm::VariableBase,
     polycommit::PCError,
 };
-use anyhow::{anyhow, ensure, Result};
 use snarkvm_curves::traits::{AffineCurve, PairingCurve, PairingEngine, ProjectiveCurve};
 use snarkvm_fields::{One, PrimeField, Zero};
 use snarkvm_utilities::{cfg_iter, cfg_iter_mut, rand::Uniform, BitIteratorBE};
 
+use anyhow::{anyhow, ensure, Result};
 use core::{marker::PhantomData, ops::Mul};
 use itertools::Itertools;
 use rand_core::RngCore;
