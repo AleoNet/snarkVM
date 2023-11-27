@@ -223,15 +223,14 @@ impl<F: PrimeField> MatrixArithmetization<F> {
         let row_col_val = matrix_evals.row_col_val.clone().interpolate();
         end_timer!(interpolate_time);
 
-        let label = &[label];
-        let mut labels = AHPForR1CS::<F, VarunaHidingMode>::index_polynomial_labels(label, std::iter::once(id));
+        let mut labels = AHPForR1CS::<F, VarunaHidingMode>::index_polynomial_labels_single(&label, &id);
         ensure!(labels.len() == 4);
 
         Ok(MatrixArithmetization {
-            row_col_val: LabeledPolynomial::new(labels.pop().unwrap(), row_col_val, None, None),
-            row_col: LabeledPolynomial::new(labels.pop().unwrap(), row_col, None, None),
-            col: LabeledPolynomial::new(labels.pop().unwrap(), col, None, None),
-            row: LabeledPolynomial::new(labels.pop().unwrap(), row, None, None),
+            row: LabeledPolynomial::new(labels.next().unwrap(), row, None, None),
+            col: LabeledPolynomial::new(labels.next().unwrap(), col, None, None),
+            row_col: LabeledPolynomial::new(labels.next().unwrap(), row_col, None, None),
+            row_col_val: LabeledPolynomial::new(labels.next().unwrap(), row_col_val, None, None),
         })
     }
 

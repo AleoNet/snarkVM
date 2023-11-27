@@ -101,21 +101,27 @@ impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
         map
     }
 
+    pub fn index_polynomial_labels_single<'a>(
+        matrix: &str,
+        id: &'a CircuitId,
+    ) -> impl ExactSizeIterator<Item = PolynomialLabel> + 'a {
+        [
+            format!("circuit_{id}_row_{matrix}"),
+            format!("circuit_{id}_col_{matrix}"),
+            format!("circuit_{id}_row_col_{matrix}"),
+            format!("circuit_{id}_row_col_val_{matrix}"),
+        ].into_iter()
+    }
+
     pub fn index_polynomial_labels<'a>(
         matrices: &'a [&str],
         ids: impl Iterator<Item = &'a CircuitId> + 'a,
-    ) -> Vec<PolynomialLabel> {
+    ) -> impl Iterator<Item = PolynomialLabel> + 'a {
         ids.flat_map(move |id| {
             matrices.iter().flat_map(move |matrix| {
-                [
-                    format!("circuit_{id}_row_{matrix}"),
-                    format!("circuit_{id}_col_{matrix}"),
-                    format!("circuit_{id}_row_col_{matrix}"),
-                    format!("circuit_{id}_row_col_val_{matrix}"),
-                ]
+                Self::index_polynomial_labels_single(matrix, id)
             })
         })
-        .collect_vec()
     }
 
     /// Generate the indexed circuit evaluations for this constraint system.
@@ -231,11 +237,11 @@ impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
     ) -> Result<impl ExactSizeIterator<Item = F>> {
         let mut all_evals = Vec::with_capacity(12);
         for (evals, domain, label) in [
-            (state.a_arith, state.non_zero_a_domain, &["a"]),
-            (state.b_arith, state.non_zero_b_domain, &["b"]),
-            (state.c_arith, state.non_zero_c_domain, &["c"]),
+            (state.a_arith, state.non_zero_a_domain, "a"),
+            (state.b_arith, state.non_zero_b_domain, "b"),
+            (state.c_arith, state.non_zero_c_domain, "c"),
         ] {
-            let labels = Self::index_polynomial_labels(label, std::iter::once(id));
+            let labels = Self::index_polynomial_labels_single(label, &id);
             let lagrange_coefficients_at_point = domain.evaluate_all_lagrange_coefficients(point);
             let evals_at_point = evals.evaluate(&lagrange_coefficients_at_point)?;
             ensure!(labels.len() == evals_at_point.len());
