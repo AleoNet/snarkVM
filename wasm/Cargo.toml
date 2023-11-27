@@ -26,15 +26,6 @@ edition = "2021"
 [lib]
 crate-type = [ "cdylib", "rlib" ]
 
-[features]
-default = [ "full" ]
-full = [ "console", "curves", "fields", "synthesizer", "utilities" ]
-console = [ "snarkvm-console" ]
-curves = [ "snarkvm-curves" ]
-fields = [ "snarkvm-fields" ]
-synthesizer = [ "snarkvm-synthesizer" ]
-utilities = [ "snarkvm-utilities" ]
-
 [dependencies.snarkvm-console]
 path = "../console"
 version = "=0.16.11"
@@ -83,3 +74,12 @@ features = [ "js" ]
 
 [dev-dependencies.wasm-bindgen-test]
 version = "0.3.37"
+
+[features]
+default = [ "full" ]
+full = [ "console", "curves", "fields", "synthesizer", "utilities" ]
+console = [ "snarkvm-console" ]
+curves = [ "snarkvm-curves" ]
+fields = [ "snarkvm-fields" ]
+synthesizer = [ "snarkvm-synthesizer" ]
+utilities = [ "snarkvm-utilities" ]
