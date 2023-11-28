@@ -14,14 +14,17 @@
 
 use crate::{helpers::Constraint, Mode, *};
 
-use core::{cell::RefCell, fmt};
+use core::{
+    cell::{Cell, RefCell},
+    fmt,
+};
 use std::rc::Rc;
 
 type Field = <console::Testnet3 as console::Environment>::Field;
 
 thread_local! {
     pub(super) static CIRCUIT: Rc<RefCell<R1CS<Field>>> = Rc::new(RefCell::new(R1CS::new()));
-    pub(super) static IN_WITNESS: Rc<RefCell<bool>> = Rc::new(RefCell::new(false));
+    pub(super) static IN_WITNESS: Rc<Cell<bool>> = Rc::new(Cell::new(false));
     pub(super) static ZERO: LinearCombination<Field> = LinearCombination::zero();
     pub(super) static ONE: LinearCombination<Field> = LinearCombination::one();
 }
@@ -49,7 +52,7 @@ impl Environment for Circuit {
     fn new_variable(mode: Mode, value: Self::BaseField) -> Variable<Self::BaseField> {
         IN_WITNESS.with(|in_witness| {
             // Ensure we are not in witness mode.
-            if !(*(**in_witness).borrow()) {
+            if !(**in_witness).get() {
                 CIRCUIT.with(|circuit| match mode {
                     Mode::Constant => (**circuit).borrow_mut().new_constant(value),
                     Mode::Public => (**circuit).borrow_mut().new_public(value),
@@ -65,13 +68,13 @@ impl Environment for Circuit {
     fn new_witness<Fn: FnOnce() -> Output::Primitive, Output: Inject>(mode: Mode, logic: Fn) -> Output {
         IN_WITNESS.with(|in_witness| {
             // Set the entire environment to witness mode.
-            *(**in_witness).borrow_mut() = true;
+            in_witness.replace(true);
 
             // Run the logic.
             let output = logic();
 
             // Return the entire environment from witness mode.
-            *(**in_witness).borrow_mut() = false;
+            in_witness.replace(false);
 
             Inject::new(mode, output)
         })
@@ -108,7 +111,7 @@ impl Environment for Circuit {
     {
         IN_WITNESS.with(|in_witness| {
             // Ensure we are not in witness mode.
-            if !(*(**in_witness).borrow()) {
+            if !(**in_witness).get() {
                 CIRCUIT.with(|circuit| {
                     // Set the entire environment to the new scope.
                     let name = name.into();
@@ -142,7 +145,7 @@ impl Environment for Circuit {
     {
         IN_WITNESS.with(|in_witness| {
             // Ensure we are not in witness mode.
-            if !(*(**in_witness).borrow()) {
+            if !(**in_witness).get() {
                 CIRCUIT.with(|circuit| {
                     let (a, b, c) = constraint();
                     let (a, b, c) = (a.into(), b.into(), c.into());
@@ -272,7 +275,7 @@ impl Environment for Circuit {
     fn eject_r1cs_and_reset() -> R1CS<Self::BaseField> {
         CIRCUIT.with(|circuit| {
             // Reset the witness mode.
-            IN_WITNESS.with(|in_witness| *(**in_witness).borrow_mut() = false);
+            IN_WITNESS.with(|in_witness| in_witness.replace(false));
             // Eject the R1CS instance.
             let r1cs = circuit.replace(R1CS::<<Self as Environment>::BaseField>::new());
             // Ensure the circuit is now empty.
@@ -291,7 +294,7 @@ impl Environment for Circuit {
     fn eject_assignment_and_reset() -> Assignment<<Self::Network as console::Environment>::Field> {
         CIRCUIT.with(|circuit| {
             // Reset the witness mode.
-            IN_WITNESS.with(|in_witness| *(**in_witness).borrow_mut() = false);
+            IN_WITNESS.with(|in_witness| in_witness.replace(false));
             // Eject the R1CS instance.
             let r1cs = circuit.replace(R1CS::<<Self as Environment>::BaseField>::new());
             assert_eq!(0, (**circuit).borrow().num_constants());
@@ -307,7 +310,7 @@ impl Environment for Circuit {
     fn reset() {
         CIRCUIT.with(|circuit| {
             // Reset the witness mode.
-            IN_WITNESS.with(|in_witness| *(**in_witness).borrow_mut() = false);
+            IN_WITNESS.with(|in_witness| in_witness.replace(false));
             *(**circuit).borrow_mut() = R1CS::<<Self as Environment>::BaseField>::new();
             assert_eq!(0, (**circuit).borrow().num_constants());
             assert_eq!(1, (**circuit).borrow().num_public());
