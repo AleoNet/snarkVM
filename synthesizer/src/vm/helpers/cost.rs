@@ -469,4 +469,168 @@ finalize store_xlarge:
         let finalize_cost = cost_in_microcredits(stack, function.finalize_logic().unwrap()).unwrap();
         assert_eq!(906000, finalize_cost);
     }
+
+    #[test]
+    fn test_finalize_costs_arrays() {
+        let rng = &mut TestRng::default();
+
+        // Define a program
+        let program_str = r"
+program test_program.aleo;
+mapping storage_small:
+    key as u64.public;
+    value as [boolean; 8u32].public;
+mapping storage_medium:
+    key as u64.public;
+    value as [[boolean; 8u32]; 8u32].public;
+mapping storage_large:
+    key as u64.public;
+    value as [[[boolean; 8u32]; 8u32]; 8u32].public;
+mapping storage_xlarge:
+    key as u64.public;
+    value as [[[[boolean; 8u32]; 8u32]; 8u32]; 8u32].public;
+function store_small:
+    input r0 as u64.public;
+    input r1 as [boolean; 8u32].public;
+    async store_small r0 r1 into r2;
+    output r2 as test_program.aleo/store_small.future;
+finalize store_small:
+    input r0 as u64.public;
+    input r1 as [boolean; 8u32].public;
+    set r1 into storage_small[r0];
+function store_medium:
+    input r0 as u64.public;
+    input r1 as [[boolean; 8u32]; 8u32].public;
+    async store_medium r0 r1 into r2;
+    output r2 as test_program.aleo/store_medium.future;
+finalize store_medium:
+    input r0 as u64.public;
+    input r1 as [[boolean; 8u32]; 8u32].public;
+    set r1 into storage_medium[r0];
+function store_large:
+    input r0 as u64.public;
+    input r1 as [[[boolean; 8u32]; 8u32]; 8u32].public;
+    async store_large r0 r1 into r2;
+    output r2 as test_program.aleo/store_large.future;
+finalize store_large:
+    input r0 as u64.public;
+    input r1 as [[[boolean; 8u32]; 8u32]; 8u32].public;
+    set r1 into storage_large[r0];
+function store_xlarge:
+    input r0 as u64.public;
+    input r1 as [[[[boolean; 8u32]; 8u32]; 8u32]; 8u32].public;
+    async store_xlarge r0 r1 into r2;
+    output r2 as test_program.aleo/store_xlarge.future;
+finalize store_xlarge:
+    input r0 as u64.public;
+    input r1 as [[[[boolean; 8u32]; 8u32]; 8u32]; 8u32].public;
+    set r1 into storage_xlarge[r0];
+        ";
+
+        // Compile the program.
+        let program = Program::<CurrentNetwork>::from_str(program_str).unwrap();
+
+        // Load the process.
+        let mut process = Process::<CurrentNetwork>::load().unwrap();
+
+        // Deploy and load the program.
+        let deployment = process.deploy::<AleoV0, _>(&program, rng).unwrap();
+        process.load_deployment(&deployment).unwrap();
+
+        // Get the stack.
+        let stack = process.get_stack(program.id()).unwrap();
+
+        // Test the price of each execution.
+
+        // Function: `store_small`
+        let function = program.get_function(&Identifier::from_str("store_small").unwrap()).unwrap();
+        let finalize_cost = cost_in_microcredits(stack, function.finalize_logic().unwrap()).unwrap();
+        assert_eq!(16000, finalize_cost);
+
+        // Function: `store_medium`
+        let function = program.get_function(&Identifier::from_str("store_medium").unwrap()).unwrap();
+        let finalize_cost = cost_in_microcredits(stack, function.finalize_logic().unwrap()).unwrap();
+        assert_eq!(72000, finalize_cost);
+
+        // Function: `store_large`
+        let function = program.get_function(&Identifier::from_str("store_large").unwrap()).unwrap();
+        let finalize_cost = cost_in_microcredits(stack, function.finalize_logic().unwrap()).unwrap();
+        assert_eq!(520000, finalize_cost);
+
+        // Function: `store_xlarge`
+        let function = program.get_function(&Identifier::from_str("store_xlarge").unwrap()).unwrap();
+        let finalize_cost = cost_in_microcredits(stack, function.finalize_logic().unwrap()).unwrap();
+        assert_eq!(4104000, finalize_cost);
+    }
+
+    #[test]
+    fn test_finalize_costs_big_finalize() {
+        let rng = &mut TestRng::default();
+
+        // Define a program
+        let program_str = r"
+program test_program.aleo;
+mapping big_map:
+	key as u128.public;
+	value as [[[u8; 32u32]; 32u32]; 32u32].public;
+function big_finalize:
+    async big_finalize into r0;
+    output r0 as test_program.aleo/big_finalize.future;
+finalize big_finalize:
+    rand.chacha into r0 as u128;
+    cast  0u8 0u8 0u8 0u8 0u8 0u8 0u8 0u8 0u8 0u8 0u8 0u8 0u8 0u8 0u8 0u8 0u8 0u8 0u8 0u8 0u8 0u8 0u8 0u8 0u8 0u8 0u8 0u8 0u8 0u8 0u8 0u8 into r1 as [u8; 32u32];
+    cast  r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 into r2 as [[u8; 32u32]; 32u32];
+    cast  r2 r2 r2 r2 r2 r2 r2 r2 r2 r2 r2 r2 r2 r2 r2 r2 r2 r2 r2 r2 r2 r2 r2 r2 r2 r2 r2 r2 r2 r2 r2 r2 into r3 as [[[u8; 32u32]; 32u32]; 32u32];
+    add.w r0 0u128 into r4;
+    set r3 into big_map[r4];
+    add.w r0 1u128 into r5;
+    set r3 into big_map[r5];
+    add.w r0 2u128 into r6;
+    set r3 into big_map[r6];
+    add.w r0 3u128 into r7;
+    set r3 into big_map[r7];
+    add.w r0 4u128 into r8;
+    set r3 into big_map[r8];
+    add.w r0 5u128 into r9;
+    set r3 into big_map[r9];
+    add.w r0 6u128 into r10;
+    set r3 into big_map[r10];
+    add.w r0 7u128 into r11;
+    set r3 into big_map[r11];
+    add.w r0 8u128 into r12;
+    set r3 into big_map[r12];
+    add.w r0 9u128 into r13;
+    set r3 into big_map[r13];
+    add.w r0 10u128 into r14;
+    set r3 into big_map[r14];
+    add.w r0 11u128 into r15;
+    set r3 into big_map[r15];
+    add.w r0 12u128 into r16;
+    set r3 into big_map[r16];
+    add.w r0 13u128 into r17;
+    set r3 into big_map[r17];
+    add.w r0 14u128 into r18;
+    set r3 into big_map[r18];
+    add.w r0 15u128 into r19;
+    set r3 into big_map[r19];
+        ";
+
+        // Compile the program.
+        let program = Program::<CurrentNetwork>::from_str(program_str).unwrap();
+
+        // Load the process.
+        let mut process = Process::<CurrentNetwork>::load().unwrap();
+
+        // Deploy and load the program.
+        let deployment = process.deploy::<AleoV0, _>(&program, rng).unwrap();
+        process.load_deployment(&deployment).unwrap();
+
+        // Get the stack.
+        let stack = process.get_stack(program.id()).unwrap();
+
+        // Test the price of `big_finalize`.
+        let function = program.get_function(&Identifier::from_str("big_finalize").unwrap()).unwrap();
+        let finalize_cost = cost_in_microcredits(stack, function.finalize_logic().unwrap()).unwrap();
+        assert_eq!(524_607_000, finalize_cost);
+    }
 }
