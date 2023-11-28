@@ -24,7 +24,7 @@ impl<N: Network, Instruction: InstructionTrait<N>> FromBytes for ClosureCore<N, 
         // Read the inputs.
         let num_inputs = u16::read_le(&mut reader)?;
         if num_inputs.is_zero() {
-            return Err(error(format!("Failed to deserialize a closure: needs at least one input")));
+            return Err(error("Failed to deserialize a closure: needs at least one input".to_string()));
         }
         if num_inputs > u16::try_from(N::MAX_INPUTS).map_err(error)? {
             return Err(error(format!("Failed to deserialize a closure: too many inputs ({num_inputs})")));
@@ -37,7 +37,7 @@ impl<N: Network, Instruction: InstructionTrait<N>> FromBytes for ClosureCore<N, 
         // Read the instructions.
         let num_instructions = u32::read_le(&mut reader)?;
         if num_instructions.is_zero() {
-            return Err(error(format!("Failed to deserialize a closure: needs at least one instruction")));
+            return Err(error("Failed to deserialize a closure: needs at least one instruction".to_string()));
         }
         if num_instructions > u32::try_from(N::MAX_INSTRUCTIONS).map_err(error)? {
             return Err(error(format!("Failed to deserialize a closure: too many instructions ({num_instructions})")));
