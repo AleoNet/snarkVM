@@ -12,14 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::VM;
+use crate::{
+    prelude::{Stack, StackProgramTypes},
+    VM,
+};
 use console::{
     prelude::*,
-    program::{LiteralType, PlaintextType},
+    program::{FinalizeType, LiteralType, PlaintextType},
 };
 use ledger_block::{Deployment, Execution};
 use ledger_store::ConsensusStorage;
-use synthesizer_program::{Command, Finalize, Instruction};
+use synthesizer_program::{Command, Finalize, Instruction, Operand, StackProgram};
 
 use std::collections::HashMap;
 
@@ -80,7 +83,7 @@ pub fn execution_cost<N: Network, C: ConsensusStorage<N>>(
         let program = lookup.get(program_id).ok_or(anyhow!("Program '{program_id}' is missing"))?;
         // Retrieve the finalize cost.
         let cost = match program.get_function(function_name)?.finalize_logic() {
-            Some(finalize) => cost_in_microcredits(finalize)?,
+            Some(finalize) => cost_in_microcredits(vm.process().read().get_stack(program.id())?, finalize)?,
             None => continue,
         };
         // Accumulate the finalize cost.
@@ -98,7 +101,65 @@ pub fn execution_cost<N: Network, C: ConsensusStorage<N>>(
 }
 
 /// Returns the minimum number of microcredits required to run the finalize.
-pub fn cost_in_microcredits<N: Network>(finalize: &Finalize<N>) -> Result<u64> {
+pub fn cost_in_microcredits<N: Network>(stack: &Stack<N>, finalize: &Finalize<N>) -> Result<u64> {
+    // Retrieve the finalize types.
+    let finalize_types = stack.get_finalize_types(finalize.name())?;
+
+    // Helper function to get the plaintext type in bytes
+    fn plaintext_size_in_bytes<N: Network>(stack: &Stack<N>, plaintext_type: &PlaintextType<N>) -> Result<u64> {
+        match plaintext_type {
+            PlaintextType::Literal(literal_type) => {
+                // Retrieve the literal size in bits.
+                let literal_size_in_bits = literal_type.size_in_bits::<N>() as u64;
+
+                // Compute the size in bytes.
+                let literal_size_in_bytes = literal_size_in_bits.saturating_add(7).saturating_div(8);
+
+                // Return the size of the literal.
+                Ok(literal_size_in_bytes)
+            }
+            PlaintextType::Struct(struct_identifier) => {
+                // Retrieve the struct from the stack.
+                let plaintext_struct = stack.program().get_struct(struct_identifier)?;
+
+                // Retrieve the size of the struct identifier.
+                let identifier_size = plaintext_struct.name().to_bytes_le()?.len() as u64;
+
+                // Retrieve the size of all the members of the struct.
+                let size_of_members = plaintext_struct
+                    .members()
+                    .iter()
+                    .map(|(_, member_type)| plaintext_size_in_bytes(stack, member_type))
+                    .sum::<Result<u64>>()?;
+
+                // Return the size of the struct.
+                Ok(identifier_size.saturating_add(size_of_members))
+            }
+            PlaintextType::Array(array_type) => {
+                // Retrieve the number of elements in the array
+                let num_array_elements = **array_type.length() as u64;
+
+                // Retrieve the size of the internal array types.
+                Ok(num_array_elements.saturating_mul(plaintext_size_in_bytes(stack, array_type.next_element_type())?))
+            }
+        }
+    }
+
+    // Helper function to get the size of the operand type.
+    let operand_size_in_bytes = |operand: &Operand<N>| {
+        // Get the finalize type from the operand.
+        let finalize_type = finalize_types.get_type_from_operand(stack, operand)?;
+
+        // Get the plaintext type from the finalize type.
+        let plaintext_type = match finalize_type {
+            FinalizeType::Plaintext(plaintext_type) => plaintext_type,
+            FinalizeType::Future(_) => bail!("`Future` types are not supported in storage cost computation."),
+        };
+
+        // Get the size of the operand type.
+        plaintext_size_in_bytes(stack, &plaintext_type)
+    };
+
     // Defines the cost of each command.
     let cost = |command: &Command<N>| match command {
         Command::Instruction(Instruction::Abs(_)) => Ok(2_000),
@@ -195,7 +256,21 @@ pub fn cost_in_microcredits<N: Network>(finalize: &Finalize<N>) -> Result<u64> {
         Command::GetOrUse(_) => Ok(25_000),
         Command::RandChaCha(_) => Ok(25_000),
         Command::Remove(_) => Ok(10_000),
-        Command::Set(_) => Ok(100_000),
+        Command::Set(set) => {
+            // TODO (raychu86): Adjust this multiplier.
+            // The cost in microcredits per byte of storage used by the `set` command.
+            const SET_COMMAND_BYTE_MULTIPLIER: u64 = 1000;
+
+            // Get the size in bytes of the key and value types.
+            let key_size_in_bytes = operand_size_in_bytes(set.key())?;
+            let value_size_in_bytes = operand_size_in_bytes(set.value())?;
+
+            // Calculate the size in bytes of the key and value.
+            let stored_size_in_bytes = key_size_in_bytes.saturating_add(value_size_in_bytes);
+
+            // Calculate the cost.
+            Ok(stored_size_in_bytes.saturating_mul(SET_COMMAND_BYTE_MULTIPLIER))
+        }
         Command::BranchEq(_) | Command::BranchNeq(_) => Ok(5_000),
         Command::Position(_) => Ok(1_000),
     };
@@ -204,4 +279,194 @@ pub fn cost_in_microcredits<N: Network>(finalize: &Finalize<N>) -> Result<u64> {
         .iter()
         .map(cost)
         .try_fold(0u64, |acc, res| res.and_then(|x| acc.checked_add(x).ok_or(anyhow!("Finalize cost overflowed"))))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{vm::test_helpers::CurrentNetwork, Process, Program};
+    use circuit::network::AleoV0;
+    use console::program::Identifier;
+
+    #[test]
+    fn test_credits_finalize_costs() {
+        // Get the credits.aleo program.
+        let program = Program::<CurrentNetwork>::credits().unwrap();
+
+        // Load the process.
+        let process = Process::<CurrentNetwork>::load().unwrap();
+
+        // Get the stack.
+        let stack = process.get_stack(program.id()).unwrap();
+
+        // Function: `bond_public`
+        let function = program.get_function(&Identifier::from_str("bond_public").unwrap()).unwrap();
+        let finalize_cost = cost_in_microcredits(stack, function.finalize_logic().unwrap()).unwrap();
+        assert_eq!(602500, finalize_cost);
+
+        // Function: `unbond_public`
+        let function = program.get_function(&Identifier::from_str("unbond_public").unwrap()).unwrap();
+        let finalize_cost = cost_in_microcredits(stack, function.finalize_logic().unwrap()).unwrap();
+        assert_eq!(897500, finalize_cost);
+
+        // Function: `unbond_delegator_as_validator`
+        let function = program.get_function(&Identifier::from_str("unbond_delegator_as_validator").unwrap()).unwrap();
+        let finalize_cost = cost_in_microcredits(stack, function.finalize_logic().unwrap()).unwrap();
+        assert_eq!(237500, finalize_cost);
+
+        // Function `claim_unbond_public`
+        let function = program.get_function(&Identifier::from_str("claim_unbond_public").unwrap()).unwrap();
+        let finalize_cost = cost_in_microcredits(stack, function.finalize_logic().unwrap()).unwrap();
+        assert_eq!(106000, finalize_cost);
+
+        // Function `set_validator_state`
+        let function = program.get_function(&Identifier::from_str("set_validator_state").unwrap()).unwrap();
+        let finalize_cost = cost_in_microcredits(stack, function.finalize_logic().unwrap()).unwrap();
+        assert_eq!(84000, finalize_cost);
+
+        // Function: `transfer_public`
+        let function = program.get_function(&Identifier::from_str("transfer_public").unwrap()).unwrap();
+        let finalize_cost = cost_in_microcredits(stack, function.finalize_logic().unwrap()).unwrap();
+        assert_eq!(142000, finalize_cost);
+
+        // Function: `transfer_private`
+        let function = program.get_function(&Identifier::from_str("transfer_private").unwrap()).unwrap();
+        assert!(function.finalize_logic().is_none());
+
+        // Function: `transfer_private_to_public`
+        let function = program.get_function(&Identifier::from_str("transfer_private_to_public").unwrap()).unwrap();
+        let finalize_cost = cost_in_microcredits(stack, function.finalize_logic().unwrap()).unwrap();
+        assert_eq!(67000, finalize_cost);
+
+        // Function: `transfer_public_to_private`
+        let function = program.get_function(&Identifier::from_str("transfer_public_to_private").unwrap()).unwrap();
+        let finalize_cost = cost_in_microcredits(stack, function.finalize_logic().unwrap()).unwrap();
+        assert_eq!(75000, finalize_cost);
+
+        // Function: `join`
+        let function = program.get_function(&Identifier::from_str("join").unwrap()).unwrap();
+        assert!(function.finalize_logic().is_none());
+
+        // Function: `split`
+        let function = program.get_function(&Identifier::from_str("split").unwrap()).unwrap();
+        assert!(function.finalize_logic().is_none());
+
+        // Function: `fee_private`
+        let function = program.get_function(&Identifier::from_str("fee_private").unwrap()).unwrap();
+        assert!(function.finalize_logic().is_none());
+
+        // Function: `fee_public`
+        let function = program.get_function(&Identifier::from_str("fee_public").unwrap()).unwrap();
+        let finalize_cost = cost_in_microcredits(stack, function.finalize_logic().unwrap()).unwrap();
+        assert_eq!(75000, finalize_cost);
+    }
+
+    #[test]
+    fn test_finalize_costs_structs() {
+        let rng = &mut TestRng::default();
+
+        // Define a program
+        let program_str = r"
+program test_program.aleo;
+struct small:
+    a as u64;
+    b as u64;
+    c as u64;
+struct medium:
+    a as small;
+    b as small;
+    c as small;
+struct large:
+    a as medium;
+    b as medium;
+    c as medium;
+struct xlarge:
+    a as large;
+    b as large;
+    c as large;
+mapping storage_small:
+    key as u64.public;
+    value as small.public;
+mapping storage_medium:
+    key as u64.public;
+    value as medium.public;
+mapping storage_large:
+    key as u64.public;
+    value as large.public;
+mapping storage_xlarge:
+    key as u64.public;
+    value as xlarge.public;
+function store_small:
+    input r0 as u64.public;
+    input r1 as small.public;
+    async store_small r0 r1 into r2;
+    output r2 as test_program.aleo/store_small.future;
+finalize store_small:
+    input r0 as u64.public;
+    input r1 as small.public;
+    set r1 into storage_small[r0];
+function store_medium:
+    input r0 as u64.public;
+    input r1 as medium.public;
+    async store_medium r0 r1 into r2;
+    output r2 as test_program.aleo/store_medium.future;
+finalize store_medium:
+    input r0 as u64.public;
+    input r1 as medium.public;
+    set r1 into storage_medium[r0];
+function store_large:
+    input r0 as u64.public;
+    input r1 as large.public;
+    async store_large r0 r1 into r2;
+    output r2 as test_program.aleo/store_large.future;
+finalize store_large:
+    input r0 as u64.public;
+    input r1 as large.public;
+    set r1 into storage_large[r0];
+function store_xlarge:
+    input r0 as u64.public;
+    input r1 as xlarge.public;
+    async store_xlarge r0 r1 into r2;
+    output r2 as test_program.aleo/store_xlarge.future;
+finalize store_xlarge:
+    input r0 as u64.public;
+    input r1 as xlarge.public;
+    set r1 into storage_xlarge[r0];
+        ";
+
+        // Compile the program.
+        let program = Program::<CurrentNetwork>::from_str(program_str).unwrap();
+
+        // Load the process.
+        let mut process = Process::<CurrentNetwork>::load().unwrap();
+
+        // Deploy and load the program.
+        let deployment = process.deploy::<AleoV0, _>(&program, rng).unwrap();
+        process.load_deployment(&deployment).unwrap();
+
+        // Get the stack.
+        let stack = process.get_stack(program.id()).unwrap();
+
+        // Test the price of each execution.
+
+        // Function: `store_small`
+        let function = program.get_function(&Identifier::from_str("store_small").unwrap()).unwrap();
+        let finalize_cost = cost_in_microcredits(stack, function.finalize_logic().unwrap()).unwrap();
+        assert_eq!(38000, finalize_cost);
+
+        // Function: `store_medium`
+        let function = program.get_function(&Identifier::from_str("store_medium").unwrap()).unwrap();
+        let finalize_cost = cost_in_microcredits(stack, function.finalize_logic().unwrap()).unwrap();
+        assert_eq!(105000, finalize_cost);
+
+        // Function: `store_large`
+        let function = program.get_function(&Identifier::from_str("store_large").unwrap()).unwrap();
+        let finalize_cost = cost_in_microcredits(stack, function.finalize_logic().unwrap()).unwrap();
+        assert_eq!(305000, finalize_cost);
+
+        // Function: `store_xlarge`
+        let function = program.get_function(&Identifier::from_str("store_xlarge").unwrap()).unwrap();
+        let finalize_cost = cost_in_microcredits(stack, function.finalize_logic().unwrap()).unwrap();
+        assert_eq!(906000, finalize_cost);
+    }
 }
