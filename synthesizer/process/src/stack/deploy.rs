@@ -122,10 +122,13 @@ impl<N: Network> Stack<N> {
         cfg_iter!(call_stacks).zip_eq(deployment.verifying_keys()).zip_eq(rngs).try_for_each(
             |(((function_name, call_stack, assignments), (_, (verifying_key, certificate))), mut rng)| {
                 // Synthesize the circuit.
+                lap!(timer, "Synthesizing the circuit for {function_name}");
                 if let Err(err) = self.execute_function::<A, _>(call_stack.clone(), None, &mut rng) {
                     bail!("Failed to synthesize the circuit for '{function_name}': {err}")
                 }
+                lap!(timer, "Finished synthesizing the circuit for {function_name}");
                 // Check the certificate.
+                lap!(timer, "Checking the certificate for {function_name}");
                 match assignments.read().last() {
                     None => bail!("The assignment for function '{function_name}' is missing in '{program_id}'"),
                     Some((assignment, _metrics)) => {
@@ -135,6 +138,7 @@ impl<N: Network> Stack<N> {
                         }
                     }
                 };
+                lap!(timer, "Finished checking the certificate for {function_name}");
                 Ok(())
             },
         )?;
