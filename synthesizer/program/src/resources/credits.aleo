@@ -394,7 +394,7 @@ finalize unbond_public:
     add r3.microcredits r8.microcredits into r17;
 
     // Construct the updated unbond state.
-    cast r15 r4 into r18 as unbond_state;
+    cast r17 r4 into r18 as unbond_state;
     // Update the unbond state for the caller.
     set r18 into unbonding[r0];
 
@@ -409,7 +409,7 @@ finalize unbond_public:
     // Get the bond state for the caller, or fail if it does not exist.
     get bonded[r0] into r19;
     // Decrement the microcredits in the bond state.
-    sub r19.microcredits r1 into r18;
+    sub r19.microcredits r1 into r20;
 
     // Determine if the remaining bond is at least 10 credits.
     gte r20 10_000_000u64 into r21;
