@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-synthesizer"
-version = "0.16.9"
+version = "0.16.12"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Synthesizer for a decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -68,61 +68,61 @@ harness = false
 [dependencies.algorithms]
 package = "snarkvm-algorithms"
 path = "../algorithms"
-version = "=0.16.9"
+version = "=0.16.12"
 
 [dependencies.circuit]
 package = "snarkvm-circuit"
 path = "../circuit"
-version = "=0.16.9"
+version = "=0.16.12"
 
 [dependencies.console]
 package = "snarkvm-console"
 path = "../console"
-version = "=0.16.9"
+version = "=0.16.12"
 
 [dependencies.ledger-block]
 package = "snarkvm-ledger-block"
 path = "../ledger/block"
-version = "=0.16.9"
+version = "=0.16.12"
 
 [dependencies.ledger-coinbase]
 package = "snarkvm-ledger-coinbase"
 path = "../ledger/coinbase"
-version = "=0.16.9"
+version = "=0.16.12"
 
 [dependencies.ledger-committee]
 package = "snarkvm-ledger-committee"
 path = "../ledger/committee"
-version = "=0.16.9"
+version = "=0.16.12"
 
 [dependencies.ledger-query]
 package = "snarkvm-ledger-query"
 path = "../ledger/query"
-version = "=0.16.9"
+version = "=0.16.12"
 default-features = false
 features = [ "query" ]
 
 [dependencies.ledger-store]
 package = "snarkvm-ledger-store"
 path = "../ledger/store"
-version = "=0.16.9"
+version = "=0.16.12"
 
 [dependencies.synthesizer-process]
 package = "snarkvm-synthesizer-process"
 path = "./process"
-version = "=0.16.9"
+version = "=0.16.12"
 optional = true
 
 [dependencies.synthesizer-program]
 package = "snarkvm-synthesizer-program"
 path = "./program"
-version = "=0.16.9"
+version = "=0.16.12"
 optional = true
 
 [dependencies.synthesizer-snark]
 package = "snarkvm-synthesizer-snark"
 path = "./snark"
-version = "=0.16.9"
+version = "=0.16.12"
 optional = true
 
 [dependencies.aleo-std]

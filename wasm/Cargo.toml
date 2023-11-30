@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-wasm"
-version = "0.16.9"
+version = "0.16.12"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "WASM for a decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -26,32 +26,41 @@ edition = "2021"
 [lib]
 crate-type = [ "cdylib", "rlib" ]
 
+[features]
+default = [ "full" ]
+full = [ "console", "curves", "fields", "synthesizer", "utilities" ]
+console = [ "snarkvm-console" ]
+curves = [ "snarkvm-curves" ]
+fields = [ "snarkvm-fields" ]
+synthesizer = [ "snarkvm-synthesizer" ]
+utilities = [ "snarkvm-utilities" ]
+
 [dependencies.snarkvm-console]
 path = "../console"
-version = "=0.16.9"
+version = "=0.16.12"
 features = [ "wasm" ]
 optional = true
 
 [dependencies.snarkvm-curves]
 path = "../curves"
-version = "=0.16.9"
+version = "=0.16.12"
 optional = true
 
 [dependencies.snarkvm-fields]
 path = "../fields"
-version = "=0.16.9"
+version = "=0.16.12"
 optional = true
 
 [dependencies.snarkvm-synthesizer]
 path = "../synthesizer"
-version = "=0.16.9"
+version = "=0.16.12"
 default-features = false
 features = [ "wasm" ]
 optional = true
 
 [dependencies.snarkvm-utilities]
 path = "../utilities"
-version = "=0.16.9"
+version = "=0.16.12"
 features = [ "wasm" ]
 optional = true
 
@@ -74,12 +83,3 @@ features = [ "js" ]
 
 [dev-dependencies.wasm-bindgen-test]
 version = "0.3.37"
-
-[features]
-default = [ "full" ]
-full = [ "console", "curves", "fields", "synthesizer", "utilities" ]
-console = [ "snarkvm-console" ]
-curves = [ "snarkvm-curves" ]
-fields = [ "snarkvm-fields" ]
-synthesizer = [ "snarkvm-synthesizer" ]
-utilities = [ "snarkvm-utilities" ]

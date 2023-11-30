@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-ledger-committee"
-version = "0.16.9"
+version = "0.16.12"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "A committee for a decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -27,17 +27,24 @@ edition = "2021"
 default = [ ]
 serial = [ "console/serial" ]
 wasm = [ "console/wasm" ]
+metrics = [ "dep:metrics" ]
 prop-tests = [ "rand", "rand_chacha", "test-strategy", "proptest", "anyhow" ]
 test-helpers = [ "prop-tests", "rand_distr" ]
 
 [dependencies.console]
 package = "snarkvm-console"
 path = "../../console"
-version = "=0.16.9"
+version = "=0.16.12"
 
 [dependencies.indexmap]
 version = "2.0"
 features = [ "serde", "rayon" ]
+
+[dependencies.metrics]
+package = "snarkvm-metrics"
+path = "../../metrics"
+version = "=0.16.12"
+optional = true
 
 [dependencies.serde_json]
 version = "1.0"
@@ -79,10 +86,10 @@ version = "0.4"
 [dev-dependencies.rayon]
 version = "1"
 
-[dev-dependencies.snarkvm-ledger-committee]
-path = "."
-features = [ "prop-tests" ]
-
 [dev-dependencies.ledger-narwhal-batch-header]
 package = "snarkvm-ledger-narwhal-batch-header"
 path = "../narwhal/batch-header"
+
+[dev-dependencies.snarkvm-ledger-committee]
+path = "."
+features = [ "prop-tests" ]

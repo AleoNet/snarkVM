@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-ledger-narwhal-batch-certificate"
-version = "0.16.9"
+version = "0.16.12"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "A batch certificate for a Narwhal-style memory pool in a decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -32,17 +32,17 @@ test-helpers = [ "narwhal-batch-header/test-helpers" ]
 [dependencies.console]
 package = "snarkvm-console"
 path = "../../../console"
-version = "=0.16.9"
+version = "=0.16.12"
 
 [dependencies.narwhal-batch-header]
 package = "snarkvm-ledger-narwhal-batch-header"
 path = "../batch-header"
-version = "=0.16.9"
+version = "=0.16.12"
 
 [dependencies.narwhal-transmission-id]
 package = "snarkvm-ledger-narwhal-transmission-id"
 path = "../transmission-id"
-version = "=0.16.9"
+version = "=0.16.12"
 
 [dependencies.indexmap]
 version = "2.0"

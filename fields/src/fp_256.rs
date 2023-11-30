@@ -583,6 +583,10 @@ impl<P: Fp256Parameters> ToBits for Fp256<P> {
         self.write_bits_le(vec);
         vec[initial_len..].reverse();
     }
+
+    fn num_bits() -> Option<usize> {
+        Some(256)
+    }
 }
 
 impl<P: Fp256Parameters> ToBytes for Fp256<P> {

@@ -880,7 +880,7 @@ fn test_process_output_operand() {
     )
     .unwrap();
 
-    // Initalize the RNG.
+    // Initialize the RNG.
     let rng = &mut TestRng::default();
 
     // Initialize a new caller account.
