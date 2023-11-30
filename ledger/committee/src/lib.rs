@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#![forbid(unsafe_code)]
+#![warn(clippy::cast_possible_truncation)]
+
 mod bytes;
 mod serialize;
 mod string;
@@ -73,6 +76,8 @@ impl<N: Network> Committee<N> {
         );
         // Compute the total stake of the committee for this round.
         let total_stake = Self::compute_total_stake(&members)?;
+        #[cfg(feature = "metrics")]
+        metrics::gauge(metrics::committee::TOTAL_STAKE, total_stake as f64);
         // Return the new committee.
         Ok(Self { starting_round, members, total_stake })
     }
@@ -301,13 +306,14 @@ pub mod test_helpers {
     }
 
     /// Samples a random committee.
+    #[allow(clippy::cast_possible_truncation)]
     pub fn sample_committee_custom(num_members: u16, rng: &mut TestRng) -> Committee<CurrentNetwork> {
         assert!(num_members >= 4);
         // Set the maximum amount staked in the node.
         const MAX_STAKE: u64 = 100_000_000_000_000;
         // Initialize the Exponential distribution.
         let distribution = Exp::new(2.0).unwrap();
-        // Initialize an RNG for the stake.
+        // Initialize maximum stake range.
         let range = (MAX_STAKE - MIN_VALIDATOR_STAKE) as f64;
         // Sample the members.
         let mut members = IndexMap::new();

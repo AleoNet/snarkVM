@@ -1,8 +1,8 @@
 [package]
-name = "snarkvm-algorithms-cuda"
+name = "snarkvm-metrics"
 version = "0.16.12"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
-description = "Cuda optimizations for a decentralized virtual machine"
+description = "Metrics for a decentralized virtual machine"
 homepage = "https://aleo.org"
 repository = "https://github.com/AleoHQ/snarkVM"
 keywords = [
@@ -23,20 +23,8 @@ include = [ "Cargo.toml", "src", "README.md", "LICENSE.md" ]
 license = "Apache-2.0"
 edition = "2021"
 
-[features]
-default = [ ]
-portable = [ "blst/portable" ]
-quiet = [ ]
+[dependencies.metrics]
+version = "0.21"
 
-[dependencies.blst]
-version = "0.3.11"
-features = [ ]
-
-[dependencies.sppark]
-version = "0.1.5"
-
-[build-dependencies.cc]
-version = "^1.0.83"
-
-[build-dependencies.which]
-version = "^4.4"
+[dependencies.metrics-exporter-prometheus]
+version = "0.12"
