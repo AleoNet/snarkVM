@@ -73,6 +73,12 @@ impl<N: Network> BatchHeader<N> {
             // If the round is not zero and not one, then there should be at least one previous certificate ID.
             _ => ensure!(!previous_certificate_ids.is_empty(), "Invalid round number, must have certificates"),
         }
+
+        // Ensure that the number of transmissions is within bounds.
+        ensure!(transmission_ids.len() <= Self::MAX_TRANSMISSIONS, "Invalid number of transmission ids");
+        // Ensure that the number of previous certificate IDs is within bounds.
+        ensure!(previous_certificate_ids.len() <= Self::MAX_CERTIFICATES, "Invalid number of previous certificate IDs");
+
         // Retrieve the address.
         let author = Address::try_from(private_key)?;
         // Compute the batch ID.
@@ -98,6 +104,12 @@ impl<N: Network> BatchHeader<N> {
             // If the round is not zero and not one, then there should be at least one previous certificate ID.
             _ => ensure!(!previous_certificate_ids.is_empty(), "Invalid round number, must have certificates"),
         }
+
+        // Ensure that the number of transmissions is within bounds.
+        ensure!(transmission_ids.len() <= Self::MAX_TRANSMISSIONS, "Invalid number of transmission ids");
+        // Ensure that the number of previous certificate IDs is within bounds.
+        ensure!(previous_certificate_ids.len() <= Self::MAX_CERTIFICATES, "Invalid number of previous certificate IDs");
+
         // Compute the batch ID.
         let batch_id = Self::compute_batch_id(author, round, timestamp, &transmission_ids, &previous_certificate_ids)?;
         // Verify the signature.
