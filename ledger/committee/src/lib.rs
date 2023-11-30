@@ -416,5 +416,9 @@ mod tests {
             Committee::<CurrentNetwork>::MAX_COMMITTEE_SIZE as usize,
             ledger_narwhal_batch_header::BatchHeader::<CurrentNetwork>::MAX_CERTIFICATES
         );
+        assert_eq!(
+            Committee::<CurrentNetwork>::MAX_COMMITTEE_SIZE as usize,
+            ledger_narwhal_batch_certificate::BatchCertificate::<CurrentNetwork>::MAX_SIGNATURES
+        );
     }
 }
