@@ -31,6 +31,13 @@ impl<N: Network> FromBytes for BatchCertificate<N> {
             let batch_header = BatchHeader::read_le(&mut reader)?;
             // Read the number of signatures.
             let num_signatures = u32::read_le(&mut reader)?;
+            // Ensure the number of signatures is within bounds.
+            if num_signatures as usize > Self::MAX_SIGNATURES {
+                return Err(error(format!(
+                    "Number of signatures ({num_signatures}) exceeds the maximum ({})",
+                    Self::MAX_SIGNATURES
+                )));
+            }
             // Read the signatures.
             let mut signatures = IndexMap::with_capacity(num_signatures as usize);
             for _ in 0..num_signatures {
@@ -48,6 +55,13 @@ impl<N: Network> FromBytes for BatchCertificate<N> {
             let batch_header = BatchHeader::read_le(&mut reader)?;
             // Read the number of signatures.
             let num_signatures = u16::read_le(&mut reader)?;
+            // Ensure the number of signatures is within bounds.
+            if num_signatures as usize > Self::MAX_SIGNATURES {
+                return Err(error(format!(
+                    "Number of signatures ({num_signatures}) exceeds the maximum ({})",
+                    Self::MAX_SIGNATURES
+                )));
+            }
             // Read the signatures.
             let mut signatures = IndexSet::with_capacity(num_signatures as usize);
             for _ in 0..num_signatures {
