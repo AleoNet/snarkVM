@@ -344,14 +344,23 @@ pub mod test_helpers {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ledger_narwhal_batch_header::BatchHeader;
 
     type CurrentNetwork = console::network::Testnet3;
 
     #[test]
-    fn test_max_transactions() {
-        assert_eq!(
-            Transactions::<CurrentNetwork>::MAX_TRANSACTIONS,
-            ledger_narwhal_batch_header::BatchHeader::<CurrentNetwork>::MAX_TRANSACTIONS
+    fn test_max_transmissions() {
+        // Determine the maximum number of transmissions in a block.
+        let max_transmissions_per_block = BatchHeader::<CurrentNetwork>::MAX_TRANSMISSIONS_PER_BATCH
+            * usize::try_from(BatchHeader::<CurrentNetwork>::MAX_GC_ROUNDS).unwrap()
+            * BatchHeader::<CurrentNetwork>::MAX_CERTIFICATES as usize;
+
+        // Note: The maximum number of *transmissions* in a block cannot exceed the maximum number of *transactions* in a block.
+        // If you intended to change the number of 'MAX_TRANSACTIONS', note that this will break the inclusion proof,
+        // and you will need to migrate all users to a new circuit for the inclusion proof.
+        assert!(
+            max_transmissions_per_block <= Transactions::<CurrentNetwork>::MAX_TRANSACTIONS,
+            "The maximum number of transmissions in a block is too large"
         );
     }
 }

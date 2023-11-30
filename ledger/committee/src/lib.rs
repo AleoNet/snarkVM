@@ -29,6 +29,7 @@ use console::{
 };
 
 use indexmap::IndexMap;
+use ledger_narwhal_batch_header::BatchHeader;
 use std::collections::HashSet;
 
 /// The minimum amount of stake required for a validator to bond.
@@ -48,7 +49,7 @@ pub struct Committee<N: Network> {
 
 impl<N: Network> Committee<N> {
     /// The maximum number of members that may be in a committee.
-    pub const MAX_COMMITTEE_SIZE: u16 = 200;
+    pub const MAX_COMMITTEE_SIZE: u16 = BatchHeader::<N>::MAX_CERTIFICATES;
 
     /// Initializes a new `Committee` instance.
     pub fn new_genesis(members: IndexMap<Address<N>, (u64, bool)>) -> Result<Self> {
@@ -451,9 +452,6 @@ mod tests {
 
     #[test]
     fn test_maximum_committee_size() {
-        assert_eq!(
-            Committee::<CurrentNetwork>::MAX_COMMITTEE_SIZE as usize,
-            ledger_narwhal_batch_header::BatchHeader::<CurrentNetwork>::MAX_CERTIFICATES
-        );
+        assert_eq!(Committee::<CurrentNetwork>::MAX_COMMITTEE_SIZE, BatchHeader::<CurrentNetwork>::MAX_CERTIFICATES);
     }
 }
