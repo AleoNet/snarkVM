@@ -20,6 +20,7 @@ mod serialize;
 mod string;
 
 use console::{account::Address, prelude::*, program::SUBDAG_CERTIFICATES_DEPTH, types::Field};
+use ledger_committee::Committee;
 use narwhal_batch_certificate::BatchCertificate;
 use narwhal_batch_header::BatchHeader;
 use narwhal_transmission_id::TransmissionID;
@@ -141,20 +142,42 @@ impl<N: Network> Subdag<N> {
         self.values().flatten().flat_map(BatchCertificate::transmission_ids)
     }
 
-    /// Returns the timestamp of the anchor round, defined as the median timestamp of the subdag.
-    pub fn timestamp(&self) -> i64 {
+    /// Returns the timestamp of the anchor round, defined as the weighted median timestamp of the subdag.
+    pub fn timestamp(&self, committee: &Committee<N>) -> i64 {
         match self.leader_certificate() {
             BatchCertificate::V1 { .. } => self.leader_certificate().timestamp(),
             BatchCertificate::V2 { .. } => {
-                // Retrieve the timestamps of the certificates.
-                let mut timestamps = self.values().flatten().map(BatchCertificate::timestamp).collect::<Vec<_>>();
+                // Retrieve the timestamps and stakes of the certificates.
+                let mut timestamps = self
+                    .values()
+                    .flatten()
+                    .map(|certificate| (certificate.timestamp(), committee.get_stake(certificate.author())))
+                    .collect::<Vec<_>>();
+
                 // Sort the timestamps.
                 #[cfg(not(feature = "serial"))]
-                timestamps.par_sort_unstable();
+                timestamps.par_sort_unstable_by_key(|(timestamp, _)| *timestamp);
                 #[cfg(feature = "serial")]
-                timestamps.sort_unstable();
-                // Return the median timestamp.
-                timestamps[timestamps.len() / 2]
+                timestamps.sort_unstable_by_key(|(timestamp, _)| *timestamp);
+
+                // Calculate the total stake of the authors.
+                let total_stake = timestamps.iter().map(|(_, stake)| *stake).sum::<u64>();
+
+                // Initialize the current timestamp and accumulated stake.
+                let mut current_timestamp: i64 = 0;
+                let mut accumulated_stake: u64 = 0;
+
+                // Find the weighted median timestamp.
+                for (timestamp, stake) in timestamps.iter() {
+                    accumulated_stake = accumulated_stake.saturating_add(*stake);
+                    current_timestamp = *timestamp;
+                    if accumulated_stake >= total_stake.saturating_div(2) {
+                        break;
+                    }
+                }
+
+                // Return the weighted median timestamp
+                current_timestamp
             }
         }
     }
