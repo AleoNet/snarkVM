@@ -1,7 +1,7 @@
 version: 2.1
 
 orbs:
-  windows: circleci/windows@2.4.0
+  windows: circleci/windows@3.0.0
 
 commands:
   check_windows:
