@@ -410,7 +410,7 @@ impl<N: Network> Block<N> {
             bail!("Found a duplicate transition in block {height}");
         }
 
-        // Ensure there are not duplicate program IDs.
+        // Ensure there are no duplicate program IDs.
         if has_duplicates(
             self.transactions().iter().filter_map(|tx| tx.transaction().deployment().map(|d| d.program_id())),
         ) {
