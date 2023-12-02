@@ -62,7 +62,7 @@ impl CircuitId {
 ///     public input
 /// 2) `{a,b,c}` are the matrices defining the R1CS instance
 /// 3) `{a,b,c}_arith` are structs containing information about the arithmetized matrices
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct Circuit<F: PrimeField, SM: SNARKMode> {
     /// Information about the indexed circuit.
     pub index_info: CircuitInfo,
