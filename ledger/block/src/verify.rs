@@ -412,10 +412,7 @@ impl<N: Network> Block<N> {
 
         // Ensure there are not duplicate program IDs.
         if has_duplicates(
-            self.transactions()
-                .iter()
-                .filter_map(|tx| tx.transaction().deployment())
-                .map(|deployment| deployment.program_id()),
+            self.transactions().iter().filter_map(|tx| tx.transaction().deployment().map(|d| d.program_id())),
         ) {
             bail!("Found a duplicate program ID in block {height}");
         }
