@@ -159,7 +159,7 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
         Ok((ck, vk))
     }
 
-    /// Outputs a commitments to `polynomials`.
+    /// Outputs commitments to `polynomials`.
     ///
     /// If `polynomials[i].is_hiding()`, then the `i`-th commitment is hiding
     /// up to `polynomials.hiding_bound()` queries.
