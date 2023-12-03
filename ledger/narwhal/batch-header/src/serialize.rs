@@ -28,7 +28,7 @@ impl<N: Network> Serialize for BatchHeader<N> {
                 header.serialize_field("timestamp", &self.timestamp)?;
                 header.serialize_field("transmission_ids", &self.transmission_ids)?;
                 header.serialize_field("previous_certificate_ids", &self.previous_certificate_ids)?;
-                header.serialize_field("last_committed_certificate_ids", &self.last_committed_certificate_ids)?;
+                header.serialize_field("last_election_certificate_ids", &self.last_election_certificate_ids)?;
                 header.serialize_field("signature", &self.signature)?;
                 header.end()
             }
@@ -54,10 +54,10 @@ impl<'de, N: Network> Deserialize<'de> for BatchHeader<N> {
                     return Err(error("Invalid batch header version")).map_err(de::Error::custom);
                 }
                 // TODO (howardwu): For mainnet - Always take from the 'header', no need to use this match case anymore.
-                // If the version is not 1, then parse the last committed certificate IDs.
-                let last_committed_certificate_ids = match version {
+                // If the version is not 1, then parse the last election certificate IDs.
+                let last_election_certificate_ids = match version {
                     1 => IndexSet::new(),
-                    2 => DeserializeExt::take_from_value::<D>(&mut header, "last_committed_certificate_ids")?,
+                    2 => DeserializeExt::take_from_value::<D>(&mut header, "last_election_certificate_ids")?,
                     _ => unreachable!(),
                 };
 
@@ -69,7 +69,7 @@ impl<'de, N: Network> Deserialize<'de> for BatchHeader<N> {
                     DeserializeExt::take_from_value::<D>(&mut header, "timestamp")?,
                     DeserializeExt::take_from_value::<D>(&mut header, "transmission_ids")?,
                     DeserializeExt::take_from_value::<D>(&mut header, "previous_certificate_ids")?,
-                    last_committed_certificate_ids,
+                    last_election_certificate_ids,
                     DeserializeExt::take_from_value::<D>(&mut header, "signature")?,
                 )
                 .map_err(de::Error::custom)?;

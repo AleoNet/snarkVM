@@ -67,25 +67,25 @@ impl<N: Network> FromBytes for BatchHeader<N> {
 
         // TODO (howardwu): For mainnet - Change this to always encode the number of committed certificate IDs.
         //  We currently only encode the size and certificates only in the new version, for backwards compatibility.
-        let num_last_committed_certificate_ids = if version == 2 {
-            // Read the number of last committed certificate IDs.
+        let num_last_election_certificate_ids = if version == 2 {
+            // Read the number of last election certificate IDs.
             u16::read_le(&mut reader)?
         } else {
-            // Set the number of last committed certificate IDs to zero.
+            // Set the number of last election certificate IDs to zero.
             0
         };
-        // Ensure the number of last committed certificate IDs is within bounds.
-        if num_last_committed_certificate_ids as usize > Self::MAX_CERTIFICATES {
+        // Ensure the number of last election certificate IDs is within bounds.
+        if num_last_election_certificate_ids as usize > Self::MAX_CERTIFICATES {
             return Err(error(format!(
-                "Number of last committed certificate IDs ({num_last_committed_certificate_ids}) exceeds the maximum ({})",
+                "Number of last election certificate IDs ({num_last_election_certificate_ids}) exceeds the maximum ({})",
                 Self::MAX_CERTIFICATES
             )));
         }
-        // Read the last committed certificate IDs.
-        let mut last_committed_certificate_ids = IndexSet::new();
-        for _ in 0..num_last_committed_certificate_ids {
+        // Read the last election certificate IDs.
+        let mut last_election_certificate_ids = IndexSet::new();
+        for _ in 0..num_last_election_certificate_ids {
             // Read the certificate ID.
-            last_committed_certificate_ids.insert(Field::read_le(&mut reader)?);
+            last_election_certificate_ids.insert(Field::read_le(&mut reader)?);
         }
 
         // Read the signature.
@@ -99,7 +99,7 @@ impl<N: Network> FromBytes for BatchHeader<N> {
             timestamp,
             transmission_ids,
             previous_certificate_ids,
-            last_committed_certificate_ids,
+            last_election_certificate_ids,
             signature,
         )
         .map_err(|e| error(e.to_string()))?;
@@ -143,12 +143,12 @@ impl<N: Network> ToBytes for BatchHeader<N> {
         // TODO (howardwu): For mainnet - Change this to always encode the number of committed certificate IDs.
         //  We currently only encode the size and certificates only in the new version, for backwards compatibility.
         if self.version != 1 {
-            // Write the number of last committed certificate IDs.
-            u16::try_from(self.last_committed_certificate_ids.len())
+            // Write the number of last election certificate IDs.
+            u16::try_from(self.last_election_certificate_ids.len())
                 .map_err(|e| error(e.to_string()))?
                 .write_le(&mut writer)?;
-            // Write the last committed certificate IDs.
-            for certificate_id in &self.last_committed_certificate_ids {
+            // Write the last election certificate IDs.
+            for certificate_id in &self.last_election_certificate_ids {
                 // Write the certificate ID.
                 certificate_id.write_le(&mut writer)?;
             }
