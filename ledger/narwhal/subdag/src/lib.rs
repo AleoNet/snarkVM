@@ -171,6 +171,11 @@ impl<N: Network> Subdag<N> {
         }
     }
 
+    /// Returns the election certificate IDs.
+    pub fn election_certificate_ids(&self) -> &IndexSet<Field<N>> {
+        &self.election_certificate_ids
+    }
+
     /// Returns the subdag root of the transactions.
     pub fn to_subdag_root(&self) -> Result<Field<N>> {
         // Prepare the leaves.
