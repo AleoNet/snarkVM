@@ -67,7 +67,6 @@ impl<N: Network> BatchHeader<N> {
 impl<N: Network> BatchHeader<N> {
     /// Initializes a new batch header.
     pub fn new<R: Rng + CryptoRng>(
-        version: u8,
         private_key: &PrivateKey<N>,
         round: u64,
         timestamp: i64,
@@ -76,6 +75,11 @@ impl<N: Network> BatchHeader<N> {
         last_committed_certificate_ids: IndexSet<Field<N>>,
         rng: &mut R,
     ) -> Result<Self> {
+        // Set the version.
+        // TODO (howardwu): For mainnet - Remove this version from the struct, we only use it here for backwards compatibility.
+        //  NOTE: You must keep the version encoding in the byte serialization, just remove it from the struct in memory.
+        let version = 2u8;
+
         match round {
             0 | 1 => {
                 // If the round is zero or one, then there should be no previous certificate IDs.
@@ -263,7 +267,6 @@ pub mod test_helpers {
             (0..5).map(|_| Field::<CurrentNetwork>::rand(rng)).collect::<IndexSet<_>>();
         // Return the batch header.
         BatchHeader::new(
-            2, // version
             &private_key,
             round,
             timestamp,
