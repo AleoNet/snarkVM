@@ -48,7 +48,7 @@ impl PartialOrd for BucketPosition {
     }
 }
 
-/// Returns a batch size of sufficient size to amortise the cost of an inversion,
+/// Returns a batch size of sufficient size to amortize the cost of an inversion,
 /// while attempting to reduce strain to the CPU cache.
 #[inline]
 const fn batch_size(msm_size: usize) -> usize {
@@ -57,7 +57,7 @@ const fn batch_size(msm_size: usize) -> usize {
     // L1 and L2 cache sizes and dividing them by the size of group elements (i.e. 96 bytes).
     //
     // As the algorithm itself requires caching additional values beyond the group elements,
-    // the ideal batch size is less than expectations, to accommodate those values.
+    // the ideal batch size is less than expected, to accommodate those values.
     // In general, it was found that undershooting is better than overshooting this heuristic.
     if cfg!(target_arch = "x86_64") && msm_size < 500_000 {
         // Assumes an L1 cache size of 32KiB. Note that larger cache sizes
