@@ -47,7 +47,7 @@ pub struct BatchHeader<N: Network> {
     transmission_ids: IndexSet<TransmissionID<N>>,
     /// The batch certificate IDs of the previous round.
     previous_certificate_ids: IndexSet<Field<N>>,
-    /// The last committed batch certificate IDs.
+    /// The last election batch certificate IDs.
     last_election_certificate_ids: IndexSet<Field<N>>,
     /// The signature of the batch ID from the creator.
     signature: Signature<N>,
@@ -199,7 +199,7 @@ impl<N: Network> BatchHeader<N> {
         &self.previous_certificate_ids
     }
 
-    /// Returns the last committed batch certificate IDs.
+    /// Returns the last election batch certificate IDs.
     pub const fn last_election_certificate_ids(&self) -> &IndexSet<Field<N>> {
         &self.last_election_certificate_ids
     }
