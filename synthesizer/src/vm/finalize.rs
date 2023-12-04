@@ -214,6 +214,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             let mut aborted = Vec::new();
             // Initialize a counter for the confirmed transaction index.
             let mut counter = 0u32;
+            // Initialize a list of spent input IDs.
+            let mut input_ids: IndexSet<Field<N>> = IndexSet::new();
 
             // Finalize the transactions.
             'outer: for transaction in transactions {
@@ -224,6 +226,19 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     aborted.push((transaction.clone(), "Exceeds block transaction limit".to_string()));
                     // Continue to the next transaction.
                     continue 'outer;
+                }
+
+                // TODO (raychu86): Consider using InputStore with contains_input_id_speculative instead.
+                //  This can be added to the `finalize_execution` and `finalize_fee` methods to allow for
+                //  a possible rejected transaction instead of always aborting.
+                // Ensure that the transaction is not double-spending an input.
+                for input_id in transaction.input_ids() {
+                    if input_ids.contains(input_id) {
+                        // Store the aborted transaction.
+                        aborted.push((transaction.clone(), format!("Double-spending input {input_id}")));
+                        // Continue to the next transaction.
+                        continue 'outer;
+                    }
                 }
 
                 // Process the transaction in an isolated atomic batch.
@@ -314,6 +329,9 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 match outcome {
                     // If the transaction succeeded, store it and continue to the next transaction.
                     Ok(confirmed_transaction) => {
+                        // Add the input IDs to the set of spent input IDs.
+                        input_ids.extend(confirmed_transaction.transaction().input_ids());
+                        // Store the confirmed transaction.
                         confirmed.push(confirmed_transaction);
                         // Increment the transaction index counter.
                         counter = counter.saturating_add(1);
