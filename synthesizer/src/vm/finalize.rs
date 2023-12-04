@@ -233,7 +233,10 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 //  a possible rejected transaction instead of always aborting.
                 // Ensure that the transaction is not double-spending an input.
                 for input_id in transaction.input_ids() {
-                    if input_ids.contains(input_id) {
+                    // If the input ID is already spent in this block or previous blocks, abort the transaction.
+                    if input_ids.contains(input_id)
+                        || self.transition_store().contains_input_id(input_id).map_err(|e| e.to_string())?
+                    {
                         // Store the aborted transaction.
                         aborted.push((transaction.clone(), format!("Double-spending input {input_id}")));
                         // Continue to the next transaction.
