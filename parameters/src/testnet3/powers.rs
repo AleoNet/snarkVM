@@ -499,11 +499,7 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
             // Deserialize the group elements.
             let additional_powers = Vec::deserialize_uncompressed_unchecked(&*additional_bytes)?;
 
-            if final_powers.is_empty() {
-                final_powers = additional_powers;
-            } else {
-                final_powers.extend(additional_powers);
-            }
+            final_powers.extend(additional_powers.iter());
         }
         final_powers.extend(self.shifted_powers_of_beta_g.iter());
         self.shifted_powers_of_beta_g = final_powers;
