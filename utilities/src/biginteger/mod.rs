@@ -75,10 +75,10 @@ pub trait BigInteger:
     /// Returns true iff this number is odd.
     fn is_odd(&self) -> bool;
 
-    /// Returns true iff this number is even.
+    /// Returns true if this number is even.
     fn is_even(&self) -> bool;
 
-    /// Returns true iff this number is zero.
+    /// Returns true if this number is zero.
     fn is_zero(&self) -> bool;
 
     /// Compute the number of bits needed to encode this number. Always a
