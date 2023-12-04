@@ -190,9 +190,23 @@ impl<N: Network> StackEvaluate<N> for Stack<N> {
         }
         lap!(timer, "Evaluate the instructions");
 
+        let response = self.evaluate_function_response::<A>(&request, &function, &mut registers);
+
+        finish!(timer);
+
+        response
+    }
+
+    /// Evaluates a program function's outputs on the given inputs.
+    #[inline]
+    fn evaluate_function_response<A: circuit::Aleo<Network = N>>(
+        &self,
+        request: &Request<N>,
+        function: &Function<N>,
+        registers: &mut (impl RegistersCall<N> + RegistersSigner<N> + RegistersLoad<N> + RegistersStore<N>),
+    ) -> Result<Response<N>> {
         // Retrieve the output operands.
         let output_operands = &function.outputs().iter().map(|output| output.operand()).collect::<Vec<_>>();
-        lap!(timer, "Retrieve the output operands");
 
         // Load the outputs.
         let outputs = output_operands
@@ -216,7 +230,6 @@ impl<N: Network> StackEvaluate<N> for Stack<N> {
                 }
             })
             .collect::<Result<Vec<_>>>()?;
-        lap!(timer, "Load the outputs");
 
         // Map the output operands to registers.
         let output_registers = output_operands
@@ -226,7 +239,6 @@ impl<N: Network> StackEvaluate<N> for Stack<N> {
                 _ => None,
             })
             .collect::<Vec<_>>();
-        lap!(timer, "Loaded the output registers");
 
         // Compute the response.
         let response = Response::new(
@@ -240,7 +252,6 @@ impl<N: Network> StackEvaluate<N> for Stack<N> {
             &function.output_types(),
             &output_registers,
         );
-        finish!(timer);
 
         response
     }

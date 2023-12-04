@@ -17,9 +17,10 @@ use console::{
     account::Address,
     network::Network,
     prelude::{CryptoRng, Result, Rng},
-    program::{Identifier, ProgramID, Response, Value},
+    program::{Identifier, ProgramID, Request, Response, Value},
     types::Field,
 };
+use synthesizer_program::{Function, RegistersLoad, RegistersSigner, RegistersStore};
 
 pub trait StackEvaluate<N: Network>: Clone {
     /// Evaluates a program closure on the given inputs.
@@ -44,6 +45,14 @@ pub trait StackEvaluate<N: Network>: Clone {
         &self,
         call_stack: CallStack<N>,
         caller: Option<ProgramID<N>>,
+    ) -> Result<Response<N>>;
+
+    /// Computes a program function's response on the given inputs.
+    fn evaluate_function_response<A: circuit::Aleo<Network = N>>(
+        &self,
+        request: &Request<N>,
+        function: &Function<N>,
+        registers: &mut (impl RegistersCall<N> + RegistersSigner<N> + RegistersLoad<N> + RegistersStore<N>),
     ) -> Result<Response<N>>;
 }
 

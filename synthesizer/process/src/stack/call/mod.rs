@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::{CallStack, Registers, RegistersCall, StackEvaluate, StackExecute};
+use crate::{CallStack, Registers, RegistersCall, StackEvaluate, StackExecute, StackProgramTypes};
 use aleo_std::prelude::{finish, lap, timer};
 use console::{network::prelude::*, program::Request};
 use synthesizer_program::{
@@ -39,7 +39,7 @@ pub trait CallTrait<N: Network> {
     /// Executes the instruction.
     fn execute<A: circuit::Aleo<Network = N>, R: CryptoRng + Rng>(
         &self,
-        stack: &(impl StackEvaluate<N> + StackExecute<N> + StackMatches<N> + StackProgram<N>),
+        stack: &(impl StackEvaluate<N> + StackExecute<N> + StackMatches<N> + StackProgram<N> + StackProgramTypes<N>),
         registers: &mut (
                  impl RegistersCall<N>
                  + RegistersSignerCircuit<N, A>
@@ -132,7 +132,7 @@ impl<N: Network> CallTrait<N> for Call<N> {
     #[inline]
     fn execute<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
         &self,
-        stack: &(impl StackEvaluate<N> + StackExecute<N> + StackMatches<N> + StackProgram<N>),
+        stack: &(impl StackEvaluate<N> + StackExecute<N> + StackMatches<N> + StackProgram<N> + StackProgramTypes<N>),
         registers: &mut (
                  impl RegistersCall<N>
                  + RegistersSignerCircuit<N, A>
@@ -241,7 +241,7 @@ impl<N: Network> CallTrait<N> for Call<N> {
                         // Return the request and response.
                         (request, response)
                     }
-                    CallStack::CheckDeployment(_, private_key, ..) | CallStack::PackageRun(_, private_key, ..) => {
+                    CallStack::PackageRun(_, private_key, ..) => {
                         // Compute the request.
                         let request = Request::sign(
                             &private_key,
@@ -258,7 +258,45 @@ impl<N: Network> CallTrait<N> for Call<N> {
                         call_stack.push(request.clone())?;
 
                         // Execute the request.
-                        let response = substack.execute_function::<A, R>(call_stack, console_caller, rng)?;
+                        let response = substack.evaluate_function::<A>(call_stack, console_caller)?;
+
+                        // Return the request and response.
+                        (request, response)
+                    }
+                    CallStack::CheckDeployment(_, private_key, ..) => {
+                        // Compute the request.
+                        let request = Request::sign(
+                            &private_key,
+                            *substack.program_id(),
+                            *function.name(),
+                            inputs.iter(),
+                            &function.input_types(),
+                            rng,
+                        )?;
+
+                        // Retrieve the call stack.
+                        let mut call_stack = registers.call_stack();
+                        // Push the request onto the call stack.
+                        call_stack.push(request.clone())?;
+
+                        // Initialize registers for the callee
+                        let mut registers_callee =
+                            Registers::<N, A>::new(call_stack, substack.get_register_types(function.name())?.clone());
+                        // Set the transition signer.
+                        registers_callee.set_signer(*request.signer());
+                        // Set the transition caller.
+                        let console_caller = match console_caller {
+                            // If a caller is provided, then this is an evaluation of a child function.
+                            Some(caller) => caller.to_address()?,
+                            // If no caller is provided, then this is an evaluation of a top-level function.
+                            None => *request.signer(),
+                        };
+                        registers_callee.set_caller(console_caller);
+
+                        // Evaluate the function response.
+                        let response =
+                            substack.evaluate_function_response::<A>(&request, &function, &mut registers_callee)?;
+
                         // Return the request and response.
                         (request, response)
                     }
