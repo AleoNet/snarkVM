@@ -22,7 +22,6 @@ use crate::{
     RegistersCall,
     StackEvaluate,
     StackExecute,
-    StackProgramTypes,
 };
 use aleo_std::prelude::{finish, lap, timer};
 use console::{network::prelude::*, program::Request};
@@ -51,7 +50,7 @@ pub trait CallTrait<N: Network> {
     /// Executes the instruction.
     fn execute<A: circuit::Aleo<Network = N>, R: CryptoRng + Rng>(
         &self,
-        stack: &(impl StackEvaluate<N> + StackExecute<N> + StackMatches<N> + StackProgram<N> + StackProgramTypes<N>),
+        stack: &(impl StackEvaluate<N> + StackExecute<N> + StackMatches<N> + StackProgram<N>),
         registers: &mut (
                  impl RegistersCall<N>
                  + RegistersSignerCircuit<N, A>
@@ -144,7 +143,7 @@ impl<N: Network> CallTrait<N> for Call<N> {
     #[inline]
     fn execute<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
         &self,
-        stack: &(impl StackEvaluate<N> + StackExecute<N> + StackMatches<N> + StackProgram<N> + StackProgramTypes<N>),
+        stack: &(impl StackEvaluate<N> + StackExecute<N> + StackMatches<N> + StackProgram<N>),
         registers: &mut (
                  impl RegistersCall<N>
                  + RegistersSignerCircuit<N, A>
