@@ -12,12 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::{CallStack, Registers, RegistersCall, StackEvaluate, StackExecute};
+use crate::{
+    stack::{
+        Address,
+        ValueType::{ExternalRecord, Record},
+    },
+    CallStack,
+    Registers,
+    RegistersCall,
+    StackEvaluate,
+    StackExecute,
+    StackProgramTypes,
+};
 use aleo_std::prelude::{finish, lap, timer};
 use console::{network::prelude::*, program::Request};
 use synthesizer_program::{
     Call,
     CallOperator,
+    Operand,
     RegistersLoad,
     RegistersLoadCircuit,
     RegistersSigner,
@@ -39,7 +51,7 @@ pub trait CallTrait<N: Network> {
     /// Executes the instruction.
     fn execute<A: circuit::Aleo<Network = N>, R: CryptoRng + Rng>(
         &self,
-        stack: &(impl StackEvaluate<N> + StackExecute<N> + StackMatches<N> + StackProgram<N>),
+        stack: &(impl StackEvaluate<N> + StackExecute<N> + StackMatches<N> + StackProgram<N> + StackProgramTypes<N>),
         registers: &mut (
                  impl RegistersCall<N>
                  + RegistersSignerCircuit<N, A>
@@ -132,7 +144,7 @@ impl<N: Network> CallTrait<N> for Call<N> {
     #[inline]
     fn execute<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
         &self,
-        stack: &(impl StackEvaluate<N> + StackExecute<N> + StackMatches<N> + StackProgram<N>),
+        stack: &(impl StackEvaluate<N> + StackExecute<N> + StackMatches<N> + StackProgram<N> + StackProgramTypes<N>),
         registers: &mut (
                  impl RegistersCall<N>
                  + RegistersSignerCircuit<N, A>
@@ -241,7 +253,7 @@ impl<N: Network> CallTrait<N> for Call<N> {
                         // Return the request and response.
                         (request, response)
                     }
-                    CallStack::CheckDeployment(_, private_key, ..) | CallStack::PackageRun(_, private_key, ..) => {
+                    CallStack::PackageRun(_, private_key, ..) => {
                         // Compute the request.
                         let request = Request::sign(
                             &private_key,
@@ -258,7 +270,65 @@ impl<N: Network> CallTrait<N> for Call<N> {
                         call_stack.push(request.clone())?;
 
                         // Execute the request.
-                        let response = substack.execute_function::<A, R>(call_stack, console_caller, rng)?;
+                        let response = substack.evaluate_function::<A>(call_stack, console_caller)?;
+
+                        // Return the request and response.
+                        (request, response)
+                    }
+                    CallStack::CheckDeployment(_, private_key, ..) => {
+                        // Compute the request.
+                        let request = Request::sign(
+                            &private_key,
+                            *substack.program_id(),
+                            *function.name(),
+                            inputs.iter(),
+                            &function.input_types(),
+                            rng,
+                        )?;
+
+                        // Compute the address.
+                        let address = Address::try_from(&private_key)?;
+                        // Sample dummy outputs
+                        let outputs = function
+                            .outputs()
+                            .iter()
+                            .map(|output| match output.value_type() {
+                                ExternalRecord(locator) => {
+                                    // Retrieve the external stack.
+                                    let stack = substack.get_external_stack(locator.program_id())?;
+                                    // Sample the input.
+                                    stack.sample_value(&address, &Record(*locator.resource()), rng)
+                                }
+                                _ => substack.sample_value(&address, output.value_type(), rng),
+                            })
+                            .collect::<Result<Vec<_>>>()?;
+
+                        // Retrieve the output operands.
+                        let output_operands =
+                            &function.outputs().iter().map(|output| output.operand()).collect::<Vec<_>>();
+
+                        // Map the output operands to registers.
+                        let output_registers = output_operands
+                            .iter()
+                            .map(|operand| match operand {
+                                Operand::Register(register) => Some(register.clone()),
+                                _ => None,
+                            })
+                            .collect::<Vec<_>>();
+
+                        // Compute the response.
+                        let response = crate::Response::new(
+                            request.network_id(),
+                            substack.program().id(),
+                            function.name(),
+                            request.inputs().len(),
+                            request.tvk(),
+                            request.tcm(),
+                            outputs,
+                            &function.output_types(),
+                            &output_registers,
+                        )?;
+
                         // Return the request and response.
                         (request, response)
                     }
