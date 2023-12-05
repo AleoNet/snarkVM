@@ -30,7 +30,7 @@ impl snarkvm_algorithms::r1cs::ConstraintSynthesizer<Fq> for Circuit {
         &self,
         cs: &mut CS,
     ) -> Result<(), snarkvm_algorithms::r1cs::SynthesisError> {
-        crate::circuit::CIRCUIT.with(|circuit| (*(**circuit).borrow()).generate_constraints(cs))
+        crate::circuit::CIRCUIT.with(|circuit| circuit.borrow().generate_constraints(cs))
     }
 }
 
