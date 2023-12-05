@@ -20,6 +20,7 @@ impl<N: Network> FromBytes for BatchHeader<N> {
         // Read the version.
         let version = u8::read_le(&mut reader)?;
         // Ensure the version is valid.
+        // TODO (howardwu): For mainnet - Change the version back to 1.
         if version != 1 && version != 2 {
             return Err(error("Invalid batch header version"));
         }

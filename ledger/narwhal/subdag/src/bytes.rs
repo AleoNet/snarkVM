@@ -20,6 +20,7 @@ impl<N: Network> FromBytes for Subdag<N> {
         // Read the version.
         let version = u8::read_le(&mut reader)?;
         // Ensure the version is valid.
+        // TODO (howardwu): For mainnet - Change the version back to 1.
         if version != 1 && version != 2 {
             return Err(error(format!("Invalid subdag version ({version})")));
         }
@@ -82,6 +83,7 @@ impl<N: Network> ToBytes for Subdag<N> {
     /// Writes the subdag to the buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Write the version.
+        // TODO (howardwu): For mainnet - Change the version back to 1.
         2u8.write_le(&mut writer)?;
         // Write the number of rounds.
         u32::try_from(self.subdag.len()).map_err(error)?.write_le(&mut writer)?;
