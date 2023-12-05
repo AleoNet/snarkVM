@@ -241,13 +241,12 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
                             }
                         }
                     })
-                    .collect::<Result<Vec<_>, _>>()?
-                    .into_iter()
-                    .fold((E::G1Projective::zero(), Randomness::empty()), |mut a, b| {
+                    .try_fold((E::G1Projective::zero(), Randomness::empty()), |mut a, b| {
+                        let b = b?;
                         a.0.add_assign_mixed(&b.0.0);
                         a.1 += (E::Fr::one(), &b.1);
-                        a
-                    });
+                        Ok::<_, PCError>(a)
+                    })?;
                 let comm = kzg10::KZGCommitment(comm.to_affine());
 
                 Ok((LabeledCommitment::new(label.to_string(), comm, degree_bound), rand))
