@@ -345,6 +345,45 @@ impl<T: CanonicalDeserialize + ToOwned + Sync + Send> CanonicalDeserialize for A
     }
 }
 
+impl<T: CanonicalSerialize + ToOwned> CanonicalSerialize for Arc<[T]> {
+    #[inline]
+    fn serialize_with_mode<W: Write>(&self, mut writer: W, compress: Compress) -> Result<(), SerializationError> {
+        self.as_ref().serialize_with_mode(&mut writer, compress)
+    }
+
+    #[inline]
+    fn serialized_size(&self, compress: Compress) -> usize {
+        self.as_ref().serialized_size(compress)
+    }
+}
+
+impl<T: Valid + Sync + Send> Valid for Arc<[T]> {
+    #[inline]
+    fn check(&self) -> Result<(), SerializationError> {
+        T::batch_check(self.as_ref().iter())
+    }
+
+    #[inline]
+
+    fn batch_check<'a>(batch: impl Iterator<Item = &'a Self> + Send) -> Result<(), SerializationError>
+    where
+        Self: 'a,
+    {
+        T::batch_check(batch.flat_map(|e| e.as_ref()))
+    }
+}
+
+impl<T: CanonicalDeserialize + ToOwned + Sync + Send> CanonicalDeserialize for Arc<[T]> {
+    #[inline]
+    fn deserialize_with_mode<R: Read>(
+        reader: R,
+        compress: Compress,
+        validate: Validate,
+    ) -> Result<Self, SerializationError> {
+        Ok(Vec::<T>::deserialize_with_mode(reader, compress, validate)?.into())
+    }
+}
+
 impl<'a, T: CanonicalSerialize + ToOwned> CanonicalSerialize for Cow<'a, T> {
     #[inline]
     fn serialize_with_mode<W: Write>(&self, mut writer: W, compress: Compress) -> Result<(), SerializationError> {
