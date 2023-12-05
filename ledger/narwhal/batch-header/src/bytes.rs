@@ -141,7 +141,7 @@ impl<N: Network> ToBytes for BatchHeader<N> {
             certificate_id.write_le(&mut writer)?;
         }
         // TODO (howardwu): For mainnet - Change this to always encode the number of committed certificate IDs.
-        //  We currently only encode the size and certificates only in the new version, for backwards compatibility.
+        //  We currently only encode the size and certificates in the new version, for backwards compatibility.
         if self.version != 1 {
             // Write the number of last election certificate IDs.
             u16::try_from(self.last_election_certificate_ids.len())
