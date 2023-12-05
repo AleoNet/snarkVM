@@ -79,6 +79,36 @@ fn sanity_check_subdag_with_dfs<N: Network>(subdag: &BTreeMap<u64, IndexSet<Batc
     &commit == subdag
 }
 
+/// Returns the weighted median timestamp of the given timestamps and stakes.
+fn weighted_median(timestamps_and_stake: Vec<(i64, u64)>) -> i64 {
+    let mut timestamps_and_stake = timestamps_and_stake;
+
+    // Sort the timestamps.
+    #[cfg(not(feature = "serial"))]
+    timestamps_and_stake.par_sort_unstable_by_key(|(timestamp, _)| *timestamp);
+    #[cfg(feature = "serial")]
+    timestamps_and_stake.sort_unstable_by_key(|(timestamp, _)| *timestamp);
+
+    // Calculate the total stake of the authors.
+    let total_stake = timestamps_and_stake.iter().map(|(_, stake)| *stake).sum::<u64>();
+
+    // Initialize the current timestamp and accumulated stake.
+    let mut current_timestamp: i64 = 0;
+    let mut accumulated_stake: u64 = 0;
+
+    // Find the weighted median timestamp.
+    for (timestamp, stake) in timestamps_and_stake.iter() {
+        accumulated_stake = accumulated_stake.saturating_add(*stake);
+        current_timestamp = *timestamp;
+        if accumulated_stake >= total_stake.saturating_div(2) {
+            break;
+        }
+    }
+
+    // Return the weighted median timestamp
+    current_timestamp
+}
+
 #[derive(Clone, PartialEq, Eq)]
 pub struct Subdag<N: Network> {
     /// The subdag of round certificates.
@@ -148,36 +178,14 @@ impl<N: Network> Subdag<N> {
             BatchCertificate::V1 { .. } => self.leader_certificate().timestamp(),
             BatchCertificate::V2 { .. } => {
                 // Retrieve the timestamps and stakes of the certificates.
-                let mut timestamps = self
+                let timestamps_and_stakes = self
                     .values()
                     .flatten()
                     .map(|certificate| (certificate.timestamp(), committee.get_stake(certificate.author())))
                     .collect::<Vec<_>>();
 
-                // Sort the timestamps.
-                #[cfg(not(feature = "serial"))]
-                timestamps.par_sort_unstable_by_key(|(timestamp, _)| *timestamp);
-                #[cfg(feature = "serial")]
-                timestamps.sort_unstable_by_key(|(timestamp, _)| *timestamp);
-
-                // Calculate the total stake of the authors.
-                let total_stake = timestamps.iter().map(|(_, stake)| *stake).sum::<u64>();
-
-                // Initialize the current timestamp and accumulated stake.
-                let mut current_timestamp: i64 = 0;
-                let mut accumulated_stake: u64 = 0;
-
-                // Find the weighted median timestamp.
-                for (timestamp, stake) in timestamps.iter() {
-                    accumulated_stake = accumulated_stake.saturating_add(*stake);
-                    current_timestamp = *timestamp;
-                    if accumulated_stake >= total_stake.saturating_div(2) {
-                        break;
-                    }
-                }
-
                 // Return the weighted median timestamp
-                current_timestamp
+                weighted_median(timestamps_and_stakes)
             }
         }
     }
@@ -284,6 +292,8 @@ mod tests {
 
     type CurrentNetwork = console::network::Testnet3;
 
+    const ITERATIONS: u64 = 100;
+
     #[test]
     fn test_max_certificates() {
         // Determine the maximum number of certificates in a block.
@@ -295,5 +305,60 @@ mod tests {
             max_certificates_per_block <= 2u32.checked_pow(SUBDAG_CERTIFICATES_DEPTH as u32).unwrap() as usize,
             "The maximum number of certificates in a block is too large"
         );
+    }
+
+    #[test]
+    fn test_weighted_median_simple() {
+        // Test a simple case with equal weights.
+        let data = vec![(1, 10), (2, 10), (3, 10)];
+        assert_eq!(weighted_median(data), 2);
+
+        // Test a case with a single element.
+        let data = vec![(5, 10)];
+        assert_eq!(weighted_median(data), 5);
+
+        // Test a case with an even number of elements
+        let data = vec![(1, 10), (2, 30), (3, 20), (4, 40)];
+        assert_eq!(weighted_median(data), 3);
+
+        // Test a case with a skewed weight.
+        let data = vec![(100, 100), (200, 10000), (300, 500)];
+        assert_eq!(weighted_median(data), 200);
+
+        // Test a case with a empty set.
+        assert_eq!(weighted_median(vec![]), 0);
+
+        // Test a case where weights of 0 do not affect the median.
+        let data = vec![(1, 10), (2, 0), (3, 0), (4, 0), (5, 20), (6, 0), (7, 10)];
+        assert_eq!(weighted_median(data), 5);
+    }
+
+    #[test]
+    fn test_weighted_median_range() {
+        let mut rng = TestRng::default();
+
+        for _ in 0..ITERATIONS {
+            let data: Vec<(i64, u64)> = (0..10).map(|_| (rng.gen_range(1..100), rng.gen_range(10..100))).collect();
+            let min = data.iter().min_by_key(|x| x.0).unwrap().0;
+            let max = data.iter().max_by_key(|x| x.0).unwrap().0;
+            let median = weighted_median(data);
+            assert!(median >= min && median <= max);
+        }
+    }
+
+    #[test]
+    fn test_weighted_median_scaled_weights() {
+        let mut rng = TestRng::default();
+
+        for _ in 0..ITERATIONS {
+            let data: Vec<(i64, u64)> = (0..10).map(|_| (rng.gen_range(1..100), rng.gen_range(10..100) * 2)).collect();
+            let scaled_data: Vec<(i64, u64)> = data.iter().map(|&(t, s)| (t, s * 10)).collect();
+
+            if weighted_median(data.clone()) != weighted_median(scaled_data.clone()) {
+                println!("data: {:?}", data);
+                println!("scaled_data: {:?}", scaled_data);
+            }
+            assert_eq!(weighted_median(data), weighted_median(scaled_data));
+        }
     }
 }
