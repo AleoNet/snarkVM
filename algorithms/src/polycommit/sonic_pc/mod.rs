@@ -95,7 +95,7 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
                     max_degree - lowest_shift_degree + 1
                 ));
 
-                let shifted_powers_of_beta_g = pp.powers_of_beta_g(lowest_shift_degree, pp.max_degree() + 1)?.to_vec();
+                let shifted_powers_of_beta_g = pp.powers_of_beta_g(lowest_shift_degree, pp.max_degree() + 1)?;
                 let mut shifted_powers_of_beta_times_gamma_g = BTreeMap::new();
                 // Also add degree 0.
                 for degree_bound in enforced_degree_bounds {
@@ -118,7 +118,7 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
             (None, None)
         };
 
-        let powers_of_beta_g = pp.powers_of_beta_g(0, supported_degree + 1)?.to_vec();
+        let powers_of_beta_g = pp.powers_of_beta_g(0, supported_degree + 1)?;
         let powers_of_beta_times_gamma_g = (0..=(supported_hiding_bound + 1))
             .map(|i| {
                 pp.powers_of_beta_times_gamma_g()
