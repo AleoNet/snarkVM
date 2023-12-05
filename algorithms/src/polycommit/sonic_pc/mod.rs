@@ -181,8 +181,6 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
     ) -> Result<(Vec<LabeledCommitment<Commitment<E>>>, Vec<Randomness<E>>), PCError> {
         let rng = &mut OptionalRng(rng);
         let commit_time = start_timer!(|| "Committing to polynomials");
-        let mut labeled_comms: Vec<LabeledCommitment<Commitment<E>>> = Vec::new();
-        let mut randomness: Vec<Randomness<E>> = Vec::new();
 
         let mut pool = snarkvm_utilities::ExecutionPool::<Result<_, _>>::new();
         for p in polynomials {
@@ -253,6 +251,9 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
             });
         }
         let results: Vec<Result<_, PCError>> = pool.execute_all();
+
+        let mut labeled_comms = Vec::with_capacity(results.len());
+        let mut randomness = Vec::with_capacity(results.len());
         for result in results {
             let (comm, rand) = result?;
             labeled_comms.push(comm);
