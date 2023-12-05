@@ -57,6 +57,8 @@ pub trait ProjectiveCurve:
     + ToBytes
     + iter::Sum
     + From<<Self as ProjectiveCurve>::Affine>
+    + Ord
+    + PartialOrd
 {
     type Affine: AffineCurve<Projective = Self, ScalarField = Self::ScalarField> + From<Self> + Into<Self>;
     type BaseField: Field;
@@ -253,7 +255,9 @@ pub trait PairingCurve: AffineCurve {
     fn pairing_with(&self, other: &Self::PairWith) -> Self::PairingResult;
 }
 
-pub trait ModelParameters: 'static + Copy + Clone + Debug + PartialEq + Eq + Hash + Send + Sync + Sized {
+pub trait ModelParameters:
+    'static + Copy + Clone + Debug + PartialEq + Eq + Hash + Send + Sync + Sized + Ord + PartialOrd
+{
     type BaseField: Field + SquareRootField;
     type ScalarField: PrimeField + SquareRootField + Into<<Self::ScalarField as PrimeField>::BigInteger>;
 }

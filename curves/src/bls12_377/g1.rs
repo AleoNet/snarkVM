@@ -29,7 +29,7 @@ use crate::{
 
 use std::ops::Neg;
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Ord, PartialOrd)]
 pub struct Bls12_377G1Parameters;
 
 impl ModelParameters for Bls12_377G1Parameters {

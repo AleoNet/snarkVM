@@ -32,7 +32,7 @@ use rand::{
 use rayon::prelude::*;
 use std::io::{Read, Result as IoResult, Write};
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialOrd, Ord)]
 pub struct Projective<P: Parameters> {
     pub x: P::BaseField,
     pub y: P::BaseField,

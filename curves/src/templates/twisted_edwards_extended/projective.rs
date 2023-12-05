@@ -30,7 +30,7 @@ use rand::{
 };
 use std::io::{Read, Result as IoResult, Write};
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Ord, PartialOrd)]
 pub struct Projective<P: Parameters> {
     pub x: P::BaseField,
     pub y: P::BaseField,

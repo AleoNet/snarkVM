@@ -76,6 +76,8 @@ pub trait Network:
     + for<'a> Deserialize<'a>
     + Send
     + Sync
+    + Ord
+    + PartialOrd
 {
     /// The network ID.
     const ID: u16;
