@@ -100,13 +100,12 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
                 // Also add degree 0.
                 for degree_bound in enforced_degree_bounds {
                     let shift_degree = max_degree - degree_bound;
-                    let mut powers_for_degree_bound = Vec::with_capacity((max_degree + 2).saturating_sub(shift_degree));
-                    for i in 0..=supported_hiding_bound + 1 {
-                        // We have an additional degree in `powers_of_beta_times_gamma_g` beyond `powers_of_beta_g`.
-                        if shift_degree + i < max_degree + 2 {
-                            powers_for_degree_bound.push(pp.powers_of_beta_times_gamma_g()[&(shift_degree + i)]);
-                        }
-                    }
+                    // We have an additional degree in `powers_of_beta_times_gamma_g` beyond `powers_of_beta_g`.
+                    let powers_for_degree_bound = pp
+                        .powers_of_beta_times_gamma_g()
+                        .range(shift_degree..max_degree.min(shift_degree + supported_hiding_bound) + 2)
+                        .map(|(_k, v)| *v)
+                        .collect();
                     shifted_powers_of_beta_times_gamma_g.insert(*degree_bound, powers_for_degree_bound);
                 }
 
