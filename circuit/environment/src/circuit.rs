@@ -51,7 +51,7 @@ impl Environment for Circuit {
     fn new_variable(mode: Mode, value: Self::BaseField) -> Variable<Self::BaseField> {
         IN_WITNESS.with(|in_witness| {
             // Ensure we are not in witness mode.
-            if !(*in_witness).get() {
+            if !in_witness.get() {
                 CIRCUIT.with(|circuit| match mode {
                     Mode::Constant => (*circuit).borrow_mut().new_constant(value),
                     Mode::Public => (*circuit).borrow_mut().new_public(value),
@@ -110,7 +110,7 @@ impl Environment for Circuit {
     {
         IN_WITNESS.with(|in_witness| {
             // Ensure we are not in witness mode.
-            if !(*in_witness).get() {
+            if !in_witness.get() {
                 CIRCUIT.with(|circuit| {
                     // Set the entire environment to the new scope.
                     let name = name.into();
@@ -144,7 +144,7 @@ impl Environment for Circuit {
     {
         IN_WITNESS.with(|in_witness| {
             // Ensure we are not in witness mode.
-            if !(*in_witness).get() {
+            if !in_witness.get() {
                 CIRCUIT.with(|circuit| {
                     let (a, b, c) = constraint();
                     let (a, b, c) = (a.into(), b.into(), c.into());
