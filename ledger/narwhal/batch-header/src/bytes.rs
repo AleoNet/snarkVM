@@ -66,7 +66,7 @@ impl<N: Network> FromBytes for BatchHeader<N> {
         }
 
         // TODO (howardwu): For mainnet - Change this to always encode the number of committed certificate IDs.
-        //  We currently only encode the size and certificates only in the new version, for backwards compatibility.
+        //  We currently only encode the size and certificates in the new version, for backwards compatibility.
         let num_last_election_certificate_ids = if version == 2 {
             // Read the number of last election certificate IDs.
             u16::read_le(&mut reader)?
