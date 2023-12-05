@@ -271,7 +271,7 @@ impl<E: PairingEngine> CommitterKey<E> {
 }
 
 /// `CommitterUnionKey` is a union of `CommitterKey`s, useful for multi-circuit batch proofs.
-#[derive(Clone, Debug, Hash, PartialEq, Eq)]
+#[derive(Debug)]
 pub struct CommitterUnionKey<'a, E: PairingEngine> {
     /// The key used to commit to polynomials.
     pub powers_of_beta_g: Option<&'a Vec<E::G1Affine>>,
