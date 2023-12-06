@@ -57,7 +57,7 @@ lazy_static::lazy_static! {
 }
 
 /// A vector of powers of beta G.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct PowersOfG<E: PairingEngine> {
     /// The powers of beta G.
     powers_of_beta_g: PowersOfBetaG<E>,
@@ -224,7 +224,7 @@ impl<E: PairingEngine> ToBytes for PowersOfG<E> {
     }
 }
 
-#[derive(Debug, Clone, CanonicalSerialize, CanonicalDeserialize)]
+#[derive(Debug, CanonicalSerialize, CanonicalDeserialize)]
 pub struct PowersOfBetaG<E: PairingEngine> {
     /// Group elements of form `[G, \beta * G, \beta^2 * G, ..., \beta^d G]`.
     powers_of_beta_g: Vec<E::G1Affine>,
