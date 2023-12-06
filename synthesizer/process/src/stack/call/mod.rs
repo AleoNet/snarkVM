@@ -257,8 +257,8 @@ impl<N: Network> CallTrait<N> for Call<N> {
                         // Push the request onto the call stack.
                         call_stack.push(request.clone())?;
 
-                        // Evaluate the request.
-                        let response = substack.evaluate_function::<A>(call_stack, console_caller)?;
+                        // Execute the request.
+                        let response = substack.execute_function::<A, R>(call_stack, console_caller, rng)?;
                         // Return the request and response.
                         (request, response)
                     }

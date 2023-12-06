@@ -41,7 +41,7 @@ impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> State<F, RATE, CAP
         self.capacity_state.iter().chain(self.rate_state.iter())
     }
 
-    /// Returns an mutable iterator over the state.
+    /// Returns a mutable iterator over the state.
     pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut F> {
         self.capacity_state.iter_mut().chain(self.rate_state.iter_mut())
     }
