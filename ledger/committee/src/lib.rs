@@ -295,9 +295,9 @@ pub mod test_helpers {
         // Add in the minimum and maximum staked nodes.
         members.insert(Address::<CurrentNetwork>::new(rng.gen()), (MIN_VALIDATOR_STAKE, false));
         while members.len() < num_members as usize - 1 {
-            let stake = MIN_VALIDATOR_STAKE as f64;
+            let stake = MIN_VALIDATOR_STAKE;
             let is_open = rng.gen();
-            members.insert(Address::<CurrentNetwork>::new(rng.gen()), (stake as u64, is_open));
+            members.insert(Address::<CurrentNetwork>::new(rng.gen()), (stake, is_open));
         }
         // Return the committee.
         Committee::<CurrentNetwork>::new(1, members).unwrap()
