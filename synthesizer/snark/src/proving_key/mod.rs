@@ -65,9 +65,11 @@ impl<N: Network> ProvingKey<N> {
         let timer = std::time::Instant::now();
 
         // Prepare the instances.
-        let instances = assignments
-            .map(|(proving_key, assignments)| (proving_key.deref(), assignments))
-            .collect::<BTreeMap<_, _>>();
+        let mut instances = BTreeMap::default();
+        for (proving_key, assignments) in assignments {
+            let previous_entry = instances.insert(proving_key.deref(), assignments);
+            ensure!(previous_entry.is_none(), "prove_batch found duplicate proving keys");
+        }
 
         // Retrieve the proving parameters.
         let universal_prover = N::varuna_universal_prover();
