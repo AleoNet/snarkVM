@@ -230,9 +230,6 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     continue 'outer;
                 }
 
-                // TODO (raychu86): Consider using InputStore with contains_input_id_speculative instead.
-                //  This can be added to the `finalize_execution` and `finalize_fee` methods to allow for
-                //  a possible rejected transaction instead of always aborting.
                 // Ensure that the transaction is not double-spending an input.
                 for input_id in transaction.input_ids() {
                     // If the input ID is already spent in this block or previous blocks, abort the transaction.
