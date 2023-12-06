@@ -237,7 +237,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 for input_id in transaction.input_ids() {
                     // If the input ID is already spent in this block or previous blocks, abort the transaction.
                     if input_ids.contains(input_id)
-                        || self.transition_store().contains_input_id(input_id).map_err(|e| e.to_string())?
+                        || self.transition_store().contains_input_id(input_id).unwrap_or(true)
                     {
                         // Store the aborted transaction.
                         aborted.push((transaction.clone(), format!("Double-spending input {input_id}")));
