@@ -106,10 +106,6 @@ impl<N: Network> StackEvaluate<N> for Stack<N> {
         // Retrieve the next request, based on the call stack mode.
         let (request, call_stack) = match &call_stack {
             CallStack::Evaluate(authorization) => (authorization.next()?, call_stack),
-            CallStack::CheckDeployment(requests, _, _) | CallStack::PackageRun(requests, _, _) => {
-                let last_request = requests.last().ok_or(anyhow!("CallStack does not contain request"))?.clone();
-                (last_request, call_stack)
-            }
             // If the evaluation is performed in the `Execute` mode, create a new `Evaluate` mode.
             // This is done to ensure that evaluation during execution is performed consistently.
             CallStack::Execute(authorization, _) => {
@@ -120,7 +116,7 @@ impl<N: Network> StackEvaluate<N> for Stack<N> {
                 let call_stack = CallStack::Evaluate(authorization);
                 (request, call_stack)
             }
-            _ => bail!("Illegal operation: call stack must not be `Synthesize` or `Authorize` in `evaluate_function`."),
+            _ => bail!("Illegal operation: call stack must be `Evaluate` or `Execute` in `evaluate_function`."),
         };
         lap!(timer, "Retrieve the next request");
 
