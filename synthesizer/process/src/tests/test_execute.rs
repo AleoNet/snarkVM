@@ -2557,7 +2557,7 @@ function a:
     assert_eq!(authorization.len(), 3);
 
     // Execute the request.
-    let (response, mut trace) = process.execute::<CurrentAleo>(authorization).unwrap();
+    let (response, mut trace) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
     let candidate = response.outputs();
     assert_eq!(2, candidate.len());
     assert_eq!(output, candidate[0]);

@@ -100,12 +100,13 @@ fn batch_prove(c: &mut Criterion) {
     // Bench the proof construction.
     for num_assignments in &[1, 2, 4, 8] {
         // Construct the assignments.
-        let assignments =
-            [(proving_key.clone(), (0..*num_assignments).map(|_| assignment.clone()).collect::<Vec<_>>())];
+        let assignments = (0..*num_assignments).map(|_| assignment.clone()).collect::<Vec<_>>();
+        let keys_to_assignments = [(&proving_key, assignments.as_ref())].into_iter();
 
         c.bench_function(&format!("KaryMerkleTree batch prove {num_assignments} assignments"), |b| {
             b.iter(|| {
-                let _proof = ProvingKey::prove_batch("ProveKaryMerkleTree", &assignments, &mut rng).unwrap();
+                let _proof =
+                    ProvingKey::prove_batch("ProveKaryMerkleTree", keys_to_assignments.clone(), &mut rng).unwrap();
             })
         });
     }
