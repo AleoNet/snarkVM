@@ -24,7 +24,7 @@ use crate::{
     },
 };
 use snarkvm_fields::{Field, PrimeField};
-use snarkvm_utilities::{cfg_iter, cfg_iter_mut, serialize::*};
+use snarkvm_utilities::{cfg_into_iter, cfg_iter, cfg_iter_mut, serialize::*};
 
 use anyhow::{anyhow, ensure, Result};
 use std::collections::BTreeMap;
@@ -37,19 +37,19 @@ use rayon::prelude::*;
 // This function converts a matrix output by Zexe's constraint infrastructure
 // to the one used in this crate.
 pub(crate) fn to_matrix_helper<F: Field>(
-    matrix: &[Vec<(F, VarIndex)>],
+    matrix: Vec<Vec<(F, VarIndex)>>,
     num_input_variables: usize,
 ) -> Result<Matrix<F>> {
-    cfg_iter!(matrix)
+    cfg_into_iter!(matrix)
         .map(|row| {
             let mut row_map = BTreeMap::new();
-            for (val, column) in row.iter() {
-                ensure!(*val != F::zero(), "matrix entries should be non-zero");
+            for (val, column) in row {
+                ensure!(val != F::zero(), "matrix entries should be non-zero");
                 let column = match column {
-                    VarIndex::Public(i) => *i,
+                    VarIndex::Public(i) => i,
                     VarIndex::Private(i) => num_input_variables + i,
                 };
-                *row_map.entry(column).or_insert_with(F::zero) += *val;
+                *row_map.entry(column).or_insert_with(F::zero) += val;
             }
             Ok(row_map.into_iter().map(|(column, coeff)| (coeff, column)).collect())
         })
