@@ -243,7 +243,7 @@ impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
             labels.zip_eq(evals.evaluate(&lagrange_coefficients_at_point).unwrap())
         })
         .collect::<Vec<_>>();
-        evals.sort_by(|(l1, _), (l2, _)| l1.cmp(l2));
+        evals.sort_unstable_by(|(l1, _), (l2, _)| l1.cmp(l2));
         Ok(evals.into_iter().map(|(_, eval)| eval))
     }
 }
