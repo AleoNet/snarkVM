@@ -628,7 +628,11 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         match self.confirmed_transactions_map().get_confirmed(transaction_id)? {
             Some(Cow::Borrowed((block_hash, _, _))) => Ok(Some(*block_hash)),
             Some(Cow::Owned((block_hash, _, _))) => Ok(Some(block_hash)),
-            None => Ok(None),
+            None => match self.rejected_or_aborted_transaction_id_map().get_confirmed(transaction_id)? {
+                Some(Cow::Borrowed(block_hash)) => Ok(Some(*block_hash)),
+                Some(Cow::Owned(block_hash)) => Ok(Some(block_hash)),
+                None => Ok(None),
+            },
         }
     }
 
