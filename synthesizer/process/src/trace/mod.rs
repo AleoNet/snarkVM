@@ -318,8 +318,9 @@ impl<N: Network> Trace<N> {
         }
         // Verify the proof.
         match VerifyingKey::verify_batch(locator, verifier_inputs, proof) {
-            true => Ok(()),
-            false => bail!("Failed to verify proof"),
+            Ok(true) => Ok(()),
+            Ok(false) => bail!("Failed to verify proof"),
+            Err(e) => bail!("Verifier failed - {e}"),
         }
     }
 }
