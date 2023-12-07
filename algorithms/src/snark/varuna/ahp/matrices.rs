@@ -27,7 +27,6 @@ use snarkvm_fields::{Field, PrimeField};
 use snarkvm_utilities::{cfg_into_iter, cfg_iter, cfg_iter_mut, serialize::*};
 
 use anyhow::{anyhow, ensure, Result};
-use std::collections::BTreeMap;
 
 #[cfg(feature = "serial")]
 use itertools::Itertools;
@@ -42,14 +41,20 @@ pub(crate) fn to_matrix_helper<F: Field>(
 ) -> Result<Matrix<F>> {
     cfg_into_iter!(matrix)
         .map(|row| {
-            let mut row_map = BTreeMap::new();
+            let mut row_map = Vec::with_capacity(row.len());
             for (val, column) in row {
                 ensure!(val != F::zero(), "matrix entries should be non-zero");
                 let column = match column {
                     VarIndex::Public(i) => i,
                     VarIndex::Private(i) => num_input_variables + i,
                 };
-                *row_map.entry(column).or_insert_with(F::zero) += val;
+                match row_map.binary_search_by_key(&column, |(c, _)| *c) {
+                    Ok(idx) => row_map[idx].1 += val,
+                    Err(idx) => {
+                        row_map.insert(idx, (column, F::zero()));
+                        row_map[idx].1 += val;
+                    }
+                }
             }
             Ok(row_map.into_iter().map(|(column, coeff)| (coeff, column)).collect())
         })
