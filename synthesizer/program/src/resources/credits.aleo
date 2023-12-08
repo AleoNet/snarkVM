@@ -142,7 +142,7 @@ finalize bond_public:
     // If the validator is already in the committee, jump to the `continue_bond_validator` logic.
     branch.eq r4 true to continue_bond_validator;
     // Get the committee size.
-    get metadata[aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc] into r5;
+    get.or_use metadata[aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc] 0u32 into r5;
     // Increment the committee size by one.
     add r5 1u32 into r6;
     // Determine if the committee size is less than or equal to 200.
@@ -235,7 +235,7 @@ finalize bond_public:
     // If the delegator is already bonded to the validator, jump to the `continue_bond_delegator` logic.
     branch.eq r23 true to continue_bond_delegator;
     // Get the number of delegators bonded to the validator.
-    get metadata[r1] into r24;
+    get.or_use metadata[r1] 0u32 into r24;
     // Increment the number of delegators bonded to the validator by one.
     add r24 1u32 into r25;
     // Determine if the number of delegators bonded to the validator is less than or equal to 1_000_000.
