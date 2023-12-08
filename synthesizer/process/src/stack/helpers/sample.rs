@@ -13,7 +13,6 @@
 // limitations under the License.
 
 use super::*;
-use crate::stack::helpers::matches::{Argument, FinalizeType};
 
 impl<N: Network> Stack<N> {
     /// Returns a record for the given record name, with the given burner address.
@@ -49,9 +48,9 @@ impl<N: Network> Stack<N> {
     pub fn sample_future<R: Rng + CryptoRng>(&self, locator: &Locator<N>, rng: &mut R) -> Result<Future<N>> {
         // Sample a future value.
         let future = self.sample_future_internal(locator, 0, rng)?;
-        // Ensure the plaintext value matches the plaintext type.
+        // Ensure the future value matches the future type.
         self.matches_future(&future, locator)?;
-        // Return the plaintext value.
+        // Return the future value.
         Ok(future)
     }
 }
@@ -173,7 +172,7 @@ impl<N: Network> Stack<N> {
         Ok(plaintext)
     }
 
-    /// Returns a future for the given TODO.
+    /// Samples a future value according to the given locator.
     fn sample_future_internal<R: Rng + CryptoRng>(
         &self,
         locator: &Locator<N>,

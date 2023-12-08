@@ -85,7 +85,7 @@ pub trait StackProgram<N: Network> {
     /// Returns the expected number of calls for the given function name.
     fn get_number_of_calls(&self, function_name: &Identifier<N>) -> Result<usize>;
 
-    /// Samples a value for the given value_type
+    /// Samples a value for the given value_type.
     fn sample_value<R: Rng + CryptoRng>(
         &self,
         burner_address: &Address<N>,

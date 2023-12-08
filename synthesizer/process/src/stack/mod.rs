@@ -41,8 +41,10 @@ use console::{
     account::{Address, PrivateKey},
     network::prelude::*,
     program::{
+        Argument,
         Entry,
         EntryType,
+        FinalizeType,
         Future,
         Identifier,
         Literal,

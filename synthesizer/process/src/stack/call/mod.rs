@@ -295,7 +295,7 @@ impl<N: Network> CallTrait<N> for Call<N> {
                                 ExternalRecord(locator) => {
                                     // Retrieve the external stack.
                                     let stack = substack.get_external_stack(locator.program_id())?;
-                                    // Sample the input.
+                                    // Sample the output.
                                     stack.sample_value(&address, &Record(*locator.resource()), rng)
                                 }
                                 _ => substack.sample_value(&address, output.value_type(), rng),
