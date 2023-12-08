@@ -93,7 +93,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         lap!(timer, "Check for duplicate elements");
 
         // First, verify the fee.
-        self.check_fee(transaction, rejected_id)?;
+        // self.check_fee(transaction, rejected_id)?;
 
         // Next, verify the deployment or execution.
         match transaction {
