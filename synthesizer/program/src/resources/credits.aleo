@@ -258,7 +258,7 @@ finalize bond_public:
     assert.eq r28.validator r1;
 
     // Increment the microcredits in the bond state.
-    add r24.microcredits r2 into r29;
+    add r28.microcredits r2 into r29;
     // Determine if the amount is at least 10 credits.
     gte r29 10_000_000u64 into r30;
     // Enforce the amount is at least 10 credits.
