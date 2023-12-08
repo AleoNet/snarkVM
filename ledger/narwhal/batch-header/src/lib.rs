@@ -37,7 +37,7 @@ pub struct BatchHeader<N: Network> {
     version: u8,
     /// The batch ID, defined as the hash of the version, author, round number, timestamp, transmission IDs,
     /// previous batch certificate IDs, and last election certificate IDs (the latter only if the version is not 1,
-    /// for pre-mainnet backward compatibility.
+    /// for pre-mainnet backward compatibility).
     batch_id: Field<N>,
     /// The author of the batch.
     author: Address<N>,
