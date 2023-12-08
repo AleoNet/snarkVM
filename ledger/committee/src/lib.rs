@@ -29,6 +29,7 @@ use console::{
 };
 
 use indexmap::IndexMap;
+use ledger_narwhal_batch_header::BatchHeader;
 use std::collections::HashSet;
 
 /// The minimum amount of stake required for a validator to bond.
@@ -48,20 +49,18 @@ pub struct Committee<N: Network> {
 
 impl<N: Network> Committee<N> {
     /// The maximum number of members that may be in a committee.
-    pub const MAX_COMMITTEE_SIZE: u16 = 200;
+    pub const MAX_COMMITTEE_SIZE: u16 = BatchHeader::<N>::MAX_CERTIFICATES;
 
     /// Initializes a new `Committee` instance.
     pub fn new_genesis(members: IndexMap<Address<N>, (u64, bool)>) -> Result<Self> {
-        // Ensure there are exactly 4 members.
-        ensure!(members.len() == 4, "Genesis committee must have 4 members");
         // Return the new committee.
         Self::new(0u64, members)
     }
 
     /// Initializes a new `Committee` instance.
     pub fn new(starting_round: u64, members: IndexMap<Address<N>, (u64, bool)>) -> Result<Self> {
-        // Ensure there are at least 4 members.
-        ensure!(members.len() >= 4, "Committee must have at least 4 members");
+        // Ensure there are at least 3 members.
+        ensure!(members.len() >= 3, "Committee must have at least 3 members");
         // Ensure there are no more than the maximum number of members.
         ensure!(
             members.len() <= Self::MAX_COMMITTEE_SIZE as usize,
@@ -296,9 +295,9 @@ pub mod test_helpers {
         // Add in the minimum and maximum staked nodes.
         members.insert(Address::<CurrentNetwork>::new(rng.gen()), (MIN_VALIDATOR_STAKE, false));
         while members.len() < num_members as usize - 1 {
-            let stake = MIN_VALIDATOR_STAKE as f64;
+            let stake = MIN_VALIDATOR_STAKE;
             let is_open = rng.gen();
-            members.insert(Address::<CurrentNetwork>::new(rng.gen()), (stake as u64, is_open));
+            members.insert(Address::<CurrentNetwork>::new(rng.gen()), (stake, is_open));
         }
         // Return the committee.
         Committee::<CurrentNetwork>::new(1, members).unwrap()
@@ -399,7 +398,7 @@ mod tests {
         // Set the number of rounds.
         const NUM_ROUNDS: u64 = 256 * 2_000;
         // Sample the number of members.
-        let num_members = rng.gen_range(4..50);
+        let num_members = rng.gen_range(3..50);
         // Sample a committee.
         let committee = crate::test_helpers::sample_committee_custom(num_members, rng);
         // Check the leader distribution.
@@ -453,9 +452,6 @@ mod tests {
 
     #[test]
     fn test_maximum_committee_size() {
-        assert_eq!(
-            Committee::<CurrentNetwork>::MAX_COMMITTEE_SIZE as usize,
-            ledger_narwhal_batch_header::BatchHeader::<CurrentNetwork>::MAX_CERTIFICATES
-        );
+        assert_eq!(Committee::<CurrentNetwork>::MAX_COMMITTEE_SIZE, BatchHeader::<CurrentNetwork>::MAX_CERTIFICATES);
     }
 }

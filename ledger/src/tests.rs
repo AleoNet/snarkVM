@@ -636,3 +636,74 @@ fn test_aborted_transaction_indexing() {
     // Add the deployment block to the ledger.
     ledger.advance_to_next_block(&block).unwrap();
 }
+
+#[test]
+fn test_deployment_duplicate_program_id() {
+    let rng = &mut TestRng::default();
+
+    // Initialize the test environment.
+    let crate::test_helpers::TestEnv { ledger, private_key, .. } = crate::test_helpers::sample_test_env(rng);
+
+    // Create two programs with a duplicate program ID but different mappings
+    let program_1 = Program::<CurrentNetwork>::from_str(
+        r"
+program dummy_program.aleo;
+mapping abcd1:
+    key as address.public;
+    value as u64.public;
+function foo:
+    input r0 as u8.private;
+    async foo r0 into r1;
+    output r1 as dummy_program.aleo/foo.future;
+finalize foo:
+    input r0 as u8.public;
+    add r0 r0 into r1;",
+    )
+    .unwrap();
+
+    let program_2 = Program::<CurrentNetwork>::from_str(
+        r"
+program dummy_program.aleo;
+mapping abcd2:
+    key as address.public;
+    value as u64.public;
+function foo2:
+    input r0 as u8.private;
+    async foo2 r0 into r1;
+    output r1 as dummy_program.aleo/foo2.future;
+finalize foo2:
+    input r0 as u8.public;
+    add r0 r0 into r1;",
+    )
+    .unwrap();
+
+    // Create a deployment transaction for the first program.
+    let deployment_1 = ledger.vm.deploy(&private_key, &program_1, None, 0, None, rng).unwrap();
+    let deployment_1_id = deployment_1.id();
+    assert!(ledger.check_transaction_basic(&deployment_1, None, rng).is_ok());
+
+    // Create a deployment transaction for the second program.
+    let deployment_2 = ledger.vm.deploy(&private_key, &program_2, None, 0, None, rng).unwrap();
+    let deployment_2_id = deployment_2.id();
+    assert!(ledger.check_transaction_basic(&deployment_2, None, rng).is_ok());
+
+    // Create a block.
+    let block = ledger
+        .prepare_advance_to_next_beacon_block(&private_key, vec![], vec![], vec![deployment_1, deployment_2], rng)
+        .unwrap();
+
+    // Check that the next block is valid.
+    ledger.check_next_block(&block, rng).unwrap();
+
+    // Add the block to the ledger.
+    ledger.advance_to_next_block(&block).unwrap();
+
+    // Enforce that the block transactions were correct.
+    assert_eq!(block.transactions().num_accepted(), 1);
+    assert_eq!(block.transactions().num_rejected(), 1);
+
+    // Enforce that the first program was deployed and the second was rejected.
+    assert_eq!(ledger.get_program(*program_1.id()).unwrap(), program_1);
+    assert!(ledger.vm.transaction_store().contains_transaction_id(&deployment_1_id).unwrap());
+    assert!(ledger.vm.block_store().contains_rejected_or_aborted_transaction_id(&deployment_2_id).unwrap());
+}
