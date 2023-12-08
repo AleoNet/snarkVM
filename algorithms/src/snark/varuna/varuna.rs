@@ -113,7 +113,7 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, SM: SNARKMode> VarunaSNARK
             ensure!(commitment_randomnesses.iter().all(|r| r == &empty_randomness));
             end_timer!(commit_time);
 
-            circuit_commitments.sort_by(|c1, c2| c1.label().cmp(c2.label()));
+            circuit_commitments.sort_unstable_by(|c1, c2| c1.label().cmp(c2.label()));
             let circuit_commitments = circuit_commitments.into_iter().map(|c| *c.commitment()).collect();
             indexed_circuit.prune_row_col_evals();
             let circuit_verifying_key = CircuitVerifyingKey {
