@@ -28,6 +28,11 @@ default = [ ]
 serial = [ "console/serial" ]
 wasm = [ "console/wasm" ]
 
+[[bench]]
+name = "bench_opcodes"
+path = "benches/instruction.rs"
+harness = false
+
 [dependencies.circuit]
 package = "snarkvm-circuit"
 path = "../../circuit"
@@ -66,7 +71,7 @@ path = "../../console"
 features = [ "test" ]
 
 [dev-dependencies.criterion]
-version = "0.5"
+version = "0.5.1"
 
 [dev-dependencies.synthesizer-process]
 package = "snarkvm-synthesizer-process"
