@@ -57,6 +57,10 @@ version = "0.2"
 [dependencies.once_cell]
 version = "1.18.0"
 
+[dependencies.smallvec]
+version = "1.11"
+default-features = false
+
 [dev-dependencies.snarkvm-algorithms]
 path = "../../algorithms"
 features = [ "polycommit_full", "snark", "test" ]
