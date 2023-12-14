@@ -70,6 +70,9 @@ package = "snarkvm-console"
 path = "../../console"
 features = [ "test" ]
 
+[dev-dependencies.anyhow]
+version = "1.0.71"
+
 [dev-dependencies.criterion]
 version = "0.5.1"
 

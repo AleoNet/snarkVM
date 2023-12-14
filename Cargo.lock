@@ -3448,6 +3448,7 @@ dependencies = [
 name = "snarkvm-synthesizer-program"
 version = "0.16.12"
 dependencies = [
+ "anyhow",
  "bincode",
  "criterion",
  "indexmap 2.0.2",

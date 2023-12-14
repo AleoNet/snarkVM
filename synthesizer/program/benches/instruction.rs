@@ -15,8 +15,9 @@
 #[macro_use]
 extern crate criterion;
 
+use anyhow::Result;
 use console::{
-    network::{Network, Testnet3},
+    network::{Network, Testnet3, TypeName},
     prelude::{TestRng, Uniform, Zero},
     program::{
         Boolean, Field, Group, Identifier, Plaintext, Register, Scalar, Value, I128, I16, I32, I64, I8, U128, U16, U32,
@@ -140,6 +141,64 @@ macro_rules! bench_instruction {
             )
         });
     }};
+    // Benchmark a cast instruction, with the given sampling method.
+    ($stack:expr, $c:expr, $samples:tt, $instruction:ident { ($input_a:ident as $input_b:ident), }) => {{
+        use snarkvm_synthesizer_program::$instruction;
+        let name = concat!(stringify!($instruction), "/", stringify!($input_a), "_", stringify!($input_b));
+        println!("{} {} {}", stringify!($input_a), stringify!($input_b), stringify!($name));
+        let instruction = Instruction::<Testnet3>::$instruction(
+            $instruction::from_str(&format!(
+                "{} r0 into r1 as {}",
+                $instruction::<Testnet3>::opcode().to_string(),
+                $input_a::<Testnet3>::type_name()
+            ))
+            .unwrap(),
+        );
+
+        $c.bench_function(&format!("{name}/instruction"), |b| {
+            b.iter_batched(
+                || {
+                    let first = $samples.next().unwrap();
+                    setup_finalize_registers(
+                        $stack,
+                        instruction.to_string(),
+                        &[Value::from_str(&first.to_string()).unwrap()],
+                    )
+                },
+                |mut finalize_registers| instruction.finalize($stack.as_ref(), &mut finalize_registers).unwrap(),
+                BatchSize::PerIteration,
+            )
+        });
+    };};
+    // Benchmark a cast instruction, with the given sampling method.
+    ($stack:expr, $c:expr, $samples:tt, $instruction:ident { ($input_a:ident as $input_b:tt), }) => {{
+        use snarkvm_synthesizer_program::$instruction;
+        let name = concat!(stringify!($instruction), "/", stringify!($input_a), "_", stringify!($input_b));
+        println!("{} {} {}", stringify!($input_a), stringify!($input_b), stringify!($name));
+        let instruction = Instruction::<Testnet3>::$instruction(
+            $instruction::from_str(&format!(
+                "{} r0 into r1 as {}",
+                $instruction::<Testnet3>::opcode().to_string(),
+                $input_a::<Testnet3>::type_name()
+            ))
+            .unwrap(),
+        );
+
+        $c.bench_function(&format!("{name}/instruction"), |b| {
+            b.iter_batched(
+                || {
+                    let first = $samples.next().unwrap();
+                    setup_finalize_registers(
+                        $stack,
+                        instruction.to_string(),
+                        &[Value::from_str(&first.to_string()).unwrap()],
+                    )
+                },
+                |mut finalize_registers| instruction.finalize($stack.as_ref(), &mut finalize_registers).unwrap(),
+                BatchSize::PerIteration,
+            )
+        });
+    };};
 }
 
 macro_rules! bench_instruction_with_default {
@@ -242,6 +301,62 @@ macro_rules! bench_instruction_with_default {
                 });
                 // Benchmark the instruction.
                 bench_instruction!($stack, $c, samples, $instruction { ($input_a, $input_b, $input_c), });
+            })+
+        };
+        // Benchmark a cast instruction, using the default sampling method.
+        ($stack:expr, $c:expr, $rng:expr, $operation:tt, $instruction:ident { $( ($input_a:ident as $input_b:ident), )+ }) => {
+            $({
+                // Define the default sampling method.
+                let mut samples = iter::repeat_with(|| {
+                    let mut first: $input_a::<Testnet3> = Uniform::rand($rng);
+                    while (std::panic::catch_unwind(|| {
+                        let a: Result<$input_b<Testnet3>> = first.cast();
+                        a.unwrap();
+                    })).is_err() {
+                        first = Uniform::rand($rng);
+                    }
+                    first
+                });
+                // Benchmark the underlying operation.
+                let name = concat!(stringify!($instruction), "/", stringify!($input_a), "_", stringify!($input_b));
+                $c.bench_function(&format!("{name}/core"), |b| {
+                    b.iter_batched(
+                        || samples.next().unwrap(),
+                        |first| { let a: $input_b<Testnet3> = first.cast().unwrap(); },
+                        BatchSize::SmallInput,
+                    )
+                });
+                // Benchmark the instruction.
+                println!("{} {} {}", stringify!($input_a), stringify!($input_b), format!("{name}/core"));
+                bench_instruction!($stack, $c, samples, $instruction { ($input_a as $input_b), });
+            })+
+        };
+        // Benchmark a cast instruction, using the default sampling method.
+        ($stack:expr, $c:expr, $rng:expr, $operation:tt, $instruction:ident { $( ($input_a:ident as $input_b:tt), )+ }) => {
+            $({
+                // Define the default sampling method.
+                let mut samples = iter::repeat_with(|| {
+                    let mut first: $input_a::<Testnet3> = Uniform::rand($rng);
+                    while (std::panic::catch_unwind(|| {
+                        let a: Result<$input_b<Testnet3>> = first.cast();
+                        a.unwrap();
+                    })).is_err() {
+                        first = Uniform::rand($rng);
+                    }
+                    first
+                });
+                // Benchmark the underlying operation.
+                let name = concat!(stringify!($instruction), "/", stringify!($input_a), "_", stringify!($input_b));
+                $c.bench_function(&format!("{name}/core"), |b| {
+                    b.iter_batched(
+                        || samples.next().unwrap(),
+                        |first| { let a: $input_b<Testnet3> = first.cast().unwrap(); },
+                        BatchSize::SmallInput,
+                    )
+                });
+                // Benchmark the instruction.
+                println!("{} {} {}", stringify!($input_a), stringify!($input_b), format!("{name}/core"));
+                bench_instruction!($stack, $c, samples, $instruction { ($input_a as $input_b), });
             })+
         };
     }
@@ -413,7 +528,7 @@ fn bench_arithmetic_add_instructions(c: &mut Criterion) {
     let process = Process::<Testnet3>::load().unwrap();
     // Get the stack for the credits program.
     let stack = process.get_stack("credits.aleo").unwrap();
-
+    
     use std::ops::Add;
     bench_instruction_with_default!(stack, c, rng, add, Add {
         (I8, I8),
@@ -728,6 +843,77 @@ fn bench_arithmetic_neg_and_sub_instructions(c: &mut Criterion) {
         (U32, U32),
         (U64, U64),
         (U128, U128),
+    });
+}
+
+#[rustfmt::skip]
+fn bench_cast_instruction(c: &mut Criterion) {
+    // Initialize an RNG.
+    let rng = &mut TestRng::default();
+    // Initialize a process.
+    let process = Process::<Testnet3>::load().unwrap();
+    // Get the stack for the credits program.
+    let stack = process.get_stack("credits.aleo").unwrap();
+
+    use console::program::Cast;
+    bench_instruction_with_default!(stack, c, rng, cast, Cast {
+        (I8 as I16),
+        (I8 as I32),
+        (I8 as I64),
+        (I8 as I128),
+        (I8 as U8),
+        (I8 as U16),
+        (I8 as U32),
+        (I8 as U64),
+        (I8 as U128),
+        (I16 as I32),
+        (I16 as I64),
+        (I16 as I128),
+        (I16 as U32),
+        (I16 as U64),
+        (I16 as U128),
+        (I32 as I64),
+        (I32 as I128),
+        (I32 as U64),
+        (I32 as U128),
+        (I64 as I128),
+        (I64 as U128),
+        (U8 as I8),
+        (U8 as I16),
+        (U8 as I32),
+        (U8 as I64),
+        (U8 as I128),
+        (U8 as U16),
+        (U8 as U32),
+        (U8 as U64),
+        (U8 as U128),
+        (U16 as I16),
+        (U16 as I32),
+        (U16 as I64),
+        (U16 as I128),
+        (U16 as U32),
+        (U16 as U64),
+        (U16 as U128),
+        (U32 as I32),
+        (U32 as I64),
+        (U32 as I128),
+        (U32 as U64),
+        (U32 as U128),
+        (U64 as I64),
+        (U64 as I128),
+        (U64 as U128),
+        (U128 as I128),
+        (I8 as Field),
+        (I16 as Field),
+        (I32 as Field),
+        (I64 as Field),
+        (I128 as Field),
+        (U8 as Field),
+        (U16 as Field),
+        (U32 as Field),
+        (U64 as Field),
+        (U128 as Field),
+        (Field as Group),
     });
 }
 
@@ -1233,6 +1419,11 @@ fn bench_logical_instructions(c: &mut Criterion) {
 }
 
 #[rustfmt::skip]
+fn bench_set_operations(c: &mut Criterion) {
+    
+}
+
+#[rustfmt::skip]
 fn bench_order_comparison_instructions(c: &mut Criterion) {
     // Initialize an RNG.
     let rng = &mut TestRng::default();
@@ -1437,7 +1628,7 @@ fn bench_hash_instructions(c: &mut Criterion) {
 criterion_group! {
     name = bench;
     config = Criterion::default().sample_size(100);
-    targets = abs_instructions, bench_arithmetic_add_instructions, bench_arithmetic_div_instructions, bench_arithmetic_mul_instructions, bench_arithmetic_neg_and_sub_instructions, bench_assert_instructions, bench_bhp_commit_instructions, bench_equality_comparison_instructions, bench_hash_instructions, bench_logical_instructions, bench_order_comparison_instructions, bench_poseidon_commit_instructions, bench_power_and_remainder_instructions, bench_shift_left_instructions, bench_shift_right_instructions, bench_ternary_instructions,
+    targets = abs_instructions, bench_arithmetic_add_instructions, bench_arithmetic_div_instructions, bench_arithmetic_mul_instructions, bench_arithmetic_neg_and_sub_instructions, bench_assert_instructions, bench_bhp_commit_instructions, bench_cast_instruction, bench_equality_comparison_instructions, bench_hash_instructions, bench_logical_instructions, bench_order_comparison_instructions, bench_poseidon_commit_instructions, bench_power_and_remainder_instructions, bench_shift_left_instructions, bench_shift_right_instructions, bench_ternary_instructions,
 }
 
 criterion_main!(bench);
