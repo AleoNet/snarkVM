@@ -145,7 +145,13 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         // Retrieve the list of deployment transaction IDs.
         let deployment_ids = transaction_store.deployment_transaction_ids().collect::<Vec<_>>();
         // Load the deployments from the store.
-        for chunk in deployment_ids.chunks(256) {
+        for (i, chunk) in deployment_ids.chunks(256).enumerate() {
+            debug!(
+                "Loading deployments: {}-{}/{}...",
+                i * 256,
+                ((i + 1) * 256).min(deployment_ids.len()),
+                deployment_ids.len()
+            );
             let deployments = cfg_iter!(chunk)
                 .map(|transaction_id| {
                     // Load the deployment and its imports.
