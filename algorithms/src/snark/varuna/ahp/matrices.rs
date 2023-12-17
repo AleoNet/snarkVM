@@ -93,7 +93,7 @@ pub(crate) fn pad_input_for_indexer_and_prover<F: PrimeField, CS: ConstraintSyst
     Ok(())
 }
 
-#[derive(Clone, Debug, CanonicalSerialize, CanonicalDeserialize, PartialEq, Eq)]
+#[derive(Debug, CanonicalSerialize, CanonicalDeserialize, PartialEq, Eq)]
 pub struct MatrixEvals<F: PrimeField> {
     /// Evaluations of the `row` polynomial.
     pub row: EvaluationsOnDomain<F>,
@@ -213,6 +213,7 @@ impl<F: PrimeField> MatrixArithmetization<F> {
         let row_col = if let Some(row_col) = matrix_evals.row_col.as_ref() {
             row_col.clone().interpolate()
         } else {
+            ensure!(matrix_evals.row.evaluations.len() == matrix_evals.col.evaluations.len());
             let row_col_evals: Vec<F> = cfg_iter!(matrix_evals.row.evaluations)
                 .zip_eq(&matrix_evals.col.evaluations)
                 .map(|(&r, &c)| r * c)
@@ -222,8 +223,8 @@ impl<F: PrimeField> MatrixArithmetization<F> {
         let row_col_val = matrix_evals.row_col_val.clone().interpolate();
         end_timer!(interpolate_time);
 
-        let label = &[label];
-        let mut labels = AHPForR1CS::<F, VarunaHidingMode>::index_polynomial_labels(label, std::iter::once(id));
+        let mut labels = AHPForR1CS::<F, VarunaHidingMode>::index_polynomial_labels_single(label, id);
+        ensure!(labels.len() == 4);
 
         Ok(MatrixArithmetization {
             row: LabeledPolynomial::new(labels.next().unwrap(), row, None, None),
@@ -234,7 +235,7 @@ impl<F: PrimeField> MatrixArithmetization<F> {
     }
 
     /// Iterate over the indexed polynomials.
-    pub fn into_iter(self) -> impl Iterator<Item = LabeledPolynomial<F>> {
+    pub fn into_iter(self) -> impl ExactSizeIterator<Item = LabeledPolynomial<F>> {
         // Alphabetical order
         [self.col, self.row, self.row_col, self.row_col_val].into_iter()
     }
