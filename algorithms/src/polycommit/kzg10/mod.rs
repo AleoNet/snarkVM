@@ -451,11 +451,12 @@ fn skip_leading_zeros_and_convert_to_bigints<F: PrimeField>(p: &DensePolynomial<
     if p.coeffs.is_empty() {
         (0, vec![])
     } else {
-        let mut num_leading_zeros = 0;
-        while p.coeffs[num_leading_zeros].is_zero() && num_leading_zeros < p.coeffs.len() {
-            num_leading_zeros += 1;
-        }
-        let coeffs = convert_to_bigints(&p.coeffs[num_leading_zeros..]);
+        let num_leading_zeros = p.coeffs.iter().take_while(|c| c.is_zero()).count();
+        let coeffs = if num_leading_zeros == p.coeffs.len() {
+            vec![]
+        } else {
+            convert_to_bigints(&p.coeffs[num_leading_zeros..])
+        };
         (num_leading_zeros, coeffs)
     }
 }

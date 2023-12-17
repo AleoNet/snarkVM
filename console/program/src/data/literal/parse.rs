@@ -36,6 +36,8 @@ impl<N: Network> Parser for Literal<N> {
             map(Scalar::<N>::parse, |literal| Self::Scalar(literal)),
             map(Signature::<N>::parse, |literal| Self::Signature(Box::new(literal))),
             map(StringType::<N>::parse, |literal| Self::String(literal)),
+            // This allows users to implicitly declare program IDs as literals.
+            map_res(ProgramID::<N>::parse, |program_id| Ok::<Self, Error>(Self::Address(program_id.to_address()?))),
         ))(string)
     }
 }
@@ -85,5 +87,29 @@ impl<N: Network> Display for Literal<N> {
             Self::Signature(literal) => Display::fmt(literal, f),
             Self::String(literal) => Display::fmt(literal, f),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use snarkvm_console_network::Testnet3;
+
+    type CurrentNetwork = Testnet3;
+
+    #[test]
+    fn test_parse_program_id() -> Result<()> {
+        let (remainder, candidate) = Literal::<CurrentNetwork>::parse("credits.aleo")?;
+        assert!(matches!(candidate, Literal::Address(_)));
+        assert_eq!(candidate.to_string(), "aleo1lqmly7ez2k48ajf5hs92ulphaqr05qm4n8qwzj8v0yprmasgpqgsez59gg");
+        assert_eq!("", remainder);
+
+        let result = Literal::<CurrentNetwork>::parse("credits.ale");
+        assert!(result.is_err());
+
+        let result = Literal::<CurrentNetwork>::parse("credits.aleo1");
+        assert!(result.is_err());
+
+        Ok(())
     }
 }
