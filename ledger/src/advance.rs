@@ -129,11 +129,18 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                 let latest_epoch_challenge = self.latest_epoch_challenge()?;
                 // Separate the candidate solutions into valid and aborted solutions.
                 // TODO: Add `aborted_solution_ids` to the block.
-                let (valid_candidate_solutions, _aborted_candidate_solutions): (Vec<_>, Vec<_>) =
-                    cfg_into_iter!(candidate_solutions).partition(|solution| {
-                        solution
-                            .verify(coinbase_verifying_key, &latest_epoch_challenge, self.latest_proof_target())
-                            .unwrap_or(false)
+                let (valid_candidate_solutions, _aborted_candidate_solutions) = cfg_into_iter!(candidate_solutions)
+                    .fold((Vec::new(), Vec::new()), |(mut valid, mut aborted), solution| {
+                        if valid.len() < N::MAX_SOLUTIONS
+                            && solution
+                                .verify(coinbase_verifying_key, &latest_epoch_challenge, self.latest_proof_target())
+                                .unwrap_or(false)
+                        {
+                            valid.push(solution);
+                        } else {
+                            aborted.push(solution);
+                        }
+                        (valid, aborted)
                     });
                 // Check if there are any valid solutions.
                 match valid_candidate_solutions.is_empty() {
