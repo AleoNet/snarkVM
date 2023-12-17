@@ -127,7 +127,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                 let coinbase_verifying_key = self.coinbase_puzzle.coinbase_verifying_key();
                 // Retrieve the latest epoch challenge.
                 let latest_epoch_challenge = self.latest_epoch_challenge()?;
-                // TODO: Add `aborted_solution_ids` to the block. And optimize this logic.
+                // TODO: For mainnet - Add `aborted_solution_ids` to the block. And optimize this logic.
                 // Verify the candidate solutions.
                 let verification_results: Vec<_> = cfg_into_iter!(candidate_solutions)
                     .map(|solution| {
