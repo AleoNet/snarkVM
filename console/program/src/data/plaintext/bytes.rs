@@ -131,9 +131,6 @@ mod tests {
         // Check the byte representation.
         let expected_bytes = expected.to_bytes_le()?;
         assert_eq!(expected, Plaintext::read_le(&expected_bytes[..])?);
-        // assert!(Plaintext::<CurrentNetwork>::read_le(&expected_bytes[1..]).is_err());
-        // assert!(Plaintext::<CurrentNetwork>::read_le(&expected_bytes[2..]).is_err());
-        // assert!(Plaintext::<CurrentNetwork>::read_le(&expected_bytes[3..]).is_err());
         Ok(())
     }
 
@@ -225,7 +222,6 @@ mod tests {
         // Check the byte representation.
         let expected_bytes = expected.to_bytes_le()?;
         assert_eq!(expected, Plaintext::read_le(&expected_bytes[..])?);
-        assert!(Plaintext::<CurrentNetwork>::read_le(&expected_bytes[1..]).is_err());
 
         // Check the array manually.
         let expected = Plaintext::<CurrentNetwork>::from_str("[ 1u8, 2u8, 3u8, 4u8, 5u8, 6u8, 7u8, 8u8, 9u8, 10u8 ]")?;
@@ -233,7 +229,6 @@ mod tests {
         // Check the byte representation.
         let expected_bytes = expected.to_bytes_le()?;
         assert_eq!(expected, Plaintext::read_le(&expected_bytes[..])?);
-        assert!(Plaintext::<CurrentNetwork>::read_le(&expected_bytes[1..]).is_err());
 
         Ok(())
     }

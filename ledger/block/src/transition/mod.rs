@@ -313,7 +313,7 @@ impl<N: Network> Transition<N> {
     /// Returns `true` if this is a `fee_private` transition.
     #[inline]
     pub fn is_fee_private(&self) -> bool {
-        self.inputs.len() == 3
+        self.inputs.len() == 4
             && self.outputs.len() == 1
             && self.program_id.to_string() == "credits.aleo"
             && self.function_name.to_string() == "fee_private"
@@ -322,7 +322,7 @@ impl<N: Network> Transition<N> {
     /// Returns `true` if this is a `fee_public` transition.
     #[inline]
     pub fn is_fee_public(&self) -> bool {
-        self.inputs.len() == 2
+        self.inputs.len() == 3
             && self.outputs.len() == 1
             && self.program_id.to_string() == "credits.aleo"
             && self.function_name.to_string() == "fee_public"

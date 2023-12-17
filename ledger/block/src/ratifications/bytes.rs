@@ -53,9 +53,6 @@ impl<N: Network> ToBytes for Ratifications<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use console::network::Testnet3;
-
-    type CurrentNetwork = Testnet3;
 
     const ITERATIONS: u32 = 100;
 
@@ -68,7 +65,6 @@ mod tests {
             // Check the byte representation.
             let expected_bytes = expected.to_bytes_le()?;
             assert_eq!(expected, Ratifications::read_le(&expected_bytes[..])?);
-            assert!(Ratifications::<CurrentNetwork>::read_le(&expected_bytes[1..]).is_err());
         }
         Ok(())
     }

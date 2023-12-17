@@ -36,7 +36,7 @@ pub type Randomness<E> = kzg10::KZGRandomness<E>;
 pub type Commitment<E> = kzg10::KZGCommitment<E>;
 
 /// `CommitterKey` is used to commit to, and create evaluation proofs for, a given polynomial.
-#[derive(Clone, Debug, Default, Hash, CanonicalSerialize, CanonicalDeserialize, PartialEq, Eq)]
+#[derive(Debug)]
 pub struct CommitterKey<E: PairingEngine> {
     /// The key used to commit to polynomials.
     pub powers_of_beta_g: Vec<E::G1Affine>,
@@ -271,7 +271,7 @@ impl<E: PairingEngine> CommitterKey<E> {
 }
 
 /// `CommitterUnionKey` is a union of `CommitterKey`s, useful for multi-circuit batch proofs.
-#[derive(Clone, Debug, Hash, PartialEq, Eq)]
+#[derive(Debug)]
 pub struct CommitterUnionKey<'a, E: PairingEngine> {
     /// The key used to commit to polynomials.
     pub powers_of_beta_g: Option<&'a Vec<E::G1Affine>>,

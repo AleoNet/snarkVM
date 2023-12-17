@@ -58,7 +58,7 @@ mod tests {
                 assert_eq!(expected, candidate.eject_value());
                 match mode {
                     Mode::Constant => assert_scope!(253, 0, 0, 0),
-                    _ => assert_scope!(0, 0, 755, 760),
+                    _ => assert_scope!(0, 0, 755, 759),
                 }
             });
             Circuit::reset();

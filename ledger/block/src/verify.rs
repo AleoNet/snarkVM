@@ -21,6 +21,9 @@ use synthesizer_program::FinalizeOperation;
 
 use std::collections::HashSet;
 
+#[cfg(not(feature = "serial"))]
+use rayon::prelude::*;
+
 impl<N: Network> Block<N> {
     /// Ensures the block is correct.
     pub fn verify(
@@ -137,16 +140,11 @@ impl<N: Network> Block<N> {
         previous_height: u32,
         current_committee: &Committee<N>,
     ) -> Result<(u64, u32, i64, Vec<N::TransactionID>)> {
+        #[cfg(not(any(test, feature = "test")))]
+        ensure!(self.authority.is_quorum(), "The next block must be a quorum block");
+
         // Determine the expected height.
         let expected_height = previous_height.saturating_add(1);
-        // Ensure the block type is correct.
-        match expected_height == 0 {
-            true => ensure!(self.authority.is_beacon(), "The genesis block must be a beacon block"),
-            false => {
-                #[cfg(not(any(test, feature = "test")))]
-                ensure!(self.authority.is_quorum(), "The next block must be a quorum block");
-            }
-        }
 
         // Determine the expected round.
         let expected_round = match &self.authority {
@@ -229,7 +227,7 @@ impl<N: Network> Block<N> {
         let height = self.height();
 
         // Ensure there are sufficient ratifications.
-        ensure!(!self.ratifications.len() >= 2, "Block {height} must contain at least 2 ratifications");
+        ensure!(self.ratifications.len() >= 2, "Block {height} must contain at least 2 ratifications");
 
         // Initialize a ratifications iterator.
         let mut ratifications_iter = self.ratifications.iter();
@@ -274,10 +272,10 @@ impl<N: Network> Block<N> {
             Some(coinbase) => {
                 // Ensure the number of solutions is within the allowed range.
                 ensure!(
-                    coinbase.len() <= N::MAX_PROVER_SOLUTIONS,
+                    coinbase.len() <= N::MAX_SOLUTIONS,
                     "Block {height} contains too many prover solutions (found '{}', expected '{}')",
                     coinbase.len(),
-                    N::MAX_PROVER_SOLUTIONS
+                    N::MAX_SOLUTIONS
                 );
                 // Ensure the solutions are not accepted after the block height at year 10.
                 if height > block_height_at_year(N::BLOCK_TIME, 10) {
@@ -285,9 +283,11 @@ impl<N: Network> Block<N> {
                 }
 
                 // Ensure the puzzle proof is valid.
-                let is_valid =
-                    current_puzzle.verify(coinbase, current_epoch_challenge, previous_block.proof_target())?;
-                ensure!(is_valid, "Block {height} contains invalid puzzle proof");
+                if let Err(e) =
+                    current_puzzle.check_solutions(coinbase, current_epoch_challenge, previous_block.proof_target())
+                {
+                    bail!("Block {height} contains an invalid puzzle proof - {e}");
+                }
 
                 // Compute the combined proof target.
                 let combined_proof_target = coinbase.to_combined_proof_target()?;
@@ -360,10 +360,16 @@ impl<N: Network> Block<N> {
             u64::try_from(previous_block.cumulative_proof_target())?,
             previous_block.coinbase_target(),
         )?;
+
+        // Calculate the expected transaction fees.
+        let expected_transaction_fees =
+            self.transactions.iter().map(|tx| Ok(*tx.priority_fee_amount()?)).sum::<Result<u64>>()?;
+
         // Compute the expected block reward.
-        let expected_block_reward = block_reward(N::STARTING_SUPPLY, N::BLOCK_TIME, expected_coinbase_reward);
+        let expected_block_reward =
+            block_reward(N::STARTING_SUPPLY, N::BLOCK_TIME, expected_coinbase_reward, expected_transaction_fees);
         // Compute the expected puzzle reward.
-        let expected_puzzle_reward = expected_coinbase_reward.saturating_div(2);
+        let expected_puzzle_reward = puzzle_reward(expected_coinbase_reward);
 
         Ok((
             expected_cumulative_weight,
@@ -385,8 +391,19 @@ impl<N: Network> Block<N> {
         ensure!(!self.transactions.is_empty(), "Block {height} must contain at least 1 transaction");
 
         // Ensure the number of transactions is within the allowed range.
-        if self.transactions.len() + self.aborted_transaction_ids.len() > Transactions::<N>::MAX_TRANSACTIONS {
-            bail!("Cannot validate a block with more than {} transactions", Transactions::<N>::MAX_TRANSACTIONS);
+        if self.transactions.len() > Transactions::<N>::MAX_TRANSACTIONS {
+            bail!(
+                "Cannot validate a block with more than {} confirmed transactions",
+                Transactions::<N>::MAX_TRANSACTIONS
+            );
+        }
+
+        // Ensure the number of aborted transaction IDs is within the allowed range.
+        if self.aborted_transaction_ids.len() > Transactions::<N>::MAX_TRANSACTIONS {
+            bail!(
+                "Cannot validate a block with more than {} aborted transaction IDs",
+                Transactions::<N>::MAX_TRANSACTIONS
+            );
         }
 
         // Ensure there are no duplicate transaction IDs.
@@ -397,6 +414,13 @@ impl<N: Network> Block<N> {
         // Ensure there are no duplicate transition IDs.
         if has_duplicates(self.transition_ids()) {
             bail!("Found a duplicate transition in block {height}");
+        }
+
+        // Ensure there are no duplicate program IDs.
+        if has_duplicates(
+            self.transactions().iter().filter_map(|tx| tx.transaction().deployment().map(|d| d.program_id())),
+        ) {
+            bail!("Found a duplicate program ID in block {height}");
         }
 
         /* Input */
@@ -493,8 +517,9 @@ impl<N: Network> Block<N> {
         // Prepare an iterator over the solution IDs.
         let mut solutions = solutions.as_ref().map(|s| s.deref()).into_iter().flatten().peekable();
         // Prepare an iterator over the unconfirmed transaction IDs.
-        let unconfirmed_transaction_ids: Vec<_> =
-            transactions.iter().map(|confirmed| confirmed.to_unconfirmed_transaction_id()).try_collect()?;
+        let unconfirmed_transaction_ids = cfg_iter!(transactions)
+            .map(|confirmed| confirmed.to_unconfirmed_transaction_id())
+            .collect::<Result<Vec<_>>>()?;
         let mut unconfirmed_transaction_ids = unconfirmed_transaction_ids.iter().peekable();
 
         // Initialize a list of already seen transmission IDs.
@@ -545,8 +570,9 @@ impl<N: Network> Block<N> {
         // Ensure there are no more transactions in the block.
         ensure!(unconfirmed_transaction_ids.next().is_none(), "There exists more transactions than expected.");
 
+        // TODO: Move this check to be outside of this method, and check against the ledger for existence.
         // Ensure there are no aborted or existing solution IDs.
-        ensure!(aborted_or_existing_solution_ids.is_empty(), "Block contains aborted or already-existing solutions.");
+        // ensure!(aborted_or_existing_solution_ids.is_empty(), "Block contains aborted or already-existing solutions.");
         // Ensure the aborted transaction IDs match.
         for aborted_transaction_id in aborted_transaction_ids {
             // If the aborted transaction ID is not found, throw an error.

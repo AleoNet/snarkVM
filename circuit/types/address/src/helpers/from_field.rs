@@ -63,16 +63,16 @@ mod tests {
 
     #[test]
     fn test_from_field_constant() {
-        check_from_field(Mode::Constant, 11, 0, 0, 0);
+        check_from_field(Mode::Constant, 9, 0, 0, 0);
     }
 
     #[test]
     fn test_from_field_public() {
-        check_from_field(Mode::Public, 4, 0, 15, 13);
+        check_from_field(Mode::Public, 4, 0, 13, 13);
     }
 
     #[test]
     fn test_from_field_private() {
-        check_from_field(Mode::Private, 4, 0, 15, 13);
+        check_from_field(Mode::Private, 4, 0, 13, 13);
     }
 }

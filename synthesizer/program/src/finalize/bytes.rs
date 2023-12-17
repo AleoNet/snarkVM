@@ -108,7 +108,9 @@ finalize main:
     add r0 r1 into r8;
     add r0 r1 into r9;
     add r0 r1 into r10;
-    add r0 r1 into r11;";
+    add r0 r1 into r11;
+    get accounts[r0] into r12;
+    get accounts[r1] into r13;";
 
         let expected = Finalize::<CurrentNetwork>::from_str(finalize_string)?;
         let expected_bytes = expected.to_bytes_le()?;

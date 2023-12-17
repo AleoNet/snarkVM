@@ -218,7 +218,9 @@ impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
         Ok((h_1_sum, xg_1_sum, msg))
     }
 
-    fn calculate_assignments(state: &mut prover::State<F, SM>) -> Result<BTreeMap<CircuitId, Vec<DensePolynomial<F>>>> {
+    pub(in crate::snark::varuna) fn calculate_assignments(
+        state: &mut prover::State<F, SM>,
+    ) -> Result<BTreeMap<CircuitId, Vec<DensePolynomial<F>>>> {
         let assignments_time = start_timer!(|| "Calculate assignments");
         let assignments: BTreeMap<_, _> = state
             .circuit_specific_states

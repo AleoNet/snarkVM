@@ -21,7 +21,7 @@ use crate::{
 };
 use console::{prelude::*, types::Field};
 use ledger_authority::Authority;
-use ledger_block::{Header, Ratifications};
+use ledger_block::{Header, Ratifications, Rejected};
 use ledger_coinbase::{CoinbaseSolution, PuzzleCommitment};
 
 /// An in-memory block storage.
@@ -51,8 +51,12 @@ pub struct BlockMemory<N: Network> {
     transactions_map: MemoryMap<N::BlockHash, Vec<N::TransactionID>>,
     /// The aborted transaction IDs map.
     aborted_transaction_ids_map: MemoryMap<N::BlockHash, Vec<N::TransactionID>>,
+    /// The rejected transaction ID or aborted transaction ID map.
+    rejected_or_aborted_transaction_id_map: MemoryMap<N::TransactionID, N::BlockHash>,
     /// The confirmed transactions map.
     confirmed_transactions_map: MemoryMap<N::TransactionID, (N::BlockHash, ConfirmedTxType, Vec<u8>)>,
+    /// The rejected deployment or execution map.
+    rejected_deployment_or_execution_map: MemoryMap<Field<N>, Rejected<N>>,
     /// The transaction store.
     transaction_store: TransactionStore<N, TransactionMemory<N>>,
 }
@@ -71,7 +75,9 @@ impl<N: Network> BlockStorage<N> for BlockMemory<N> {
     type PuzzleCommitmentsMap = MemoryMap<PuzzleCommitment<N>, u32>;
     type TransactionsMap = MemoryMap<N::BlockHash, Vec<N::TransactionID>>;
     type AbortedTransactionIDsMap = MemoryMap<N::BlockHash, Vec<N::TransactionID>>;
+    type RejectedOrAbortedTransactionIDMap = MemoryMap<N::TransactionID, N::BlockHash>;
     type ConfirmedTransactionsMap = MemoryMap<N::TransactionID, (N::BlockHash, ConfirmedTxType, Vec<u8>)>;
+    type RejectedDeploymentOrExecutionMap = MemoryMap<Field<N>, Rejected<N>>;
     type TransactionStorage = TransactionMemory<N>;
     type TransitionStorage = TransitionMemory<N>;
 
@@ -95,7 +101,9 @@ impl<N: Network> BlockStorage<N> for BlockMemory<N> {
             puzzle_commitments_map: MemoryMap::default(),
             transactions_map: MemoryMap::default(),
             aborted_transaction_ids_map: MemoryMap::default(),
+            rejected_or_aborted_transaction_id_map: MemoryMap::default(),
             confirmed_transactions_map: MemoryMap::default(),
+            rejected_deployment_or_execution_map: MemoryMap::default(),
             transaction_store,
         })
     }
@@ -160,9 +168,19 @@ impl<N: Network> BlockStorage<N> for BlockMemory<N> {
         &self.aborted_transaction_ids_map
     }
 
+    /// Returns the rejected transaction ID or aborted transaction ID map.
+    fn rejected_or_aborted_transaction_id_map(&self) -> &Self::RejectedOrAbortedTransactionIDMap {
+        &self.rejected_or_aborted_transaction_id_map
+    }
+
     /// Returns the confirmed transactions map.
     fn confirmed_transactions_map(&self) -> &Self::ConfirmedTransactionsMap {
         &self.confirmed_transactions_map
+    }
+
+    /// Returns the rejected deployment or execution map.
+    fn rejected_deployment_or_execution_map(&self) -> &Self::RejectedDeploymentOrExecutionMap {
+        &self.rejected_deployment_or_execution_map
     }
 
     /// Returns the transaction store.

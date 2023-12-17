@@ -15,6 +15,7 @@
 use super::*;
 
 pub mod adder;
+pub mod bits_are_zero;
 pub mod comparator;
 pub mod from_bits;
 pub mod subtractor;

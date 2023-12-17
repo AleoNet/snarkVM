@@ -480,6 +480,16 @@ jobs:
           workspace_member: ledger
           cache_key: snarkvm-ledger-cache
 
+  ledger-with-rocksdb:
+    docker:
+      - image: cimg/rust:1.71.1
+    resource_class: 2xlarge
+    steps:
+      - run_serial:
+          flags: --features=rocks
+          workspace_member: ledger
+          cache_key: snarkvm-ledger-with-rocksdb-cache
+
   ledger-authority:
     docker:
       - image: cimg/rust:1.71.1
@@ -642,6 +652,16 @@ jobs:
     resource_class: 2xlarge
     steps:
       - run_serial:
+          workspace_member: synthesizer/process
+          cache_key: snarkvm-synthesizer-process-cache
+
+  synthesizer-process-with-rocksdb:
+    docker:
+      - image: cimg/rust:1.71.1
+    resource_class: 2xlarge
+    steps:
+      - run_serial:
+          flags: --features=rocks
           workspace_member: synthesizer/process
           cache_key: snarkvm-synthesizer-process-cache
 
@@ -844,6 +864,8 @@ workflows:
       - curves
       - fields
       - ledger
+# TODO (howardwu) - Implement `open_testing` on all storage, update to `CurrentConsensusStore::open_testing`, then re-enable.
+#      - ledger-with-rocksdb
       - ledger-authority
       - ledger-block
       - ledger-coinbase
@@ -862,6 +884,7 @@ workflows:
       - synthesizer
       - synthesizer-integration
       - synthesizer-process
+      - synthesizer-process-with-rocksdb
       - synthesizer-program
       - synthesizer-program-integration-keccak
       - synthesizer-program-integration-psd

@@ -159,7 +159,7 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
         Ok((ck, vk))
     }
 
-    /// Outputs a commitments to `polynomials`.
+    /// Outputs commitments to `polynomials`.
     ///
     /// If `polynomials[i].is_hiding()`, then the `i`-th commitment is hiding
     /// up to `polynomials.hiding_bound()` queries.
@@ -515,10 +515,9 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
                         .ok_or(PCError::MissingPolynomial { label: label.to_string() })?;
 
                     if cur_comm.degree_bound().is_some() {
-                        if num_polys != 1 {
+                        if num_polys != 1 || !coeff.is_one() {
                             return Err(PCError::EquationHasDegreeBounds(lc_label));
                         }
-                        assert!(coeff.is_one(), "Coefficient must be one for degree-bounded equations");
                         degree_bound = cur_comm.degree_bound();
                     }
                     coeffs_and_comms.push((*coeff, cur_comm.commitment()));

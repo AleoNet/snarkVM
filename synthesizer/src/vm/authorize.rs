@@ -56,7 +56,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         &self,
         private_key: &PrivateKey<N>,
         credits: Record<N, Plaintext<N>>,
-        fee_in_microcredits: u64,
+        base_fee_in_microcredits: u64,
+        priority_fee_in_microcredits: u64,
         deployment_or_execution_id: Field<N>,
         rng: &mut R,
     ) -> Result<Authorization<N>> {
@@ -66,7 +67,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 let authorization = $process.authorize_fee_private::<$aleo, _>(
                     cast_ref!(&private_key as PrivateKey<$network>),
                     cast_ref!(credits as Record<$network, Plaintext<$network>>).clone(),
-                    fee_in_microcredits,
+                    base_fee_in_microcredits,
+                    priority_fee_in_microcredits,
                     *cast_ref!(deployment_or_execution_id as Field<$network>),
                     rng,
                 )?;
@@ -87,7 +89,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     pub fn authorize_fee_public<R: Rng + CryptoRng>(
         &self,
         private_key: &PrivateKey<N>,
-        fee_in_microcredits: u64,
+        base_fee_in_microcredits: u64,
+        priority_fee_in_microcredits: u64,
         deployment_or_execution_id: Field<N>,
         rng: &mut R,
     ) -> Result<Authorization<N>> {
@@ -96,7 +99,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 // Compute the authorization.
                 let authorization = $process.authorize_fee_public::<$aleo, _>(
                     cast_ref!(&private_key as PrivateKey<$network>),
-                    fee_in_microcredits,
+                    base_fee_in_microcredits,
+                    priority_fee_in_microcredits,
                     *cast_ref!(deployment_or_execution_id as Field<$network>),
                     rng,
                 )?;
