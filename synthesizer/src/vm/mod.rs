@@ -61,9 +61,10 @@ use synthesizer_program::{FinalizeGlobalState, FinalizeOperation, FinalizeStoreT
 use aleo_std::prelude::{finish, lap, timer};
 use indexmap::{IndexMap, IndexSet};
 use parking_lot::RwLock;
+use std::sync::Arc;
+
 #[cfg(not(feature = "serial"))]
 use rayon::prelude::*;
-use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct VM<N: Network, C: ConsensusStorage<N>> {
