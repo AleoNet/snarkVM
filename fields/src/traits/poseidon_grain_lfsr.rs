@@ -152,6 +152,7 @@ impl PoseidonGrainLFSR {
             }
 
             output.push(F::from_bytes_be_mod_order(&bytes));
+
             // Clear the vectors of bits and bytes so they can be reused
             // in the next iteration.
             bits.clear();
