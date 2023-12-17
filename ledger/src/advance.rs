@@ -127,21 +127,29 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                 let coinbase_verifying_key = self.coinbase_puzzle.coinbase_verifying_key();
                 // Retrieve the latest epoch challenge.
                 let latest_epoch_challenge = self.latest_epoch_challenge()?;
-                // Separate the candidate solutions into valid and aborted solutions.
-                // TODO: Add `aborted_solution_ids` to the block.
-                let (valid_candidate_solutions, _aborted_candidate_solutions) = cfg_into_iter!(candidate_solutions)
-                    .fold((Vec::new(), Vec::new()), |(mut valid, mut aborted), solution| {
-                        if valid.len() < N::MAX_SOLUTIONS
-                            && solution
+                // TODO: Add `aborted_solution_ids` to the block. And optimize this logic.
+                // Verify the candidate solutions.
+                let verification_results: Vec<_> = cfg_into_iter!(candidate_solutions)
+                    .map(|solution| {
+                        (
+                            solution,
+                            solution
                                 .verify(coinbase_verifying_key, &latest_epoch_challenge, self.latest_proof_target())
-                                .unwrap_or(false)
-                        {
-                            valid.push(solution);
-                        } else {
-                            aborted.push(solution);
-                        }
-                        (valid, aborted)
-                    });
+                                .unwrap_or(false),
+                        )
+                    })
+                    .collect();
+                // Separate the candidate solutions into valid and aborted solutions.
+                let mut valid_candidate_solutions = Vec::new();
+                let mut aborted_candidate_solutions = Vec::new();
+                for (solution, is_valid) in verification_results.into_iter() {
+                    if is_valid && valid_candidate_solutions.len() < N::MAX_SOLUTIONS {
+                        valid_candidate_solutions.push(solution);
+                    } else {
+                        aborted_candidate_solutions.push(solution);
+                    }
+                }
+
                 // Check if there are any valid solutions.
                 match valid_candidate_solutions.is_empty() {
                     true => (None, Field::<N>::zero(), 0u128),
