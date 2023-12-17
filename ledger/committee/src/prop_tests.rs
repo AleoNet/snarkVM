@@ -31,9 +31,6 @@ use test_strategy::proptest;
 
 type CurrentNetwork = console::network::Testnet3;
 
-/// The maximum number of nodes that can be in a committee.
-pub const MAX_COMMITTEE_SIZE: u16 = 100; // members
-
 #[derive(Debug, Clone)]
 pub struct Validator {
     pub private_key: PrivateKey<CurrentNetwork>,
@@ -128,7 +125,7 @@ impl Arbitrary for ValidatorSet {
 
     fn arbitrary_with(_: Self::Parameters) -> Self::Strategy {
         // use minimal validator set to speed up tests that require signing from the committee members
-        validator_set(any_valid_validator(), size_range(4..=4usize)).boxed()
+        validator_set(any_valid_validator(), size_range(3..=4usize)).boxed()
     }
 }
 
@@ -152,7 +149,7 @@ pub fn any_valid_private_key() -> BoxedStrategy<PrivateKey<CurrentNetwork>> {
 
 #[allow(dead_code)]
 fn too_small_committee() -> BoxedStrategy<Result<Committee<CurrentNetwork>>> {
-    (1u64.., validator_set(any_valid_validator(), 0..4)).prop_map(to_committee).boxed()
+    (1u64.., validator_set(any_valid_validator(), 0..3)).prop_map(to_committee).boxed()
 }
 
 #[allow(dead_code)]
@@ -202,5 +199,5 @@ fn invalid_stakes(#[strategy(too_low_stake_committee())] committee: Result<Commi
 
 #[proptest]
 fn invalid_member_count(#[strategy(too_small_committee())] committee: Result<Committee<CurrentNetwork>>) {
-    assert!(matches!(committee, Err(e) if e.to_string().as_str() == "Committee must have at least 4 members"))
+    assert!(matches!(committee, Err(e) if e.to_string().as_str() == "Committee must have at least 3 members"))
 }

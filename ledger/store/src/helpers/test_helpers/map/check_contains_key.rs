@@ -12,18 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use super::ensure_map_is_empty;
 use crate::helpers::Map;
 
 const NUM_ITEMS: usize = 10;
 const NUM_TOTAL_ITEMS: usize = 20;
-
-fn ensure_map_is_empty(map: &impl for<'a> Map<'a, usize, String>) {
-    // Sanity check.
-    assert!(map.iter_pending().next().is_none());
-    assert!(map.iter_confirmed().next().is_none());
-    assert!(map.keys_confirmed().next().is_none());
-    assert!(map.values_confirmed().next().is_none());
-}
 
 pub fn check_contains_key(map: impl for<'a> Map<'a, usize, String>) {
     ensure_map_is_empty(&map);

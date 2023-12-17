@@ -43,11 +43,11 @@ fn test_coinbase_puzzle() {
                     puzzle.prove(&epoch_challenge, address, nonce, None).unwrap()
                 })
                 .collect::<Vec<_>>();
-            let full_solution = puzzle.accumulate(solutions, &epoch_challenge, 0).unwrap();
-            assert!(puzzle.verify(&full_solution, &epoch_challenge, 0u64).unwrap());
+            let full_solution = CoinbaseSolution::new(solutions).unwrap();
+            assert!(puzzle.check_solutions(&full_solution, &epoch_challenge, 0u64).is_ok());
 
             let bad_epoch_challenge = EpochChallenge::new(rng.next_u32(), Default::default(), degree).unwrap();
-            assert!(!puzzle.verify(&full_solution, &bad_epoch_challenge, 0u64).unwrap());
+            assert!(puzzle.check_solutions(&full_solution, &bad_epoch_challenge, 0u64).is_err());
         }
     }
 }
@@ -103,8 +103,8 @@ fn test_edge_case_for_degree() {
 
     // Generate a prover solution.
     let prover_solution = puzzle.prove(&epoch_challenge, address, rng.gen(), None).unwrap();
-    let coinbase_solution = puzzle.accumulate(vec![prover_solution], &epoch_challenge, 0).unwrap();
-    assert!(puzzle.verify(&coinbase_solution, &epoch_challenge, 0u64).unwrap());
+    let coinbase_solution = CoinbaseSolution::new(vec![prover_solution]).unwrap();
+    assert!(puzzle.check_solutions(&coinbase_solution, &epoch_challenge, 0u64).is_ok());
 }
 
 /// Use `cargo test profiler --features timer` to run this test.
@@ -133,7 +133,7 @@ fn test_profiler() -> Result<()> {
     // Generate proof inputs
     let epoch_challenge = EpochChallenge::new(rng.next_u32(), Default::default(), degree).unwrap();
 
-    for batch_size in [10, 100, <Testnet3 as Network>::MAX_PROVER_SOLUTIONS] {
+    for batch_size in [10, 100, <Testnet3 as Network>::MAX_SOLUTIONS] {
         // Generate the solutions.
         let solutions = (0..batch_size)
             .map(|_| {
@@ -141,11 +141,10 @@ fn test_profiler() -> Result<()> {
                 puzzle.prove(&epoch_challenge, address, nonce, None).unwrap()
             })
             .collect::<Vec<_>>();
-        // Accumulate the solutions.
-        let solution = puzzle.accumulate(solutions, &epoch_challenge, 0).unwrap();
-
-        // Verify the solution.
-        puzzle.verify(&solution, &epoch_challenge, 0u64).unwrap();
+        // Construct the solutions.
+        let solutions = CoinbaseSolution::new(solutions).unwrap();
+        // Verify the solutions.
+        puzzle.check_solutions(&solutions, &epoch_challenge, 0u64).unwrap();
     }
 
     bail!("\n\nRemember to #[ignore] this test!\n\n")

@@ -27,41 +27,33 @@ impl<N: Network, Private: Visibility<Boolean = Boolean<N>>> Equal<Self> for Reco
     type Output = Boolean<N>;
 
     /// Returns `true` if `self` and `other` are equal.
-    ///
-    /// Note: This method does **not** check the `nonce` equality.
     fn is_equal(&self, other: &Self) -> Self::Output {
         // Ensure the `data` lengths are equal.
         if self.data.len() != other.data.len() {
             return Boolean::new(false);
         }
 
-        // Recursively check each entry for equality.
-        let mut equal = Boolean::new(true);
-        for ((name_a, entry_a), (name_b, entry_b)) in self.data.iter().zip_eq(other.data.iter()) {
-            equal = equal & name_a.is_equal(name_b) & entry_a.is_equal(entry_b);
+        // Check the `owner`, and `nonce`.
+        if !(*self.owner.is_equal(&other.owner) && *self.nonce.is_equal(&other.nonce)) {
+            return Boolean::new(false);
         }
 
-        // Check the `owner`, `data`, and `nonce`.
-        self.owner.is_equal(&other.owner) & equal & self.nonce.is_equal(&other.nonce)
+        // Recursively check each entry for equality.
+        if self
+            .data
+            .iter()
+            .zip_eq(other.data.iter())
+            .all(|((name_a, entry_a), (name_b, entry_b))| *name_a.is_equal(name_b) && *entry_a.is_equal(entry_b))
+        {
+            Boolean::new(true)
+        } else {
+            Boolean::new(false)
+        }
     }
 
     /// Returns `true` if `self` and `other` are *not* equal.
-    ///
-    /// Note: This method does **not** check the `nonce` equality.
     fn is_not_equal(&self, other: &Self) -> Self::Output {
-        // Check the `data` lengths.
-        if self.data.len() != other.data.len() {
-            return Boolean::new(true);
-        }
-
-        // Recursively check each entry for inequality.
-        let mut not_equal = Boolean::new(false);
-        for ((name_a, entry_a), (name_b, entry_b)) in self.data.iter().zip_eq(other.data.iter()) {
-            not_equal = not_equal | name_a.is_not_equal(name_b) | entry_a.is_not_equal(entry_b);
-        }
-
-        // Check the `owner`, `data`, and `nonce`.
-        self.owner.is_not_equal(&other.owner) | not_equal | self.nonce.is_not_equal(&other.nonce)
+        !self.is_equal(other)
     }
 }
 

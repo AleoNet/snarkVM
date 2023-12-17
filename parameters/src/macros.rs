@@ -252,11 +252,11 @@ macro_rules! impl_local {
         pub struct $name;
 
         impl $name {
-            pub fn load_bytes() -> Result<Vec<u8>, $crate::errors::ParameterError> {
-                const METADATA: &'static str = include_str!(concat!($local_dir, $fname, ".metadata"));
+            pub const METADATA: &'static str = include_str!(concat!($local_dir, $fname, ".metadata"));
 
+            pub fn load_bytes() -> Result<Vec<u8>, $crate::errors::ParameterError> {
                 let metadata: serde_json::Value =
-                    serde_json::from_str(METADATA).expect("Metadata was not well-formatted");
+                    serde_json::from_str(Self::METADATA).expect("Metadata was not well-formatted");
                 let expected_checksum: String =
                     metadata["checksum"].as_str().expect("Failed to parse checksum").to_string();
                 let expected_size: usize =
@@ -282,11 +282,11 @@ macro_rules! impl_local {
         pub struct $name;
 
         impl $name {
-            pub fn load_bytes() -> Result<Vec<u8>, $crate::errors::ParameterError> {
-                const METADATA: &'static str = include_str!(concat!($local_dir, $fname, ".metadata"));
+            pub const METADATA: &'static str = include_str!(concat!($local_dir, $fname, ".metadata"));
 
+            pub fn load_bytes() -> Result<Vec<u8>, $crate::errors::ParameterError> {
                 let metadata: serde_json::Value =
-                    serde_json::from_str(METADATA).expect("Metadata was not well-formatted");
+                    serde_json::from_str(Self::METADATA).expect("Metadata was not well-formatted");
                 let expected_checksum: String =
                     metadata[concat!($ftype, "_checksum")].as_str().expect("Failed to parse checksum").to_string();
                 let expected_size: usize =
@@ -315,13 +315,13 @@ macro_rules! impl_remote {
         pub struct $name;
 
         impl $name {
+            pub const METADATA: &'static str = include_str!(concat!($local_dir, $fname, ".metadata"));
+
             impl_store_and_remote_fetch!();
 
             pub fn load_bytes() -> Result<Vec<u8>, $crate::errors::ParameterError> {
-                const METADATA: &'static str = include_str!(concat!($local_dir, $fname, ".metadata"));
-
                 let metadata: serde_json::Value =
-                    serde_json::from_str(METADATA).expect("Metadata was not well-formatted");
+                    serde_json::from_str(Self::METADATA).expect("Metadata was not well-formatted");
                 let expected_checksum: String =
                     metadata["checksum"].as_str().expect("Failed to parse checksum").to_string();
                 let expected_size: usize =
@@ -355,13 +355,13 @@ macro_rules! impl_remote {
         pub struct $name;
 
         impl $name {
+            pub const METADATA: &'static str = include_str!(concat!($local_dir, $fname, ".metadata"));
+
             impl_store_and_remote_fetch!();
 
             pub fn load_bytes() -> Result<Vec<u8>, $crate::errors::ParameterError> {
-                const METADATA: &'static str = include_str!(concat!($local_dir, $fname, ".metadata"));
-
                 let metadata: serde_json::Value =
-                    serde_json::from_str(METADATA).expect("Metadata was not well-formatted");
+                    serde_json::from_str(Self::METADATA).expect("Metadata was not well-formatted");
                 let expected_checksum: String =
                     metadata[concat!($ftype, "_checksum")].as_str().expect("Failed to parse checksum").to_string();
                 let expected_size: usize =

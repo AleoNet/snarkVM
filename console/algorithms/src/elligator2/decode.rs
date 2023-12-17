@@ -76,8 +76,10 @@ impl<E: Environment> Elligator2<E> {
         let u_plus_a = u + a;
         ensure!((-du * u_plus_a).legendre().is_qr(), "Elligator2 failed: -D * u * (u + A) is not a quadratic residue");
 
-        let v_reconstructed =
-            v.square().square_root().map_err(|_| anyhow!("Elligator2 failed: cannot square root v^2"))?;
+        let v_reconstructed = v
+            .square()
+            .even_square_root()
+            .map_err(|_| anyhow!("Elligator2 failed: cannot compute the even square root for v^2"))?;
         let exists_in_sqrt_fq2 = v_reconstructed == v;
 
         let element = match exists_in_sqrt_fq2 {
@@ -90,8 +92,8 @@ impl<E: Environment> Elligator2<E> {
             // Let element = sqrt(-(u + A) / Du)).
             false => -u_plus_a * du.inverse().map_err(|_| anyhow!("Elligator2 failed: D * u == 0"))?,
         }
-        .square_root()
-        .map_err(|_| anyhow!("Elligator2 failed: cannot compute the square root for the element"))?;
+        .even_square_root()
+        .map_err(|_| anyhow!("Elligator2 failed: cannot compute the even square root for the element"))?;
 
         match sign_high {
             true => Ok(cmp::max(element, -element)),

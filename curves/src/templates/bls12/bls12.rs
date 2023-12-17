@@ -193,7 +193,7 @@ where
                 // r = f^((p^6 - 1)(p^2 + 1))
                 r *= &f2;
 
-                // Hard part of the final exponentation is below:
+                // Hard part of the final exponentiation is below:
                 // From https://eprint.iacr.org/2016/130.pdf, Table 1
                 let mut y0 = r.cyclotomic_square();
                 y0.conjugate();

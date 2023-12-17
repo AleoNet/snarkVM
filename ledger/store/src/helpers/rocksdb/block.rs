@@ -27,7 +27,7 @@ use crate::{
 };
 use console::{prelude::*, types::Field};
 use ledger_authority::Authority;
-use ledger_block::{Header, Ratifications};
+use ledger_block::{Header, Ratifications, Rejected};
 use ledger_coinbase::{CoinbaseSolution, PuzzleCommitment};
 
 /// A RocksDB block storage.
@@ -57,8 +57,12 @@ pub struct BlockDB<N: Network> {
     transactions_map: DataMap<N::BlockHash, Vec<N::TransactionID>>,
     /// The aborted transaction IDs map.
     aborted_transaction_ids_map: DataMap<N::BlockHash, Vec<N::TransactionID>>,
+    /// The rejected or aborted transaction ID map.
+    rejected_or_aborted_transaction_id_map: DataMap<N::TransactionID, N::BlockHash>,
     /// The confirmed transactions map.
     confirmed_transactions_map: DataMap<N::TransactionID, (N::BlockHash, ConfirmedTxType, Vec<u8>)>,
+    /// The rejected deployment or execution map.
+    rejected_deployment_or_execution_map: DataMap<Field<N>, Rejected<N>>,
     /// The transaction store.
     transaction_store: TransactionStore<N, TransactionDB<N>>,
 }
@@ -77,7 +81,9 @@ impl<N: Network> BlockStorage<N> for BlockDB<N> {
     type PuzzleCommitmentsMap = DataMap<PuzzleCommitment<N>, u32>;
     type TransactionsMap = DataMap<N::BlockHash, Vec<N::TransactionID>>;
     type AbortedTransactionIDsMap = DataMap<N::BlockHash, Vec<N::TransactionID>>;
+    type RejectedOrAbortedTransactionIDMap = DataMap<N::TransactionID, N::BlockHash>;
     type ConfirmedTransactionsMap = DataMap<N::TransactionID, (N::BlockHash, ConfirmedTxType, Vec<u8>)>;
+    type RejectedDeploymentOrExecutionMap = DataMap<Field<N>, Rejected<N>>;
     type TransactionStorage = TransactionDB<N>;
     type TransitionStorage = TransitionDB<N>;
 
@@ -101,7 +107,9 @@ impl<N: Network> BlockStorage<N> for BlockDB<N> {
             puzzle_commitments_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::PuzzleCommitments))?,
             transactions_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::Transactions))?,
             aborted_transaction_ids_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::AbortedTransactionIDs))?,
+            rejected_or_aborted_transaction_id_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::RejectedOrAbortedTransactionID))?,
             confirmed_transactions_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::ConfirmedTransactions))?,
+            rejected_deployment_or_execution_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::RejectedDeploymentOrExecution))?,
             transaction_store,
         })
     }
@@ -166,9 +174,19 @@ impl<N: Network> BlockStorage<N> for BlockDB<N> {
         &self.aborted_transaction_ids_map
     }
 
+    /// Returns the rejected transaction ID or aborted transaction ID map.
+    fn rejected_or_aborted_transaction_id_map(&self) -> &Self::RejectedOrAbortedTransactionIDMap {
+        &self.rejected_or_aborted_transaction_id_map
+    }
+
     /// Returns the confirmed transactions map.
     fn confirmed_transactions_map(&self) -> &Self::ConfirmedTransactionsMap {
         &self.confirmed_transactions_map
+    }
+
+    /// Returns the rejected deployment or execution map.
+    fn rejected_deployment_or_execution_map(&self) -> &Self::RejectedDeploymentOrExecutionMap {
+        &self.rejected_deployment_or_execution_map
     }
 
     /// Returns the transaction store.

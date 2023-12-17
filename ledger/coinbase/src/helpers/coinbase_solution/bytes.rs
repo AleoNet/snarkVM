@@ -25,7 +25,7 @@ impl<N: Network> FromBytes for CoinbaseSolution<N> {
             prover_solutions.push(ProverSolution::read_le(&mut reader)?);
         }
         // Return the solutions.
-        Ok(Self::new(prover_solutions))
+        Self::new(prover_solutions).map_err(error)
     }
 }
 

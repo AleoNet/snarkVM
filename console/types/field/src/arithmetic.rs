@@ -237,10 +237,40 @@ impl<E: Environment> SquareRoot for Field<E> {
     type Output = Field<E>;
 
     /// Returns the `square_root` of `self`.
+    /// If there are two square roots, the bitwise lesser one is returned.
     #[inline]
     fn square_root(&self) -> Result<Self::Output> {
         match self.field.sqrt() {
-            Some(sqrt) => Ok(Field::new(sqrt)),
+            Some(sqrt) => {
+                // Return the smaller square root.
+                let sqrt = Field::new(sqrt);
+                let negative_sqrt: Field<E> = -sqrt;
+                match *(sqrt.is_less_than_or_equal(&negative_sqrt)) {
+                    true => Ok(sqrt),
+                    false => Ok(negative_sqrt),
+                }
+            }
+            None => bail!("Failed to square root a field element: {self}"),
+        }
+    }
+}
+
+impl<E: Environment> Field<E> {
+    /// Returns the `square_root` of `self`, where the least significant bit of the square root is zero.
+    #[inline]
+    pub fn even_square_root(&self) -> Result<Self> {
+        match self.field.sqrt() {
+            Some(sqrt) => {
+                let sqrt: Field<E> = Field::new(sqrt);
+                // Check the least significant bit of the square root.
+                // Note that the unwrap is safe since the number of bits is always greater than zero.
+                match *sqrt.to_bits_be().last().unwrap() {
+                    // If the lsb is set, return the negated square root.
+                    true => Ok(-sqrt),
+                    // Otherwise, return the square root.
+                    false => Ok(sqrt),
+                }
+            }
             None => bail!("Failed to square root a field element: {self}"),
         }
     }

@@ -379,11 +379,21 @@ impl<
             .db_iter
             .next()?
             .map_err(|e| {
-                error!("RocksDB iterator error: {e}");
+                error!("RocksDB Iter iterator error: {e}");
             })
             .ok()?;
-        let key = bincode::deserialize(&key[PREFIX_LEN..]).ok()?;
-        let value = bincode::deserialize(&value).ok()?;
+
+        // Deserialize the key and value.
+        let key = bincode::deserialize(&key[PREFIX_LEN..])
+            .map_err(|e| {
+                error!("RocksDB Iter deserialize(key) error: {e}");
+            })
+            .ok()?;
+        let value = bincode::deserialize(&value)
+            .map_err(|e| {
+                error!("RocksDB Iter deserialize(value) error: {e}");
+            })
+            .ok()?;
 
         Some((Cow::Owned(key), Cow::Owned(value)))
     }
@@ -409,10 +419,16 @@ impl<'a, K: 'a + Clone + Debug + PartialEq + Eq + Hash + Serialize + Deserialize
             .db_iter
             .next()?
             .map_err(|e| {
-                error!("RocksDB iterator error: {e}");
+                error!("RocksDB Keys iterator error: {e}");
             })
             .ok()?;
-        let key = bincode::deserialize(&key[PREFIX_LEN..]).ok()?;
+
+        // Deserialize the key.
+        let key = bincode::deserialize(&key[PREFIX_LEN..])
+            .map_err(|e| {
+                error!("RocksDB Keys deserialize(key) error: {e}");
+            })
+            .ok()?;
 
         Some(Cow::Owned(key))
     }
@@ -438,10 +454,16 @@ impl<'a, V: 'a + Clone + PartialEq + Eq + Serialize + DeserializeOwned> Iterator
             .db_iter
             .next()?
             .map_err(|e| {
-                error!("RocksDB iterator error: {e}");
+                error!("RocksDB Values iterator error: {e}");
             })
             .ok()?;
-        let value = bincode::deserialize(&value).ok()?;
+
+        // Deserialize the value.
+        let value = bincode::deserialize(&value)
+            .map_err(|e| {
+                error!("RocksDB Values deserialize(value) error: {e}");
+            })
+            .ok()?;
 
         Some(Cow::Owned(value))
     }

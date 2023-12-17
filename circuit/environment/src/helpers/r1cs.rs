@@ -37,7 +37,7 @@ impl<F: PrimeField> R1CS<F> {
     pub(crate) fn new() -> Self {
         Self {
             constants: Default::default(),
-            public: vec![Variable::Public(0u64, Rc::new(F::one()))],
+            public: vec![Variable::Public(Rc::new((0u64, F::one())))],
             private: Default::default(),
             constraints: Default::default(),
             counter: Default::default(),
@@ -65,7 +65,7 @@ impl<F: PrimeField> R1CS<F> {
 
     /// Returns a new public variable with the given value and scope.
     pub(crate) fn new_public(&mut self, value: F) -> Variable<F> {
-        let variable = Variable::Public(self.public.len() as u64, Rc::new(value));
+        let variable = Variable::Public(Rc::new((self.public.len() as u64, value)));
         self.public.push(variable.clone());
         self.counter.increment_public();
         variable
@@ -73,7 +73,7 @@ impl<F: PrimeField> R1CS<F> {
 
     /// Returns a new private variable with the given value and scope.
     pub(crate) fn new_private(&mut self, value: F) -> Variable<F> {
-        let variable = Variable::Private(self.private.len() as u64, Rc::new(value));
+        let variable = Variable::Private(Rc::new((self.private.len() as u64, value)));
         self.private.push(variable.clone());
         self.counter.increment_private();
         variable

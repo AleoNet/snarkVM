@@ -89,7 +89,7 @@ impl<N: Network> Process<N> {
         );
         // Ensure the number of inputs is correct.
         let num_inputs = fee.inputs().len();
-        ensure!(num_inputs == 3, "The number of inputs in the fee transition should be 3, found {num_inputs}",);
+        ensure!(num_inputs == 4, "The number of inputs in the fee transition should be 4, found {num_inputs}",);
         // Ensure each input is valid.
         if fee.inputs().iter().enumerate().any(|(index, input)| !input.verify(function_id, fee.tcm(), index)) {
             bail!("Failed to verify a fee input")
@@ -159,7 +159,7 @@ impl<N: Network> Process<N> {
         );
         // Ensure the number of inputs is correct.
         let num_inputs = fee.inputs().len();
-        ensure!(num_inputs == 2, "The number of inputs in the fee transition should be 2, found {num_inputs}",);
+        ensure!(num_inputs == 3, "The number of inputs in the fee transition should be 3, found {num_inputs}",);
         // Ensure each input is valid.
         if fee.inputs().iter().enumerate().any(|(index, input)| !input.verify(function_id, fee.tcm(), index)) {
             bail!("Failed to verify a fee input")

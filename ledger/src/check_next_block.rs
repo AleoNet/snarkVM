@@ -14,9 +14,11 @@
 
 use super::*;
 
+use rand::{rngs::StdRng, SeedableRng};
+
 impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
     /// Checks the given block is valid next block.
-    pub fn check_next_block(&self, block: &Block<N>) -> Result<()> {
+    pub fn check_next_block<R: CryptoRng + Rng>(&self, block: &Block<N>, rng: &mut R) -> Result<()> {
         let height = block.height();
 
         // Ensure the block hash does not already exist.
@@ -41,8 +43,9 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         // Ensure each transaction is well-formed and unique.
         // TODO: this intermediate allocation shouldn't be necessary; this is most likely https://github.com/rust-lang/rust/issues/89418.
         let transactions = block.transactions().iter().collect::<Vec<_>>();
-        cfg_iter!(transactions).try_for_each(|transaction| {
-            self.check_transaction_basic(*transaction, transaction.to_rejected_id()?)
+        let rngs = (0..transactions.len()).map(|_| StdRng::from_seed(rng.gen())).collect::<Vec<_>>();
+        cfg_iter!(transactions).zip(rngs).try_for_each(|(transaction, mut rng)| {
+            self.check_transaction_basic(*transaction, transaction.to_rejected_id()?, &mut rng)
                 .map_err(|e| anyhow!("Invalid transaction found in the transactions list: {e}"))
         })?;
 
@@ -78,28 +81,9 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             block.previous_hash(),
         )?;
 
-        // Reconstruct the candidate ratifications to verify the speculation.
-        let candidate_ratifications = block.ratifications().iter().cloned().collect::<Vec<_>>();
-
-        // Reconstruct the unconfirmed transactions to verify the speculation.
-        let unconfirmed_transactions = block
-            .transactions()
-            .iter()
-            .map(|confirmed| confirmed.to_unconfirmed_transaction())
-            .collect::<Result<Vec<_>>>()?;
-
-        // Speculate over the unconfirmed transactions.
-        let (ratifications, confirmed_transactions, aborted_transaction_ids, ratified_finalize_operations) =
-            self.vm.speculate(state, &candidate_ratifications, block.solutions(), unconfirmed_transactions.iter())?;
-
-        // Ensure the ratifications after speculation match.
-        if block.ratifications() != &ratifications {
-            bail!("The ratifications after speculation do not match the ratifications in the block");
-        }
-        // Ensure the transactions after speculation match.
-        if block.transactions() != &confirmed_transactions {
-            bail!("The transactions after speculation do not match the transactions in the block");
-        }
+        // Ensure speculation over the unconfirmed transactions is correct.
+        let ratified_finalize_operations =
+            self.vm.check_speculate(state, block.ratifications(), block.solutions(), block.transactions())?;
 
         // Ensure the block is correct.
         block.verify(
@@ -109,7 +93,6 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             self.coinbase_puzzle(),
             &self.latest_epoch_challenge()?,
             OffsetDateTime::now_utc().unix_timestamp(),
-            aborted_transaction_ids,
             ratified_finalize_operations,
         )?;
 

@@ -109,8 +109,8 @@ pub trait Network:
     const BLOCK_TIME: u16 = 10;
     /// The coinbase puzzle degree.
     const COINBASE_PUZZLE_DEGREE: u32 = (1 << 13) - 1; // 8,191
-    /// The maximum number of prover solutions that can be included per block.
-    const MAX_PROVER_SOLUTIONS: usize = 1 << 8; // 256 prover solutions
+    /// The maximum number of solutions that can be included per block.
+    const MAX_SOLUTIONS: usize = 1 << 8; // 256 solutions
     /// The number of blocks per epoch.
     const NUM_BLOCKS_PER_EPOCH: u32 = 3600 / Self::BLOCK_TIME as u32; // 360 blocks == ~1 hour
 
