@@ -24,7 +24,7 @@ serial = [
   "ledger-store/serial",
   "synthesizer-program/serial"
 ]
-wasm = [ "console/wasm", "synthesizer-program/wasm" ]
+wasm = [ "console/wasm", "ledger-store/wasm", "synthesizer-program/wasm" ]
 query = [ "ledger-store", "synthesizer-program", "ureq" ]
 
 [dependencies.console]
