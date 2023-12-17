@@ -140,7 +140,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                     })
                     .collect();
                 // Separate the candidate solutions into valid and aborted solutions.
-                let mut valid_candidate_solutions = Vec::new();
+                let mut valid_candidate_solutions = Vec::with_capacity(N::MAX_SOLUTIONS);
                 let mut aborted_candidate_solutions = Vec::new();
                 for (solution, is_valid) in verification_results.into_iter() {
                     if is_valid && valid_candidate_solutions.len() < N::MAX_SOLUTIONS {
