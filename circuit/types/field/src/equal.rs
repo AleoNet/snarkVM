@@ -20,7 +20,7 @@ impl<E: Environment> Equal<Self> for Field<E> {
     ///
     /// Returns `true` if `self` and `other` are equal.
     ///
-    /// This method costs 3 constraints.
+    /// This method costs 2 constraints.
     ///
     fn is_equal(&self, other: &Self) -> Self::Output {
         !self.is_not_equal(other)
@@ -32,88 +32,89 @@ impl<E: Environment> Equal<Self> for Field<E> {
     /// This method constructs a boolean that indicates if
     /// `self` and `other ` are *not* equal to each other.
     ///
-    /// This method costs 3 constraints.
+    /// This method costs 2 constraints.
     ///
     fn is_not_equal(&self, other: &Self) -> Self::Output {
+        // Initialize a (console) boolean that is `true` if `this` and `that` are not equivalent.
+        let is_neq_ejected = self.eject_value() != other.eject_value();
+
         match (self.is_constant(), other.is_constant()) {
-            (true, true) => witness!(|self, other| self != other),
+            // If both operands are 'Constant', the result is also 'Constant'.
+            (true, true) => Boolean::new(Mode::Constant, is_neq_ejected),
             _ => {
-                // Compute a boolean that is `true` if `this` and `that` are not equivalent.
-                let is_neq: Boolean<E> = witness!(|self, other| self != other);
-
-                // Assign the expected multiplier.
-                let multiplier: Field<E> = witness!(|self, other| {
-                    match (self - other).inverse() {
-                        Ok(inverse) => inverse,
-                        _ => console::Field::one(),
-                    }
-                });
-
-                //
                 // Inequality Enforcement
                 // ----------------------------------------------------------------
                 // Check 1:  (a - b) * multiplier = is_neq
-                // Check 2:  (a - b) * not(is_neq) = 0
+                // Check 2:  (a - b) * (1 - is_neq) = 0
                 //
                 //
                 // Case 1: a == b AND is_neq == 0 (honest)
                 // ----------------------------------------------------------------
-                // Check 1:  (a - b) * 1 = 0
-                //                 a - b = 0
-                // => As a == b, is_neq is correct.
+                // Check 1:  (a - b) * multiplier = 0
+                //                 0 * multiplier = 0
+                //                              0 = 0
+                // => The constraint is satisfied.
                 //
-                // Check 2:  (a - b) * not(0) = 0
-                //                      a - b = 0
-                // => As a == b, is_neq is correct.
-                //
-                // Remark: While the multiplier = 1 here, letting multiplier := n,
-                //         for n as any field element, also holds.
+                // Check 2:  (a - b) * (1 - 0) = 0
+                //                       0 * 1 = 0
+                //                           0 = 0
+                // => The constraint is satisfied.
                 //
                 //
-                // Case 2: a == b AND is_neq == 1 (dishonest)
+                // Case 2: a == b AND is_neq != 0 (dishonest)
                 // ----------------------------------------------------------------
-                // Check 1:  (a - b) * 1 = 1
-                //                 a - b = 1
-                // => As a == b, the is_neq is incorrect.
-                //
-                // Remark: While the multiplier = 1 here, letting multiplier := n,
-                //         for n as any field element, also holds.
+                // Check 1:  (a - b) * multiplier = is_neq
+                //                 0 * multiplier = is_neq
+                //                              0 = is_neq
+                // => As is_neq != 0, the constraint is not satisfied.
                 //
                 //
-                // Case 3a: a != b AND is_neq == 0 AND multiplier = 0 (dishonest)
+                // Case 3: a != b AND is_neq != 1 (dishonest).
                 // ----------------------------------------------------------------
-                // Check 2:  (a - b) * not(0) = 0
-                //                      a - b = 0
-                // => As a != b, is_neq is incorrect.
-                //
-                // Case 3b: a != b AND is_neq == 0 AND multiplier = 1 (dishonest)
-                // ----------------------------------------------------------------
-                // Check 1:  (a - b) * 1 = 0
-                //                 a - b = 0
-                // => As a != b, is_neq is incorrect.
-                //
-                // Remark: While the multiplier = 1 here, letting multiplier = n,
-                //         for n as any field element (n != 0), also holds.
+                // Check 2:  (a - b) * (1 - is_neq) = 0
+                //                     (1 - is_neq) = 0
+                // => As is_neq != 1, the constraint is not satisfied.
                 //
                 //
                 // Case 4a: a != b AND is_neq == 1 AND multiplier = n [!= (a - b)^(-1)] (dishonest)
                 // ---------------------------------------------------------------------------------
                 // Check 1:  (a - b) * n = 1
-                // => As n != (a - b)^(-1), is_neq is incorrect.
+                // => As n != (a - b)^(-1), the constraint is not satisfied.
+                //
                 //
                 // Case 4b: a != b AND is_neq == 1 AND multiplier = (a - b)^(-1) (honest)
                 // ---------------------------------------------------------------------------------
                 // Check 1:  (a - b) * (a - b)^(-1) = 1
                 //                                1 = 1
-                // => is_neq is trivially correct.
+                // => The constraint is satisfied.
                 //
-                // Check 2:  (a - b) * not(1) = 0
-                //                          0 = 0
-                // => is_neq is trivially correct.
+                // Check 2:  (a - b) * (1 - 1) = 0
+                //                 (a - b) * 0 = 0
+                //                           0 = 0
+                // => The constraint is satisfied.
                 //
+                //
+                // Observe that in both of the honest cases, `is_neq` is always 0 or 1.
+
+                // Witness a boolean that is `true` if `this` and `that` are not equivalent.
+                let is_neq = Boolean::from_variable(E::new_variable(Mode::Private, match is_neq_ejected {
+                    true => E::BaseField::one(),
+                    false => E::BaseField::zero(),
+                }));
 
                 // Compute `self` - `other`.
                 let delta = self - other;
+
+                // Assign the expected multiplier as a witness.
+                //
+                // Note: the inverse of `delta` is not guaranteed to exist, and if it does not,
+                // we pick 1 as the multiplier, as its value is irrelevant to satisfy the constraints.
+                let multiplier: Field<E> = witness!(|delta| {
+                    match delta.inverse() {
+                        Ok(inverse) => inverse,
+                        _ => console::Field::one(),
+                    }
+                });
 
                 // Negate `is_neq`.
                 let is_eq = !is_neq.clone();
@@ -124,6 +125,7 @@ impl<E: Environment> Equal<Self> for Field<E> {
                 // Check 2: (a - b) * not(is_neq) = 0
                 E::enforce(|| (delta, is_eq, E::zero()));
 
+                // Return `is_neq`.
                 is_neq
             }
         }
@@ -137,7 +139,7 @@ impl<E: Environment> Metrics<dyn Equal<Field<E>, Output = Boolean<E>>> for Field
     fn count(case: &Self::Case) -> Count {
         match case {
             (Mode::Constant, Mode::Constant) => Count::is(1, 0, 0, 0),
-            _ => Count::is(0, 0, 2, 3),
+            _ => Count::is(0, 0, 2, 2),
         }
     }
 }

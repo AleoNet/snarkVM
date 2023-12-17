@@ -126,7 +126,7 @@ mod tests {
     fn test_serde_json() {
         let rng = &mut TestRng::default();
 
-        for expected in crate::ratify::test_helpers::sample_ratify_objects(rng) {
+        for expected in crate::ratify::test_helpers::sample_ratifications(rng) {
             check_serde_json(expected);
         }
     }
@@ -135,7 +135,7 @@ mod tests {
     fn test_bincode() {
         let rng = &mut TestRng::default();
 
-        for expected in crate::ratify::test_helpers::sample_ratify_objects(rng) {
+        for expected in crate::ratify::test_helpers::sample_ratifications(rng) {
             check_bincode(expected);
         }
     }

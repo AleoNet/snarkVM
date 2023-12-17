@@ -28,7 +28,20 @@ use console::{
     program::{Identifier, Literal, Locator, Plaintext, ProgramID, ProgramOwner, Record, Value},
     types::{Field, U64},
 };
-use ledger_block::{Block, Deployment, Execution, Fee, Header, Ratify, Transaction};
+use ledger_block::{
+    Block,
+    ConfirmedTransaction,
+    Deployment,
+    Execution,
+    Fee,
+    Header,
+    Ratifications,
+    Ratify,
+    Rejected,
+    Transaction,
+    Transactions,
+};
+use ledger_coinbase::CoinbaseSolution;
 use ledger_committee::Committee;
 use ledger_query::Query;
 use ledger_store::{
@@ -43,12 +56,15 @@ use ledger_store::{
     TransitionStore,
 };
 use synthesizer_process::{Authorization, Process, Trace};
-use synthesizer_program::{FinalizeGlobalState, FinalizeStoreTrait, Program};
+use synthesizer_program::{FinalizeGlobalState, FinalizeOperation, FinalizeStoreTrait, Program};
 
 use aleo_std::prelude::{finish, lap, timer};
-use indexmap::IndexMap;
+use indexmap::{IndexMap, IndexSet};
 use parking_lot::RwLock;
 use std::sync::Arc;
+
+#[cfg(not(feature = "serial"))]
+use rayon::prelude::*;
 
 #[derive(Clone)]
 pub struct VM<N: Network, C: ConsensusStorage<N>> {
@@ -71,16 +87,16 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             // Ensure that all mappings are initialized.
             if !store.finalize_store().contains_mapping_confirmed(credits.id(), mapping.name())? {
                 // Initialize the mappings for 'credits.aleo'.
-                store.finalize_store().initialize_mapping(credits.id(), mapping.name())?;
+                store.finalize_store().initialize_mapping(*credits.id(), *mapping.name())?;
             }
         }
 
-        // A helper function to load the program into the process, and recursively load all imports.
+        // A helper function to retrieve all the deployments.
         fn load_deployment_and_imports<N: Network, T: TransactionStorage<N>>(
-            process: &mut Process<N>,
+            process: &Process<N>,
             transaction_store: &TransactionStore<N, T>,
             transaction_id: N::TransactionID,
-        ) -> Result<()> {
+        ) -> Result<Vec<(ProgramID<N>, Deployment<N>)>> {
             // Retrieve the deployment from the transaction id.
             let deployment = match transaction_store.get_deployment(&transaction_id)? {
                 Some(deployment) => deployment,
@@ -93,8 +109,11 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
             // Return early if the program is already loaded.
             if process.contains_program(program_id) {
-                return Ok(());
+                return Ok(vec![]);
             }
+
+            // Prepare a vector for the deployments.
+            let mut deployments = vec![];
 
             // Iterate through the program imports.
             for import_program_id in program.imports().keys() {
@@ -107,25 +126,46 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                         bail!("Transaction id for '{program_id}' is not found in storage.");
                     };
 
-                    // Recursively load the deployment and its imports.
-                    load_deployment_and_imports(process, transaction_store, transaction_id)?
+                    // Add the deployment and its imports found recursively.
+                    deployments.extend_from_slice(&load_deployment_and_imports(
+                        process,
+                        transaction_store,
+                        transaction_id,
+                    )?);
                 }
             }
 
-            // Load the deployment if it does not exist in the process yet.
-            if !process.contains_program(program_id) {
-                process.load_deployment(&deployment)?;
-            }
+            // Once all the imports have been included, add the parent deployment.
+            deployments.push((*program_id, deployment));
 
-            Ok(())
+            Ok(deployments)
         }
 
         // Retrieve the transaction store.
         let transaction_store = store.transaction_store();
+        // Retrieve the list of deployment transaction IDs.
+        let deployment_ids = transaction_store.deployment_transaction_ids().collect::<Vec<_>>();
         // Load the deployments from the store.
-        for transaction_id in transaction_store.deployment_transaction_ids() {
-            // Load the deployment and its imports.
-            load_deployment_and_imports(&mut process, transaction_store, *transaction_id)?;
+        for (i, chunk) in deployment_ids.chunks(256).enumerate() {
+            debug!(
+                "Loading deployments {}-{} (of {})...",
+                i * 256,
+                ((i + 1) * 256).min(deployment_ids.len()),
+                deployment_ids.len()
+            );
+            let deployments = cfg_iter!(chunk)
+                .map(|transaction_id| {
+                    // Load the deployment and its imports.
+                    load_deployment_and_imports(&process, transaction_store, **transaction_id)
+                })
+                .collect::<Result<Vec<_>>>()?;
+
+            for (program_id, deployment) in deployments.iter().flatten() {
+                // Load the deployment if it does not exist in the process yet.
+                if !process.contains_program(program_id) {
+                    process.load_deployment(deployment)?;
+                }
+            }
         }
 
         // Return the new VM.
@@ -174,18 +214,26 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// Returns a new genesis block for a beacon chain.
     pub fn genesis_beacon<R: Rng + CryptoRng>(&self, private_key: &PrivateKey<N>, rng: &mut R) -> Result<Block<N>> {
+        let private_keys = [*private_key, PrivateKey::new(rng)?, PrivateKey::new(rng)?, PrivateKey::new(rng)?];
+
         // Construct the committee members.
         let members = indexmap::indexmap! {
-            Address::try_from(private_key)? => (ledger_committee::MIN_VALIDATOR_STAKE, true),
-            Address::try_from(PrivateKey::new(rng)?)? => (ledger_committee::MIN_VALIDATOR_STAKE, true),
-            Address::try_from(PrivateKey::new(rng)?)? => (ledger_committee::MIN_VALIDATOR_STAKE, true),
-            Address::try_from(PrivateKey::new(rng)?)? => (ledger_committee::MIN_VALIDATOR_STAKE, true),
+            Address::try_from(private_keys[0])? => (ledger_committee::MIN_VALIDATOR_STAKE, true),
+            Address::try_from(private_keys[1])? => (ledger_committee::MIN_VALIDATOR_STAKE, true),
+            Address::try_from(private_keys[2])? => (ledger_committee::MIN_VALIDATOR_STAKE, true),
+            Address::try_from(private_keys[3])? => (ledger_committee::MIN_VALIDATOR_STAKE, true),
         };
         // Construct the committee.
         let committee = Committee::<N>::new_genesis(members)?;
+
+        // Compute the remaining supply.
+        let remaining_supply = N::STARTING_SUPPLY - (ledger_committee::MIN_VALIDATOR_STAKE * 4);
         // Construct the public balances.
         let public_balances = indexmap::indexmap! {
-            Address::try_from(private_key)? => N::STARTING_SUPPLY - (ledger_committee::MIN_VALIDATOR_STAKE * 4),
+            Address::try_from(private_keys[0])? => remaining_supply / 4,
+            Address::try_from(private_keys[1])? => remaining_supply / 4,
+            Address::try_from(private_keys[2])? => remaining_supply / 4,
+            Address::try_from(private_keys[3])? => remaining_supply / 4,
         };
         // Return the genesis block.
         self.genesis_quorum(private_key, committee, public_balances, rng)
@@ -228,17 +276,30 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
         // Construct the finalize state.
         let state = FinalizeGlobalState::new_genesis::<N>()?;
-        // Speculate the transactions.
-        let (transactions, aborted) = self.speculate(state, &ratifications, solutions.as_ref(), transactions.iter())?;
-        ensure!(aborted.is_empty(), "Failed to initialize a genesis block - found aborted transactions");
+        // Speculate on the ratifications, solutions, and transactions.
+        let (ratifications, transactions, aborted_transaction_ids, ratified_finalize_operations) =
+            self.speculate(state, None, ratifications, solutions.as_ref(), transactions.iter())?;
+        ensure!(
+            aborted_transaction_ids.is_empty(),
+            "Failed to initialize a genesis block - found aborted transaction IDs"
+        );
 
         // Prepare the block header.
-        let header = Header::genesis(&transactions)?;
+        let header = Header::genesis(&ratifications, &transactions, ratified_finalize_operations)?;
         // Prepare the previous block hash.
         let previous_hash = N::BlockHash::default();
 
         // Construct the block.
-        let block = Block::new_beacon(private_key, previous_hash, header, ratifications, solutions, transactions, rng)?;
+        let block = Block::new_beacon(
+            private_key,
+            previous_hash,
+            header,
+            ratifications,
+            solutions,
+            transactions,
+            aborted_transaction_ids,
+            rng,
+        )?;
         // Ensure the block is valid genesis block.
         match block.is_genesis() {
             true => Ok(block),
@@ -264,11 +325,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         // First, insert the block.
         self.block_store().insert(block)?;
         // Next, finalize the transactions.
-        match self.finalize(state, block.ratifications(), block.coinbase(), block.transactions()) {
-            Ok(_) => {
-                // TODO (howardwu): Check the accepted, rejected, and finalize operations match the block.
-                Ok(())
-            }
+        match self.finalize(state, block.ratifications(), block.solutions(), block.transactions()) {
+            Ok(_ratified_finalize_operations) => Ok(()),
             Err(error) => {
                 // Rollback the block.
                 self.block_store().remove_last_n(1)?;
@@ -285,7 +343,7 @@ pub(crate) mod test_helpers {
     use console::{
         account::{Address, ViewKey},
         network::Testnet3,
-        program::{Value, RATIFICATIONS_DEPTH},
+        program::Value,
         types::Field,
     };
     use ledger_block::{Block, Header, Metadata, Transition};
@@ -301,10 +359,6 @@ pub(crate) mod test_helpers {
     /// Samples a new finalize state.
     pub(crate) fn sample_finalize_state(block_height: u32) -> FinalizeGlobalState {
         FinalizeGlobalState::from(block_height as u64, block_height, [0u8; 32])
-    }
-
-    pub(crate) fn sample_ratifications_root() -> Field<CurrentNetwork> {
-        *<CurrentNetwork as Network>::merkle_tree_bhp::<RATIFICATIONS_DEPTH>(&[]).unwrap().root()
     }
 
     pub(crate) fn sample_vm() -> VM<CurrentNetwork, ConsensusMemory<CurrentNetwork>> {
@@ -418,7 +472,7 @@ function compute:
                 // Deploy.
                 let transaction = vm.deploy(&caller_private_key, &program, credits, 10, None, rng).unwrap();
                 // Verify.
-                assert!(vm.verify_transaction(&transaction, None));
+                vm.check_transaction(&transaction, None, rng).unwrap();
                 // Return the transaction.
                 transaction
             })
@@ -461,7 +515,7 @@ function compute:
                 // Construct the execute transaction.
                 let transaction = vm.execute_authorization(authorization, None, None, rng).unwrap();
                 // Verify.
-                assert!(vm.verify_transaction(&transaction, None));
+                vm.check_transaction(&transaction, None, rng).unwrap();
                 // Return the transaction.
                 transaction
             })
@@ -505,7 +559,7 @@ function compute:
                     .execute(&caller_private_key, ("credits.aleo", "transfer_public"), inputs, record, 0, None, rng)
                     .unwrap();
                 // Verify.
-                assert!(vm.verify_transaction(&transaction, None));
+                vm.check_transaction(&transaction, None, rng).unwrap();
                 // Return the transaction.
                 transaction
             })
@@ -543,7 +597,13 @@ function compute:
 
                 // Authorize the fee.
                 let authorization = vm
-                    .authorize_fee_public(&caller_private_key, 100, execution.to_execution_id().unwrap(), rng)
+                    .authorize_fee_public(
+                        &caller_private_key,
+                        10_000_000,
+                        100,
+                        execution.to_execution_id().unwrap(),
+                        rng,
+                    )
                     .unwrap();
                 // Compute the fee.
                 let fee = vm.execute_fee_authorization(authorization, None, rng).unwrap();
@@ -551,7 +611,7 @@ function compute:
                 // Construct the transaction.
                 let transaction = Transaction::from_execution(execution, Some(fee)).unwrap();
                 // Verify.
-                assert!(vm.verify_transaction(&transaction, None));
+                vm.check_transaction(&transaction, None, rng).unwrap();
                 // Return the transaction.
                 transaction
             })
@@ -570,7 +630,10 @@ function compute:
         let previous_block = vm.block_store().get_block(&block_hash).unwrap().unwrap();
 
         // Construct the new block header.
-        let (transactions, _) = vm.speculate(sample_finalize_state(1), &[], None, transactions.iter())?;
+        let (ratifications, transactions, aborted_transaction_ids, ratified_finalize_operations) =
+            vm.speculate(sample_finalize_state(1), None, vec![], None, transactions.iter())?;
+        assert!(aborted_transaction_ids.is_empty());
+
         // Construct the metadata associated with the block.
         let metadata = Metadata::new(
             Testnet3::ID,
@@ -588,15 +651,24 @@ function compute:
         let header = Header::from(
             vm.block_store().current_state_root(),
             transactions.to_transactions_root().unwrap(),
-            transactions.to_finalize_root().unwrap(),
-            crate::vm::test_helpers::sample_ratifications_root(),
+            transactions.to_finalize_root(ratified_finalize_operations).unwrap(),
+            ratifications.to_ratifications_root().unwrap(),
             Field::zero(),
             Field::zero(),
             metadata,
         )?;
 
         // Construct the new block.
-        Block::new_beacon(private_key, previous_block.hash(), header, vec![], None, transactions, rng)
+        Block::new_beacon(
+            private_key,
+            previous_block.hash(),
+            header,
+            ratifications,
+            None,
+            transactions,
+            aborted_transaction_ids,
+            rng,
+        )
     }
 
     #[test]
@@ -929,5 +1001,160 @@ function multitransfer:
             )
             .unwrap();
         vm.add_next_block(&sample_next_block(&vm, &caller_private_key, &[execution], rng).unwrap()).unwrap();
+    }
+
+    #[test]
+    fn test_nested_deployment_with_assert() {
+        let rng = &mut TestRng::default();
+
+        // Initialize a private key.
+        let private_key = sample_genesis_private_key(rng);
+
+        // Initialize the genesis block.
+        let genesis = sample_genesis_block(rng);
+
+        // Initialize the VM.
+        let vm = sample_vm();
+        // Update the VM.
+        vm.add_next_block(&genesis).unwrap();
+
+        // Deploy the base program.
+        let program = Program::from_str(
+            r"
+program child_program.aleo;
+
+function check:
+    input r0 as field.private;
+    assert.eq r0 123456789123456789123456789123456789123456789123456789field;
+        ",
+        )
+        .unwrap();
+
+        let deployment = vm.deploy(&private_key, &program, None, 0, None, rng).unwrap();
+        assert!(vm.check_transaction(&deployment, None, rng).is_ok());
+        vm.add_next_block(&sample_next_block(&vm, &private_key, &[deployment], rng).unwrap()).unwrap();
+
+        // Check that program is deployed.
+        assert!(vm.contains_program(&ProgramID::from_str("child_program.aleo").unwrap()));
+
+        // Deploy the program that calls the program from the previous layer.
+        let program = Program::from_str(
+            r"
+import child_program.aleo;
+
+program parent_program.aleo;
+
+function check:
+    input r0 as field.private;
+    call child_program.aleo/check r0;
+        ",
+        )
+        .unwrap();
+
+        let deployment = vm.deploy(&private_key, &program, None, 0, None, rng).unwrap();
+        assert!(vm.check_transaction(&deployment, None, rng).is_ok());
+        vm.add_next_block(&sample_next_block(&vm, &private_key, &[deployment], rng).unwrap()).unwrap();
+
+        // Check that program is deployed.
+        assert!(vm.contains_program(&ProgramID::from_str("parent_program.aleo").unwrap()));
+    }
+
+    #[test]
+    #[ignore]
+    fn test_deployment_memory_overload() {
+        const NUM_DEPLOYMENTS: usize = 32;
+
+        let rng = &mut TestRng::default();
+
+        // Initialize a private key.
+        let private_key = sample_genesis_private_key(rng);
+
+        // Initialize a view key.
+        let view_key = ViewKey::try_from(&private_key).unwrap();
+
+        // Initialize the genesis block.
+        let genesis = sample_genesis_block(rng);
+
+        // Initialize the VM.
+        let vm = sample_vm();
+        // Update the VM.
+        vm.add_next_block(&genesis).unwrap();
+
+        // Deploy the base program.
+        let program = Program::from_str(
+            r"
+program program_layer_0.aleo;
+
+mapping m:
+    key as u8.public;
+    value as u32.public;
+
+function do:
+    input r0 as u32.public;
+    async do r0 into r1;
+    output r1 as program_layer_0.aleo/do.future;
+
+finalize do:
+    input r0 as u32.public;
+    set r0 into m[0u8];",
+        )
+        .unwrap();
+
+        let deployment = vm.deploy(&private_key, &program, None, 0, None, rng).unwrap();
+        vm.add_next_block(&sample_next_block(&vm, &private_key, &[deployment], rng).unwrap()).unwrap();
+
+        // For each layer, deploy a program that calls the program from the previous layer.
+        for i in 1..NUM_DEPLOYMENTS {
+            let mut program_string = String::new();
+            // Add the import statements.
+            for j in 0..i {
+                program_string.push_str(&format!("import program_layer_{}.aleo;\n", j));
+            }
+            // Add the program body.
+            program_string.push_str(&format!(
+                "program program_layer_{i}.aleo;
+
+mapping m:
+    key as u8.public;
+    value as u32.public;
+
+function do:
+    input r0 as u32.public;
+    call program_layer_{prev}.aleo/do r0 into r1;
+    async do r0 r1 into r2;
+    output r2 as program_layer_{i}.aleo/do.future;
+
+finalize do:
+    input r0 as u32.public;
+    input r1 as program_layer_{prev}.aleo/do.future;
+    await r1;
+    set r0 into m[0u8];",
+                prev = i - 1
+            ));
+            // Construct the program.
+            let program = Program::from_str(&program_string).unwrap();
+
+            // Deploy the program.
+            let deployment = vm.deploy(&private_key, &program, None, 0, None, rng).unwrap();
+
+            vm.add_next_block(&sample_next_block(&vm, &private_key, &[deployment], rng).unwrap()).unwrap();
+        }
+
+        // Fetch the unspent records.
+        let records = genesis.transitions().cloned().flat_map(Transition::into_records).collect::<IndexMap<_, _>>();
+        trace!("Unspent Records:\n{:#?}", records);
+
+        // Select a record to spend.
+        let record = Some(records.values().next().unwrap().decrypt(&view_key).unwrap());
+
+        // Prepare the inputs.
+        let inputs = [Value::<CurrentNetwork>::from_str("1u32").unwrap()].into_iter();
+
+        // Execute.
+        let transaction =
+            vm.execute(&private_key, ("program_layer_30.aleo", "do"), inputs, record, 0, None, rng).unwrap();
+
+        // Verify.
+        vm.check_transaction(&transaction, None, rng).unwrap();
     }
 }

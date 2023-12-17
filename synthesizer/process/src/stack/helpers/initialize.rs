@@ -58,7 +58,7 @@ impl<N: Network> Stack<N> {
 impl<N: Network> Stack<N> {
     /// Inserts the given external stack to the stack.
     #[inline]
-    fn insert_external_stack(&mut self, external_stack: Stack<N>) -> Result<()> {
+    fn insert_external_stack(&mut self, external_stack: Arc<Stack<N>>) -> Result<()> {
         // Retrieve the program ID.
         let program_id = *external_stack.program_id();
         // Ensure the external stack is not already added.

@@ -22,24 +22,8 @@ impl<N: Network> Request<N> {
     pub fn verify(&self, input_types: &[ValueType<N>]) -> bool {
         // Verify the transition public key, transition view key, and transition commitment are well-formed.
         {
-            // Compute the transition public key `tpk` as `tsk * G`.
-            let tpk = N::g_scalar_multiply(&self.tsk);
-            // Ensure the transition public key matches with the derived one from the signature.
-            if tpk != self.to_tpk() {
-                eprintln!("Invalid transition public key in request.");
-                return false;
-            }
-
-            // Compute the transition view key `tvk` as `tsk * signer`.
-            let tvk = (*self.signer * self.tsk).to_x_coordinate();
-            // Ensure the computed transition view key matches.
-            if tvk != self.tvk {
-                eprintln!("Invalid transition view key in request.");
-                return false;
-            }
-
             // Compute the transition commitment `tcm` as `Hash(tvk)`.
-            match N::hash_psd2(&[tvk]) {
+            match N::hash_psd2(&[self.tvk]) {
                 Ok(tcm) => {
                     // Ensure the computed transition commitment matches.
                     if tcm != self.tcm {

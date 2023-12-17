@@ -27,6 +27,7 @@ use ledger_block::{
     Header,
     Input,
     Output,
+    Ratifications,
     Transaction,
     Transactions,
     Transition,
@@ -64,7 +65,8 @@ pub fn sample_inputs() -> Vec<(<CurrentNetwork as Network>::TransitionID, Input<
     let plaintext = Plaintext::Literal(Literal::Field(Uniform::rand(rng)), Default::default());
     let plaintext_hash = CurrentNetwork::hash_bhp1024(&plaintext.to_bits_le()).unwrap();
     // Sample a random ciphertext.
-    let ciphertext = Ciphertext::from_fields(&vec![Uniform::rand(rng); 10]).unwrap();
+    let fields: Vec<_> = (0..10).map(|_| Uniform::rand(rng)).collect();
+    let ciphertext = Ciphertext::from_fields(&fields).unwrap();
     let ciphertext_hash = CurrentNetwork::hash_bhp1024(&ciphertext.to_bits_le()).unwrap();
 
     vec![
@@ -96,7 +98,8 @@ pub fn sample_outputs() -> Vec<(<CurrentNetwork as Network>::TransitionID, Outpu
     let plaintext = Plaintext::Literal(Literal::Field(Uniform::rand(rng)), Default::default());
     let plaintext_hash = CurrentNetwork::hash_bhp1024(&plaintext.to_bits_le()).unwrap();
     // Sample a random ciphertext.
-    let ciphertext = Ciphertext::from_fields(&vec![Uniform::rand(rng); 10]).unwrap();
+    let fields: Vec<_> = (0..10).map(|_| Uniform::rand(rng)).collect();
+    let ciphertext = Ciphertext::from_fields(&fields).unwrap();
     let ciphertext_hash = CurrentNetwork::hash_bhp1024(&ciphertext.to_bits_le()).unwrap();
     // Sample a random record.
     let randomizer = Uniform::rand(rng);
@@ -190,17 +193,26 @@ pub fn sample_fee_private(deployment_or_execution_id: Field<CurrentNetwork>, rng
     let credits = transaction.records().next().unwrap().1.clone();
     // Decrypt the record.
     let credits = credits.decrypt(&private_key.try_into().unwrap()).unwrap();
-    // Set the fee amount.
-    let fee = 10_000_000;
+    // Sample a base fee in microcredits.
+    let base_fee_in_microcredits = 10_000_000;
+    // Sample a priority fee in microcredits.
+    let priority_fee_in_microcredits = 1_000;
 
     // Initialize the process.
     let process = Process::load().unwrap();
     // Authorize the fee.
     let authorization = process
-        .authorize_fee_private::<CurrentAleo, _>(&private_key, credits, fee, deployment_or_execution_id, rng)
+        .authorize_fee_private::<CurrentAleo, _>(
+            &private_key,
+            credits,
+            base_fee_in_microcredits,
+            priority_fee_in_microcredits,
+            deployment_or_execution_id,
+            rng,
+        )
         .unwrap();
     // Construct the fee trace.
-    let (_, mut trace) = process.execute::<CurrentAleo>(authorization).unwrap();
+    let (_, mut trace) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
 
     // Initialize a new block store.
     let block_store = BlockStore::<CurrentNetwork, BlockMemory<_>>::open(None).unwrap();
@@ -235,16 +247,25 @@ pub fn sample_fee_public_hardcoded(rng: &mut TestRng) -> Fee<CurrentNetwork> {
 pub fn sample_fee_public(deployment_or_execution_id: Field<CurrentNetwork>, rng: &mut TestRng) -> Fee<CurrentNetwork> {
     // Sample the genesis block, transaction, and private key.
     let (block, _, private_key) = crate::sample_genesis_block_and_components(rng);
-    // Set the fee amount.
-    let fee = 10_000_000;
+    // Sample a base fee in microcredits.
+    let base_fee_in_microcredits = 10_000_000;
+    // Sample a priority fee in microcredits.
+    let priority_fee_in_microcredits = 1_000;
 
     // Initialize the process.
     let process = Process::load().unwrap();
     // Authorize the fee.
-    let authorization =
-        process.authorize_fee_public::<CurrentAleo, _>(&private_key, fee, deployment_or_execution_id, rng).unwrap();
+    let authorization = process
+        .authorize_fee_public::<CurrentAleo, _>(
+            &private_key,
+            base_fee_in_microcredits,
+            priority_fee_in_microcredits,
+            deployment_or_execution_id,
+            rng,
+        )
+        .unwrap();
     // Construct the fee trace.
-    let (_, mut trace) = process.execute::<CurrentAleo>(authorization).unwrap();
+    let (_, mut trace) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
 
     // Initialize a new block store.
     let block_store = BlockStore::<CurrentNetwork, BlockMemory<_>>::open(None).unwrap();
@@ -374,7 +395,7 @@ fn sample_genesis_block_and_components_raw(
     let authorization =
         process.authorize::<CurrentAleo, _>(&private_key, locator.0, locator.1, inputs.iter(), rng).unwrap();
     // Execute the function.
-    let (_, mut trace) = process.execute::<CurrentAleo>(authorization).unwrap();
+    let (_, mut trace) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
 
     // Initialize a new block store.
     let block_store = BlockStore::<CurrentNetwork, BlockMemory<_>>::open(None).unwrap();
@@ -394,13 +415,17 @@ fn sample_genesis_block_and_components_raw(
     // Prepare the transactions.
     let transactions = Transactions::from_iter([confirmed].into_iter());
 
+    // Construct the ratifications.
+    let ratifications = Ratifications::try_from(vec![]).unwrap();
+
     // Prepare the block header.
-    let header = Header::genesis(&transactions).unwrap();
+    let header = Header::genesis(&ratifications, &transactions, vec![]).unwrap();
     // Prepare the previous block hash.
     let previous_hash = <CurrentNetwork as Network>::BlockHash::default();
 
     // Construct the block.
-    let block = Block::new_beacon(&private_key, previous_hash, header, vec![], None, transactions, rng).unwrap();
+    let block =
+        Block::new_beacon(&private_key, previous_hash, header, ratifications, None, transactions, vec![], rng).unwrap();
     assert!(block.header().is_genesis(), "Failed to initialize a genesis block");
     // Return the block, transaction, and private key.
     (block, transaction, private_key)

@@ -14,6 +14,8 @@
 
 use super::*;
 
+use std::borrow::Cow;
+
 impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> HashUncompressed
     for BHPHasher<E, NUM_WINDOWS, WINDOW_SIZE>
 {
@@ -31,18 +33,27 @@ impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> HashUncompres
         }
 
         // Ensure the input size is within the parameter size.
-        let mut input = input.to_vec();
-        match input.len() <= Self::MAX_BITS {
+        let input = match input.len() <= Self::MAX_BITS {
             true => {
                 // Pad the input to a multiple of `BHP_CHUNK_SIZE` for hashing.
                 if input.len() % BHP_CHUNK_SIZE != 0 {
+                    // Compute the number of padding bits.
                     let padding = BHP_CHUNK_SIZE - (input.len() % BHP_CHUNK_SIZE);
-                    input.resize(input.len() + padding, Boolean::constant(false));
-                    assert_eq!(input.len() % BHP_CHUNK_SIZE, 0, "Input must be a multiple of {BHP_CHUNK_SIZE}");
+                    // Pad the input with `false` bits.
+                    let mut padded_input = Vec::with_capacity(input.len() + padding);
+                    padded_input.extend_from_slice(input);
+                    padded_input.resize(input.len() + padding, Boolean::constant(false));
+                    // Ensure the input is a multiple of `BHP_CHUNK_SIZE`.
+                    assert_eq!(padded_input.len() % BHP_CHUNK_SIZE, 0, "Input must be a multiple of {BHP_CHUNK_SIZE}");
+                    // Return the padded input.
+                    Cow::Owned(padded_input)
+                } else {
+                    // Return the input as a borrowed slice.
+                    Cow::Borrowed(input)
                 }
             }
             false => E::halt(format!("Inputs to this BHP cannot exceed {} bits", Self::MAX_BITS)),
-        }
+        };
 
         // Declare the 1 constant field element.
         let one = Field::one();
@@ -60,8 +71,8 @@ impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> HashUncompres
             let lambda: Field<E> = witness!(|this_x, this_y, that_x, that_y| (that_y - this_y) / (that_x - this_x));
 
             // Ensure `lambda` is correct by enforcing:
-            // `lambda * (that_x - this_x) == (that_y - this_y)`
-            E::enforce(|| (&lambda, that_x - this_x, that_y - this_y));
+            // `(that_x - this_x) * lambda == (that_y - this_y)`
+            E::enforce(|| (that_x - this_x, &lambda, that_y - this_y));
 
             // Construct `sum_x` as a witness defined as:
             // `sum_x := (B * lambda^2) - A - this_x - that_x`
@@ -78,8 +89,8 @@ impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> HashUncompres
             let sum_y: Field<E> = witness!(|lambda, sum_x, this_x, this_y| -(this_y + (lambda * (sum_x - this_x))));
 
             // Ensure `sum_y` is correct by enforcing:
-            // `(lambda * (this_x - sum_x)) == (this_y + sum_y)`
-            E::enforce(|| (&lambda, this_x - &sum_x, this_y + &sum_y));
+            // `(this_x - sum_x) * lambda == (this_y + sum_y)`
+            E::enforce(|| (this_x - &sum_x, &lambda, this_y + &sum_y));
 
             (sum_x, sum_y)
         };
@@ -132,7 +143,7 @@ impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> HashUncompres
                         // which is equivalent to:
                         //     if `bit_2 == 0`, then `montgomery_y = -1/2 * -2 * y = y`
                         //     if `bit_2 == 1`, then `montgomery_y = 1/2 * -2 * y = -y`
-                        E::enforce(|| (bit_2 - &one_half, -y.double(), &montgomery_y)); // 1 constraint
+                        E::enforce(|| (-y.double(), bit_2 - &one_half, &montgomery_y)); // 1 constraint
 
                         montgomery_y
                     };

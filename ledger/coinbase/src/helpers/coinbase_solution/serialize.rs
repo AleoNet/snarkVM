@@ -36,7 +36,7 @@ impl<'de, N: Network> Deserialize<'de> for CoinbaseSolution<N> {
         match deserializer.is_human_readable() {
             true => {
                 let mut solutions = serde_json::Value::deserialize(deserializer)?;
-                Ok(Self::new(DeserializeExt::take_from_value::<D>(&mut solutions, "solutions")?))
+                Self::new(DeserializeExt::take_from_value::<D>(&mut solutions, "solutions")?).map_err(de::Error::custom)
             }
             false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "solutions"),
         }
@@ -60,7 +60,7 @@ pub(super) mod tests {
             let partial_solution = PartialSolution::new(address, u64::rand(rng), KZGCommitment(rng.gen()));
             prover_solutions.push(ProverSolution::new(partial_solution, KZGProof { w: rng.gen(), random_v: None }));
         }
-        CoinbaseSolution::new(prover_solutions)
+        CoinbaseSolution::new(prover_solutions).unwrap()
     }
 
     #[test]

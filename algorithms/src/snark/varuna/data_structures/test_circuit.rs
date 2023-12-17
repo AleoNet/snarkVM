@@ -60,7 +60,10 @@ impl<ConstraintF: Field> ConstraintSynthesizer<ConstraintF> for TestCircuit<Cons
             mul_vars.push(mul_var);
         }
 
-        for i in 0..(self.num_variables - 2 - self.mul_depth) {
+        // For this test we should allocate self.num_variables number of variables
+        // 2 + mul_depth variables were already allocated above, 1 is allocated by default
+        let dummy_variables = self.num_variables - 3 - self.mul_depth;
+        for i in 0..dummy_variables {
             let _ = cs.alloc(|| format!("var {i}"), || self.a.ok_or(SynthesisError::AssignmentMissing))?;
         }
 
@@ -73,11 +76,15 @@ impl<ConstraintF: Field> ConstraintSynthesizer<ConstraintF> for TestCircuit<Cons
             cs.enforce(|| format!("constraint_mul {i}"), |lc| lc + mul_vars[i], |lc| lc + b, |lc| lc + mul_vars[i + 1]);
         }
 
+        assert_eq!(cs.num_constraints(), self.num_constraints);
+        assert_eq!(cs.num_public_variables() + cs.num_private_variables(), self.num_variables);
+
         Ok(())
     }
 }
 
 impl<F: Field> TestCircuit<F> {
+    // Generate a test circuit with a random witness.
     pub fn gen_rand<R: Rng + CryptoRng>(
         mul_depth: usize,
         num_constraints: usize,
@@ -88,6 +95,28 @@ impl<F: Field> TestCircuit<F> {
         let a = F::rand(rng);
         let b = F::rand(rng);
 
+        for j in 1..(mul_depth + 1) {
+            let mut new_var = a;
+            for _ in 0..j {
+                new_var.mul_assign(&b);
+            }
+            public_inputs.push(new_var);
+        }
+
+        (TestCircuit { a: Some(a), b: Some(b), num_constraints, num_variables, mul_depth }, public_inputs)
+    }
+
+    // Generate a test circuit with a fixed witness.
+    pub fn generate_circuit_with_fixed_witness(
+        a: u128,
+        b: u128,
+        mul_depth: usize,
+        num_constraints: usize,
+        num_variables: usize,
+    ) -> (Self, Vec<F>) {
+        let mut public_inputs: Vec<F> = Vec::with_capacity(mul_depth);
+        let a = F::from(a);
+        let b = F::from(b);
         for j in 1..(mul_depth + 1) {
             let mut new_var = a;
             for _ in 0..j {

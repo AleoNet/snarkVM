@@ -18,13 +18,21 @@ impl<N: Network> Serialize for BatchCertificate<N> {
     /// Serializes the batch certificate to a JSON-string or buffer.
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
-            true => {
-                let mut certificate = serializer.serialize_struct("BatchCertificate", 3)?;
-                certificate.serialize_field("certificate_id", &self.certificate_id)?;
-                certificate.serialize_field("batch_header", &self.batch_header)?;
-                certificate.serialize_field("signatures", &self.signatures)?;
-                certificate.end()
-            }
+            true => match self {
+                Self::V1 { certificate_id, batch_header, signatures } => {
+                    let mut state = serializer.serialize_struct("BatchCertificate", 3)?;
+                    state.serialize_field("certificate_id", certificate_id)?;
+                    state.serialize_field("batch_header", batch_header)?;
+                    state.serialize_field("signatures", signatures)?;
+                    state.end()
+                }
+                Self::V2 { batch_header, signatures } => {
+                    let mut state = serializer.serialize_struct("BatchCertificate", 2)?;
+                    state.serialize_field("batch_header", batch_header)?;
+                    state.serialize_field("signatures", signatures)?;
+                    state.end()
+                }
+            },
             false => ToBytesSerializer::serialize_with_size_encoding(self, serializer),
         }
     }
@@ -36,12 +44,28 @@ impl<'de, N: Network> Deserialize<'de> for BatchCertificate<N> {
         match deserializer.is_human_readable() {
             true => {
                 let mut value = serde_json::Value::deserialize(deserializer)?;
-                Ok(Self::from(
-                    DeserializeExt::take_from_value::<D>(&mut value, "certificate_id")?,
-                    DeserializeExt::take_from_value::<D>(&mut value, "batch_header")?,
-                    DeserializeExt::take_from_value::<D>(&mut value, "signatures")?,
-                )
-                .map_err(de::Error::custom)?)
+
+                // Check if a certificate ID field is present.
+                let certificate_id = match value.get("certificate_id") {
+                    Some(..) => Some(DeserializeExt::take_from_value::<D>(&mut value, "certificate_id")?),
+                    None => None,
+                };
+
+                // Parse for V1 and V2 batch certificates.
+                if let Some(certificate_id) = certificate_id {
+                    Self::from_v1_deprecated(
+                        certificate_id,
+                        DeserializeExt::take_from_value::<D>(&mut value, "batch_header")?,
+                        DeserializeExt::take_from_value::<D>(&mut value, "signatures")?,
+                    )
+                    .map_err(de::Error::custom)
+                } else {
+                    Self::from(
+                        DeserializeExt::take_from_value::<D>(&mut value, "batch_header")?,
+                        DeserializeExt::take_from_value::<D>(&mut value, "signatures")?,
+                    )
+                    .map_err(de::Error::custom)
+                }
             }
             false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "batch certificate"),
         }

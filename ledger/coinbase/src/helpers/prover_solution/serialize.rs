@@ -21,7 +21,8 @@ impl<N: Network> Serialize for ProverSolution<N> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
             true => {
-                let mut prover_solution = serializer.serialize_struct("ProverSolution", 3)?;
+                let mut prover_solution =
+                    serializer.serialize_struct("ProverSolution", 2 + self.proof.random_v.is_some() as usize)?;
                 prover_solution.serialize_field("partial_solution", &self.partial_solution)?;
                 prover_solution.serialize_field("proof.w", &self.proof.w)?;
                 if let Some(random_v) = &self.proof.random_v {

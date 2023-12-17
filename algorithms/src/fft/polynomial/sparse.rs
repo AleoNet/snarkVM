@@ -93,7 +93,7 @@ impl<F: Field> SparsePolynomial<F> {
         total
     }
 
-    /// Perform a naive n^2 multiplicatoin of `self` by `other`.
+    /// Perform a naive n^2 multiplication of `self` by `other`.
     pub fn mul(&self, other: &Self) -> Self {
         if self.is_zero() || other.is_zero() {
             SparsePolynomial::zero()

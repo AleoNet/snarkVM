@@ -218,8 +218,6 @@ impl<N: Network> StackEvaluate<N> for Stack<N> {
             .collect::<Result<Vec<_>>>()?;
         lap!(timer, "Load the outputs");
 
-        finish!(timer);
-
         // Map the output operands to registers.
         let output_registers = output_operands
             .iter()
@@ -228,9 +226,10 @@ impl<N: Network> StackEvaluate<N> for Stack<N> {
                 _ => None,
             })
             .collect::<Vec<_>>();
+        lap!(timer, "Loaded the output registers");
 
         // Compute the response.
-        Response::new(
+        let response = Response::new(
             request.network_id(),
             self.program.id(),
             function.name(),
@@ -240,6 +239,9 @@ impl<N: Network> StackEvaluate<N> for Stack<N> {
             outputs,
             &function.output_types(),
             &output_registers,
-        )
+        );
+        finish!(timer);
+
+        response
     }
 }

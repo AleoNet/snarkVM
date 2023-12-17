@@ -27,7 +27,7 @@ use crate::{
 };
 use console::{prelude::*, types::Field};
 use ledger_authority::Authority;
-use ledger_block::{Header, Ratify};
+use ledger_block::{Header, Ratifications, Rejected};
 use ledger_coinbase::{CoinbaseSolution, PuzzleCommitment};
 
 /// A RocksDB block storage.
@@ -47,18 +47,24 @@ pub struct BlockDB<N: Network> {
     authority_map: DataMap<N::BlockHash, Authority<N>>,
     /// The certificate map.
     certificate_map: DataMap<Field<N>, (u32, u64)>,
+    /// The ratifications map.
+    ratifications_map: DataMap<N::BlockHash, Ratifications<N>>,
+    /// The solutions map.
+    solutions_map: DataMap<N::BlockHash, Option<CoinbaseSolution<N>>>,
+    /// The puzzle commitments map.
+    puzzle_commitments_map: DataMap<PuzzleCommitment<N>, u32>,
     /// The transactions map.
     transactions_map: DataMap<N::BlockHash, Vec<N::TransactionID>>,
+    /// The aborted transaction IDs map.
+    aborted_transaction_ids_map: DataMap<N::BlockHash, Vec<N::TransactionID>>,
+    /// The rejected or aborted transaction ID map.
+    rejected_or_aborted_transaction_id_map: DataMap<N::TransactionID, N::BlockHash>,
     /// The confirmed transactions map.
     confirmed_transactions_map: DataMap<N::TransactionID, (N::BlockHash, ConfirmedTxType, Vec<u8>)>,
+    /// The rejected deployment or execution map.
+    rejected_deployment_or_execution_map: DataMap<Field<N>, Rejected<N>>,
     /// The transaction store.
     transaction_store: TransactionStore<N, TransactionDB<N>>,
-    /// The ratifications map.
-    ratifications_map: DataMap<N::BlockHash, Vec<Ratify<N>>>,
-    /// The solutions map.
-    coinbase_solution_map: DataMap<N::BlockHash, Option<CoinbaseSolution<N>>>,
-    /// The coinbase puzzle commitment map.
-    coinbase_puzzle_commitment_map: DataMap<PuzzleCommitment<N>, u32>,
 }
 
 #[rustfmt::skip]
@@ -70,13 +76,16 @@ impl<N: Network> BlockStorage<N> for BlockDB<N> {
     type HeaderMap = DataMap<N::BlockHash, Header<N>>;
     type AuthorityMap = DataMap<N::BlockHash, Authority<N>>;
     type CertificateMap = DataMap<Field<N>, (u32, u64)>;
+    type RatificationsMap = DataMap<N::BlockHash, Ratifications<N>>;
+    type SolutionsMap = DataMap<N::BlockHash, Option<CoinbaseSolution<N>>>;
+    type PuzzleCommitmentsMap = DataMap<PuzzleCommitment<N>, u32>;
     type TransactionsMap = DataMap<N::BlockHash, Vec<N::TransactionID>>;
+    type AbortedTransactionIDsMap = DataMap<N::BlockHash, Vec<N::TransactionID>>;
+    type RejectedOrAbortedTransactionIDMap = DataMap<N::TransactionID, N::BlockHash>;
     type ConfirmedTransactionsMap = DataMap<N::TransactionID, (N::BlockHash, ConfirmedTxType, Vec<u8>)>;
+    type RejectedDeploymentOrExecutionMap = DataMap<Field<N>, Rejected<N>>;
     type TransactionStorage = TransactionDB<N>;
     type TransitionStorage = TransitionDB<N>;
-    type RatificationsMap = DataMap<N::BlockHash, Vec<Ratify<N>>>;
-    type CoinbaseSolutionMap = DataMap<N::BlockHash, Option<CoinbaseSolution<N>>>;
-    type CoinbasePuzzleCommitmentMap = DataMap<PuzzleCommitment<N>, u32>;
 
     /// Initializes the block storage.
     fn open(dev: Option<u16>) -> Result<Self> {
@@ -93,12 +102,15 @@ impl<N: Network> BlockStorage<N> for BlockDB<N> {
             header_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::Header))?,
             authority_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::Authority))?,
             certificate_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::Certificate))?,
-            transactions_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::Transactions))?,
-            confirmed_transactions_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::ConfirmedTransactions))?,
-            transaction_store,
             ratifications_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::Ratifications))?,
-            coinbase_solution_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::CoinbaseSolution))?,
-            coinbase_puzzle_commitment_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::CoinbasePuzzleCommitment))?,
+            solutions_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::Solutions))?,
+            puzzle_commitments_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::PuzzleCommitments))?,
+            transactions_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::Transactions))?,
+            aborted_transaction_ids_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::AbortedTransactionIDs))?,
+            rejected_or_aborted_transaction_id_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::RejectedOrAbortedTransactionID))?,
+            confirmed_transactions_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::ConfirmedTransactions))?,
+            rejected_deployment_or_execution_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::RejectedDeploymentOrExecution))?,
+            transaction_store,
         })
     }
 
@@ -137,9 +149,34 @@ impl<N: Network> BlockStorage<N> for BlockDB<N> {
         &self.certificate_map
     }
 
+    /// Returns the ratifications map.
+    fn ratifications_map(&self) -> &Self::RatificationsMap {
+        &self.ratifications_map
+    }
+
+    /// Returns the solutions map.
+    fn solutions_map(&self) -> &Self::SolutionsMap {
+        &self.solutions_map
+    }
+
+    /// Returns the puzzle commitments map.
+    fn puzzle_commitments_map(&self) -> &Self::PuzzleCommitmentsMap {
+        &self.puzzle_commitments_map
+    }
+
     /// Returns the transactions map.
     fn transactions_map(&self) -> &Self::TransactionsMap {
         &self.transactions_map
+    }
+
+    /// Returns the aborted transaction IDs map.
+    fn aborted_transaction_ids_map(&self) -> &Self::AbortedTransactionIDsMap {
+        &self.aborted_transaction_ids_map
+    }
+
+    /// Returns the rejected transaction ID or aborted transaction ID map.
+    fn rejected_or_aborted_transaction_id_map(&self) -> &Self::RejectedOrAbortedTransactionIDMap {
+        &self.rejected_or_aborted_transaction_id_map
     }
 
     /// Returns the confirmed transactions map.
@@ -147,23 +184,13 @@ impl<N: Network> BlockStorage<N> for BlockDB<N> {
         &self.confirmed_transactions_map
     }
 
+    /// Returns the rejected deployment or execution map.
+    fn rejected_deployment_or_execution_map(&self) -> &Self::RejectedDeploymentOrExecutionMap {
+        &self.rejected_deployment_or_execution_map
+    }
+
     /// Returns the transaction store.
     fn transaction_store(&self) -> &TransactionStore<N, Self::TransactionStorage> {
         &self.transaction_store
-    }
-
-    /// Returns the ratifications map.
-    fn ratifications_map(&self) -> &Self::RatificationsMap {
-        &self.ratifications_map
-    }
-
-    /// Returns the solutions map.
-    fn coinbase_solution_map(&self) -> &Self::CoinbaseSolutionMap {
-        &self.coinbase_solution_map
-    }
-
-    /// Returns the coinbase puzzle commitment map.
-    fn coinbase_puzzle_commitment_map(&self) -> &Self::CoinbasePuzzleCommitmentMap {
-        &self.coinbase_puzzle_commitment_map
     }
 }

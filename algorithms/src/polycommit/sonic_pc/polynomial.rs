@@ -223,7 +223,7 @@ impl<'a, F: PrimeField> LabeledPolynomialWithBasis<'a, F> {
             let mut lagrange_polys = HashMap::<usize, Vec<_>>::new();
             let mut dense_polys = HashMap::<_, DensePolynomial<F>>::new();
             let mut sparse_poly = SparsePolynomial::zero();
-            // We have sets of polynomials divided along three critera:
+            // We have sets of polynomials divided along three criteria:
             // 1. All `Lagrange` polynomials are in the set corresponding to their domain.
             // 2. All `Dense` polynomials are in the set corresponding to their degree bound.
             // 3. All `Sparse` polynomials are in the set corresponding to their degree bound.

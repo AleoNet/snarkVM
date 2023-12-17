@@ -46,24 +46,10 @@ impl<N: Network> FromBytes for Request<N> {
         let sk_tag = FromBytes::read_le(&mut reader)?;
         // Read the transition view key.
         let tvk = FromBytes::read_le(&mut reader)?;
-        // Read the transition secret key.
-        let tsk = FromBytes::read_le(&mut reader)?;
         // Read the transition commitment.
         let tcm = FromBytes::read_le(&mut reader)?;
 
-        Ok(Self::from((
-            signer,
-            network_id,
-            program_id,
-            function_name,
-            input_ids,
-            inputs,
-            signature,
-            sk_tag,
-            tvk,
-            tsk,
-            tcm,
-        )))
+        Ok(Self::from((signer, network_id, program_id, function_name, input_ids, inputs, signature, sk_tag, tvk, tcm)))
     }
 }
 
@@ -106,8 +92,6 @@ impl<N: Network> ToBytes for Request<N> {
         self.sk_tag.write_le(&mut writer)?;
         // Write the transition view key.
         self.tvk.write_le(&mut writer)?;
-        // Write the transition secret key.
-        self.tsk.write_le(&mut writer)?;
         // Write the transition commitment.
         self.tcm.write_le(&mut writer)
     }
@@ -116,9 +100,6 @@ impl<N: Network> ToBytes for Request<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_console_network::Testnet3;
-
-    type CurrentNetwork = Testnet3;
 
     #[test]
     fn test_bytes() {
@@ -128,7 +109,6 @@ mod tests {
             // Check the byte representation.
             let expected_bytes = expected.to_bytes_le().unwrap();
             assert_eq!(expected, Request::read_le(&expected_bytes[..]).unwrap());
-            assert!(Request::<CurrentNetwork>::read_le(&expected_bytes[1..]).is_err());
         }
     }
 }

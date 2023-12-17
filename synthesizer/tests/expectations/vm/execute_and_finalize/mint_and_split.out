@@ -4,15 +4,15 @@ outputs:
   execute:
     mint_and_split.aleo/mint:
       outputs:
-      - '{"type":"record","id":"7636508513753843688255477046613755926717864376364314808857555307422986366583field","checksum":"2724303349197854838397688958932042996013299317300510410551052639216931686578field","value":"record1qyqspznunw4usdtcqwznvpm3f73dlfxcmg07emews5rxsvfp8jelaqs3qyxx66trwfhkxun9v35hguerqqpqzqqjmj4kl3w0fh0dhqy67c47xgw7ftfdkhplztykwwr7mgnn8cm3q50aufvdjh84e3325vgsq98uzgdxyscfrymgz6j5p6txj0u06ngskkug8kd"}'
+      - '{"type":"record","id":"7334558502140616765536611609313499148179717945955456292257315684677266501449field","checksum":"281154250604636828435706866945909260040573817788279288153963030037316744168field","value":"record1qyqsp9pr7qlgedcywvyk5lsnpuqpepyuv9hseec63eacjpn8d0rpmwgsqyxx66trwfhkxun9v35hguerqqpqzq9ql0hu0da6wuzrm0a7ms3kfvj5279e43rulstm9plhzs0z0xe6p52cn7pdz7x5hkwhz905kp56f4fuq08k9maf57qteekdv9yddk8sqxq4d98"}'
   speculate: the execution was accepted
   add_next_block: succeeded.
 - execute: Commitment '1266307482263846358970326041806201638141701138269282465033372005968041137990field' does not exist
 - execute: Input record for 'mint_and_split.aleo' must belong to the signer
 additional:
 - child_outputs:
-    credits.aleo/fee_private:
+    credits.aleo/fee_public:
       outputs:
-      - '{"type":"record","id":"977920694811706159078899471653604411927128233329160083211705477372454474590field","checksum":"7462991908860745682036789185707450168363705488128851420842490220945105871913field","value":"record1qyqsq50ffm6tzf7q3z553quhrp773gjvntv3htpc3s7zfkdpndaqx3cxqyxx66trwfhkxun9v35hguerqqpqzq9qwkcz7d6ka5ngvfsz3m8dzypc7h984709ffwcj2f452zwhc3wq3gz2rjx9tgewnzxeyaurzdrunjpevr505mk8suj2p7y0dp6xxuqu6uy0rq"}'
+      - '{"type":"future","id":"2224596965693604846363254284152512550549945382876106932610187515185636813504field","value":"{\n  program_id: credits.aleo,\n  function_name: fee_public,\n  arguments: [\n    aleo19e6k5ferx3k8a9k79xtj4uuaztt2jl4eza7k43pygsu977yazypqqwdmw6,\n    1414u64\n  ]\n}"}'
 - {}
 - {}
