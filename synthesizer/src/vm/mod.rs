@@ -148,7 +148,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         // Load the deployments from the store.
         for (i, chunk) in deployment_ids.chunks(256).enumerate() {
             debug!(
-                "Loading deployments: {}-{}/{}...",
+                "Loading deployments {}-{} (of {})...",
                 i * 256,
                 ((i + 1) * 256).min(deployment_ids.len()),
                 deployment_ids.len()
