@@ -108,8 +108,8 @@ impl<F: PrimeField> R1CS<F> {
         #[cfg(debug_assertions)]
         self.constraints.iter().all(|constraint| {
             let (a, b, c) = constraint.to_terms();
-            [a, b, c].into_iter().all(|m| {
-                m.to_terms().into_iter().all(|(variable, _)| match variable {
+            [a, b, c].into_iter().all(|lc| {
+                lc.to_terms().iter().all(|(variable, _)| match variable {
                     Variable::Constant(_value) => false, // terms should not contain Constants
                     Variable::Private(private) => {
                         let (index, value) = private.as_ref();
