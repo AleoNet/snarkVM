@@ -94,7 +94,7 @@ impl<N: Network> Block<N> {
             current_timestamp,
         )?;
 
-        // Re
+        // Return the expected existing transaction ids.
         Ok(expected_existing_transaction_ids)
     }
 }
