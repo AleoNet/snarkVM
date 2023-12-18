@@ -95,6 +95,11 @@ impl<N: Network> BatchHeader<N> {
         ensure!(transmission_ids.len() <= Self::MAX_TRANSMISSIONS, "Invalid number of transmission ids");
         // Ensure that the number of previous certificate IDs is within bounds.
         ensure!(previous_certificate_ids.len() <= Self::MAX_CERTIFICATES, "Invalid number of previous certificate IDs");
+        // Ensure the number of last election certificate IDs is within bounds.
+        ensure!(
+            last_election_certificate_ids.len() <= Self::MAX_CERTIFICATES,
+            "Invalid number of last election certificate IDs"
+        );
 
         // Retrieve the address.
         let author = Address::try_from(private_key)?;
@@ -150,6 +155,11 @@ impl<N: Network> BatchHeader<N> {
         ensure!(transmission_ids.len() <= Self::MAX_TRANSMISSIONS, "Invalid number of transmission ids");
         // Ensure that the number of previous certificate IDs is within bounds.
         ensure!(previous_certificate_ids.len() <= Self::MAX_CERTIFICATES, "Invalid number of previous certificate IDs");
+        // Ensure the number of last election certificate IDs is within bounds.
+        ensure!(
+            last_election_certificate_ids.len() <= Self::MAX_CERTIFICATES,
+            "Invalid number of last election certificate IDs"
+        );
 
         // Compute the batch ID.
         let batch_id = Self::compute_batch_id(
