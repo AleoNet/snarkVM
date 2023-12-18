@@ -273,6 +273,60 @@ function transfer:
         sample_package_with_program_and_imports(&main_program, &[imported_program])
     }
 
+    /// Samples a (temporary) package containing a `grandparent.aleo` program which imports `parent.aleo` which imports `child.aleo`.
+    pub(crate) fn sample_nested_package() -> (PathBuf, Package<CurrentNetwork>) {
+        // Initialize the child program.
+        let child_program = Program::<CurrentNetwork>::from_str(
+            "
+program child.aleo;
+
+record A:
+    owner as address.private;
+    val as u32.private;
+
+function mint:
+    input r0 as address.private;
+    input r1 as u32.private;
+    cast r0 r1 into r2 as A.record;
+    output r2 as A.record;",
+        )
+        .unwrap();
+
+        // Initialize the parent program.
+        let parent_program = Program::<CurrentNetwork>::from_str(
+            "
+import child.aleo;
+
+program parent.aleo;
+
+function wrapper_mint:
+    input r0 as address.private;
+    input r1 as u32.private;
+    call child.aleo/mint r0 r1 into r2;
+    output r2 as child.aleo/A.record;",
+        )
+        .unwrap();
+
+        // Initialize the grandparent program.
+        let grandparent_program = Program::<CurrentNetwork>::from_str(
+            "
+import child.aleo;
+import parent.aleo;
+
+program grandparent.aleo;
+
+function double_wrapper_mint:
+    input r0 as address.private;
+    input r1 as u32.private;
+    call parent.aleo/wrapper_mint r0 r1 into r2;
+    output r2 as child.aleo/A.record;",
+        )
+        .unwrap();
+
+        // Sample the package using the main program and imported program.
+        sample_package_with_program_and_imports(&grandparent_program, &[child_program, parent_program])
+    }
+
     /// Samples a (temporary) package containing a `transfer.aleo` program which imports `credits.aleo`.
     pub(crate) fn sample_transfer_package() -> (PathBuf, Package<CurrentNetwork>) {
         // Initialize the imported program.
@@ -385,6 +439,23 @@ function main:
                 let r2 = Value::<CurrentNetwork>::from_str("99u64").unwrap();
 
                 (caller0_private_key, function_name, vec![r0, r1, r2])
+            }
+            "grandparent.aleo" => {
+                // Initialize caller 0.
+                let caller0_private_key = crate::cli::helpers::dotenv_private_key().unwrap();
+
+                // Initialize caller 1.
+                let caller1_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+                let caller1 = Address::try_from(&caller1_private_key).unwrap();
+
+                // Declare the function name.
+                let function_name = Identifier::from_str("double_wrapper_mint").unwrap();
+
+                // Initialize the function inputs.
+                let r0 = Value::<CurrentNetwork>::from_str(&caller1.to_string()).unwrap();
+                let r1 = Value::<CurrentNetwork>::from_str("1u32").unwrap();
+
+                (caller0_private_key, function_name, vec![r0, r1])
             }
             _ => panic!("Invalid program ID for sample package (while testing)"),
         }
