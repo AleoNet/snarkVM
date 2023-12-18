@@ -221,7 +221,7 @@ impl<N: Network> Block<N> {
         let height = self.height();
 
         // Ensure there are sufficient ratifications.
-        ensure!(!self.ratifications.len() >= 2, "Block {height} must contain at least 2 ratifications");
+        ensure!(self.ratifications.len() >= 2, "Block {height} must contain at least 2 ratifications");
 
         // Initialize a ratifications iterator.
         let mut ratifications_iter = self.ratifications.iter();
@@ -408,6 +408,13 @@ impl<N: Network> Block<N> {
         // Ensure there are no duplicate transition IDs.
         if has_duplicates(self.transition_ids()) {
             bail!("Found a duplicate transition in block {height}");
+        }
+
+        // Ensure there are no duplicate program IDs.
+        if has_duplicates(
+            self.transactions().iter().filter_map(|tx| tx.transaction().deployment().map(|d| d.program_id())),
+        ) {
+            bail!("Found a duplicate program ID in block {height}");
         }
 
         /* Input */

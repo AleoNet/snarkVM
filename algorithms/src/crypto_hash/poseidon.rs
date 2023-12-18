@@ -41,7 +41,7 @@ impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> State<F, RATE, CAP
         self.capacity_state.iter().chain(self.rate_state.iter())
     }
 
-    /// Returns an mutable iterator over the state.
+    /// Returns a mutable iterator over the state.
     pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut F> {
         self.capacity_state.iter_mut().chain(self.rate_state.iter_mut())
     }
@@ -464,7 +464,7 @@ impl<F: PrimeField, const RATE: usize> PoseidonSponge<F, RATE, 1> {
         };
         let bits = self.get_bits(num_bits_per_nonnative * num_elements);
 
-        let mut lookup_table = Vec::<TargetField>::new();
+        let mut lookup_table = Vec::<TargetField>::with_capacity(num_bits_per_nonnative);
         let mut cur = TargetField::one();
         for _ in 0..num_bits_per_nonnative {
             lookup_table.push(cur);

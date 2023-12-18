@@ -59,9 +59,12 @@ use synthesizer_process::{Authorization, Process, Trace};
 use synthesizer_program::{FinalizeGlobalState, FinalizeOperation, FinalizeStoreTrait, Program};
 
 use aleo_std::prelude::{finish, lap, timer};
-use indexmap::IndexMap;
+use indexmap::{IndexMap, IndexSet};
 use parking_lot::RwLock;
 use std::sync::Arc;
+
+#[cfg(not(feature = "serial"))]
+use rayon::prelude::*;
 
 #[derive(Clone)]
 pub struct VM<N: Network, C: ConsensusStorage<N>> {
@@ -88,12 +91,12 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             }
         }
 
-        // A helper function to load the program into the process, and recursively load all imports.
+        // A helper function to retrieve all the deployments.
         fn load_deployment_and_imports<N: Network, T: TransactionStorage<N>>(
-            process: &mut Process<N>,
+            process: &Process<N>,
             transaction_store: &TransactionStore<N, T>,
             transaction_id: N::TransactionID,
-        ) -> Result<()> {
+        ) -> Result<Vec<(ProgramID<N>, Deployment<N>)>> {
             // Retrieve the deployment from the transaction id.
             let deployment = match transaction_store.get_deployment(&transaction_id)? {
                 Some(deployment) => deployment,
@@ -106,8 +109,11 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
             // Return early if the program is already loaded.
             if process.contains_program(program_id) {
-                return Ok(());
+                return Ok(vec![]);
             }
+
+            // Prepare a vector for the deployments.
+            let mut deployments = vec![];
 
             // Iterate through the program imports.
             for import_program_id in program.imports().keys() {
@@ -120,25 +126,46 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                         bail!("Transaction id for '{program_id}' is not found in storage.");
                     };
 
-                    // Recursively load the deployment and its imports.
-                    load_deployment_and_imports(process, transaction_store, transaction_id)?
+                    // Add the deployment and its imports found recursively.
+                    deployments.extend_from_slice(&load_deployment_and_imports(
+                        process,
+                        transaction_store,
+                        transaction_id,
+                    )?);
                 }
             }
 
-            // Load the deployment if it does not exist in the process yet.
-            if !process.contains_program(program_id) {
-                process.load_deployment(&deployment)?;
-            }
+            // Once all the imports have been included, add the parent deployment.
+            deployments.push((*program_id, deployment));
 
-            Ok(())
+            Ok(deployments)
         }
 
         // Retrieve the transaction store.
         let transaction_store = store.transaction_store();
+        // Retrieve the list of deployment transaction IDs.
+        let deployment_ids = transaction_store.deployment_transaction_ids().collect::<Vec<_>>();
         // Load the deployments from the store.
-        for transaction_id in transaction_store.deployment_transaction_ids() {
-            // Load the deployment and its imports.
-            load_deployment_and_imports(&mut process, transaction_store, *transaction_id)?;
+        for (i, chunk) in deployment_ids.chunks(256).enumerate() {
+            debug!(
+                "Loading deployments {}-{} (of {})...",
+                i * 256,
+                ((i + 1) * 256).min(deployment_ids.len()),
+                deployment_ids.len()
+            );
+            let deployments = cfg_iter!(chunk)
+                .map(|transaction_id| {
+                    // Load the deployment and its imports.
+                    load_deployment_and_imports(&process, transaction_store, **transaction_id)
+                })
+                .collect::<Result<Vec<_>>>()?;
+
+            for (program_id, deployment) in deployments.iter().flatten() {
+                // Load the deployment if it does not exist in the process yet.
+                if !process.contains_program(program_id) {
+                    process.load_deployment(deployment)?;
+                }
+            }
         }
 
         // Return the new VM.
@@ -978,5 +1005,160 @@ function multitransfer:
             )
             .unwrap();
         vm.add_next_block(&sample_next_block(&vm, &caller_private_key, &[execution], rng).unwrap()).unwrap();
+    }
+
+    #[test]
+    fn test_nested_deployment_with_assert() {
+        let rng = &mut TestRng::default();
+
+        // Initialize a private key.
+        let private_key = sample_genesis_private_key(rng);
+
+        // Initialize the genesis block.
+        let genesis = sample_genesis_block(rng);
+
+        // Initialize the VM.
+        let vm = sample_vm();
+        // Update the VM.
+        vm.add_next_block(&genesis).unwrap();
+
+        // Deploy the base program.
+        let program = Program::from_str(
+            r"
+program child_program.aleo;
+
+function check:
+    input r0 as field.private;
+    assert.eq r0 123456789123456789123456789123456789123456789123456789field;
+        ",
+        )
+        .unwrap();
+
+        let deployment = vm.deploy(&private_key, &program, None, 0, None, rng).unwrap();
+        assert!(vm.check_transaction(&deployment, None, rng).is_ok());
+        vm.add_next_block(&sample_next_block(&vm, &private_key, &[deployment], rng).unwrap()).unwrap();
+
+        // Check that program is deployed.
+        assert!(vm.contains_program(&ProgramID::from_str("child_program.aleo").unwrap()));
+
+        // Deploy the program that calls the program from the previous layer.
+        let program = Program::from_str(
+            r"
+import child_program.aleo;
+
+program parent_program.aleo;
+
+function check:
+    input r0 as field.private;
+    call child_program.aleo/check r0;
+        ",
+        )
+        .unwrap();
+
+        let deployment = vm.deploy(&private_key, &program, None, 0, None, rng).unwrap();
+        assert!(vm.check_transaction(&deployment, None, rng).is_ok());
+        vm.add_next_block(&sample_next_block(&vm, &private_key, &[deployment], rng).unwrap()).unwrap();
+
+        // Check that program is deployed.
+        assert!(vm.contains_program(&ProgramID::from_str("parent_program.aleo").unwrap()));
+    }
+
+    #[test]
+    #[ignore]
+    fn test_deployment_memory_overload() {
+        const NUM_DEPLOYMENTS: usize = 32;
+
+        let rng = &mut TestRng::default();
+
+        // Initialize a private key.
+        let private_key = sample_genesis_private_key(rng);
+
+        // Initialize a view key.
+        let view_key = ViewKey::try_from(&private_key).unwrap();
+
+        // Initialize the genesis block.
+        let genesis = sample_genesis_block(rng);
+
+        // Initialize the VM.
+        let vm = sample_vm();
+        // Update the VM.
+        vm.add_next_block(&genesis).unwrap();
+
+        // Deploy the base program.
+        let program = Program::from_str(
+            r"
+program program_layer_0.aleo;
+
+mapping m:
+    key as u8.public;
+    value as u32.public;
+
+function do:
+    input r0 as u32.public;
+    async do r0 into r1;
+    output r1 as program_layer_0.aleo/do.future;
+
+finalize do:
+    input r0 as u32.public;
+    set r0 into m[0u8];",
+        )
+        .unwrap();
+
+        let deployment = vm.deploy(&private_key, &program, None, 0, None, rng).unwrap();
+        vm.add_next_block(&sample_next_block(&vm, &private_key, &[deployment], rng).unwrap()).unwrap();
+
+        // For each layer, deploy a program that calls the program from the previous layer.
+        for i in 1..NUM_DEPLOYMENTS {
+            let mut program_string = String::new();
+            // Add the import statements.
+            for j in 0..i {
+                program_string.push_str(&format!("import program_layer_{}.aleo;\n", j));
+            }
+            // Add the program body.
+            program_string.push_str(&format!(
+                "program program_layer_{i}.aleo;
+
+mapping m:
+    key as u8.public;
+    value as u32.public;
+
+function do:
+    input r0 as u32.public;
+    call program_layer_{prev}.aleo/do r0 into r1;
+    async do r0 r1 into r2;
+    output r2 as program_layer_{i}.aleo/do.future;
+
+finalize do:
+    input r0 as u32.public;
+    input r1 as program_layer_{prev}.aleo/do.future;
+    await r1;
+    set r0 into m[0u8];",
+                prev = i - 1
+            ));
+            // Construct the program.
+            let program = Program::from_str(&program_string).unwrap();
+
+            // Deploy the program.
+            let deployment = vm.deploy(&private_key, &program, None, 0, None, rng).unwrap();
+
+            vm.add_next_block(&sample_next_block(&vm, &private_key, &[deployment], rng).unwrap()).unwrap();
+        }
+
+        // Fetch the unspent records.
+        let records = genesis.transitions().cloned().flat_map(Transition::into_records).collect::<IndexMap<_, _>>();
+        trace!("Unspent Records:\n{:#?}", records);
+
+        // Select a record to spend.
+        let record = Some(records.values().next().unwrap().decrypt(&view_key).unwrap());
+
+        // Prepare the inputs.
+        let inputs = [Value::<CurrentNetwork>::from_str("1u32").unwrap()].into_iter();
+
+        // Execute.
+        let transaction =
+            vm.execute(&private_key, ("program_layer_30.aleo", "do"), inputs, record, 0, None, rng).unwrap();
+
+        // Verify.
+        vm.check_transaction(&transaction, None, rng).unwrap();
     }
 }
