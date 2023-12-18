@@ -17,6 +17,7 @@ use crate::fft::{DensePolynomial, EvaluationDomain, Evaluations as EvaluationsOn
 use snarkvm_fields::{Field, PrimeField};
 use snarkvm_utilities::{cfg_iter, cfg_iter_mut, CanonicalDeserialize, CanonicalSerialize};
 
+use anyhow::{ensure, Result};
 use hashbrown::HashMap;
 use std::borrow::Cow;
 
@@ -215,9 +216,9 @@ impl<'a, F: PrimeField> LabeledPolynomialWithBasis<'a, F> {
 
     /// Compute a linear combination of the terms in `self.polynomial`, producing an iterator
     /// over polynomials of the same time.
-    pub fn sum(&self) -> impl Iterator<Item = PolynomialWithBasis<'a, F>> {
+    pub fn sum(&self) -> Result<impl Iterator<Item = PolynomialWithBasis<'a, F>>> {
         if self.polynomial.len() == 1 && self.polynomial[0].0.is_one() {
-            vec![self.polynomial[0].1.clone()].into_iter()
+            Ok(vec![self.polynomial[0].1.clone()].into_iter())
         } else {
             use PolynomialWithBasis::*;
             let mut lagrange_polys = HashMap::<usize, Vec<_>>::new();
@@ -234,8 +235,9 @@ impl<'a, F: PrimeField> LabeledPolynomialWithBasis<'a, F> {
                         match polynomial.as_ref() {
                             Dense(p) => {
                                 if let Some(e) = dense_polys.get_mut(degree_bound) {
-                                    // Zip safety: `p` could be of smaller degree than `e` (or vice versa),
+                                    // Zip safety: `p` could be of smaller degree than `e`,
                                     // so it's okay to just use `zip` here.
+                                    ensure!(e.len() >= p.coeffs.len());
                                     cfg_iter_mut!(e).zip(&p.coeffs).for_each(|(e, f)| *e += *c * f)
                                 } else {
                                     let mut e: DensePolynomial<F> = p.clone().into_owned();
@@ -249,6 +251,7 @@ impl<'a, F: PrimeField> LabeledPolynomialWithBasis<'a, F> {
                     Lagrange { evaluations } => {
                         let domain = evaluations.domain().size();
                         if let Some(e) = lagrange_polys.get_mut(&domain) {
+                            ensure!(e.len() == evaluations.evaluations.len());
                             cfg_iter_mut!(e).zip_eq(&evaluations.evaluations).for_each(|(e, f)| *e += *c * f)
                         } else {
                             let mut e = evaluations.clone().into_owned().evaluations;
@@ -260,7 +263,7 @@ impl<'a, F: PrimeField> LabeledPolynomialWithBasis<'a, F> {
             }
             let sparse_poly = Polynomial::from(sparse_poly);
             let sparse_poly = Monomial { polynomial: Cow::Owned(sparse_poly), degree_bound: None };
-            lagrange_polys
+            Ok(lagrange_polys
                 .into_iter()
                 .map(|(k, v)| {
                     let domain = EvaluationDomain::new(k).unwrap();
@@ -273,7 +276,7 @@ impl<'a, F: PrimeField> LabeledPolynomialWithBasis<'a, F> {
                 })
                 .chain([sparse_poly])
                 .collect::<Vec<_>>()
-                .into_iter()
+                .into_iter())
         }
     }
 

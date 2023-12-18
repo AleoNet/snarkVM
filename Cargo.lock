@@ -3371,6 +3371,7 @@ dependencies = [
  "itertools 0.11.0",
  "js-sys",
  "lazy_static",
+ "parking_lot",
  "paste",
  "rand",
  "serde_json",
@@ -3507,14 +3508,15 @@ name = "snarkvm-wasm"
 version = "0.16.12"
 dependencies = [
  "getrandom",
- "rand",
- "serde",
+ "snarkvm-circuit-network",
  "snarkvm-console",
  "snarkvm-curves",
  "snarkvm-fields",
+ "snarkvm-ledger-block",
+ "snarkvm-ledger-query",
+ "snarkvm-ledger-store",
  "snarkvm-synthesizer",
  "snarkvm-utilities",
- "wasm-bindgen",
  "wasm-bindgen-test",
 ]
 
@@ -4079,8 +4081,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7706a72ab36d8cb1f80ffbf0e071533974a60d0a308d01a5d0375bf60499a342"
 dependencies = [
  "cfg-if",
- "serde",
- "serde_json",
  "wasm-bindgen-macro",
 ]
 
