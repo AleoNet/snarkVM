@@ -24,7 +24,7 @@ use console::{
         U64, U8,
     },
 };
-use snarkvm_synthesizer_program::{Finalize, FinalizeGlobalState, Instruction, RegistersStore};
+use snarkvm_synthesizer_program::{CastOperation, Finalize, FinalizeGlobalState, Instruction, RegistersStore};
 use synthesizer_process::{FinalizeRegisters, FinalizeTypes, Process, Stack};
 
 use criterion::{BatchSize, Criterion};
@@ -170,35 +170,59 @@ macro_rules! bench_instruction {
             )
         });
     };};
-    // Benchmark a cast instruction, with the given sampling method.
-    ($stack:expr, $c:expr, $samples:tt, $instruction:ident { ($input_a:ident as $input_b:tt), }) => {{
-        use snarkvm_synthesizer_program::$instruction;
-        let name = concat!(stringify!($instruction), "/", stringify!($input_a), "_", stringify!($input_b));
-        println!("{} {} {}", stringify!($input_a), stringify!($input_b), stringify!($name));
-        let instruction = Instruction::<Testnet3>::$instruction(
-            $instruction::from_str(&format!(
-                "{} r0 into r1 as {}",
-                $instruction::<Testnet3>::opcode().to_string(),
-                $input_a::<Testnet3>::type_name()
-            ))
-            .unwrap(),
-        );
+}
 
-        $c.bench_function(&format!("{name}/instruction"), |b| {
+macro_rules! create_nested_array_instruction {
+    (Array[$base_type:ident; $length:expr; $nesting:expr]) => {{
+        let mut program_block = "".to_string();
+        let mut array = "".to_string();
+        let mut instruction = "".to_string();
+        let base_type = $base_type::<Testnet3>::type_name();
+
+        for i in (0..($nesting + 1)) {
+            array = "".to_string();
+            instruction = "cast ".to_string();
+            (0..$length).for_each(|_| instruction.push_str(&format!("r{} ", i)));
+            (0..(i + 1)).for_each(|_| array.push_str(&format!("[")));
+            array.push_str(&format!("{};", base_type));
+            (0..(i + 1)).for_each(|_| array.push_str(&format!(" {}u32];", $length)));
+            instruction.push_str(&format!("into r{} as {}", i + 1, array));
+            program_block.push_str(&format!("{}", instruction));
+        }
+        println!("Program block: {}", program_block);
+        println!("Instruction: {}", instruction);
+        instruction.pop();
+        let instruction = Instruction::<Testnet3>::Cast(CastOperation::<Testnet3, 0>::from_str(&instruction).unwrap());
+        println!("Instruction created");
+        (program_block, instruction)
+    };};
+}
+
+macro_rules! bench_cast_array {
+    ($stack:expr, $c:expr, $rng:expr, { $( ($input_a:ident as Array[$base_type:ident; $length:expr; $nesting:expr]), )+ }) => {
+        $({
+            let (program_block, instruction) = create_nested_array_instruction!(Array[$base_type; $length; $nesting]);
+
+            // Benchmark the cast to array operation
+            let mut name = concat!("CastArray/{}/Array", stringify!($input_a)).to_string();
+            name.push_str(&format!("/Depth{}/Length{}", $nesting, $length));
+            println!("Name: {}", name);
+            let arg: $input_a<Testnet3> = Uniform::rand($rng);
+            $c.bench_function(&format!("{name}/instruction"), |b| {
             b.iter_batched(
                 || {
-                    let first = $samples.next().unwrap();
                     setup_finalize_registers(
                         $stack,
-                        instruction.to_string(),
-                        &[Value::from_str(&first.to_string()).unwrap()],
+                        &program_block,
+                        &[Value::from_str(&arg.to_string()).unwrap()],
                     )
                 },
                 |mut finalize_registers| instruction.finalize($stack.as_ref(), &mut finalize_registers).unwrap(),
                 BatchSize::PerIteration,
             )
         });
-    };};
+        })*
+    };
 }
 
 macro_rules! bench_instruction_with_default {
@@ -332,7 +356,7 @@ macro_rules! bench_instruction_with_default {
             })+
         };
         // Benchmark a cast instruction, using the default sampling method.
-        ($stack:expr, $c:expr, $rng:expr, $operation:tt, $instruction:ident { $( ($input_a:ident as $input_b:tt), )+ }) => {
+        ($stack:expr, $c:expr, $rng:expr, $operation:tt, $instruction:ident { $( ($input_a:ident as $), )+ }) => {
             $({
                 // Define the default sampling method.
                 let mut samples = iter::repeat_with(|| {
@@ -483,6 +507,7 @@ fn setup_finalize_registers(
         ));
     }
     finalize_string.push_str(&finalize_body.to_string());
+    println!("{}", finalize_string);
     let finalize = Finalize::<Testnet3>::from_str(&finalize_string).unwrap();
     // Construct the finalize state.
     let state = FinalizeGlobalState::new::<Testnet3>(0, 0, 0, 0, <Testnet3 as Network>::BlockHash::default()).unwrap();
@@ -914,6 +939,11 @@ fn bench_cast_instruction(c: &mut Criterion) {
         (U64 as Field),
         (U128 as Field),
         (Field as Group),
+    });
+
+    bench_cast_array!(stack, c, rng, { 
+        (I16 as Array[I16; 2; 0]),
+        (I16 as Array[I16; 2; 1]),
     });
 }
 
@@ -1622,6 +1652,9 @@ fn bench_hash_instructions(c: &mut Criterion) {
     bench_hash_instruction!(stack, c, rng, HashPSD2);
     bench_hash_instruction!(stack, c, rng, HashPSD4);
     bench_hash_instruction!(stack, c, rng, HashPSD8);
+    
+    
+    
 }
 
 // Create the benchmark group.
