@@ -51,7 +51,7 @@ pub enum BatchCertificate<N: Network> {
 
 impl<N: Network> BatchCertificate<N> {
     /// The maximum number of signatures in a batch certificate.
-    pub const MAX_SIGNATURES: usize = 200;
+    pub const MAX_SIGNATURES: usize = BatchHeader::<N>::MAX_CERTIFICATES;
 }
 
 impl<N: Network> BatchCertificate<N> {
