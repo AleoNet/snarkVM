@@ -144,6 +144,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
     pub fn load_unchecked(genesis_block: Block<N>, dev: Option<u16>) -> Result<Self> {
         let timer = timer!("Ledger::load_unchecked");
 
+        info!("Loading the ledger from storage...");
         // Initialize the consensus store.
         let store = match ConsensusStore::<N, C>::open(dev) {
             Ok(store) => store,
