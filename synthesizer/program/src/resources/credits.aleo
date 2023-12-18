@@ -599,6 +599,10 @@ finalize unbond_delegator_as_validator:
     get committee[r0] into r2;
     // Enforce that the validator is closed to stakers.
     assert.eq r2.is_open false;
+    // Enforce not a first delegate_address(owner address)
+    assert.neq r2.delegate_address r1;
+    // Enforce not validator's address.
+    assert.neq r0 r1;
 
     // Check if the delegator is a validator.
     contains committee[r1] into r3;
