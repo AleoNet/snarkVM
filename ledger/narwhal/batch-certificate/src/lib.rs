@@ -300,3 +300,15 @@ pub mod test_helpers {
         (certificate, previous_certificates)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    type CurrentNetwork = console::network::Testnet3;
+
+    #[test]
+    fn test_maximum_signatures() {
+        assert_eq!(BatchHeader::<CurrentNetwork>::MAX_CERTIFICATES, BatchCertificate::<CurrentNetwork>::MAX_SIGNATURES);
+    }
+}

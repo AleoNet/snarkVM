@@ -3201,7 +3201,6 @@ dependencies = [
  "serde_json",
  "snarkvm-console",
  "snarkvm-ledger-committee",
- "snarkvm-ledger-narwhal-batch-certificate",
  "snarkvm-ledger-narwhal-batch-header",
  "snarkvm-metrics",
  "test-strategy",
