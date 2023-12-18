@@ -100,13 +100,12 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
                 // Also add degree 0.
                 for degree_bound in enforced_degree_bounds {
                     let shift_degree = max_degree - degree_bound;
-                    let mut powers_for_degree_bound = Vec::with_capacity((max_degree + 2).saturating_sub(shift_degree));
-                    for i in 0..=supported_hiding_bound + 1 {
-                        // We have an additional degree in `powers_of_beta_times_gamma_g` beyond `powers_of_beta_g`.
-                        if shift_degree + i < max_degree + 2 {
-                            powers_for_degree_bound.push(pp.powers_of_beta_times_gamma_g()[&(shift_degree + i)]);
-                        }
-                    }
+                    // We have an additional degree in `powers_of_beta_times_gamma_g` beyond `powers_of_beta_g`.
+                    let powers_for_degree_bound = pp
+                        .powers_of_beta_times_gamma_g()
+                        .range(shift_degree..max_degree.min(shift_degree + supported_hiding_bound) + 2)
+                        .map(|(_k, v)| *v)
+                        .collect();
                     shifted_powers_of_beta_times_gamma_g.insert(*degree_bound, powers_for_degree_bound);
                 }
 
@@ -119,14 +118,16 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
         };
 
         let powers_of_beta_g = pp.powers_of_beta_g(0, supported_degree + 1)?;
-        let powers_of_beta_times_gamma_g = (0..=(supported_hiding_bound + 1))
-            .map(|i| {
-                pp.powers_of_beta_times_gamma_g()
-                    .get(&i)
-                    .copied()
-                    .ok_or(PCError::HidingBoundToolarge { hiding_poly_degree: supported_hiding_bound, num_powers: 0 })
-            })
-            .collect::<Result<Vec<_>, _>>()?;
+        let powers_of_beta_times_gamma_g = pp
+            .powers_of_beta_times_gamma_g()
+            .range(0..=(supported_hiding_bound + 1))
+            .map(|(_k, v)| *v)
+            .collect::<Vec<_>>();
+        if powers_of_beta_times_gamma_g.len() != supported_hiding_bound + 2 {
+            return Err(
+                PCError::HidingBoundToolarge { hiding_poly_degree: supported_hiding_bound, num_powers: 0 }.into()
+            );
+        }
 
         let mut lagrange_bases_at_beta_g = BTreeMap::new();
         for size in supported_lagrange_sizes {
@@ -180,8 +181,6 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
     ) -> Result<(Vec<LabeledCommitment<Commitment<E>>>, Vec<Randomness<E>>), PCError> {
         let rng = &mut OptionalRng(rng);
         let commit_time = start_timer!(|| "Committing to polynomials");
-        let mut labeled_comms: Vec<LabeledCommitment<Commitment<E>>> = Vec::new();
-        let mut randomness: Vec<Randomness<E>> = Vec::new();
 
         let mut pool = snarkvm_utilities::ExecutionPool::<Result<_, _>>::new();
         for p in polynomials {
@@ -240,19 +239,21 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
                             }
                         }
                     })
-                    .collect::<Result<Vec<_>, _>>()?
-                    .into_iter()
-                    .fold((E::G1Projective::zero(), Randomness::empty()), |mut a, b| {
+                    .try_fold((E::G1Projective::zero(), Randomness::empty()), |mut a, b| {
+                        let b = b?;
                         a.0.add_assign_mixed(&b.0.0);
                         a.1 += (E::Fr::one(), &b.1);
-                        a
-                    });
+                        Ok::<_, PCError>(a)
+                    })?;
                 let comm = kzg10::KZGCommitment(comm.to_affine());
 
                 Ok((LabeledCommitment::new(label.to_string(), comm, degree_bound), rand))
             });
         }
         let results: Vec<Result<_, PCError>> = pool.execute_all();
+
+        let mut labeled_comms = Vec::with_capacity(results.len());
+        let mut randomness = Vec::with_capacity(results.len());
         for result in results {
             let (comm, rand) = result?;
             labeled_comms.push(comm);
