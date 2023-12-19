@@ -29,6 +29,7 @@ use narwhal_transmission_id::TransmissionID;
 
 use core::hash::{Hash, Hasher};
 use indexmap::{IndexMap, IndexSet};
+
 #[cfg(not(feature = "serial"))]
 use rayon::prelude::*;
 
