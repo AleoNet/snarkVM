@@ -30,6 +30,7 @@ pub mod prelude {
     pub use snarkvm_curves::{AffineCurve, MontgomeryParameters, ProjectiveCurve, TwistedEdwardsParameters};
     pub use snarkvm_fields::{Field as _, PrimeField as _, SquareRootField as _, Zero as _};
     pub use snarkvm_utilities::{
+        cfg_chunks,
         cfg_find,
         cfg_find_map,
         cfg_into_iter,
