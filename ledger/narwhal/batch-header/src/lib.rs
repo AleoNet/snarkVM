@@ -35,7 +35,8 @@ pub struct BatchHeader<N: Network> {
     /// TODO (howardwu): For mainnet - Remove this version from the struct, we only use it here for backwards compatibility.
     ///  NOTE: You must keep the version encoding in the byte serialization, just remove it from the struct in memory.
     version: u8,
-    /// The batch ID, defined as the hash of the round number, timestamp, transmission IDs, and previous batch certificate IDs.
+    /// The batch ID, defined as the hash of the author, round number, timestamp, transmission IDs,
+    /// previous batch certificate IDs, and last election certificate IDs.
     batch_id: Field<N>,
     /// The author of the batch.
     author: Address<N>,
