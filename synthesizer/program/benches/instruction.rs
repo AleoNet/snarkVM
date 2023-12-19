@@ -24,10 +24,13 @@ use console::{
         U64, U8,
     },
 };
-use snarkvm_synthesizer_program::{CastOperation, Finalize, FinalizeGlobalState, Instruction, RegistersStore};
+use snarkvm_synthesizer_program::{
+    Cast as CastOp, CastOperation, Finalize, FinalizeGlobalState, Instruction, RegistersStore,
+};
 use synthesizer_process::{FinalizeRegisters, FinalizeTypes, Process, Stack};
 
 use criterion::{BatchSize, Criterion};
+use std::collections::HashMap;
 use std::{fmt::Display, iter, str::FromStr};
 
 // TODO (d0cd): Add benchmarks using `Address` once random sampling for `Address` is supported.
@@ -49,6 +52,7 @@ macro_rules! bench_instruction {
                         $stack,
                         instruction.to_string(),
                         &[Value::from_str(&arg.to_string()).unwrap()],
+                        None,
                     )
                 },
                 |mut finalize_registers| instruction.finalize($stack.as_ref(), &mut finalize_registers).unwrap(),
@@ -76,6 +80,7 @@ macro_rules! bench_instruction {
                         $stack,
                         instruction.to_string(),
                         &[Value::from_str(&arg.to_string()).unwrap()],
+                        None,
                     )
                 },
                 |mut finalize_registers| instruction.finalize($stack.as_ref(), &mut finalize_registers).unwrap(),
@@ -99,6 +104,7 @@ macro_rules! bench_instruction {
                         $stack,
                         instruction.to_string(),
                         &[Value::from_str(&first.to_string()).unwrap(), Value::from_str(&second.to_string()).unwrap()],
+                        None,
                     )
                 },
                 |mut finalize_registers| instruction.finalize($stack.as_ref(), &mut finalize_registers).unwrap(),
@@ -134,6 +140,7 @@ macro_rules! bench_instruction {
                             Value::from_str(&second.to_string()).unwrap(),
                             Value::from_str(&third.to_string()).unwrap(),
                         ],
+                        None,
                     )
                 },
                 |mut finalize_registers| instruction.finalize($stack.as_ref(), &mut finalize_registers).unwrap(),
@@ -163,6 +170,7 @@ macro_rules! bench_instruction {
                         $stack,
                         instruction.to_string(),
                         &[Value::from_str(&first.to_string()).unwrap()],
+                        None,
                     )
                 },
                 |mut finalize_registers| instruction.finalize($stack.as_ref(), &mut finalize_registers).unwrap(),
@@ -172,49 +180,98 @@ macro_rules! bench_instruction {
     };};
 }
 
-macro_rules! create_nested_array_instruction {
-    (Array[$base_type:ident; $length:expr; $nesting:expr]) => {{
-        let mut program_block = "".to_string();
-        let mut array = "".to_string();
-        let mut instruction = "".to_string();
+macro_rules! build_nested_array_instruction_inner {
+    ($rng:expr, $instruction:ident, Array[$base_type:ident; $length:expr; $nesting:expr], $output_type:expr) => {{
+        let instruction_name = $instruction::<Testnet3>::opcode().to_string();
+        let mut input = "".to_string();
+        let mut input_type = "".to_string();
+        let mut instruction = format!("{} ", instruction_name);
         let base_type = $base_type::<Testnet3>::type_name();
+        let arg: $base_type<Testnet3> = Uniform::rand($rng);
 
-        for i in (0..($nesting + 1)) {
-            array = "".to_string();
-            instruction = "cast ".to_string();
-            (0..$length).for_each(|_| instruction.push_str(&format!("r{} ", i)));
-            (0..(i + 1)).for_each(|_| array.push_str(&format!("[")));
-            array.push_str(&format!("{};", base_type));
-            (0..(i + 1)).for_each(|_| array.push_str(&format!(" {}u32];", $length)));
-            instruction.push_str(&format!("into r{} as {}", i + 1, array));
-            program_block.push_str(&format!("{}", instruction));
+        // Construct the input registers
+        if instruction_name == "cast" {
+            (0..$length).for_each(|_| instruction.push_str("r0 "));
+        } else {
+            instruction.push_str("r0 ");
         }
-        println!("Program block: {}", program_block);
-        println!("Instruction: {}", instruction);
+
+        // Build the input
+        if $nesting > 0 {
+            // Create the basic element
+            let mut inner_array = format!("{}, ", arg).repeat($length);
+            inner_array.truncate(inner_array.len() - 2);
+
+            // Create the nested input
+            for _ in 1..$nesting {
+                inner_array = format!("[{}], ", inner_array).repeat($length);
+                inner_array.truncate(inner_array.len() - 2);
+            }
+
+            // Enclose it in an outer array
+            input.push_str(&format!("[{}]", inner_array).as_str());
+        } else {
+            input.push_str(&format!("{}", arg));
+        };
+
+        // Build the input type
+        (0..($nesting)).for_each(|_| input_type.push_str(&format!("[")));
+        input_type.push_str(&format!("{};", base_type));
+        (0..($nesting)).for_each(|_| input_type.push_str(&format!(" {}u32];", $length)));
+        input_type.pop();
+
+        // Finish full instruction
+        instruction.push_str(&format!("into r1 as {}", $output_type));
         instruction.pop();
-        let instruction = Instruction::<Testnet3>::Cast(CastOperation::<Testnet3, 0>::from_str(&instruction).unwrap());
-        println!("Instruction created");
-        (program_block, instruction)
+        println!("Instruction: {}", instruction);
+        println!("Input: {}", input);
+        println!("Input type: {}", input_type);
+        (instruction, input, input_type)
+    };};
+}
+
+macro_rules! build_nested_array_instruction {
+    ($rng:expr, $instruction:ident, Array[$base_type:ident; $length:expr; $nesting:expr], $output_type:expr) => {{
+        // Build the output type
+        build_nested_array_instruction_inner!($rng, $instruction, Array[$base_type; $length; $nesting], $output_type)
+    };};
+    ($rng:expr, $instruction:ident, Array[$base_type:ident; $length:expr; $nesting:expr], $output_type:ident) => {{
+        // Build the output type
+        build_nested_array_instruction_inner!($rng, $instruction, Array[$base_type; $length; $nesting], $output_type::<Testnet3>::type_name())
     };};
 }
 
 macro_rules! bench_cast_array {
     ($stack:expr, $c:expr, $rng:expr, { $( ($input_a:ident as Array[$base_type:ident; $length:expr; $nesting:expr]), )+ }) => {
         $({
-            let (program_block, instruction) = create_nested_array_instruction!(Array[$base_type; $length; $nesting]);
+            let base_type = $base_type::<Testnet3>::type_name();
+
+            // Build the output type
+            let mut output_type: String = "".to_string();
+            (0..($nesting + 1)).for_each(|_| output_type.push_str(&format!("[")));
+            output_type.push_str(&format!("{};", base_type));
+            (0..($nesting + 1)).for_each(|_| output_type.push_str(&format!(" {}u32];", $length)));
+
+            // Build the instruction, input, and input type
+            use std::ops::Add;
+            let (instruction, input, input_type): (String, String, String) = build_nested_array_instruction!($rng, CastOp, Array[$base_type; $length; $nesting], output_type);
+            let instruction = Instruction::<Testnet3>::Cast(CastOperation::<Testnet3, 0>::from_str(&instruction).unwrap());
+            println!("Instruction created");
 
             // Benchmark the cast to array operation
-            let mut name = concat!("CastArray/{}/Array", stringify!($input_a)).to_string();
-            name.push_str(&format!("/Depth{}/Length{}", $nesting, $length));
+            let mut name = concat!("CastArray/{}_Array", stringify!($input_a)).to_string();
+            name.push_str(&format!("_Depth_{}_Length_{}/instruction", $nesting, $length));
             println!("Name: {}", name);
-            let arg: $input_a<Testnet3> = Uniform::rand($rng);
+
+            let complex_types: HashMap<usize, String> = [(0usize, input_type)].iter().cloned().collect();
             $c.bench_function(&format!("{name}/instruction"), |b| {
             b.iter_batched(
                 || {
                     setup_finalize_registers(
                         $stack,
-                        &program_block,
-                        &[Value::from_str(&arg.to_string()).unwrap()],
+                        instruction.to_string(),
+                        &[Value::from_str(&input).unwrap()],
+                        Some(&complex_types),
                     )
                 },
                 |mut finalize_registers| instruction.finalize($stack.as_ref(), &mut finalize_registers).unwrap(),
@@ -447,6 +504,7 @@ macro_rules! bench_assert {
                                 Value::from_str(&first.to_string()).unwrap(),
                                 Value::from_str(&second.to_string()).unwrap(),
                             ],
+                            None,
                         )
                     },
                     |mut finalize_registers| instruction.finalize($stack.as_ref(), &mut finalize_registers).unwrap(),
@@ -479,6 +537,7 @@ macro_rules! bench_assert {
                                 Value::from_str(&first.to_string()).unwrap(),
                                 Value::from_str(&second.to_string()).unwrap(),
                             ],
+                            None,
                         )
                     },
                     |mut finalize_registers| instruction.finalize($stack.as_ref(), &mut finalize_registers).unwrap(),
@@ -494,6 +553,7 @@ fn setup_finalize_registers(
     stack: &Stack<Testnet3>,
     finalize_body: impl Display,
     args: &[Value<Testnet3>],
+    complex_types: Option<&HashMap<usize, String>>,
 ) -> FinalizeRegisters<Testnet3> {
     // Initialize a `Finalize` block with the benchmark arguments as inputs.
     let mut finalize_string = "finalize foo:".to_string();
@@ -502,10 +562,11 @@ fn setup_finalize_registers(
             "input r{i} as {}.public;",
             match arg {
                 Value::Plaintext(Plaintext::Literal(literal, _)) => literal.to_type().to_string(),
-                _ => panic!("invalid benchmark argument type"),
+                _ => complex_types.unwrap().get(&i).unwrap().clone(),
             }
         ));
     }
+
     finalize_string.push_str(&finalize_body.to_string());
     println!("{}", finalize_string);
     let finalize = Finalize::<Testnet3>::from_str(&finalize_string).unwrap();
@@ -520,6 +581,7 @@ fn setup_finalize_registers(
     );
     // Add the arguments into the registers.
     for (i, arg) in args.iter().enumerate() {
+        println!("arg: {}", arg);
         registers.store(stack, &Register::Locator(i as u64), arg.clone()).unwrap();
     }
     registers
@@ -944,6 +1006,7 @@ fn bench_cast_instruction(c: &mut Criterion) {
     bench_cast_array!(stack, c, rng, { 
         (I16 as Array[I16; 2; 0]),
         (I16 as Array[I16; 2; 1]),
+        (I16 as Array[I16; 2; 2]),
     });
 }
 

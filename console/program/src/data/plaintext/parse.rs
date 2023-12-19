@@ -205,6 +205,7 @@ impl<N: Network> Plaintext<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::Value;
     use snarkvm_console_network::Testnet3;
 
     type CurrentNetwork = Testnet3;
@@ -371,6 +372,11 @@ mod tests {
         println!("\nExpected: {expected}\n\nFound: {candidate}\n");
         assert_eq!(expected, candidate.to_string());
         assert_eq!("", remainder);
+
+        match candidate {
+            Plaintext::Array(array, _) => println!("Array string: {:?}", array),
+            _ => panic!("invalid benchmark argument type"),
+        };
 
         // Test an array of structs.
         let expected = r"[
