@@ -14,7 +14,7 @@
 
 #![forbid(unsafe_code)]
 
-pub const GAUGE_NAMES: [&str; 1] = [committee::TOTAL_STAKE];
+const GAUGE_NAMES: [&str; 1] = [committee::TOTAL_STAKE];
 
 pub mod committee {
     pub const TOTAL_STAKE: &str = "snarkvm_ledger_committee_total_stake";
