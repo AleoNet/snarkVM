@@ -30,6 +30,9 @@ use narwhal_transmission_id::TransmissionID;
 use core::hash::{Hash, Hasher};
 use indexmap::{IndexMap, IndexSet};
 
+#[cfg(not(feature = "serial"))]
+use rayon::prelude::*;
+
 #[derive(Clone)]
 pub enum BatchCertificate<N: Network> {
     // TODO (howardwu): For mainnet - Delete V1 and switch everyone to V2 as the default.
