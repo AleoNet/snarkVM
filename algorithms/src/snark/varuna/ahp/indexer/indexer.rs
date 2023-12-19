@@ -255,6 +255,7 @@ impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
             lc.add(combiner, label.as_str());
             sum += eval * combiner;
         }
+        ensure!(combiners.next().is_none(), "Found more combiners than sorted_evals");
         Ok((lc, sum))
     }
 }
