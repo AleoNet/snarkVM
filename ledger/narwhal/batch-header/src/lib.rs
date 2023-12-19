@@ -36,8 +36,7 @@ pub struct BatchHeader<N: Network> {
     ///  NOTE: You must keep the version encoding in the byte serialization, just remove it from the struct in memory.
     version: u8,
     /// The batch ID, defined as the hash of the author, round number, timestamp, transmission IDs,
-    /// previous batch certificate IDs, and last election certificate IDs (the latter only if the version is not 1,
-    /// for pre-mainnet backward compatibility).
+    /// previous batch certificate IDs, and last election certificate IDs.
     batch_id: Field<N>,
     /// The author of the batch.
     author: Address<N>,
