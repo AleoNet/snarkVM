@@ -63,11 +63,10 @@ impl<N: Network> FromBytes for BatchCertificate<N> {
                 )));
             }
             // Read the signature bytes.
-            let signature_size_in_bytes = (Signature::<N>::size_in_bits() + 7) / 8;
-            let mut signature_bytes = vec![0u8; num_signatures as usize * signature_size_in_bytes];
+            let mut signature_bytes = vec![0u8; num_signatures as usize * Signature::<N>::size_in_bytes()];
             reader.read_exact(&mut signature_bytes)?;
             // Read the signatures.
-            let signatures = cfg_chunks!(signature_bytes, signature_size_in_bytes)
+            let signatures = cfg_chunks!(signature_bytes, Signature::<N>::size_in_bytes())
                 .map(Signature::read_le)
                 .collect::<Result<IndexSet<_>, _>>()?;
             // Return the batch certificate.
