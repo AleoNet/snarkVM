@@ -31,6 +31,13 @@ impl<N: Network> FromBytes for BatchCertificate<N> {
             let batch_header = BatchHeader::read_le(&mut reader)?;
             // Read the number of signatures.
             let num_signatures = u32::read_le(&mut reader)?;
+            // Ensure the number of signatures is within bounds.
+            if num_signatures as usize > Self::MAX_SIGNATURES {
+                return Err(error(format!(
+                    "Number of signatures ({num_signatures}) exceeds the maximum ({})",
+                    Self::MAX_SIGNATURES
+                )));
+            }
             // Read the signatures.
             let mut signatures = IndexMap::with_capacity(num_signatures as usize);
             for _ in 0..num_signatures {
@@ -48,14 +55,20 @@ impl<N: Network> FromBytes for BatchCertificate<N> {
             let batch_header = BatchHeader::read_le(&mut reader)?;
             // Read the number of signatures.
             let num_signatures = u16::read_le(&mut reader)?;
-            // Read the signatures.
-            let mut signatures = IndexSet::with_capacity(num_signatures as usize);
-            for _ in 0..num_signatures {
-                // Read the signature.
-                let signature = Signature::read_le(&mut reader)?;
-                // Insert the signature.
-                signatures.insert(signature);
+            // Ensure the number of signatures is within bounds.
+            if num_signatures as usize > Self::MAX_SIGNATURES {
+                return Err(error(format!(
+                    "Number of signatures ({num_signatures}) exceeds the maximum ({})",
+                    Self::MAX_SIGNATURES
+                )));
             }
+            // Read the signature bytes.
+            let mut signature_bytes = vec![0u8; num_signatures as usize * Signature::<N>::size_in_bytes()];
+            reader.read_exact(&mut signature_bytes)?;
+            // Read the signatures.
+            let signatures = cfg_chunks!(signature_bytes, Signature::<N>::size_in_bytes())
+                .map(Signature::read_le)
+                .collect::<Result<IndexSet<_>, _>>()?;
             // Return the batch certificate.
             Self::from(batch_header, signatures).map_err(error)
         } else {

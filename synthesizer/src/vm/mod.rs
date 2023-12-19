@@ -63,6 +63,9 @@ use indexmap::{IndexMap, IndexSet};
 use parking_lot::RwLock;
 use std::sync::Arc;
 
+#[cfg(not(feature = "serial"))]
+use rayon::prelude::*;
+
 #[derive(Clone)]
 pub struct VM<N: Network, C: ConsensusStorage<N>> {
     /// The process.
@@ -88,12 +91,12 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             }
         }
 
-        // A helper function to load the program into the process, and recursively load all imports.
+        // A helper function to retrieve all the deployments.
         fn load_deployment_and_imports<N: Network, T: TransactionStorage<N>>(
-            process: &mut Process<N>,
+            process: &Process<N>,
             transaction_store: &TransactionStore<N, T>,
             transaction_id: N::TransactionID,
-        ) -> Result<()> {
+        ) -> Result<Vec<(ProgramID<N>, Deployment<N>)>> {
             // Retrieve the deployment from the transaction id.
             let deployment = match transaction_store.get_deployment(&transaction_id)? {
                 Some(deployment) => deployment,
@@ -106,8 +109,11 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
             // Return early if the program is already loaded.
             if process.contains_program(program_id) {
-                return Ok(());
+                return Ok(vec![]);
             }
+
+            // Prepare a vector for the deployments.
+            let mut deployments = vec![];
 
             // Iterate through the program imports.
             for import_program_id in program.imports().keys() {
@@ -120,25 +126,46 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                         bail!("Transaction id for '{program_id}' is not found in storage.");
                     };
 
-                    // Recursively load the deployment and its imports.
-                    load_deployment_and_imports(process, transaction_store, transaction_id)?
+                    // Add the deployment and its imports found recursively.
+                    deployments.extend_from_slice(&load_deployment_and_imports(
+                        process,
+                        transaction_store,
+                        transaction_id,
+                    )?);
                 }
             }
 
-            // Load the deployment if it does not exist in the process yet.
-            if !process.contains_program(program_id) {
-                process.load_deployment(&deployment)?;
-            }
+            // Once all the imports have been included, add the parent deployment.
+            deployments.push((*program_id, deployment));
 
-            Ok(())
+            Ok(deployments)
         }
 
         // Retrieve the transaction store.
         let transaction_store = store.transaction_store();
+        // Retrieve the list of deployment transaction IDs.
+        let deployment_ids = transaction_store.deployment_transaction_ids().collect::<Vec<_>>();
         // Load the deployments from the store.
-        for transaction_id in transaction_store.deployment_transaction_ids() {
-            // Load the deployment and its imports.
-            load_deployment_and_imports(&mut process, transaction_store, *transaction_id)?;
+        for (i, chunk) in deployment_ids.chunks(256).enumerate() {
+            debug!(
+                "Loading deployments {}-{} (of {})...",
+                i * 256,
+                ((i + 1) * 256).min(deployment_ids.len()),
+                deployment_ids.len()
+            );
+            let deployments = cfg_iter!(chunk)
+                .map(|transaction_id| {
+                    // Load the deployment and its imports.
+                    load_deployment_and_imports(&process, transaction_store, **transaction_id)
+                })
+                .collect::<Result<Vec<_>>>()?;
+
+            for (program_id, deployment) in deployments.iter().flatten() {
+                // Load the deployment if it does not exist in the process yet.
+                if !process.contains_program(program_id) {
+                    process.load_deployment(deployment)?;
+                }
+            }
         }
 
         // Return the new VM.
