@@ -33,7 +33,7 @@ impl<N: Network> TryFrom<&PrivateKey<N>> for ViewKey<N> {
         // Derive the compute key.
         let compute_key = ComputeKey::try_from(private_key)?;
         // Compute view_key := sk_sig + r_sig + sk_prf.
-        Ok(Self::from_scalar(private_key.sk_sig() + private_key.r_sig() + compute_key.sk_prf()))
+        Ok(Self::from_scalar(private_key.sk_sig() + private_key.r_sig() + compute_key.sk_prf()?))
     }
 }
 
@@ -44,7 +44,7 @@ impl<N: Network> TryFrom<(&PrivateKey<N>, &ComputeKey<N>)> for ViewKey<N> {
     /// Initializes a new account view key from an account private key.
     fn try_from((private_key, compute_key): (&PrivateKey<N>, &ComputeKey<N>)) -> Result<Self, Self::Error> {
         // Compute view_key := sk_sig + r_sig + sk_prf.
-        Ok(Self::from_scalar(private_key.sk_sig() + private_key.r_sig() + compute_key.sk_prf()))
+        Ok(Self::from_scalar(private_key.sk_sig() + private_key.r_sig() + compute_key.sk_prf()?))
     }
 }
 
@@ -69,7 +69,7 @@ mod tests {
 
             // Check that the view key matches.
             // Compute view_key := sk_sig + r_sig + sk_prf.
-            let candidate = ViewKey(private_key.sk_sig() + private_key.r_sig() + compute_key.sk_prf());
+            let candidate = ViewKey(private_key.sk_sig() + private_key.r_sig() + compute_key.sk_prf()?);
             assert_eq!(view_key, candidate);
 
             let view_key2 = ViewKey::try_from((&private_key, &compute_key))?;

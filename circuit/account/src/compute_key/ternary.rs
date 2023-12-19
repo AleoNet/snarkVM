@@ -23,7 +23,6 @@ impl<A: Aleo> Ternary for ComputeKey<A> {
         Self {
             pk_sig: Group::ternary(condition, &first.pk_sig, &second.pk_sig),
             pr_sig: Group::ternary(condition, &first.pr_sig, &second.pr_sig),
-            sk_prf: Scalar::ternary(condition, &first.sk_prf, &second.sk_prf),
         }
     }
 }
@@ -36,7 +35,7 @@ impl<A: Aleo> Metrics<dyn Ternary<Boolean = Boolean<A>, Output = ComputeKey<A>>>
             (Mode::Constant, _, _)
             | (Mode::Public, Mode::Constant, Mode::Constant)
             | (Mode::Private, Mode::Constant, Mode::Constant) => Count::is(0, 0, 0, 0),
-            _ => Count::is(0, 0, 5, 5),
+            _ => Count::is(0, 0, 4, 4),
         }
     }
 }

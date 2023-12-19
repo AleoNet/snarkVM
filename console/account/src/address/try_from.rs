@@ -50,7 +50,7 @@ impl<N: Network> TryFrom<&ComputeKey<N>> for Address<N> {
 
     /// Derives the account address from an account compute key.
     fn try_from(compute_key: &ComputeKey<N>) -> Result<Self, Self::Error> {
-        Ok(compute_key.to_address())
+        compute_key.to_address()
     }
 }
 

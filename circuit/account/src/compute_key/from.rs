@@ -17,10 +17,8 @@ use super::*;
 impl<A: Aleo> From<(Group<A>, Group<A>)> for ComputeKey<A> {
     /// Derives the account compute key from a tuple `(pk_sig, pr_sig)`.
     fn from((pk_sig, pr_sig): (Group<A>, Group<A>)) -> Self {
-        // Compute sk_prf := HashToScalar(pk_sig || pr_sig).
-        let sk_prf = A::hash_to_scalar_psd4(&[pk_sig.to_x_coordinate(), pr_sig.to_x_coordinate()]);
         // Output the compute key.
-        Self { pk_sig, pr_sig, sk_prf }
+        Self { pk_sig, pr_sig }
     }
 }
 
@@ -63,16 +61,16 @@ mod tests {
 
     #[test]
     fn test_from_constant() -> Result<()> {
-        check_from(Mode::Constant, 254, 0, 0, 0)
+        check_from(Mode::Constant, 0, 0, 0, 0)
     }
 
     #[test]
     fn test_from_public() -> Result<()> {
-        check_from(Mode::Public, 1, 0, 845, 847)
+        check_from(Mode::Public, 0, 0, 0, 0)
     }
 
     #[test]
     fn test_from_private() -> Result<()> {
-        check_from(Mode::Private, 1, 0, 845, 847)
+        check_from(Mode::Private, 0, 0, 0, 0)
     }
 }

@@ -32,8 +32,6 @@ pub struct ComputeKey<A: Aleo> {
     pk_sig: Group<A>,
     /// The signature public randomizer `pr_sig` := G^r_sig.
     pr_sig: Group<A>,
-    /// The PRF secret key `sk_prf` := RO(G^sk_sig || G^r_sig).
-    sk_prf: Scalar<A>,
 }
 
 #[cfg(console)]
@@ -63,8 +61,9 @@ impl<A: Aleo> ComputeKey<A> {
     }
 
     /// Returns the PRF secret key.
-    pub const fn sk_prf(&self) -> &Scalar<A> {
-        &self.sk_prf
+    pub fn sk_prf(&self) -> Scalar<A> {
+        // Compute sk_prf := HashToScalar(pk_sig || pr_sig).
+        A::hash_to_scalar_psd4(&[self.pk_sig.to_x_coordinate(), self.pr_sig.to_x_coordinate()])
     }
 }
 
@@ -74,7 +73,7 @@ impl<A: Aleo> Eject for ComputeKey<A> {
 
     /// Ejects the mode of the compute key.
     fn eject_mode(&self) -> Mode {
-        (&self.pk_sig, &self.pr_sig, &self.sk_prf).eject_mode()
+        (&self.pk_sig, &self.pr_sig).eject_mode()
     }
 
     /// Ejects the compute key.
@@ -108,10 +107,7 @@ pub(crate) mod tests {
 
             Circuit::scope(format!("New {mode}"), || {
                 let candidate = ComputeKey::<Circuit>::new(mode, compute_key);
-                match mode.is_constant() {
-                    true => assert_eq!(Mode::Constant, candidate.eject_mode()),
-                    false => assert_eq!(Mode::Private, candidate.eject_mode()),
-                };
+                assert_eq!(mode, candidate.eject_mode());
                 assert_eq!(compute_key, candidate.eject_value());
                 // TODO (howardwu): Resolve skipping the cost count checks for the burn-in round.
                 if i > 0 {
@@ -125,16 +121,16 @@ pub(crate) mod tests {
 
     #[test]
     fn test_compute_key_new_constant() -> Result<()> {
-        check_new(Mode::Constant, 274, 0, 0, 0)
+        check_new(Mode::Constant, 20, 0, 0, 0)
     }
 
     #[test]
     fn test_compute_key_new_public() -> Result<()> {
-        check_new(Mode::Public, 9, 4, 869, 873)
+        check_new(Mode::Public, 8, 4, 24, 26)
     }
 
     #[test]
     fn test_compute_key_new_private() -> Result<()> {
-        check_new(Mode::Private, 9, 0, 873, 873)
+        check_new(Mode::Private, 8, 0, 28, 26)
     }
 }

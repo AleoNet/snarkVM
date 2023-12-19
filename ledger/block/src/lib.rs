@@ -151,7 +151,7 @@ impl<N: Network> Block<N> {
         match &authority {
             Authority::Beacon(signature) => {
                 // Derive the signer address.
-                let address = signature.to_address();
+                let address = signature.to_address()?;
                 // Ensure the signature is valid.
                 ensure!(signature.verify(&address, &[block_hash]), "Invalid signature for block {}", header.height());
             }

@@ -24,11 +24,9 @@ impl<A: Aleo> ComputeKey<A> {
         let pk_sig = A::g_scalar_multiply(sk_sig);
         // Compute `pr_sig` := G^r_sig.
         let pr_sig = A::g_scalar_multiply(r_sig);
-        // Compute `sk_prf` := RO(G^sk_sig || G^r_sig).
-        let sk_prf = A::hash_to_scalar_psd4(&[pk_sig.to_x_coordinate(), pr_sig.to_x_coordinate()]);
 
         // Return the compute key.
-        Self { pk_sig, pr_sig, sk_prf }
+        Self { pk_sig, pr_sig }
     }
 }
 
@@ -75,11 +73,11 @@ mod tests {
 
     #[test]
     fn test_from_private_key_public() -> Result<()> {
-        check_from_private_key(Mode::Public, 1001, 0, 4347, 4353)
+        check_from_private_key(Mode::Public, 1001, 0, 3502, 3506)
     }
 
     #[test]
     fn test_from_private_key_private() -> Result<()> {
-        check_from_private_key(Mode::Private, 1001, 0, 4347, 4353)
+        check_from_private_key(Mode::Private, 1001, 0, 3502, 3506)
     }
 }

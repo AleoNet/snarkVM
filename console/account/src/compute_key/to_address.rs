@@ -16,11 +16,11 @@ use super::*;
 
 impl<N: Network> ComputeKey<N> {
     /// Returns the address corresponding to the compute key.
-    pub fn to_address(&self) -> Address<N> {
+    pub fn to_address(&self) -> Result<Address<N>> {
         // Compute pk_prf := G^sk_prf.
-        let pk_prf = N::g_scalar_multiply(&self.sk_prf);
+        let pk_prf = N::g_scalar_multiply(&self.sk_prf()?);
         // Compute the address := pk_sig + pr_sig + pk_prf.
-        Address::new(self.pk_sig + self.pr_sig + pk_prf)
+        Ok(Address::new(self.pk_sig + self.pr_sig + pk_prf))
     }
 }
 
@@ -43,7 +43,7 @@ mod tests {
             let compute_key = ComputeKey::try_from(private_key)?;
             let address = Address::try_from(private_key)?;
 
-            assert_eq!(address, compute_key.to_address());
+            assert_eq!(address, compute_key.to_address()?);
         }
         Ok(())
     }

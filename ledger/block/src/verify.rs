@@ -174,7 +174,7 @@ impl<N: Network> Block<N> {
         match &self.authority {
             Authority::Beacon(signature) => {
                 // Retrieve the signer.
-                let signer = signature.to_address();
+                let signer = signature.to_address()?;
                 // Ensure the block is signed by a committee member.
                 ensure!(
                     current_committee.members().contains_key(&signer),
