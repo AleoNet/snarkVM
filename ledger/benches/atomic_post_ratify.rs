@@ -15,42 +15,47 @@
 #[macro_use]
 extern crate criterion;
 
-use std::str::FromStr;
 use console::{
     network::{
         prelude::{TestRng, Uniform},
         Testnet3,
     },
-    types::{Address},
+    prelude::{FromBytes, Network},
+    program::{Identifier, Literal, Plaintext, ProgramID, Value},
+    types::Address,
 };
-use console::prelude::{FromBytes, Network};
-use console::program::{Identifier, Literal, ProgramID, Value, Plaintext};
 use ledger_block::{Block, Ratify};
-use ledger_store::{ConsensusStore};
-use ledger_store::helpers::memory::ConsensusMemory;
-use synthesizer_program::{FinalizeGlobalState, FinalizeStoreTrait};
-use snarkvm_synthesizer::{VM};
+use ledger_store::ConsensusStore;
+use std::str::FromStr;
+use synthesizer::{
+    program::{FinalizeGlobalState, FinalizeStoreTrait},
+    VM,
+};
 
 use criterion::{BatchSize, Criterion};
 use std::time::Duration;
 
-
 type CurrentNetwork = Testnet3;
 
-const NUM_DELEGATORS: [u64; 5] = [0, 1000, 10_000, 100_000, 1_000_000];
+#[cfg(not(feature = "rocks"))]
+type ConsensusType<N> = ledger_store::helpers::memory::ConsensusMemory<N>;
+#[cfg(feature = "rocks")]
+type ConsensusType<N> = ledger_store::helpers::rocksdb::ConsensusDB<N>;
+
+const NUM_DELEGATORS: [u64; 4] = [0, 1000, 10_000, 100_000];
 
 fn bench_atomic_post_ratify(c: &mut Criterion) {
     let rng = &mut TestRng::default();
 
     // Initialize storage.
     println!("Initializing storage...");
-    let storage = ConsensusStore::<CurrentNetwork, ConsensusMemory<CurrentNetwork>>::open(Some(0)).unwrap();
+    let storage = ConsensusStore::<CurrentNetwork, ConsensusType<CurrentNetwork>>::open(Some(0)).unwrap();
 
     // Initialize the VM.
     println!("Initializing the VM...");
     let vm = VM::<CurrentNetwork, _>::from(storage).unwrap();
     let genesis_block = &Block::read_le(Testnet3::genesis_bytes()).unwrap();
-    vm.add_next_block(&genesis_block).unwrap();
+    vm.add_next_block(genesis_block).unwrap();
 
     // Construct the program ID.
     let program_id = ProgramID::from_str("credits.aleo").unwrap();
@@ -90,8 +95,10 @@ fn bench_atomic_post_ratify(c: &mut Criterion) {
         let account_balance = 1_000_000_000_000u64;
         let is_open = true;
 
-        let committee_state = Value::from_str(&format!("{{ microcredits: {bonded_balance}u64, is_open: {is_open} }}")).unwrap();
-        let bond_state = Value::from_str(&format!("{{ validator: {address}, microcredits: {bonded_balance}u64 }}")).unwrap();
+        let committee_state =
+            Value::from_str(&format!("{{ microcredits: {bonded_balance}u64, is_open: {is_open} }}")).unwrap();
+        let bond_state =
+            Value::from_str(&format!("{{ validator: {address}, microcredits: {bonded_balance}u64 }}")).unwrap();
         let account_balance = Value::from_str(&format!("{account_balance}u64")).unwrap();
 
         validators.push(address);
@@ -126,19 +133,35 @@ fn bench_atomic_post_ratify(c: &mut Criterion) {
             let bonded_balance = 10_000_000u64;
             let account_balance = 10_000_000u64;
 
-            let bond_state = Value::from_str(&format!("{{ validator: {validator}, microcredits: {bonded_balance}u64 }}")).unwrap();
+            let bond_state =
+                Value::from_str(&format!("{{ validator: {validator}, microcredits: {bonded_balance}u64 }}")).unwrap();
             let account_balance = Value::from_str(&format!("{account_balance}u64")).unwrap();
 
-            let old_committee_state = match finalize_store.get_value_speculative(program_id, committee_mapping_id, &Plaintext::from(Literal::Address(validator))).unwrap() {
+            let old_committee_state = match finalize_store
+                .get_value_speculative(program_id, committee_mapping_id, &Plaintext::from(Literal::Address(validator)))
+                .unwrap()
+            {
                 Some(Value::Plaintext(Plaintext::Struct(members, _))) => members,
                 _ => panic!("Expected committee state"),
             };
-            let validator_microcredits = match old_committee_state.get(&Identifier::from_str("microcredits").unwrap()).unwrap() {
-                Plaintext::Literal(Literal::U64(microcredits), _) => **microcredits,
-                _ => panic!("Expected microcredits"),
-            };
-            let new_committee_state = Value::from_str(&format!("{{ microcredits: {}u64, is_open: true }}", validator_microcredits + bonded_balance)).unwrap();
-            finalize_store.update_key_value(program_id, committee_mapping_id, Plaintext::from(Literal::Address(validator)), new_committee_state).unwrap();
+            let validator_microcredits =
+                match old_committee_state.get(&Identifier::from_str("microcredits").unwrap()).unwrap() {
+                    Plaintext::Literal(Literal::U64(microcredits), _) => **microcredits,
+                    _ => panic!("Expected microcredits"),
+                };
+            let new_committee_state = Value::from_str(&format!(
+                "{{ microcredits: {}u64, is_open: true }}",
+                validator_microcredits + bonded_balance
+            ))
+            .unwrap();
+            finalize_store
+                .update_key_value(
+                    program_id,
+                    committee_mapping_id,
+                    Plaintext::from(Literal::Address(validator)),
+                    new_committee_state,
+                )
+                .unwrap();
 
             current_bonded_map.push((Plaintext::from(Literal::Address(address)), bond_state));
             current_account_map.push((Plaintext::from(Literal::Address(address)), account_balance));
@@ -151,30 +174,46 @@ fn bench_atomic_post_ratify(c: &mut Criterion) {
 
         // Bench the `staking_rewards` function.
         println!("Benching `atomic_post_ratify`...");
-        c.bench_function(&format!("`atomic_post_ratify` with {total_delegators} delegators and {} validators", validators.len()), |b| {
-            b.iter_batched(
-                || {
-                    // Initialize the finalize state.
-                    let finalize_state = FinalizeGlobalState::new::<CurrentNetwork>(
-                        round,
-                        height,
-                        genesis_block.cumulative_weight(),
-                        genesis_block.cumulative_proof_target(),
-                        genesis_block.hash(),
-                    ).unwrap();
-                    // Increment the round and height.
-                    round += 1;
-                    height += 1;
-                    // Return the finalize state.
-                    finalize_state
-
-                },
-                |finalize_state| {
-                    let _ = VM::<CurrentNetwork, ConsensusMemory<CurrentNetwork>>::atomic_post_ratify(&finalize_store, finalize_state, [Ratify::BlockReward(1_000_000_000)].iter(), None).unwrap();
-                },
-                BatchSize::PerIteration
-            )
-        });
+        #[cfg(not(feature = "rocks"))]
+        let header = "Memory";
+        #[cfg(feature = "rocks")]
+        let header = "DB";
+        c.bench_function(
+            &format!(
+                "{header}: `atomic_post_ratify` with {total_delegators} delegators and {} validators",
+                validators.len()
+            ),
+            |b| {
+                b.iter_batched(
+                    || {
+                        // Initialize the finalize state.
+                        let finalize_state = FinalizeGlobalState::new::<CurrentNetwork>(
+                            round,
+                            height,
+                            genesis_block.cumulative_weight(),
+                            genesis_block.cumulative_proof_target(),
+                            genesis_block.hash(),
+                        )
+                        .unwrap();
+                        // Increment the round and height.
+                        round += 1;
+                        height += 1;
+                        // Return the finalize state.
+                        finalize_state
+                    },
+                    |finalize_state| {
+                        let _ = VM::<CurrentNetwork, ConsensusType<CurrentNetwork>>::atomic_post_ratify(
+                            finalize_store,
+                            finalize_state,
+                            [Ratify::BlockReward(1_000_000_000)].iter(),
+                            None,
+                        )
+                        .unwrap();
+                    },
+                    BatchSize::PerIteration,
+                )
+            },
+        );
     }
 }
 
