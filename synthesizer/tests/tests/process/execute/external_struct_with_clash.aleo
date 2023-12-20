@@ -1,11 +1,6 @@
 /*
 cases:
   - program: point_arithmetic.aleo
-    function: add_two_two_dim_points
-    inputs:
-      - "{ x: 1u8, y: 2u8 }"
-      - "{ x: 3u8, y: 4u8 }"
-  - program: point_arithmetic.aleo
     function: add_map_add
     inputs:
       - "{ x: 1u8, y: 2u8 }"
@@ -52,7 +47,7 @@ import three_dimensional.aleo;
 
 program point_arithmetic.aleo;
 
-struct two_dim_point:
+struct point:
     x as u8;
     y as u8;
 
@@ -62,10 +57,10 @@ struct three_dim_point:
     z as u8;
 
 function add_map_add:
-    input r0 as two_dim_point.private;
-    input r1 as two_dim_point.private;
-    input r2 as three_dim_point.private;
+    input r0 as two_dimensional.aleo/point.private;
+    input r1 as two_dimensional.aleo/point.private;
+    input r2 as three_dimensional.aleo/point.private;
     call two_dimensional.aleo/add_ r0 r1 into r3;
-    cast r3.x r3.y 0u8 into r4 as three_dim_point;
+    cast r3.x r3.y 0u8 into r4 as three_dimensional.aleo/point;
     call three_dimensional.aleo/add_ r2 r4 into r5;
-    output r5 as three_dim_point.private;
+    output r5 as three_dimensional.aleo/point.private;

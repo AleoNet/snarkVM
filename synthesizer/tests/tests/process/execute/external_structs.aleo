@@ -32,12 +32,12 @@ import points.aleo;
 
 program point_arithmetic.aleo;
 
-struct point:
+struct foo:
     x as u8;
     y as u8;
 
 function add_two_points:
-    input r0 as point.private;
-    input r1 as point.private;
+    input r0 as foo.private;
+    input r1 as points.aleo/point.private;
     call points.aleo/add_ r0 r1 into r2;
-    output r2 as point.private;
+    output r2 as points.aleo/point.private;

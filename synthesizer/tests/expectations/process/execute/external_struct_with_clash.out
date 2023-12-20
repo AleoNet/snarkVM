@@ -1,0 +1,8 @@
+errors: []
+outputs:
+- - |-
+    {
+      x: 9u8,
+      y: 12u8,
+      z: 7u8
+    }
