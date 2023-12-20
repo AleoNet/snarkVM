@@ -74,6 +74,8 @@ pub struct VM<N: Network, C: ConsensusStorage<N>> {
     store: ConsensusStore<N, C>,
     /// The lock to guarantee atomicity over calls to speculate and finalize.
     atomic_lock: Arc<Mutex<()>>,
+    /// The lock for ensuring there is no concurrency when advancing blocks.
+    block_lock: Arc<Mutex<()>>,
 }
 
 impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
@@ -171,7 +173,12 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         }
 
         // Return the new VM.
-        Ok(Self { process: Arc::new(RwLock::new(process)), store, atomic_lock: Arc::new(Mutex::new(())) })
+        Ok(Self {
+            process: Arc::new(RwLock::new(process)),
+            store,
+            atomic_lock: Arc::new(Mutex::new(())),
+            block_lock: Arc::new(Mutex::new(())),
+        })
     }
 
     /// Returns `true` if a program with the given program ID exists.
@@ -312,6 +319,10 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// Adds the given block into the VM.
     #[inline]
     pub fn add_next_block(&self, block: &Block<N>) -> Result<()> {
+        // Acquire the block lock, which is needed to ensure this function is not called concurrently.
+        // Note: This lock must be held for the entire scope of this function.
+        let _block_lock = self.block_lock.lock();
+
         // Construct the finalize state.
         let state = FinalizeGlobalState::new::<N>(
             block.round(),
