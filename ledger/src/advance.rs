@@ -115,7 +115,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         previous_block: &Block<N>,
         subdag: Option<&Subdag<N>>,
         candidate_ratifications: Vec<Ratify<N>>,
-        candidate_solutions: Vec<ProverSolution<N>>,
+        mut candidate_solutions: Vec<ProverSolution<N>>,
         candidate_transactions: Vec<Transaction<N>>,
     ) -> Result<(Header<N>, Ratifications<N>, Option<CoinbaseSolution<N>>, Transactions<N>, Vec<N::TransactionID>)>
     {
@@ -127,26 +127,48 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                 let coinbase_verifying_key = self.coinbase_puzzle.coinbase_verifying_key();
                 // Retrieve the latest epoch challenge.
                 let latest_epoch_challenge = self.latest_epoch_challenge()?;
-                // TODO: For mainnet - Add `aborted_solution_ids` to the block. And optimize this logic.
-                // Verify the candidate solutions.
-                let verification_results: Vec<_> = cfg_into_iter!(candidate_solutions)
-                    .map(|solution| {
-                        (
-                            solution,
-                            solution
-                                .verify(coinbase_verifying_key, &latest_epoch_challenge, self.latest_proof_target())
-                                .unwrap_or(false),
-                        )
-                    })
-                    .collect();
+                // TODO: For mainnet - Add `aborted_solution_ids` to the block.
                 // Separate the candidate solutions into valid and aborted solutions.
                 let mut valid_candidate_solutions = Vec::with_capacity(N::MAX_SOLUTIONS);
                 let mut aborted_candidate_solutions = Vec::new();
-                for (solution, is_valid) in verification_results.into_iter() {
-                    if is_valid && valid_candidate_solutions.len() < N::MAX_SOLUTIONS {
-                        valid_candidate_solutions.push(solution);
+                // Reverse the candidate solutions in order to be able to chunk them more efficiently.
+                candidate_solutions.reverse();
+                // Verify the candidate solutions in chunks. This is done so that we can potentially
+                // perform these operations in parallel while keeping the end result deterministic.
+                let chunk_size = 16;
+                while !candidate_solutions.is_empty() {
+                    // Check if the collection of valid solutions is full.
+                    if valid_candidate_solutions.len() >= N::MAX_SOLUTIONS {
+                        // If that's the case, mark the rest of the candidates as aborted.
+                        aborted_candidate_solutions.extend(candidate_solutions.into_iter().rev());
+                        break;
+                    }
+
+                    // Split off a chunk of the candidate solutions.
+                    let candidates_chunk = if candidate_solutions.len() > chunk_size {
+                        candidate_solutions.split_off(candidate_solutions.len() - chunk_size)
                     } else {
-                        aborted_candidate_solutions.push(solution);
+                        std::mem::take(&mut candidate_solutions)
+                    };
+                    // Verify the solutions in the chunk.
+                    let verification_results: Vec<_> = cfg_into_iter!(candidates_chunk)
+                        .rev()
+                        .map(|solution| {
+                            (
+                                solution,
+                                solution
+                                    .verify(coinbase_verifying_key, &latest_epoch_challenge, self.latest_proof_target())
+                                    .unwrap_or(false),
+                            )
+                        })
+                        .collect();
+                    // Process the results of the verification.
+                    for (solution, is_valid) in verification_results.into_iter() {
+                        if is_valid && valid_candidate_solutions.len() < N::MAX_SOLUTIONS {
+                            valid_candidate_solutions.push(solution);
+                        } else {
+                            aborted_candidate_solutions.push(solution);
+                        }
                     }
                 }
 
