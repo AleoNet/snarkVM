@@ -60,7 +60,7 @@ use synthesizer_program::{FinalizeGlobalState, FinalizeOperation, FinalizeStoreT
 
 use aleo_std::prelude::{finish, lap, timer};
 use indexmap::{IndexMap, IndexSet};
-use parking_lot::RwLock;
+use parking_lot::{Mutex, RwLock};
 use std::sync::Arc;
 
 #[cfg(not(feature = "serial"))]
@@ -72,6 +72,8 @@ pub struct VM<N: Network, C: ConsensusStorage<N>> {
     process: Arc<RwLock<Process<N>>>,
     /// The VM store.
     store: ConsensusStore<N, C>,
+    /// The lock for advancing blocks.
+    block_lock: Arc<Mutex<()>>,
 }
 
 impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
@@ -169,7 +171,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         }
 
         // Return the new VM.
-        Ok(Self { process: Arc::new(RwLock::new(process)), store })
+        Ok(Self { process: Arc::new(RwLock::new(process)), store, block_lock: Arc::new(Mutex::new(())) })
     }
 
     /// Returns `true` if a program with the given program ID exists.
@@ -310,6 +312,10 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// Adds the given block into the VM.
     #[inline]
     pub fn add_next_block(&self, block: &Block<N>) -> Result<()> {
+        // Acquire the block lock, which is needed to ensure this function is not called concurrently.
+        // Note: This lock must be held for the entire scope of this function.
+        let _block_lock = self.block_lock.lock();
+
         // Construct the finalize state.
         let state = FinalizeGlobalState::new::<N>(
             block.round(),
