@@ -246,7 +246,7 @@ impl<N: Network, const VARIANT: u8> CastOperation<N, VARIANT> {
             }
             CastType::Plaintext(PlaintextType::Struct(struct_name)) => {
                 // Get the struct.
-                let struct_ = stack.program().get_struct(&struct_name)?;
+                let struct_ = stack.program().get_struct(struct_name)?;
                 // Cast to the struct.
                 self.cast_to_struct(stack, registers, struct_, inputs)
             }
@@ -686,7 +686,7 @@ impl<N: Network, const VARIANT: u8> CastOperation<N, VARIANT> {
             }
             CastType::Plaintext(PlaintextType::Struct(struct_name)) => {
                 // Get the struct.
-                let struct_ = stack.program().get_struct(&struct_name)?;
+                let struct_ = stack.program().get_struct(struct_name)?;
                 // Cast to the struct.
                 self.cast_to_struct(stack, registers, struct_, inputs)
             }
