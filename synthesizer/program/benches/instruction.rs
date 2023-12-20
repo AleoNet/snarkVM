@@ -182,8 +182,8 @@ macro_rules! bench_instruction {
     ($stack:expr, $c:expr, $rng:expr, $instruction:ident { Array { $input_a:ident, $length:expr, $depth:expr } into $output_type:ident }) => {{
         use snarkvm_synthesizer_program::$instruction;
         let (instruction, input, input_type): (String, String, String) = build_nested_array_instruction!($rng, $instruction, Array[$input_a; $length; $depth], $output_type);
-        let mut name = concat!(stringify!($instruction), "/", "Array").to_string();
-        name.push_str(&format!("_length_{}_depth_{},{})", $length, $depth, stringify!($output_type)));
+        let mut name = concat!(stringify!($instruction), "/", "Array_", stringify!($input_a)).to_string();
+        name.push_str(&format!("_length_{}_depth_{},{}", $length, $depth, stringify!($output_type)));
         println!("{}", name);
         let instruction = Instruction::<Testnet3>::$instruction($instruction::from_str(&instruction).unwrap());
 
@@ -287,9 +287,9 @@ macro_rules! bench_cast_array {
             let operation = stringify!($input_a);
             let mut name = "".to_string();
             if $depth == 0 {
-                name = format!("CastArray/{},{}_Array_Depth_{}_Length_{}", operation, operation, $depth, $length).to_string();
+                name = format!("Cast/{},{}_Array_Depth_{}_Length_{}", operation, operation, $depth, $length).to_string();
             } else {
-                name = format!("CastArray/{}_Array_Depth_{}_Length_{},{}_Array_Depth_{}_Length_{}", operation ,$depth - 1usize, $length, operation, $depth, $length).to_string();
+                name = format!("Cast/{}_Array_Depth_{}_Length_{},{}_Array_Depth_{}_Length_{}", operation ,$depth - 1usize, $length, operation, $depth, $length).to_string();
             }
             println!("Name: {}/instruction", name);
 
@@ -1982,41 +1982,82 @@ fn bench_hash_instructions(c: &mut Criterion) {
     bench_hash_instruction!(stack, c, rng, HashPSD2);
     bench_hash_instruction!(stack, c, rng, HashPSD4);
     bench_hash_instruction!(stack, c, rng, HashPSD8);
+    
+    bench_hash_instruction!(stack, c, rng, HashKeccak256);
+    bench_hash_instruction!(stack, c, rng, HashKeccak384);
+    bench_hash_instruction!(stack, c, rng, HashKeccak512);
+
+    bench_hash_instruction!(stack, c, rng, HashSha3_256);
+    bench_hash_instruction!(stack, c, rng, HashSha3_384);
+    bench_hash_instruction!(stack, c, rng, HashSha3_512);
+    
+    
 }
 
-fn bench_hash_functions_complex_inputs(c: &mut Criterion) {
-    bench_instruction_with_default!(stack, c, rng, HashBHP256 { Array { I8, 2, 0 } into Field });
-    bench_instruction_with_default!(stack, c, rng, HashBHP256 { Array { I8, 2, 2 } into Field });
-    bench_instruction_with_default!(stack, c, rng, HashBHP256 { Array { I8, 2, 4 } into Field });
-    bench_instruction_with_default!(stack, c, rng, HashBHP256 { Array { I8, 4, 0 } into Field });
-    bench_instruction_with_default!(stack, c, rng, HashBHP256 { Array { I8, 4, 2 } into Field });
-    bench_instruction_with_default!(stack, c, rng, HashBHP256 { Array { I8, 4, 4 } into Field });
-    bench_instruction_with_default!(stack, c, rng, HashBHP256 { Array { I8, 8, 0 } into Field });
-    bench_instruction_with_default!(stack, c, rng, HashBHP256 { Array { I8, 8, 2 } into Field });
-    bench_instruction_with_default!(stack, c, rng, HashBHP256 { Array { I8, 8, 4 } into Field });
-    bench_instruction_with_default!(stack, c, rng, HashBHP256 { Array { I8, 16, 0 } into Field });
-    bench_instruction_with_default!(stack, c, rng, HashBHP256 { Array { I8, 16, 2 } into Field });
-    bench_instruction_with_default!(stack, c, rng, HashBHP256 { Array { I8, 16, 4 } into Field });
+fn bench_hash_functions_with_complex_inputs(c: &mut Criterion) {
+    // Initialize an RNG.
+    let rng = &mut TestRng::default();
+    // Initialize a process.
+    let process = Process::<Testnet3>::load().unwrap();
+    // Get the stack for the credits program.
+    let stack = process.get_stack("credits.aleo").unwrap();
 
-    bench_instruction_with_default!(stack, c, rng, HashBHP256 { Array { Field, 2, 0 } into Field });
-    bench_instruction_with_default!(stack, c, rng, HashBHP256 { Array { Field, 2, 2 } into Field });
-    bench_instruction_with_default!(stack, c, rng, HashBHP256 { Array { Field, 2, 4 } into Field });
-    bench_instruction_with_default!(stack, c, rng, HashBHP256 { Array { Field, 4, 0 } into Field });
-    bench_instruction_with_default!(stack, c, rng, HashBHP256 { Array { Field, 4, 2 } into Field });
-    bench_instruction_with_default!(stack, c, rng, HashBHP256 { Array { Field, 4, 4 } into Field });
-    bench_instruction_with_default!(stack, c, rng, HashBHP256 { Array { Field, 8, 0 } into Field });
-    bench_instruction_with_default!(stack, c, rng, HashBHP256 { Array { Field, 8, 2 } into Field });
-    bench_instruction_with_default!(stack, c, rng, HashBHP256 { Array { Field, 8, 4 } into Field });
-    bench_instruction_with_default!(stack, c, rng, HashBHP256 { Array { Field, 16, 0 } into Field });
-    bench_instruction_with_default!(stack, c, rng, HashBHP256 { Array { Field, 16, 2 } into Field });
-    bench_instruction_with_default!(stack, c, rng, HashBHP256 { Array { Field, 16, 4 } into Field });
+    macro_rules! bench_hash_functions_with_arrays {
+        ($stack:expr, $c:expr, $rng:expr, $hash:ident, $destination_type:ident, $lengths:expr, $depths:expr, { $( $array_type:ident, )+ }) => {
+            $($lengths.into_iter().for_each(|length| {
+                for depth in $depths {
+                    bench_instruction_with_default!($stack, $c, $rng, $hash { Array { $array_type, length, depth } into $destination_type });
+                }
+            });)+
+        }
+    }
+
+    bench_hash_functions_with_arrays!(stack, c, rng, HashBHP256, Group, [4, 8, 12], [0, 1, 2, 3], { I8, I32, I128, U8, U32, U128, Field, });
+    bench_hash_functions_with_arrays!(stack, c, rng, HashBHP256, U128, [4, 8, 12], [0, 1, 2, 3], { I8, I32, I128, U8, U32, U128, Field, });
+    bench_hash_functions_with_arrays!(stack, c, rng, HashBHP256, Field, [4, 8, 12], [0, 1, 2, 3], { I8, I32, I128, U8, U32, U128, Field, });
+
+    bench_hash_functions_with_arrays!(stack, c, rng, HashBHP512, Group, [4, 8, 12], [0, 1, 2, 3], { I8, I32, I128, U8, U32, U128, Field, });
+    bench_hash_functions_with_arrays!(stack, c, rng, HashBHP512, U128, [4, 8, 12], [0, 1, 2, 3], { I8, I32, I128, U8, U32, U128, Field, });
+    bench_hash_functions_with_arrays!(stack, c, rng, HashBHP512, Field, [4, 8, 12], [0, 1, 2, 3], { I8, I32, I128, U8, U32, U128, Field, });
+
+    bench_hash_functions_with_arrays!(stack, c, rng, HashBHP768, Group, [4, 8, 12], [0, 1, 2, 3], { I8, I32, I128, U8, U32, U128, Field, });
+    bench_hash_functions_with_arrays!(stack, c, rng, HashBHP768, U128, [4, 8, 12], [0, 1, 2, 3], { I8, I32, I128, U8, U32, U128, Field, });
+    bench_hash_functions_with_arrays!(stack, c, rng, HashBHP768, Field, [4, 8, 12], [0, 1, 2, 3], { I8, I32, I128, U8, U32, U128, Field, });
+
+    bench_hash_functions_with_arrays!(stack, c, rng, HashBHP1024, Group, [4, 8, 12], [0, 1, 2, 3], { I8, I32, I128, U8, U32, U128, Field, });
+    bench_hash_functions_with_arrays!(stack, c, rng, HashBHP1024, U128, [4, 8, 12], [0, 1, 2, 3], { I8, I32, I128, U8, U32, U128, Field, });
+    bench_hash_functions_with_arrays!(stack, c, rng, HashBHP1024, Field, [4, 8, 12], [0, 1, 2, 3], { I8, I32, I128, U8, U32, U128, Field, });
+
+    bench_hash_functions_with_arrays!(stack, c, rng, HashPSD2, Group, [4, 8, 12], [0, 1, 2, 3], { I8, I32, I128, U8, U32, U128, Field, });
+    bench_hash_functions_with_arrays!(stack, c, rng, HashPSD2, U128, [4, 8, 12], [0, 1, 2, 3], { I8, I32, I128, U8, U32, U128, Field, });
+    bench_hash_functions_with_arrays!(stack, c, rng, HashPSD2, Field, [4, 8, 12], [0, 1, 2, 3], { I8, I32, I128, U8, U32, U128, Field, });
+
+    bench_hash_functions_with_arrays!(stack, c, rng, HashPSD4, Group, [4, 8, 12], [0, 1, 2, 3], { I8, I32, I128, U8, U32, U128, Field, });
+    bench_hash_functions_with_arrays!(stack, c, rng, HashPSD4, U128, [4, 8, 12], [0, 1, 2, 3], { I8, I32, I128, U8, U32, U128, Field, });
+    bench_hash_functions_with_arrays!(stack, c, rng, HashPSD4, Field, [4, 8, 12], [0, 1, 2, 3], { I8, I32, I128, U8, U32, U128, Field, });
+
+    bench_hash_functions_with_arrays!(stack, c, rng, HashPSD8, Group, [4, 8, 12], [0, 1, 2, 3], { I8, I32, I128, U8, U32, U128, Field, });
+    bench_hash_functions_with_arrays!(stack, c, rng, HashPSD8, U128, [4, 8, 12], [0, 1, 2, 3], { I8, I32, I128, U8, U32, U128, Field, });
+    bench_hash_functions_with_arrays!(stack, c, rng, HashPSD8, Field, [4, 8, 12], [0, 1, 2, 3], { I8, I32, I128, U8, U32, U128, Field, });
+
+    bench_hash_functions_with_arrays!(stack, c, rng, HashPED64, Group, [4, 8, 12], [0, 1, 2, 3], { I8, I32, I128, U8, U32, U128, Field, });
+    bench_hash_functions_with_arrays!(stack, c, rng, HashPED64, U128, [4, 8, 12], [0, 1, 2, 3], { I8, I32, I128, U8, U32, U128, Field, });
+    bench_hash_functions_with_arrays!(stack, c, rng, HashPED64, Field, [4, 8, 12], [0, 1, 2, 3], { I8, I32, I128, U8, U32, U128, Field, });
+
+    bench_hash_functions_with_arrays!(stack, c, rng, HashKeccak256, Group, [4, 8, 12], [0, 1, 2, 3], { I8, I32, I128, U8, U32, U128, Field, });
+    bench_hash_functions_with_arrays!(stack, c, rng, HashKeccak384, U128, [4, 8, 12], [0, 1, 2, 3], { I8, I32, I128, U8, U32, U128, Field, });
+    bench_hash_functions_with_arrays!(stack, c, rng, HashKeccak512, Field, [4, 8, 12], [0, 1, 2, 3], { I8, I32, I128, U8, U32, U128, Field, });
+
+    bench_hash_functions_with_arrays!(stack, c, rng, HashSha3_256, Group, [4, 8, 12], [0, 1, 2, 3], { I8, I32, I128, U8, U32, U128, Field, });
+    bench_hash_functions_with_arrays!(stack, c, rng, HashSha3_384, U128, [4, 8, 12], [0, 1, 2, 3], { I8, I32, I128, U8, U32, U128, Field, });
+    bench_hash_functions_with_arrays!(stack, c, rng, HashSha3_512, Field, [4, 8, 12], [0, 1, 2, 3], { I8, I32, I128, U8, U32, U128, Field, });
 }
 
 // Create the benchmark group.
 criterion_group! {
     name = bench;
     config = Criterion::default().sample_size(100);
-    targets = abs_instructions, bench_arithmetic_add_instructions, bench_arithmetic_div_instructions, bench_arithmetic_mul_instructions, bench_arithmetic_neg_and_sub_instructions, bench_assert_instructions, bench_bhp_commit_instructions, bench_cast_instruction, bench_equality_comparison_instructions, bench_hash_instructions, bench_logical_instructions, bench_order_comparison_instructions, bench_poseidon_commit_instructions, bench_power_and_remainder_instructions, bench_shift_left_instructions, bench_shift_right_instructions, bench_ternary_instructions,
+    targets = abs_instructions, bench_arithmetic_add_instructions, bench_arithmetic_div_instructions, bench_arithmetic_mul_instructions, bench_arithmetic_neg_and_sub_instructions, bench_assert_instructions, bench_bhp_commit_instructions, bench_cast_instruction, bench_equality_comparison_instructions, bench_hash_instructions, bench_hash_functions_with_complex_inputs, bench_logical_instructions, bench_order_comparison_instructions, bench_poseidon_commit_instructions, bench_power_and_remainder_instructions, bench_shift_left_instructions, bench_shift_right_instructions, bench_ternary_instructions,
 }
 
 criterion_main!(bench);
