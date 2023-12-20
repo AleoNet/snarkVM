@@ -178,10 +178,35 @@ macro_rules! bench_instruction {
             )
         });
     };};
+    // Benchmark an instruction that takes an array and outputs a primitive
+    ($stack:expr, $c:expr, $rng:expr, $instruction:ident { Array { $input_a:ident, $length:expr, $depth:expr } into $output_type:ident }) => {{
+        use snarkvm_synthesizer_program::$instruction;
+        let (instruction, input, input_type): (String, String, String) = build_nested_array_instruction!($rng, $instruction, Array[$input_a; $length; $depth], $output_type);
+        let mut name = concat!(stringify!($instruction), "/", "Array").to_string();
+        name.push_str(&format!("_length_{}_depth_{},{})", $length, $depth, stringify!($output_type)));
+        println!("{}", name);
+        let instruction = Instruction::<Testnet3>::$instruction($instruction::from_str(&instruction).unwrap());
+
+        let complex_types: HashMap<usize, String> = [(0usize, input_type)].iter().cloned().collect();
+        $c.bench_function(&format!("{name}/instruction"), |b| {
+            b.iter_batched(
+                || {
+                    setup_finalize_registers(
+                        $stack,
+                        instruction.to_string(),
+                        &[Value::from_str(&input).unwrap()],
+                        Some(&complex_types),
+                    )
+                },
+                |mut finalize_registers| instruction.finalize($stack.as_ref(), &mut finalize_registers).unwrap(),
+                BatchSize::PerIteration,
+            )
+        });
+    };};
 }
 
 macro_rules! build_nested_array_instruction_inner {
-    ($rng:expr, $instruction:ident, Array[$base_type:ident; $length:expr; $nesting:expr], $output_type:expr) => {{
+    ($rng:expr, $instruction:ident, Array[$base_type:ident; $length:expr; $depth:expr], $output_type:expr) => {{
         let instruction_name = $instruction::<Testnet3>::opcode().to_string();
         let mut input = "".to_string();
         let mut input_type = "".to_string();
@@ -197,13 +222,13 @@ macro_rules! build_nested_array_instruction_inner {
         }
 
         // Build the input
-        if $nesting > 0 {
+        if $depth > 0 {
             // Create the basic element
             let mut inner_array = format!("{}, ", arg).repeat($length);
             inner_array.truncate(inner_array.len() - 2);
 
             // Create the nested input
-            for _ in 1..$nesting {
+            for _ in 1..$depth {
                 inner_array = format!("[{}], ", inner_array).repeat($length);
                 inner_array.truncate(inner_array.len() - 2);
             }
@@ -215,53 +240,58 @@ macro_rules! build_nested_array_instruction_inner {
         };
 
         // Build the input type
-        (0..($nesting)).for_each(|_| input_type.push_str(&format!("[")));
+        (0..($depth)).for_each(|_| input_type.push_str(&format!("[")));
         input_type.push_str(&format!("{};", base_type));
-        (0..($nesting)).for_each(|_| input_type.push_str(&format!(" {}u32];", $length)));
+        (0..($depth)).for_each(|_| input_type.push_str(&format!(" {}u32];", $length)));
         input_type.pop();
 
         // Finish full instruction
         instruction.push_str(&format!("into r1 as {}", $output_type));
-        instruction.pop();
-        println!("Instruction: {}", instruction);
-        println!("Input: {}", input);
-        println!("Input type: {}", input_type);
+        // println!("Instruction: {}", instruction);
+        // println!("Input: {}", input);
+        // println!("Input type: {}", input_type);
         (instruction, input, input_type)
     };};
 }
 
 macro_rules! build_nested_array_instruction {
-    ($rng:expr, $instruction:ident, Array[$base_type:ident; $length:expr; $nesting:expr], $output_type:expr) => {{
+    ($rng:expr, $instruction:ident, Array[$base_type:ident; $length:expr; $depth:expr], complex_type: $output_type:expr) => {{
         // Build the output type
-        build_nested_array_instruction_inner!($rng, $instruction, Array[$base_type; $length; $nesting], $output_type)
+        build_nested_array_instruction_inner!($rng, $instruction, Array[$base_type; $length; $depth], $output_type)
     };};
-    ($rng:expr, $instruction:ident, Array[$base_type:ident; $length:expr; $nesting:expr], $output_type:ident) => {{
+    ($rng:expr, $instruction:ident, Array[$base_type:ident; $length:expr; $depth:expr], $output_type:ident) => {{
         // Build the output type
-        build_nested_array_instruction_inner!($rng, $instruction, Array[$base_type; $length; $nesting], $output_type::<Testnet3>::type_name())
+        build_nested_array_instruction_inner!($rng, $instruction, Array[$base_type; $length; $depth], $output_type::<Testnet3>::type_name())
     };};
 }
 
 macro_rules! bench_cast_array {
-    ($stack:expr, $c:expr, $rng:expr, { $( ($input_a:ident as Array[$base_type:ident; $length:expr; $nesting:expr]), )+ }) => {
+    ($stack:expr, $c:expr, $rng:expr, { $( ($input_a:ident as Array[$base_type:ident; $length:expr; $depth:expr]), )+ }) => {
         $({
             let base_type = $base_type::<Testnet3>::type_name();
 
             // Build the output type
             let mut output_type: String = "".to_string();
-            (0..($nesting + 1)).for_each(|_| output_type.push_str(&format!("[")));
+            (0..($depth + 1)).for_each(|_| output_type.push_str(&format!("[")));
             output_type.push_str(&format!("{};", base_type));
-            (0..($nesting + 1)).for_each(|_| output_type.push_str(&format!(" {}u32];", $length)));
+            (0..($depth + 1)).for_each(|_| output_type.push_str(&format!(" {}u32];", $length)));
+            output_type.pop();
 
             // Build the instruction, input, and input type
             use std::ops::Add;
-            let (instruction, input, input_type): (String, String, String) = build_nested_array_instruction!($rng, CastOp, Array[$base_type; $length; $nesting], output_type);
+            let (instruction, input, input_type): (String, String, String) = build_nested_array_instruction!($rng, CastOp, Array[$base_type; $length; $depth], complex_type: output_type);
             let instruction = Instruction::<Testnet3>::Cast(CastOperation::<Testnet3, 0>::from_str(&instruction).unwrap());
-            println!("Instruction created");
+            // println!("Instruction created");
 
             // Benchmark the cast to array operation
-            let mut name = concat!("CastArray/{}_Array", stringify!($input_a)).to_string();
-            name.push_str(&format!("_Depth_{}_Length_{}/instruction", $nesting, $length));
-            println!("Name: {}", name);
+            let operation = stringify!($input_a);
+            let mut name = "".to_string();
+            if $depth == 0 {
+                name = format!("CastArray/{},{}_Array_Depth_{}_Length_{}", operation, operation, $depth, $length).to_string();
+            } else {
+                name = format!("CastArray/{}_Array_Depth_{}_Length_{},{}_Array_Depth_{}_Length_{}", operation ,$depth - 1usize, $length, operation, $depth, $length).to_string();
+            }
+            println!("Name: {}/instruction", name);
 
             let complex_types: HashMap<usize, String> = [(0usize, input_type)].iter().cloned().collect();
             $c.bench_function(&format!("{name}/instruction"), |b| {
@@ -440,6 +470,12 @@ macro_rules! bench_instruction_with_default {
                 bench_instruction!($stack, $c, samples, $instruction { ($input_a as $input_b), });
             })+
         };
+        // Bench Array instruction
+        ($stack:expr, $c:expr, $rng:expr, $instruction:ident { $( Array { $input_a:ident, $length:expr, $depth:expr } into $output_type:ident ) + }) => {
+            $({
+                bench_instruction!($stack, $c, $rng, $instruction { Array { $input_a, $length, $depth } into $output_type });
+            })+
+        };
     }
 
 macro_rules! bench_ped64_commit_instruction {
@@ -568,7 +604,7 @@ fn setup_finalize_registers(
     }
 
     finalize_string.push_str(&finalize_body.to_string());
-    println!("{}", finalize_string);
+    // println!("{}", finalize_string);
     let finalize = Finalize::<Testnet3>::from_str(&finalize_string).unwrap();
     // Construct the finalize state.
     let state = FinalizeGlobalState::new::<Testnet3>(0, 0, 0, 0, <Testnet3 as Network>::BlockHash::default()).unwrap();
@@ -581,7 +617,7 @@ fn setup_finalize_registers(
     );
     // Add the arguments into the registers.
     for (i, arg) in args.iter().enumerate() {
-        println!("arg: {}", arg);
+        // println!("arg: {}", arg);
         registers.store(stack, &Register::Locator(i as u64), arg.clone()).unwrap();
     }
     registers
@@ -1004,9 +1040,226 @@ fn bench_cast_instruction(c: &mut Criterion) {
     });
 
     bench_cast_array!(stack, c, rng, { 
+        (Boolean as Array[Boolean; 2; 0]),
+        (Boolean as Array[Boolean; 2; 1]),
+        (Boolean as Array[Boolean; 2; 2]),
+        (Boolean as Array[Boolean; 2; 3]),
+        (Boolean as Array[Boolean; 2; 4]),
+        (Boolean as Array[Boolean; 4; 0]),
+        (Boolean as Array[Boolean; 4; 1]),
+        (Boolean as Array[Boolean; 4; 2]),
+        (Boolean as Array[Boolean; 4; 3]),
+        (Boolean as Array[Boolean; 4; 4]),
+        (Boolean as Array[Boolean; 8; 0]),
+        (Boolean as Array[Boolean; 8; 1]),
+        (Boolean as Array[Boolean; 8; 2]),
+        (Boolean as Array[Boolean; 8; 3]),
+        (Boolean as Array[Boolean; 8; 4]),
+        (Boolean as Array[Boolean; 16; 0]),
+        (Boolean as Array[Boolean; 16; 1]),
+        (Boolean as Array[Boolean; 16; 2]),
+        (Boolean as Array[Boolean; 16; 3]),
+        (Boolean as Array[Boolean; 16; 4]),
+        (I8 as Array[I8; 2; 0]),
+        (I8 as Array[I8; 2; 1]),
+        (I8 as Array[I8; 2; 2]),
+        (I8 as Array[I8; 2; 3]),
+        (I8 as Array[I8; 2; 4]),
+        (I8 as Array[I8; 4; 0]),
+        (I8 as Array[I8; 4; 1]),
+        (I8 as Array[I8; 4; 2]),
+        (I8 as Array[I8; 4; 3]),
+        (I8 as Array[I8; 4; 4]),
+        (I8 as Array[I8; 8; 0]),
+        (I8 as Array[I8; 8; 1]),
+        (I8 as Array[I8; 8; 2]),
+        (I8 as Array[I8; 8; 3]),
+        (I8 as Array[I8; 8; 4]),
+        (I8 as Array[I8; 16; 0]),
+        (I8 as Array[I8; 16; 1]),
+        (I8 as Array[I8; 16; 2]),
+        (I8 as Array[I8; 16; 3]),
+        (I8 as Array[I8; 16; 4]),
         (I16 as Array[I16; 2; 0]),
         (I16 as Array[I16; 2; 1]),
         (I16 as Array[I16; 2; 2]),
+        (I16 as Array[I16; 2; 3]),
+        (I16 as Array[I16; 2; 4]),
+        (I16 as Array[I16; 4; 0]),
+        (I16 as Array[I16; 4; 1]),
+        (I16 as Array[I16; 4; 2]),
+        (I16 as Array[I16; 4; 3]),
+        (I16 as Array[I16; 4; 4]),
+        (I16 as Array[I16; 8; 0]),
+        (I16 as Array[I16; 8; 1]),
+        (I16 as Array[I16; 8; 2]),
+        (I16 as Array[I16; 8; 3]),
+        (I16 as Array[I16; 8; 4]),
+        (I16 as Array[I16; 16; 0]),
+        (I16 as Array[I16; 16; 1]),
+        (I16 as Array[I16; 16; 2]),
+        (I16 as Array[I16; 16; 3]),
+        (I16 as Array[I16; 16; 4]),
+        (I32 as Array[I32; 2; 0]),
+        (I32 as Array[I32; 2; 1]),
+        (I32 as Array[I32; 2; 2]),
+        (I32 as Array[I32; 2; 3]),
+        (I32 as Array[I32; 2; 4]),
+        (I32 as Array[I32; 4; 0]),
+        (I32 as Array[I32; 4; 1]),
+        (I32 as Array[I32; 4; 2]),
+        (I32 as Array[I32; 4; 3]),
+        (I32 as Array[I32; 4; 4]),
+        (I32 as Array[I32; 8; 0]),
+        (I32 as Array[I32; 8; 1]),
+        (I32 as Array[I32; 8; 2]),
+        (I32 as Array[I32; 8; 3]),
+        (I32 as Array[I32; 8; 4]),
+        (I32 as Array[I32; 16; 0]),
+        (I32 as Array[I32; 16; 1]),
+        (I32 as Array[I32; 16; 2]),
+        (I32 as Array[I32; 16; 3]),
+        (I32 as Array[I32; 16; 4]),
+        (I64 as Array[I64; 2; 0]),
+        (I64 as Array[I64; 2; 1]),
+        (I64 as Array[I64; 2; 2]),
+        (I64 as Array[I64; 2; 3]),
+        (I64 as Array[I64; 2; 4]),
+        (I64 as Array[I64; 4; 0]),
+        (I64 as Array[I64; 4; 1]),
+        (I64 as Array[I64; 4; 2]),
+        (I64 as Array[I64; 4; 3]),
+        (I64 as Array[I64; 4; 4]),
+        (I64 as Array[I64; 8; 0]),
+        (I64 as Array[I64; 8; 1]),
+        (I64 as Array[I64; 8; 2]),
+        (I64 as Array[I64; 8; 3]),
+        (I64 as Array[I64; 8; 4]),
+        (I64 as Array[I64; 16; 0]),
+        (I64 as Array[I64; 16; 1]),
+        (I64 as Array[I64; 16; 2]),
+        (I64 as Array[I64; 16; 3]),
+        (I64 as Array[I64; 16; 4]),
+        (U8 as Array[U8; 2; 0]),
+        (U8 as Array[U8; 2; 1]),
+        (U8 as Array[U8; 2; 2]),
+        (U8 as Array[U8; 2; 3]),
+        (U8 as Array[U8; 2; 4]),
+        (U8 as Array[U8; 4; 0]),
+        (U8 as Array[U8; 4; 1]),
+        (U8 as Array[U8; 4; 2]),
+        (U8 as Array[U8; 4; 3]),
+        (U8 as Array[U8; 4; 4]),
+        (U8 as Array[U8; 8; 0]),
+        (U8 as Array[U8; 8; 1]),
+        (U8 as Array[U8; 8; 2]),
+        (U8 as Array[U8; 8; 3]),
+        (U8 as Array[U8; 8; 4]),
+        (U8 as Array[U8; 16; 0]),
+        (U8 as Array[U8; 16; 1]),
+        (U8 as Array[U8; 16; 2]),
+        (U8 as Array[U8; 16; 3]),
+        (U8 as Array[U8; 16; 4]),
+        (U16 as Array[U16; 2; 0]),
+        (U16 as Array[U16; 2; 1]),
+        (U16 as Array[U16; 2; 2]),
+        (U16 as Array[U16; 2; 3]),
+        (U16 as Array[U16; 2; 4]),
+        (U16 as Array[U16; 4; 0]),
+        (U16 as Array[U16; 4; 1]),
+        (U16 as Array[U16; 4; 2]),
+        (U16 as Array[U16; 4; 3]),
+        (U16 as Array[U16; 4; 4]),
+        (U16 as Array[U16; 8; 0]),
+        (U16 as Array[U16; 8; 1]),
+        (U16 as Array[U16; 8; 2]),
+        (U16 as Array[U16; 8; 3]),
+        (U16 as Array[U16; 8; 4]),
+        (U16 as Array[U16; 16; 0]),
+        (U16 as Array[U16; 16; 1]),
+        (U16 as Array[U16; 16; 2]),
+        (U16 as Array[U16; 16; 3]),
+        (U16 as Array[U16; 16; 4]),
+        (U32 as Array[U32; 2; 0]),
+        (U32 as Array[U32; 2; 1]),
+        (U32 as Array[U32; 2; 2]),
+        (U32 as Array[U32; 2; 3]),
+        (U32 as Array[U32; 2; 4]),
+        (U32 as Array[U32; 4; 0]),
+        (U32 as Array[U32; 4; 1]),
+        (U32 as Array[U32; 4; 2]),
+        (U32 as Array[U32; 4; 3]),
+        (U32 as Array[U32; 4; 4]),
+        (U32 as Array[U32; 8; 0]),
+        (U32 as Array[U32; 8; 1]),
+        (U32 as Array[U32; 8; 2]),
+        (U32 as Array[U32; 8; 3]),
+        (U32 as Array[U32; 8; 4]),
+        (U32 as Array[U32; 16; 0]),
+        (U32 as Array[U32; 16; 1]),
+        (U32 as Array[U32; 16; 2]),
+        (U32 as Array[U32; 16; 3]),
+        (U32 as Array[U32; 16; 4]),
+        (U64 as Array[U64; 2; 0]),
+        (U64 as Array[U64; 2; 1]),
+        (U64 as Array[U64; 2; 2]),
+        (U64 as Array[U64; 2; 3]),
+        (U64 as Array[U64; 2; 4]),
+        (U64 as Array[U64; 4; 0]),
+        (U64 as Array[U64; 4; 1]),
+        (U64 as Array[U64; 4; 2]),
+        (U64 as Array[U64; 4; 3]),
+        (U64 as Array[U64; 4; 4]),
+        (U64 as Array[U64; 8; 0]),
+        (U64 as Array[U64; 8; 1]),
+        (U64 as Array[U64; 8; 2]),
+        (U64 as Array[U64; 8; 3]),
+        (U64 as Array[U64; 8; 4]),
+        (U64 as Array[U64; 16; 0]),
+        (U64 as Array[U64; 16; 1]),
+        (U64 as Array[U64; 16; 2]),
+        (U64 as Array[U64; 16; 3]),
+        (U64 as Array[U64; 16; 4]),
+        (Field as Array[Field; 2; 0]),
+        (Field as Array[Field; 2; 1]),
+        (Field as Array[Field; 2; 2]),
+        (Field as Array[Field; 2; 3]),
+        (Field as Array[Field; 2; 4]),
+        (Field as Array[Field; 4; 0]),
+        (Field as Array[Field; 4; 1]),
+        (Field as Array[Field; 4; 2]),
+        (Field as Array[Field; 4; 3]),
+        (Field as Array[Field; 4; 4]),
+        (Field as Array[Field; 8; 0]),
+        (Field as Array[Field; 8; 1]),
+        (Field as Array[Field; 8; 2]),
+        (Field as Array[Field; 8; 3]),
+        (Field as Array[Field; 8; 4]),
+        (Field as Array[Field; 16; 0]),
+        (Field as Array[Field; 16; 1]),
+        (Field as Array[Field; 16; 2]),
+        (Field as Array[Field; 16; 3]),
+        (Field as Array[Field; 16; 4]),
+        (Group as Array[Group; 2; 0]),
+        (Group as Array[Group; 2; 1]),
+        (Group as Array[Group; 2; 2]),
+        (Group as Array[Group; 2; 3]),
+        (Group as Array[Group; 2; 4]),
+        (Group as Array[Group; 4; 0]),
+        (Group as Array[Group; 4; 1]),
+        (Group as Array[Group; 4; 2]),
+        (Group as Array[Group; 4; 3]),
+        (Group as Array[Group; 4; 4]),
+        (Group as Array[Group; 8; 0]),
+        (Group as Array[Group; 8; 1]),
+        (Group as Array[Group; 8; 2]),
+        (Group as Array[Group; 8; 3]),
+        (Group as Array[Group; 8; 4]),
+        (Group as Array[Group; 16; 0]),
+        (Group as Array[Group; 16; 1]),
+        (Group as Array[Group; 16; 2]),
+        (Group as Array[Group; 16; 3]),
+        (Group as Array[Group; 16; 4]),
     });
 }
 
@@ -1509,6 +1762,20 @@ fn bench_logical_instructions(c: &mut Criterion) {
         (U32, U32),
         (U64, U64),
     });
+    
+    use core::ops::BitXor;
+    bench_instruction_with_default!(stack, c, rng, bitxor, Xor {
+        (Boolean, Boolean),
+        (I8, I8),
+        (I16, I16),
+        (I32, I32),
+        (I64, I64),
+        (I128, I128),
+        (U8, U8),
+        (U16, U16),
+        (U32, U32),
+        (U64, U64),
+    });
 }
 
 #[rustfmt::skip]
@@ -1715,9 +1982,34 @@ fn bench_hash_instructions(c: &mut Criterion) {
     bench_hash_instruction!(stack, c, rng, HashPSD2);
     bench_hash_instruction!(stack, c, rng, HashPSD4);
     bench_hash_instruction!(stack, c, rng, HashPSD8);
-    
-    
-    
+}
+
+fn bench_hash_functions_complex_inputs(c: &mut Criterion) {
+    bench_instruction_with_default!(stack, c, rng, HashBHP256 { Array { I8, 2, 0 } into Field });
+    bench_instruction_with_default!(stack, c, rng, HashBHP256 { Array { I8, 2, 2 } into Field });
+    bench_instruction_with_default!(stack, c, rng, HashBHP256 { Array { I8, 2, 4 } into Field });
+    bench_instruction_with_default!(stack, c, rng, HashBHP256 { Array { I8, 4, 0 } into Field });
+    bench_instruction_with_default!(stack, c, rng, HashBHP256 { Array { I8, 4, 2 } into Field });
+    bench_instruction_with_default!(stack, c, rng, HashBHP256 { Array { I8, 4, 4 } into Field });
+    bench_instruction_with_default!(stack, c, rng, HashBHP256 { Array { I8, 8, 0 } into Field });
+    bench_instruction_with_default!(stack, c, rng, HashBHP256 { Array { I8, 8, 2 } into Field });
+    bench_instruction_with_default!(stack, c, rng, HashBHP256 { Array { I8, 8, 4 } into Field });
+    bench_instruction_with_default!(stack, c, rng, HashBHP256 { Array { I8, 16, 0 } into Field });
+    bench_instruction_with_default!(stack, c, rng, HashBHP256 { Array { I8, 16, 2 } into Field });
+    bench_instruction_with_default!(stack, c, rng, HashBHP256 { Array { I8, 16, 4 } into Field });
+
+    bench_instruction_with_default!(stack, c, rng, HashBHP256 { Array { Field, 2, 0 } into Field });
+    bench_instruction_with_default!(stack, c, rng, HashBHP256 { Array { Field, 2, 2 } into Field });
+    bench_instruction_with_default!(stack, c, rng, HashBHP256 { Array { Field, 2, 4 } into Field });
+    bench_instruction_with_default!(stack, c, rng, HashBHP256 { Array { Field, 4, 0 } into Field });
+    bench_instruction_with_default!(stack, c, rng, HashBHP256 { Array { Field, 4, 2 } into Field });
+    bench_instruction_with_default!(stack, c, rng, HashBHP256 { Array { Field, 4, 4 } into Field });
+    bench_instruction_with_default!(stack, c, rng, HashBHP256 { Array { Field, 8, 0 } into Field });
+    bench_instruction_with_default!(stack, c, rng, HashBHP256 { Array { Field, 8, 2 } into Field });
+    bench_instruction_with_default!(stack, c, rng, HashBHP256 { Array { Field, 8, 4 } into Field });
+    bench_instruction_with_default!(stack, c, rng, HashBHP256 { Array { Field, 16, 0 } into Field });
+    bench_instruction_with_default!(stack, c, rng, HashBHP256 { Array { Field, 16, 2 } into Field });
+    bench_instruction_with_default!(stack, c, rng, HashBHP256 { Array { Field, 16, 4 } into Field });
 }
 
 // Create the benchmark group.
