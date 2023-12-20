@@ -220,6 +220,17 @@ impl<N: Network> RegisterTypes<N> {
                         false => bail!("'{index}' is out of bounds for '{register}'"),
                     }
                 }
+                // Traverse the path to output the register type.
+                (RegisterRefType::Plaintext(PlaintextType::ExternalStruct(locator)), Access::Member(identifier)) => {
+                    // Get the external stack.
+                    let external_stack = stack.get_external_stack(locator.program_id())?;
+                    // Retrieve the member type from the external struct.
+                    match external_stack.program().get_struct(locator.resource())?.members().get(identifier) {
+                        // Update the member type.
+                        Some(member_type) => register_type = RegisterRefType::Plaintext(member_type),
+                        None => bail!("'{identifier}' does not exist in struct '{locator}'"),
+                    }
+                }
                 // Access the input to the future to output the register type and check that it is in bounds.
                 (RegisterRefType::Future(locator), Access::Index(index)) => {
                     // Retrieve the associated function.
@@ -249,6 +260,7 @@ impl<N: Network> RegisterTypes<N> {
                 }
                 (RegisterRefType::Plaintext(PlaintextType::Struct(..)), Access::Index(..))
                 | (RegisterRefType::Plaintext(PlaintextType::Array(..)), Access::Member(..))
+                | (RegisterRefType::Plaintext(PlaintextType::ExternalStruct(..)), Access::Index(..))
                 | (RegisterRefType::Future(..), Access::Member(..)) => {
                     bail!("Invalid access `{access}`")
                 }

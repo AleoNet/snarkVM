@@ -40,6 +40,7 @@ impl<N: Network> Stack<N> {
             // Add the external stack to the stack.
             stack.insert_external_stack(external_stack.clone())?;
         }
+
         // Add the program closures to the stack.
         for closure in program.closures().values() {
             // Add the closure to the stack.

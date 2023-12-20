@@ -149,6 +149,12 @@ impl<N: Network> FinalizeTypes<N> {
                 RegisterTypes::check_struct(stack, struct_name)?
             }
             FinalizeType::Plaintext(PlaintextType::Array(array_type)) => RegisterTypes::check_array(stack, array_type)?,
+            FinalizeType::Plaintext(PlaintextType::ExternalStruct(locator)) => {
+                // Get the external stack.
+                let external_stack = stack.get_external_stack(locator.program_id())?;
+                // Check the external struct.
+                RegisterTypes::check_struct(external_stack, locator.resource())?
+            }
             FinalizeType::Future(..) => (),
         };
 
@@ -651,6 +657,18 @@ impl<N: Network> FinalizeTypes<N> {
                             RegisterTypes::check_array(stack, array_type)?;
                             // Ensure the operand types match the element type.
                             self.matches_array(stack, instruction.operands(), array_type)?;
+                        }
+                        CastType::Plaintext(PlaintextType::ExternalStruct(locator)) => {
+                            // Get the external stack.
+                            let external_stack = stack.get_external_stack(locator.program_id())?;
+                            // Ensure the external struct name exists in the external program.
+                            if !external_stack.program().contains_struct(locator.resource()) {
+                                bail!("Struct '{locator}' is not defined.")
+                            }
+                            // Retrieve the external struct.
+                            let struct_ = external_stack.program().get_struct(locator.resource())?;
+                            // Ensure the operand types match the external struct.
+                            self.matches_struct(stack, instruction.operands(), struct_)?;
                         }
                         CastType::Record(..) => {
                             bail!("Illegal operation: Cannot cast to a record.")

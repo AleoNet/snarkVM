@@ -68,7 +68,6 @@ impl<N: Network> RegisterTypes<N> {
         let mut register_types = Self { inputs: IndexMap::new(), destinations: IndexMap::new() };
 
         /* Step 1. Check the inputs are well-formed. */
-
         for input in function.inputs() {
             // TODO (howardwu): In order to support constant inputs, update `Self::deploy()` to allow
             //  the caller to provide optional constant inputs (instead of sampling random constants).
@@ -84,7 +83,6 @@ impl<N: Network> RegisterTypes<N> {
         // - If the function has a finalize block, then it must contain exactly one `async` instruction.
         // - If the function has no finalize block, then it must **not** have `async` instructions.
         // - All `call` instructions must precede any `async` instruction.
-
         let mut async_ = None;
         for instruction in function.instructions() {
             // Check the instruction opcode, operands, and destinations.
@@ -122,7 +120,6 @@ impl<N: Network> RegisterTypes<N> {
         /* Step 3. Check the outputs are well-formed. */
         // - If the function has a finalize block, then its last output must be a future associated with itself.
         // - If the function has no finalize block, then it must **not** have `future` outputs.
-
         let mut num_futures = 0;
         for output in function.outputs() {
             // Check the output operand type.
@@ -272,6 +269,12 @@ impl<N: Network> RegisterTypes<N> {
             RegisterType::Plaintext(PlaintextType::Literal(..)) => (),
             RegisterType::Plaintext(PlaintextType::Struct(struct_name)) => Self::check_struct(stack, struct_name)?,
             RegisterType::Plaintext(PlaintextType::Array(array_type)) => Self::check_array(stack, array_type)?,
+            RegisterType::Plaintext(PlaintextType::ExternalStruct(locator)) => {
+                // Get the external stack.
+                let external_stack = stack.get_external_stack(locator.program_id())?;
+                // Check the external struct.
+                Self::check_struct(external_stack, locator.resource())?
+            }
             RegisterType::Record(identifier) => {
                 // Ensure the record type is defined in the program.
                 if !stack.program().contains_record(identifier) {
@@ -324,6 +327,12 @@ impl<N: Network> RegisterTypes<N> {
             RegisterType::Plaintext(PlaintextType::Literal(..)) => (),
             RegisterType::Plaintext(PlaintextType::Struct(struct_name)) => Self::check_struct(stack, struct_name)?,
             RegisterType::Plaintext(PlaintextType::Array(array_type)) => Self::check_array(stack, array_type)?,
+            RegisterType::Plaintext(PlaintextType::ExternalStruct(locator)) => {
+                // Get the external stack.
+                let external_stack = stack.get_external_stack(locator.program_id())?;
+                // Check the external struct.
+                Self::check_struct(external_stack, locator.resource())?
+            }
             RegisterType::Record(identifier) => {
                 // Ensure the record type is defined in the program.
                 if !stack.program().contains_record(identifier) {
@@ -539,6 +548,18 @@ impl<N: Network> RegisterTypes<N> {
                             // Ensure the operand types match the element type.
                             self.matches_array(stack, instruction.operands(), array_type)?;
                         }
+                        CastType::Plaintext(PlaintextType::ExternalStruct(locator)) => {
+                            // Get the external stack.
+                            let external_stack = stack.get_external_stack(locator.program_id())?;
+                            // Ensure the external struct name exists in the external program.
+                            if !external_stack.program().contains_struct(locator.resource()) {
+                                bail!("Struct '{locator}' is not defined.")
+                            }
+                            // Retrieve the external struct.
+                            let struct_ = external_stack.program().get_struct(locator.resource())?;
+                            // Ensure the operand types match the external struct.
+                            self.matches_struct(stack, instruction.operands(), struct_)?;
+                        }
                         CastType::Record(record_name) => {
                             // Ensure the record type is defined in the program.
                             if !stack.program().contains_record(record_name) {
@@ -649,6 +670,12 @@ impl<N: Network> RegisterTypes<N> {
                 PlaintextType::Literal(..) => (),
                 PlaintextType::Struct(struct_name) => Self::check_struct(stack, struct_name)?,
                 PlaintextType::Array(array_type) => Self::check_array(stack, array_type)?,
+                PlaintextType::ExternalStruct(locator) => {
+                    // Get the external stack.
+                    let external_stack = stack.get_external_stack(locator.program_id())?;
+                    // Check the external struct.
+                    Self::check_struct(external_stack, locator.resource())?
+                }
             }
         }
         Ok(())

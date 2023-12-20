@@ -178,6 +178,28 @@ impl<N: Network> Stack<N> {
 
                 Plaintext::Array(elements, Default::default())
             }
+            // Sample an external struct.
+            PlaintextType::ExternalStruct(locator) => {
+                // Get the external stack.
+                let external_stack = self.get_external_stack(locator.program_id())?;
+                // Get the external struct name.
+                let struct_name = locator.resource();
+                // Retrieve the struct.
+                let struct_ = external_stack.program.get_struct(struct_name)?;
+                // Sample each member of the struct.
+                let members = struct_
+                    .members()
+                    .iter()
+                    .map(|(member_name, member_type)| {
+                        // Sample the member value.
+                        let member = external_stack.sample_plaintext_internal(member_type, depth + 1, rng)?;
+                        // Return the member.
+                        Ok((*member_name, member))
+                    })
+                    .collect::<Result<IndexMap<_, _>>>()?;
+
+                Plaintext::Struct(members, Default::default())
+            }
         };
         // Return the plaintext.
         Ok(plaintext)

@@ -282,6 +282,70 @@ impl<N: Network> Stack<N> {
                     Ok(())
                 }
             },
+            PlaintextType::ExternalStruct(locator) => {
+                // Get the external stack.
+                let external_stack = self.get_external_stack(locator.program_id())?;
+                // Get the external struct name.
+                let struct_name = locator.resource();
+
+                // Ensure the struct name is valid.
+                ensure!(!Program::is_reserved_keyword(struct_name), "Struct '{struct_name}' is reserved");
+
+                // Retrieve the struct from the program.
+                let Ok(struct_) = external_stack.program().get_struct(struct_name) else {
+                    bail!("Struct '{struct_name}' is not defined in the program")
+                };
+
+                // Ensure the struct name matches.
+                if struct_.name() != struct_name {
+                    bail!("Expected struct '{struct_name}', found struct '{}'", struct_.name())
+                }
+
+                // Retrieve the struct members.
+                let members = match plaintext {
+                    Plaintext::Literal(..) => bail!("'{struct_name}' is invalid: expected struct, found literal"),
+                    Plaintext::Struct(members, ..) => members,
+                    Plaintext::Array(..) => bail!("'{struct_name}' is invalid: expected struct, found array"),
+                };
+
+                let num_members = members.len();
+                // Ensure the number of struct members does not go below the minimum.
+                ensure!(
+                    num_members >= N::MIN_STRUCT_ENTRIES,
+                    "'{struct_name}' cannot be less than {} entries",
+                    N::MIN_STRUCT_ENTRIES
+                );
+                // Ensure the number of struct members does not exceed the maximum.
+                ensure!(
+                    num_members <= N::MAX_STRUCT_ENTRIES,
+                    "'{struct_name}' cannot exceed {} entries",
+                    N::MAX_STRUCT_ENTRIES
+                );
+
+                // Ensure the number of struct members match.
+                let expected_num_members = struct_.members().len();
+                if expected_num_members != num_members {
+                    bail!("'{struct_name}' expected {expected_num_members} members, found {num_members} members")
+                }
+
+                // Ensure the struct members match, in the same order.
+                for (i, ((expected_name, expected_type), (member_name, member))) in
+                    struct_.members().iter().zip_eq(members.iter()).enumerate()
+                {
+                    // Ensure the member name matches.
+                    if expected_name != member_name {
+                        bail!(
+                            "Member '{i}' in '{struct_name}' is incorrect: expected '{expected_name}', found '{member_name}'"
+                        )
+                    }
+                    // Ensure the member name is valid.
+                    ensure!(!Program::is_reserved_keyword(member_name), "Member name '{member_name}' is reserved");
+                    // Ensure the member plaintext matches (recursive call).
+                    external_stack.matches_plaintext_internal(member, expected_type, depth + 1)?;
+                }
+
+                Ok(())
+            }
         }
     }
 

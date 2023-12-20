@@ -147,6 +147,18 @@ impl<N: Network> FinalizeTypes<N> {
                         false => bail!("Index out of bounds"),
                     }
                 }
+                // Access the member on the path to output the register type.
+                (FinalizeRefType::Plaintext(PlaintextType::ExternalStruct(locator)), Access::Member(identifier)) => {
+                    // Get the external stack.
+                    let external_stack = stack.get_external_stack(locator.program_id())?;
+                    // Retrieve the member type from the external struct and check that it exists.
+                    match external_stack.program().get_struct(locator.resource())?.members().get(identifier) {
+                        // Retrieve the member and update `finalize_type` for the next iteration.
+                        Some(member_type) => finalize_type = FinalizeRefType::Plaintext(member_type),
+                        // Halts if the member does not exist.
+                        None => bail!("'{identifier}' does not exist in struct '{locator}'"),
+                    }
+                }
                 // Access the input to the future to output the register type and check that it is in bounds.
                 (FinalizeRefType::Future(locator), Access::Index(index)) => {
                     // Retrieve the associated function.
@@ -176,6 +188,7 @@ impl<N: Network> FinalizeTypes<N> {
                 }
                 (FinalizeRefType::Plaintext(PlaintextType::Struct(..)), Access::Index(..))
                 | (FinalizeRefType::Plaintext(PlaintextType::Array(..)), Access::Member(..))
+                | (FinalizeRefType::Plaintext(PlaintextType::ExternalStruct(..)), Access::Index(..))
                 | (FinalizeRefType::Future(..), Access::Member(..)) => {
                     bail!("Invalid access `{access}`")
                 }
