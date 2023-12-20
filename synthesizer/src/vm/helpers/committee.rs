@@ -169,8 +169,6 @@ pub fn ensure_stakers_matches<N: Network>(
     // Ensure the committee and the commission rates match.
     ensure!(committee.members().len() == commission_rates.len(), "Committee and commission rates length do not match");
     // Ensure the total microcredits match.
-    // println!("committee.total_stake(): {}", committee.total_stake());
-    // println!("total_microcredits: {}", total_microcredits);
     ensure!(committee.total_stake() == total_microcredits, "Committee and validator map total stake do not match");
 
     // Iterate over the committee and ensure the committee and validators match.

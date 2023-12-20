@@ -20,7 +20,7 @@ use console::{
         prelude::{TestRng, Uniform},
         Testnet3,
     },
-    types::{Address},
+    types::Address,
 };
 use snarkvm_synthesizer::staking_rewards;
 
@@ -38,19 +38,22 @@ fn bench_staking_rewards(c: &mut Criterion) {
 
     // Construct the committee.
     println!("Constructing the committee...");
-    let validators = (0..200).map(|_| {
-        let address = Address::rand(&mut rng);
-        let balance: u64 = 1_000_000_000_000;
-        let is_open: bool = true;
-        (address, (balance, is_open))
-    }).collect::<IndexMap<Address<CurrentNetwork>, (u64, bool)>>();
+    let validators = (0..200)
+        .map(|_| {
+            let address = Address::rand(&mut rng);
+            let balance: u64 = 1_000_000_000_000;
+            let is_open: bool = true;
+            (address, (balance, is_open))
+        })
+        .collect::<IndexMap<Address<CurrentNetwork>, (u64, bool)>>();
     let committee = Committee::new(1, validators.clone()).unwrap();
 
     // Initialize the stakers.
     println!("Initializing the stakers...");
-    let mut stakers = validators.iter().map(|(address, (balance, _))| {
-        (*address, (*address, *balance))
-    }).collect::<IndexMap<Address<CurrentNetwork>, (Address<CurrentNetwork>, u64)>>();
+    let mut stakers = validators
+        .iter()
+        .map(|(address, (balance, _))| (*address, (*address, *balance)))
+        .collect::<IndexMap<Address<CurrentNetwork>, (Address<CurrentNetwork>, u64)>>();
 
     // Initialize a counter for the number of delegators.
     let mut total_delegators = 0;
@@ -73,11 +76,14 @@ fn bench_staking_rewards(c: &mut Criterion) {
 
         // Bench the `staking_rewards` function.
         println!("Benching the `staking_rewards` function...");
-        c.bench_function(&format!("staking_rewards with {total_delegators} delegators and {} validators", validators.len()), |b| {
-            b.iter_with_large_drop(|| {
-                let _ = staking_rewards::<CurrentNetwork>(&stakers, &committee, 1_000_000_000);
-            })
-        });
+        c.bench_function(
+            &format!("staking_rewards with {total_delegators} delegators and {} validators", validators.len()),
+            |b| {
+                b.iter_with_large_drop(|| {
+                    let _ = staking_rewards::<CurrentNetwork>(&stakers, &committee, 1_000_000_000);
+                })
+            },
+        );
     }
 }
 

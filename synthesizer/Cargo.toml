@@ -59,20 +59,16 @@ wasm = [
   "synthesizer-snark/wasm"
 ]
 
+
 [[bench]]
-name = "atomic_post_ratify"
-path = "benches/atomic_post_ratify.rs"
+name = "kary_merkle_tree"
+path = "benches/kary_merkle_tree.rs"
 harness = false
 
-#[[bench]]
-#name = "kary_merkle_tree"
-#path = "benches/kary_merkle_tree.rs"
-#harness = false
-
-#[[bench]]
-#name = "rewards"
-#path = "benches/rewards.rs"
-#harness = false
+[[bench]]
+name = "rewards"
+path = "benches/rewards.rs"
+harness = false
 
 [dependencies.algorithms]
 package = "snarkvm-algorithms"
