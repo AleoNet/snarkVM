@@ -327,11 +327,16 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         // Next, finalize the transactions.
         match self.finalize(state, block.ratifications(), block.solutions(), block.transactions()) {
             Ok(_ratified_finalize_operations) => Ok(()),
-            Err(error) => {
+            Err(finalize_error) => {
                 // Rollback the block.
-                self.block_store().remove_last_n(1)?;
-                // Return the error.
-                Err(error)
+                self.block_store().remove_last_n(1).map_err(|removal_error| {
+                    // Log the finalize error.
+                    error!("Failed to finalize block {} - {finalize_error}", block.height());
+                    // Return the removal error.
+                    removal_error
+                })?;
+                // Return the finalize error.
+                Err(finalize_error)
             }
         }
     }
