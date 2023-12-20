@@ -39,8 +39,8 @@ struct committee_state:
 ///   - The number of delegators bonded to each validator.
 mapping metadata:
     // The key represents the index at which the count is stored.
-    //    - The zero address (aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc) stores the number of members in the committee.
-    //    - The address of the validator stores the number of delegators bonded to the validator.
+    //    - This address (aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc) stores the number of members in the committee.
+    //    - This address (aleo1qgqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqanmpl0) stores the total number of **delegators**.
     key as address.public;
     // The value represents the count.
     value as u32.public;
@@ -234,16 +234,16 @@ finalize bond_public:
     contains bonded[r0] into r23;
     // If the delegator is already bonded to the validator, jump to the `continue_bond_delegator` logic.
     branch.eq r23 true to continue_bond_delegator;
-    // Get the number of delegators bonded to the validator.
-    get.or_use metadata[r1] 0u32 into r24;
-    // Increment the number of delegators bonded to the validator by one.
+    // Get the total number of bonded delegators.
+    get.or_use metadata[aleo1qgqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqanmpl0] 0u32 into r24;
+    // Increment the number of bonded delegators by one.
     add r24 1u32 into r25;
-    // Determine if the number of delegators bonded to the validator is less than or equal to 1_000_000.
+    // Determine if the number of bonded delegators is less than or equal to 1_000_000.
     lte r25 1_000_000u32 into r26;
-    // Enforce that the number of delegators bonded to the validator is less than or equal to 1_000_000.
+    // Enforce that the number of bonded delegators is less than or equal to 1_000_000.
     assert.eq r26 true;
     // Set the new number of delegators bonded to the validator.
-    set r25 into metadata[r1];
+    set r25 into metadata[aleo1qgqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqanmpl0];
 
     // Continues the rest of the `bond_delegator` logic.
     position continue_bond_delegator;
@@ -494,12 +494,12 @@ finalize unbond_public:
     // Update the stake for the specified validator.
     set r30 into committee[r19.validator];
 
-    // Get the number of delegators bonded to the validator.
-    get metadata[r19.validator] into r31;
-    // Decrement the number of delegators bonded to the validator by one.
+    // Get the number of bonded delegators.
+    get metadata[aleo1qgqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqanmpl0] into r31;
+    // Decrement the number of bonded delegators by one.
     sub r31 1u32 into r32;
-    // Set the new number of delegators bonded to the validator.
-    set r32 into metadata[r19.validator];
+    // Set the new number of bonded delegators.
+    set r32 into metadata[aleo1qgqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqanmpl0];
 
     /* Bonded */
 
