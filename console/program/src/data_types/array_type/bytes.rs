@@ -13,7 +13,7 @@
 // limitations under the License.
 
 use super::*;
-use crate::{Identifier, LiteralType};
+use crate::{Identifier, LiteralType, Locator};
 
 impl<N: Network> FromBytes for ArrayType<N> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
@@ -22,7 +22,8 @@ impl<N: Network> FromBytes for ArrayType<N> {
         let element_type = match variant {
             0 => PlaintextType::Literal(LiteralType::read_le(&mut reader)?),
             1 => PlaintextType::Struct(Identifier::read_le(&mut reader)?),
-            2.. => return Err(error(format!("Failed to deserialize element type {variant}"))),
+            2 => PlaintextType::ExternalStruct(Locator::read_le(&mut reader)?),
+            3.. => return Err(error(format!("Failed to deserialize element type {variant}"))),
         };
 
         // Read the number of dimensions of the array.
@@ -57,7 +58,7 @@ impl<N: Network> ToBytes for ArrayType<N> {
         // Note that the lengths are in the order of the outermost dimension to the innermost dimension.
         for _ in 1..N::MAX_DATA_DEPTH {
             element_type = match element_type {
-                PlaintextType::Literal(_) | PlaintextType::Struct(_) => break,
+                PlaintextType::Literal(_) | PlaintextType::Struct(_) | PlaintextType::ExternalStruct(_) => break,
                 PlaintextType::Array(array_type) => {
                     lengths.push(*array_type.length());
                     array_type.next_element_type().clone()
@@ -79,6 +80,10 @@ impl<N: Network> ToBytes for ArrayType<N> {
             PlaintextType::Struct(identifier) => {
                 1u8.write_le(&mut writer)?;
                 identifier.write_le(&mut writer)?;
+            }
+            PlaintextType::ExternalStruct(locator) => {
+                2u8.write_le(&mut writer)?;
+                locator.write_le(&mut writer)?;
             }
             PlaintextType::Array(_) => {
                 // This is technically unreachable by definition, however we return an error

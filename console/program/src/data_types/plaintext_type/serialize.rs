@@ -67,6 +67,8 @@ mod tests {
         "passport",
         "object",
         "array",
+        // External struct
+        "foo.aleo/bar",
     ];
 
     fn check_serde_json<

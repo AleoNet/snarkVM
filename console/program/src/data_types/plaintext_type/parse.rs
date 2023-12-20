@@ -22,6 +22,7 @@ impl<N: Network> Parser for PlaintextType<N> {
         alt((
             map(ArrayType::parse, |type_| Self::Array(type_)),
             map(LiteralType::parse, |type_| Self::Literal(type_)),
+            map(Locator::parse, |locator| Self::ExternalStruct(locator)),
             map(Identifier::parse, |identifier| Self::Struct(identifier)),
         ))(string)
     }
@@ -61,6 +62,8 @@ impl<N: Network> Display for PlaintextType<N> {
             Self::Struct(struct_) => Display::fmt(struct_, f),
             // Prints the array type, i.e. [field; 2u32]
             Self::Array(array) => Display::fmt(array, f),
+            // Prints the external plaintext type, i.e. foo.aleo/bar
+            Self::ExternalStruct(locator) => Display::fmt(locator, f),
         }
     }
 }
@@ -89,6 +92,10 @@ mod tests {
         assert_eq!(
             PlaintextType::parse("[field; 1u32]"),
             Ok(("", PlaintextType::<CurrentNetwork>::Array(ArrayType::from_str("[field; 1u32]")?)))
+        );
+        assert_eq!(
+            PlaintextType::parse("foo.aleo/bar"),
+            Ok(("", PlaintextType::<CurrentNetwork>::ExternalStruct(Locator::from_str("foo.aleo/bar")?)))
         );
         Ok(())
     }
@@ -136,6 +143,8 @@ mod tests {
             Ok((".private", PlaintextType::<CurrentNetwork>::from_str("[field; 1u32]")?)),
             PlaintextType::<CurrentNetwork>::parse("[field; 1u32].private")
         );
+
+        // TODO (@d0cd).
 
         // Must be non-empty.
         assert!(PlaintextType::<CurrentNetwork>::parse("").is_err());
