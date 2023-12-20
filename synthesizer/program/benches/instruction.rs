@@ -119,9 +119,9 @@ macro_rules! bench_instruction {
             stringify!($instruction),
             "/",
             stringify!($input_a),
-            "_",
+            ",",
             stringify!($input_b),
-            "_",
+            ",",
             stringify!($input_c)
         );
         let instruction = Instruction::<Testnet3>::$instruction(
@@ -183,7 +183,7 @@ macro_rules! bench_instruction {
         use snarkvm_synthesizer_program::$instruction;
         let (instruction, input, input_type): (String, String, String) = build_nested_array_instruction!($rng, $instruction, Array[$input_a; $length; $depth], $output_type);
         let mut name = concat!(stringify!($instruction), "/", "Array_", stringify!($input_a)).to_string();
-        name.push_str(&format!("_length_{}_depth_{},{}", $length, $depth, stringify!($output_type)));
+        name.push_str(&format!("_length_{}_depth_{}_{}", $length, $depth, stringify!($output_type)));
         println!("{}", name);
         let instruction = Instruction::<Testnet3>::$instruction($instruction::from_str(&instruction).unwrap());
 
@@ -289,7 +289,7 @@ macro_rules! bench_cast_array {
             if $depth == 0 {
                 name = format!("Cast/{},{}_Array_Depth_{}_Length_{}", operation, operation, $depth, $length).to_string();
             } else {
-                name = format!("Cast/{}_Array_Depth_{}_Length_{},{}_Array_Depth_{}_Length_{}", operation ,$depth - 1usize, $length, operation, $depth, $length).to_string();
+                name = format!("Cast/{}_Array_Depth_{}_Length_{}_{}_Array_Depth_{}_Length_{}", operation ,$depth - 1usize, $length, operation, $depth, $length).to_string();
             }
             println!("Name: {}/instruction", name);
 
@@ -2044,12 +2044,32 @@ fn bench_hash_functions_with_complex_inputs(c: &mut Criterion) {
     bench_hash_functions_with_arrays!(stack, c, rng, HashPED64, U128, [4, 8, 12], [0, 1, 2, 3], { I8, I32, I128, U8, U32, U128, Field, });
     bench_hash_functions_with_arrays!(stack, c, rng, HashPED64, Field, [4, 8, 12], [0, 1, 2, 3], { I8, I32, I128, U8, U32, U128, Field, });
 
+    bench_hash_functions_with_arrays!(stack, c, rng, HashPED128, Group, [4, 8, 12], [0, 1, 2, 3], { I8, I32, I128, U8, U32, U128, Field, });
+    bench_hash_functions_with_arrays!(stack, c, rng, HashPED128, U128, [4, 8, 12], [0, 1, 2, 3], { I8, I32, I128, U8, U32, U128, Field, });
+    bench_hash_functions_with_arrays!(stack, c, rng, HashPED128, Field, [4, 8, 12], [0, 1, 2, 3], { I8, I32, I128, U8, U32, U128, Field, });
+
     bench_hash_functions_with_arrays!(stack, c, rng, HashKeccak256, Group, [4, 8, 12], [0, 1, 2, 3], { I8, I32, I128, U8, U32, U128, Field, });
+    bench_hash_functions_with_arrays!(stack, c, rng, HashKeccak256, U128, [4, 8, 12], [0, 1, 2, 3], { I8, I32, I128, U8, U32, U128, Field, });
+    bench_hash_functions_with_arrays!(stack, c, rng, HashKeccak256, Field, [4, 8, 12], [0, 1, 2, 3], { I8, I32, I128, U8, U32, U128, Field, });
+
+    bench_hash_functions_with_arrays!(stack, c, rng, HashKeccak384, Group, [4, 8, 12], [0, 1, 2, 3], { I8, I32, I128, U8, U32, U128, Field, });
     bench_hash_functions_with_arrays!(stack, c, rng, HashKeccak384, U128, [4, 8, 12], [0, 1, 2, 3], { I8, I32, I128, U8, U32, U128, Field, });
+    bench_hash_functions_with_arrays!(stack, c, rng, HashKeccak384, Field, [4, 8, 12], [0, 1, 2, 3], { I8, I32, I128, U8, U32, U128, Field, });
+
+    bench_hash_functions_with_arrays!(stack, c, rng, HashKeccak512, Group, [4, 8, 12], [0, 1, 2, 3], { I8, I32, I128, U8, U32, U128, Field, });
+    bench_hash_functions_with_arrays!(stack, c, rng, HashKeccak512, U128, [4, 8, 12], [0, 1, 2, 3], { I8, I32, I128, U8, U32, U128, Field, });
     bench_hash_functions_with_arrays!(stack, c, rng, HashKeccak512, Field, [4, 8, 12], [0, 1, 2, 3], { I8, I32, I128, U8, U32, U128, Field, });
 
     bench_hash_functions_with_arrays!(stack, c, rng, HashSha3_256, Group, [4, 8, 12], [0, 1, 2, 3], { I8, I32, I128, U8, U32, U128, Field, });
+    bench_hash_functions_with_arrays!(stack, c, rng, HashSha3_256, U128, [4, 8, 12], [0, 1, 2, 3], { I8, I32, I128, U8, U32, U128, Field, });
+    bench_hash_functions_with_arrays!(stack, c, rng, HashSha3_256, Field, [4, 8, 12], [0, 1, 2, 3], { I8, I32, I128, U8, U32, U128, Field, });
+
+    bench_hash_functions_with_arrays!(stack, c, rng, HashSha3_384, Group, [4, 8, 12], [0, 1, 2, 3], { I8, I32, I128, U8, U32, U128, Field, });
     bench_hash_functions_with_arrays!(stack, c, rng, HashSha3_384, U128, [4, 8, 12], [0, 1, 2, 3], { I8, I32, I128, U8, U32, U128, Field, });
+    bench_hash_functions_with_arrays!(stack, c, rng, HashSha3_384, Field, [4, 8, 12], [0, 1, 2, 3], { I8, I32, I128, U8, U32, U128, Field, });
+
+    bench_hash_functions_with_arrays!(stack, c, rng, HashSha3_512, Group, [4, 8, 12], [0, 1, 2, 3], { I8, I32, I128, U8, U32, U128, Field, });
+    bench_hash_functions_with_arrays!(stack, c, rng, HashSha3_512, U128, [4, 8, 12], [0, 1, 2, 3], { I8, I32, I128, U8, U32, U128, Field, });
     bench_hash_functions_with_arrays!(stack, c, rng, HashSha3_512, Field, [4, 8, 12], [0, 1, 2, 3], { I8, I32, I128, U8, U32, U128, Field, });
 }
 
