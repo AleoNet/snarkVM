@@ -19,7 +19,7 @@ use crate::{
 };
 use console::{
     network::prelude::*,
-    program::{Identifier, Locator, Register, RegisterType, ValueType},
+    program::{Identifier, Locator, PlaintextType, Register, RegisterType, ValueType},
 };
 
 /// The operator references a function name or closure name.
@@ -227,7 +227,18 @@ impl<N: Network> Call<N> {
                 bail!("Expected {} outputs, found {}", closure.outputs().len(), self.destinations.len())
             }
             // Return the output register types.
-            Ok(closure.outputs().iter().map(|output| output.register_type()).cloned().collect())
+            Ok(closure
+                .outputs()
+                .iter()
+                .map(|output| match (is_external, output.register_type()) {
+                    // If the output is a struct and the closure is external, return the external struct type.
+                    (true, RegisterType::Plaintext(PlaintextType::Struct(struct_name))) => RegisterType::Plaintext(
+                        PlaintextType::ExternalStruct(Locator::new(*program.id(), *struct_name)),
+                    ),
+                    // Else, return the register type.
+                    (_, output_type) => output_type.clone(),
+                })
+                .collect())
         }
         // If the operator is a function, retrieve the function and compute the output types.
         else if let Ok(function) = program.get_function(resource) {
@@ -244,18 +255,24 @@ impl<N: Network> Call<N> {
                 bail!("Expected {} outputs, found {}", function.outputs().len(), self.destinations.len())
             }
             // Return the output register types.
-            function
+            Ok(function
                 .output_types()
                 .into_iter()
                 .map(|output_type| match (is_external, output_type) {
+                    // If the output is a struct and the function is external, return the external struct type.
+                    (true, ValueType::Constant(PlaintextType::Struct(struct_name)))
+                    | (true, ValueType::Public(PlaintextType::Struct(struct_name)))
+                    | (true, ValueType::Private(PlaintextType::Struct(struct_name))) => {
+                        RegisterType::Plaintext(PlaintextType::ExternalStruct(Locator::new(*program.id(), struct_name)))
+                    }
                     // If the output is a record and the function is external, return the external record type.
-                    (true, ValueType::Record(record_name)) => Ok(RegisterType::ExternalRecord(Locator::from_str(
-                        &format!("{}/{}", program.id(), record_name),
-                    )?)),
+                    (true, ValueType::Record(record_name)) => {
+                        RegisterType::ExternalRecord(Locator::new(*program.id(), record_name))
+                    }
                     // Else, return the register type.
-                    (_, output_type) => Ok(RegisterType::from(output_type)),
+                    (_, output_type) => RegisterType::from(output_type),
                 })
-                .collect::<Result<Vec<_>>>()
+                .collect())
         }
         // Else, throw an error.
         else {

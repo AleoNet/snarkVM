@@ -251,12 +251,14 @@ impl<N: Network, const VARIANT: u8> HashInstruction<N, VARIANT> {
             (18.., _) => bail!("Invalid 'hash' variant: {VARIANT}"),
             (_, PlaintextType::Struct(..)) => bail!("Cannot hash into a struct"),
             (_, PlaintextType::Array(..)) => bail!("Cannot hash into an array (yet)"),
+            (_, PlaintextType::ExternalStruct(..)) => bail!("Cannot hash into an external struct"),
         };
         // Cast the output to the destination type.
         let output = match self.destination_type {
             PlaintextType::Literal(literal_type) => output.cast_lossy(literal_type)?,
             PlaintextType::Struct(..) => bail!("Cannot hash into a struct"),
             PlaintextType::Array(..) => bail!("Cannot hash into an array (yet)"),
+            PlaintextType::ExternalStruct(..) => bail!("Cannot hash into an external struct"),
         };
         // Store the output.
         registers.store(stack, &self.destination, Value::Plaintext(Plaintext::from(output)))
@@ -322,12 +324,14 @@ impl<N: Network, const VARIANT: u8> HashInstruction<N, VARIANT> {
             (18.., _) => bail!("Invalid 'hash' variant: {VARIANT}"),
             (_, PlaintextType::Struct(..)) => bail!("Cannot hash into a struct"),
             (_, PlaintextType::Array(..)) => bail!("Cannot hash into an array (yet)"),
+            (_, PlaintextType::ExternalStruct(..)) => bail!("Cannot hash into an external struct"),
         };
         // Cast the output to the destination type.
         let output = match self.destination_type {
             PlaintextType::Literal(literal_type) => output.cast_lossy(literal_type)?,
             PlaintextType::Struct(..) => bail!("Cannot hash into a struct"),
             PlaintextType::Array(..) => bail!("Cannot hash into an array (yet)"),
+            PlaintextType::ExternalStruct(..) => bail!("Cannot hash into an external struct"),
         };
         // Convert the output to a stack value.
         let output = circuit::Value::Plaintext(circuit::Plaintext::Literal(output, Default::default()));

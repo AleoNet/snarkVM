@@ -48,6 +48,7 @@ use console::{
     types::Field,
 };
 
+use console::program::StructType;
 use indexmap::IndexMap;
 
 #[derive(Clone, PartialEq, Eq, Hash)]
@@ -244,10 +245,19 @@ impl<N: Network, const VARIANT: u8> CastOperation<N, VARIANT> {
                 registers.store(stack, &self.destination, Value::Plaintext(Plaintext::from(value)))
             }
             CastType::Plaintext(PlaintextType::Struct(struct_name)) => {
-                self.cast_to_struct(stack, registers, *struct_name, inputs)
+                // Get the struct.
+                let struct_ = stack.program().get_struct(&struct_name)?;
+                // Cast to the struct.
+                self.cast_to_struct(stack, registers, struct_, inputs)
             }
             CastType::Plaintext(PlaintextType::Array(array_type)) => {
                 self.cast_to_array(stack, registers, array_type, inputs)
+            }
+            CastType::Plaintext(PlaintextType::ExternalStruct(locator)) => {
+                // Get the struct.
+                let struct_ = stack.get_external_program(locator.program_id())?.get_struct(locator.resource())?;
+                // Cast to the struct.
+                self.cast_to_struct(stack, registers, struct_, inputs)
             }
             CastType::Record(record_name) => {
                 // Ensure the operands length is at least the minimum.
@@ -486,6 +496,61 @@ impl<N: Network, const VARIANT: u8> CastOperation<N, VARIANT> {
                 // Store the array.
                 registers.store_circuit(stack, &self.destination, circuit::Value::Plaintext(array))
             }
+            CastType::Plaintext(PlaintextType::ExternalStruct(locator)) => {
+                // Ensure the operands length is at least the minimum.
+                if inputs.len() < N::MIN_STRUCT_ENTRIES {
+                    bail!("Casting to a struct requires at least {} operand(s)", N::MIN_STRUCT_ENTRIES)
+                }
+                // Ensure the number of members does not exceed the maximum.
+                if inputs.len() > N::MAX_STRUCT_ENTRIES {
+                    bail!("Casting to struct '{locator}' cannot exceed {} members", N::MAX_STRUCT_ENTRIES)
+                }
+
+                // Get the external stack.
+                // TODO (@d0cd) Check that it is not local program?
+                let external_stack = stack.get_external_stack(locator.program_id())?;
+                // Retrieve the struct and ensure it is defined in the program.
+                let struct_ = external_stack.program().get_struct(locator.resource())?;
+
+                // Ensure that the number of operands is equal to the number of struct members.
+                if inputs.len() != struct_.members().len() {
+                    bail!(
+                        "Casting to the struct {} requires {} operands, but {} were provided",
+                        struct_.name(),
+                        struct_.members().len(),
+                        inputs.len()
+                    )
+                }
+
+                // Initialize the struct members.
+                let mut members = IndexMap::new();
+                for (member, (member_name, member_type)) in inputs.iter().zip_eq(struct_.members()) {
+                    // Retrieve the plaintext value from the entry.
+                    let plaintext = match member {
+                        circuit::Value::Plaintext(plaintext) => {
+                            // Ensure the member matches the register type.
+                            stack.matches_plaintext(&plaintext.eject_value(), member_type)?;
+                            // Output the plaintext.
+                            plaintext.clone()
+                        }
+                        // Ensure the struct member is not a record.
+                        circuit::Value::Record(..) => {
+                            bail!("Casting a record into a struct member is illegal")
+                        }
+                        // Ensure the struct member is not a future.
+                        circuit::Value::Future(..) => {
+                            bail!("Casting a future into a struct member is illegal")
+                        }
+                    };
+                    // Append the member to the struct members.
+                    members.insert(circuit::Identifier::constant(*member_name), plaintext);
+                }
+
+                // Construct the struct.
+                let struct_ = circuit::Plaintext::Struct(members, Default::default());
+                // Store the struct.
+                registers.store_circuit(stack, &self.destination, circuit::Value::Plaintext(struct_))
+            }
             CastType::Record(record_name) => {
                 // Ensure the operands length is at least the minimum.
                 if inputs.len() < N::MIN_RECORD_ENTRIES {
@@ -620,10 +685,19 @@ impl<N: Network, const VARIANT: u8> CastOperation<N, VARIANT> {
                 registers.store(stack, &self.destination, Value::Plaintext(Plaintext::from(value)))
             }
             CastType::Plaintext(PlaintextType::Struct(struct_name)) => {
-                self.cast_to_struct(stack, registers, *struct_name, inputs)
+                // Get the struct.
+                let struct_ = stack.program().get_struct(&struct_name)?;
+                // Cast to the struct.
+                self.cast_to_struct(stack, registers, struct_, inputs)
             }
             CastType::Plaintext(PlaintextType::Array(array_type)) => {
                 self.cast_to_array(stack, registers, array_type, inputs)
+            }
+            CastType::Plaintext(PlaintextType::ExternalStruct(locator)) => {
+                // Get the struct.
+                let struct_ = stack.get_external_program(locator.program_id())?.get_struct(locator.resource())?;
+                // Cast to the struct.
+                self.cast_to_struct(stack, registers, struct_, inputs)
             }
             CastType::Record(_record_name) => {
                 bail!("Illegal operation: Cannot cast to a record in a finalize block.")
@@ -758,6 +832,52 @@ impl<N: Network, const VARIANT: u8> CastOperation<N, VARIANT> {
                     }
                 }
             }
+            CastType::Plaintext(PlaintextType::ExternalStruct(locator)) => {
+                // Retrieve the external struct and ensure it is defined in the program.
+                let struct_ = stack.get_external_program(locator.program_id())?.get_struct(locator.resource())?;
+
+                // Ensure the input types length is at least the minimum.
+                if input_types.len() < N::MIN_STRUCT_ENTRIES {
+                    bail!("Casting to a struct requires at least {} operand(s)", N::MIN_STRUCT_ENTRIES)
+                }
+                // Ensure the number of members does not exceed the maximum.
+                if input_types.len() > N::MAX_STRUCT_ENTRIES {
+                    bail!("Casting to struct '{struct_}' cannot exceed {} members", N::MAX_STRUCT_ENTRIES)
+                }
+
+                // Ensure that the number of input types is equal to the number of struct members.
+                ensure!(
+                    input_types.len() == struct_.members().len(),
+                    "Casting to the struct {} requires {} operands, but {} were provided",
+                    struct_.name(),
+                    struct_.members().len(),
+                    input_types.len()
+                );
+                // Ensure the input types match the struct.
+                for ((_, member_type), input_type) in struct_.members().iter().zip_eq(input_types) {
+                    match input_type {
+                        // Ensure the plaintext type matches the member type.
+                        RegisterType::Plaintext(plaintext_type) => {
+                            ensure!(
+                                member_type == plaintext_type,
+                                "Struct '{locator}' member type mismatch: expected '{member_type}', found '{plaintext_type}'"
+                            )
+                        }
+                        // Ensure the input type cannot be a record (this is unsupported behavior).
+                        RegisterType::Record(record_name) => bail!(
+                            "Struct '{locator}' member type mismatch: expected '{member_type}', found record '{record_name}'"
+                        ),
+                        // Ensure the input type cannot be an external record (this is unsupported behavior).
+                        RegisterType::ExternalRecord(locator) => bail!(
+                            "Struct '{locator}' member type mismatch: expected '{member_type}', found external record '{locator}'"
+                        ),
+                        // Ensure the input type cannot be a future (this is unsupported behavior).
+                        RegisterType::Future(..) => {
+                            bail!("Struct '{locator}' member type mismatch: expected '{member_type}', found future")
+                        }
+                    }
+                }
+            }
             CastType::Record(record_name) => {
                 // Retrieve the record type and ensure is defined in the program.
                 let record = stack.program().get_record(record_name)?;
@@ -837,16 +957,13 @@ impl<N: Network, const VARIANT: u8> CastOperation<N, VARIANT> {
         &self,
         stack: &(impl StackMatches<N> + StackProgram<N>),
         registers: &mut impl RegistersStore<N>,
-        struct_name: Identifier<N>,
+        struct_: &StructType<N>,
         inputs: Vec<Value<N>>,
     ) -> Result<()> {
         // Ensure the operands length is at least the minimum.
         if inputs.len() < N::MIN_STRUCT_ENTRIES {
             bail!("Casting to a struct requires at least {} operand", N::MIN_STRUCT_ENTRIES)
         }
-
-        // Retrieve the struct and ensure it is defined in the program.
-        let struct_ = stack.program().get_struct(&struct_name)?;
 
         // Ensure that the number of operands is equal to the number of struct members.
         if inputs.len() != struct_.members().len() {
@@ -881,7 +998,8 @@ impl<N: Network, const VARIANT: u8> CastOperation<N, VARIANT> {
         // Construct the struct.
         let struct_ = Plaintext::Struct(members, Default::default());
         // Store the struct.
-        registers.store(stack, &self.destination, Value::Plaintext(struct_))
+        registers.store(stack, &self.destination, Value::Plaintext(struct_))?;
+        Ok(())
     }
 
     /// A helper method to handle casting to an array.
@@ -971,7 +1089,9 @@ impl<N: Network, const VARIANT: u8> Parser for CastOperation<N, VARIANT> {
             CastType::GroupXCoordinate
             | CastType::GroupYCoordinate
             | CastType::Plaintext(PlaintextType::Literal(_)) => 1,
-            CastType::Plaintext(PlaintextType::Struct(_)) => N::MAX_STRUCT_ENTRIES,
+            CastType::Plaintext(PlaintextType::Struct(_)) | CastType::Plaintext(PlaintextType::ExternalStruct(_)) => {
+                N::MAX_STRUCT_ENTRIES
+            }
             CastType::Plaintext(PlaintextType::Array(_)) => N::MAX_ARRAY_ELEMENTS,
             CastType::Record(_) | CastType::ExternalRecord(_) => N::MAX_RECORD_ENTRIES,
         };
@@ -1019,7 +1139,9 @@ impl<N: Network, const VARIANT: u8> Display for CastOperation<N, VARIANT> {
             CastType::GroupYCoordinate
             | CastType::GroupXCoordinate
             | CastType::Plaintext(PlaintextType::Literal(_)) => 1,
-            CastType::Plaintext(PlaintextType::Struct(_)) => N::MAX_STRUCT_ENTRIES,
+            CastType::Plaintext(PlaintextType::Struct(_)) | CastType::Plaintext(PlaintextType::ExternalStruct(_)) => {
+                N::MAX_STRUCT_ENTRIES
+            }
             CastType::Plaintext(PlaintextType::Array(_)) => N::MAX_ARRAY_ELEMENTS,
             CastType::Record(_) | CastType::ExternalRecord(_) => N::MAX_RECORD_ENTRIES,
         };
@@ -1064,7 +1186,9 @@ impl<N: Network, const VARIANT: u8> FromBytes for CastOperation<N, VARIANT> {
             CastType::GroupYCoordinate
             | CastType::GroupXCoordinate
             | CastType::Plaintext(PlaintextType::Literal(_)) => 1,
-            CastType::Plaintext(PlaintextType::Struct(_)) => N::MAX_STRUCT_ENTRIES,
+            CastType::Plaintext(PlaintextType::Struct(_)) | CastType::Plaintext(PlaintextType::ExternalStruct(_)) => {
+                N::MAX_STRUCT_ENTRIES
+            }
             CastType::Plaintext(PlaintextType::Array(_)) => N::MAX_ARRAY_ELEMENTS,
             CastType::Record(_) | CastType::ExternalRecord(_) => N::MAX_RECORD_ENTRIES,
         };
@@ -1085,7 +1209,9 @@ impl<N: Network, const VARIANT: u8> ToBytes for CastOperation<N, VARIANT> {
             CastType::GroupYCoordinate
             | CastType::GroupXCoordinate
             | CastType::Plaintext(PlaintextType::Literal(_)) => 1,
-            CastType::Plaintext(PlaintextType::Struct(_)) => N::MAX_STRUCT_ENTRIES,
+            CastType::Plaintext(PlaintextType::Struct(_)) | CastType::Plaintext(PlaintextType::ExternalStruct(_)) => {
+                N::MAX_STRUCT_ENTRIES
+            }
             CastType::Plaintext(PlaintextType::Array(_)) => N::MAX_ARRAY_ELEMENTS,
             CastType::Record(_) | CastType::ExternalRecord(_) => N::MAX_RECORD_ENTRIES,
         };
