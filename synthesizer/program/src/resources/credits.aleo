@@ -568,9 +568,9 @@ finalize unbond_delegator_as_validator:
     // Construct the updated committee state.
     cast r5 r2.is_open into r6 as committee_state;
 
-    // Get the number of delegators bonded to the validator.
-    get metadata[r0] into r7;
-    // Decrement the number of delegators bonded to the validator by one.
+    // Get the number of bonded delegators.
+    get metadata[aleo1qgqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqanmpl0] into r7;
+    // Decrement the number of bonded delegators by one.
     sub r7 1u32 into r8;
 
     /* End Committee */
@@ -601,8 +601,8 @@ finalize unbond_delegator_as_validator:
     remove bonded[r1];
     // Update the unbond state for the delegator.
     set r13 into unbonding[r1];
-    // Update the number of delegators bonded to the validator.
-    set r8 into metadata[r0];
+    // Update the number of bonded delegators.
+    set r8 into metadata[aleo1qgqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqanmpl0];
 
     /* End Writes */
 
