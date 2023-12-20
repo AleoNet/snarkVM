@@ -85,6 +85,21 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         let ratified_finalize_operations =
             self.vm.check_speculate(state, block.ratifications(), block.solutions(), block.transactions())?;
 
+        {
+            let db_state_root = self.get_state_root(self.latest_height())?;
+            let latest_state_root = self.latest_state_root();
+            let block_previous_state_root = block.previous_state_root();
+            println!("\n");
+            println!("Current height: {}, Verifying block {}", self.latest_height(), block.height());
+            println!("db_state_root: {}", match db_state_root {
+                Some(db_state_root) => db_state_root.to_string(),
+                None => "None".to_string(),
+            });
+            println!("latest_state_root: {}", latest_state_root);
+            println!("block_previous_state_root: {}", block_previous_state_root);
+            println!("\n");
+        }
+
         // Ensure the block is correct.
         block.verify(
             &self.latest_block(),
