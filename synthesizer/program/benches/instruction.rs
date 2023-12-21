@@ -92,8 +92,34 @@ macro_rules! bench_instruction {
     ($stack:expr, $c:expr, $samples:tt, $instruction:ident { ($input_a:ident, $input_b:ident) , }) => {{
         use snarkvm_synthesizer_program::$instruction;
         let name = concat!(stringify!($instruction), "/", stringify!($input_a), "_", stringify!($input_b));
+        // println!("{}", format!("{} r0 r1 into r2", $instruction::<Testnet3>::opcode().to_string()));
         let instruction = Instruction::<Testnet3>::$instruction(
             $instruction::from_str(&format!("{} r0 r1 into r2", $instruction::<Testnet3>::opcode().to_string()))
+                .unwrap(),
+        );
+        $c.bench_function(&format!("{name}/instruction"), |b| {
+            b.iter_batched(
+                || {
+                    let (first, second) = $samples.next().unwrap();
+                    setup_finalize_registers(
+                        $stack,
+                        instruction.to_string(),
+                        &[Value::from_str(&first.to_string()).unwrap(), Value::from_str(&second.to_string()).unwrap()],
+                        None,
+                    )
+                },
+                |mut finalize_registers| instruction.finalize($stack.as_ref(), &mut finalize_registers).unwrap(),
+                BatchSize::PerIteration,
+            )
+        });
+    };};
+    // Benchmark a binary instruction with a cast, with the given sampling method.
+    ($stack:expr, $c:expr, $samples:tt, $instruction:ident { ($input_a:ident, $input_b:ident as $input_c:ident) , }) => {{
+        use snarkvm_synthesizer_program::$instruction;
+        let name = concat!(stringify!($instruction), "/", stringify!($input_a), "_", stringify!($input_b), "_", stringify!($input_c));
+        let instruction = format!("{} r0 r1 into r2 as {}", $instruction::<Testnet3>::opcode().to_string(), $input_c::<Testnet3>::type_name());
+        let instruction = Instruction::<Testnet3>::$instruction(
+            $instruction::from_str(&instruction)
                 .unwrap(),
         );
         $c.bench_function(&format!("{name}/instruction"), |b| {
@@ -141,7 +167,7 @@ macro_rules! bench_instruction {
                             Value::from_str(&third.to_string()).unwrap(),
                         ],
                         None,
-                    )
+                     )
                 },
                 |mut finalize_registers| instruction.finalize($stack.as_ref(), &mut finalize_registers).unwrap(),
                 BatchSize::PerIteration,
@@ -182,11 +208,18 @@ macro_rules! bench_instruction {
     ($stack:expr, $c:expr, $rng:expr, $instruction:ident { Array { $input_a:ident, $length:expr, $depth:expr } into $output_type:ident }) => {{
         use snarkvm_synthesizer_program::$instruction;
         let (instruction, input, input_type): (String, String, String) = build_nested_array_instruction!($rng, $instruction, Array[$input_a; $length; $depth], $output_type);
+
+        let opcode = stringify!($instruction);
         let mut name = concat!(stringify!($instruction), "/", "Array_", stringify!($input_a)).to_string();
         name.push_str(&format!("_length_{}_depth_{}_{}", $length, $depth, stringify!($output_type)));
         println!("{}", name);
         let instruction = Instruction::<Testnet3>::$instruction($instruction::from_str(&instruction).unwrap());
 
+        let mut function_inputs = vec![Value::from_str(&input).unwrap()];
+        if opcode.contains("Commit") {
+            let commit_scalar: Scalar<Testnet3> = Uniform::rand($rng);
+            function_inputs.push(Value::from_str(&commit_scalar.to_string()).unwrap());
+        }
         let complex_types: HashMap<usize, String> = [(0usize, input_type)].iter().cloned().collect();
         $c.bench_function(&format!("{name}/instruction"), |b| {
             b.iter_batched(
@@ -194,7 +227,7 @@ macro_rules! bench_instruction {
                     setup_finalize_registers(
                         $stack,
                         instruction.to_string(),
-                        &[Value::from_str(&input).unwrap()],
+                        &function_inputs,
                         Some(&complex_types),
                     )
                 },
@@ -217,6 +250,8 @@ macro_rules! build_nested_array_instruction_inner {
         // Construct the input registers
         if instruction_name == "cast" {
             (0..$length).for_each(|_| instruction.push_str("r0 "));
+        } else if instruction_name.contains("commit") {
+            instruction.push_str("r0 r1 ");
         } else {
             instruction.push_str("r0 ");
         }
@@ -246,7 +281,11 @@ macro_rules! build_nested_array_instruction_inner {
         input_type.pop();
 
         // Finish full instruction
-        instruction.push_str(&format!("into r1 as {}", $output_type));
+        if instruction_name.contains("commit") {
+            instruction.push_str(&format!("into r2 as {}", $output_type));
+        } else {
+            instruction.push_str(&format!("into r1 as {}", $output_type));
+        };
         // println!("Instruction: {}", instruction);
         // println!("Input: {}", input);
         // println!("Input type: {}", input_type);
@@ -362,7 +401,7 @@ macro_rules! bench_instruction_with_default {
             })+
         };
         // Benchmark a binary instruction, using the default sampling method.
-        ($stack:expr, $c:expr, $rng:expr, $operation:tt, $instruction:ident { $( ($input_a:ident, $input_b:ident) , )+ }) => {
+        ($stack:expr, $c:expr, $rng:expr, $operation:tt, $instruction:ident { $( ($input_a:ident, $input_b:ident) , )+ } ) => {
             $({
                 // Define the default sampling method.
                 let mut samples = iter::repeat_with(|| {
@@ -481,19 +520,40 @@ macro_rules! bench_instruction_with_default {
 macro_rules! bench_ped64_commit_instruction {
         ($stack:expr, $c:expr, $rng:expr, $instruction:tt) => {
             let mut samples = iter::repeat_with(|| { (Boolean::<Testnet3>::rand($rng), Scalar::<Testnet3>::rand($rng)) });
-            bench_instruction!($stack, $c, samples, $instruction { (Boolean, Scalar), });
+            bench_instruction!($stack, $c, samples, $instruction { (Boolean, Scalar as Group), });
             let mut samples = iter::repeat_with(|| { (I8::<Testnet3>::rand($rng), Scalar::<Testnet3>::rand($rng)) });
-            bench_instruction!($stack, $c, samples, $instruction { (I8, Scalar), });
+            bench_instruction!($stack, $c, samples, $instruction { (I8, Scalar as Group), });
             let mut samples = iter::repeat_with(|| { (I16::<Testnet3>::rand($rng), Scalar::<Testnet3>::rand($rng)) });
-            bench_instruction!($stack, $c, samples, $instruction { (I16, Scalar), });
+            bench_instruction!($stack, $c, samples, $instruction { (I16, Scalar as Group), });
             let mut samples = iter::repeat_with(|| { (I32::<Testnet3>::rand($rng), Scalar::<Testnet3>::rand($rng)) });
-            bench_instruction!($stack, $c, samples, $instruction { (I32, Scalar), });
+            bench_instruction!($stack, $c, samples, $instruction { (I32, Scalar as Group), });
             let mut samples = iter::repeat_with(|| { (U8::<Testnet3>::rand($rng), Scalar::<Testnet3>::rand($rng)) });
-            bench_instruction!($stack, $c, samples, $instruction { (U8, Scalar), });
+            bench_instruction!($stack, $c, samples, $instruction { (U8, Scalar as Group), });
             let mut samples = iter::repeat_with(|| { (U16::<Testnet3>::rand($rng), Scalar::<Testnet3>::rand($rng)) });
-            bench_instruction!($stack, $c, samples, $instruction { (U16, Scalar), });
+            bench_instruction!($stack, $c, samples, $instruction { (U16, Scalar as Group), });
             let mut samples = iter::repeat_with(|| { (U32::<Testnet3>::rand($rng), Scalar::<Testnet3>::rand($rng)) });
-            bench_instruction!($stack, $c, samples, $instruction { (U32, Scalar), });
+            bench_instruction!($stack, $c, samples, $instruction { (U32, Scalar as Group), });
+            let mut samples = iter::repeat_with(|| { (Boolean::<Testnet3>::rand($rng), Scalar::<Testnet3>::rand($rng)) });
+            bench_instruction!($stack, $c, samples, $instruction { (Boolean, Scalar as Field), });
+            let mut samples = iter::repeat_with(|| { (I8::<Testnet3>::rand($rng), Scalar::<Testnet3>::rand($rng)) });
+            bench_instruction!($stack, $c, samples, $instruction { (I8, Scalar as Field), });
+            let mut samples = iter::repeat_with(|| { (I16::<Testnet3>::rand($rng), Scalar::<Testnet3>::rand($rng)) });
+            bench_instruction!($stack, $c, samples, $instruction { (I16, Scalar as Field), });
+            let mut samples = iter::repeat_with(|| { (I32::<Testnet3>::rand($rng), Scalar::<Testnet3>::rand($rng)) });
+            bench_instruction!($stack, $c, samples, $instruction { (I32, Scalar as Field), });
+            let mut samples = iter::repeat_with(|| { (U8::<Testnet3>::rand($rng), Scalar::<Testnet3>::rand($rng)) });
+            bench_instruction!($stack, $c, samples, $instruction { (U8, Scalar as Field), });
+            let mut samples = iter::repeat_with(|| { (U16::<Testnet3>::rand($rng), Scalar::<Testnet3>::rand($rng)) });
+            bench_instruction!($stack, $c, samples, $instruction { (U16, Scalar as Field), });
+            let mut samples = iter::repeat_with(|| { (U32::<Testnet3>::rand($rng), Scalar::<Testnet3>::rand($rng)) });
+            bench_instruction!($stack, $c, samples, $instruction { (U32, Scalar as Field), });
+        }
+    }
+
+macro_rules! bench_commit_instruction_with_arrays {
+        ($stack:expr, $c:expr, $rng:expr, $instruction:tt, $lengths:expr, $depths:expr) => {
+            bench_ped64_commit_instruction!($stack, $c, $rng, $instruction);
+            bench_instruction!($stack, $c, $rng, $instruction { Array { $array_type, length, depth } into $destination_type });
         }
     }
 
@@ -501,19 +561,37 @@ macro_rules! bench_commit_instruction {
         ($stack:expr, $c:expr, $rng:expr, $instruction:tt) => {
             bench_ped64_commit_instruction!($stack, $c, $rng, $instruction);
             let mut samples = iter::repeat_with(|| { (Field::<Testnet3>::rand($rng), Scalar::<Testnet3>::rand($rng)) });
-            bench_instruction!($stack, $c, samples, $instruction { (Field, Scalar), });
+            bench_instruction!($stack, $c, samples, $instruction { (Field, Scalar as Group), });
             let mut samples = iter::repeat_with(|| { (Group::<Testnet3>::rand($rng), Scalar::<Testnet3>::rand($rng)) });
-            bench_instruction!($stack, $c, samples, $instruction { (Group, Scalar), });
+            bench_instruction!($stack, $c, samples, $instruction { (Group, Scalar as Group), });
             let mut samples = iter::repeat_with(|| { (I64::<Testnet3>::rand($rng), Scalar::<Testnet3>::rand($rng)) });
-            bench_instruction!($stack, $c, samples, $instruction { (I64, Scalar), });
+            bench_instruction!($stack, $c, samples, $instruction { (I64, Scalar as Group), });
             let mut samples = iter::repeat_with(|| { (I128::<Testnet3>::rand($rng), Scalar::<Testnet3>::rand($rng)) });
-            bench_instruction!($stack, $c, samples, $instruction { (I128, Scalar), });
+            bench_instruction!($stack, $c, samples, $instruction { (I128, Scalar as Group), });
             let mut samples = iter::repeat_with(|| { (U64::<Testnet3>::rand($rng), Scalar::<Testnet3>::rand($rng)) });
-            bench_instruction!($stack, $c, samples, $instruction { (U64, Scalar), });
+            bench_instruction!($stack, $c, samples, $instruction { (U64, Scalar as Group), });
             let mut samples = iter::repeat_with(|| { (U128::<Testnet3>::rand($rng), Scalar::<Testnet3>::rand($rng)) });
-            bench_instruction!($stack, $c, samples, $instruction { (U128, Scalar), });
+            bench_instruction!($stack, $c, samples, $instruction { (U128, Scalar as Group), });
             let mut samples = iter::repeat_with(|| { (Scalar::<Testnet3>::rand($rng), Scalar::<Testnet3>::rand($rng)) });
-            bench_instruction!($stack, $c, samples, $instruction { (Scalar, Scalar), });
+            bench_instruction!($stack, $c, samples, $instruction { (Scalar, Scalar as Group), });
+            let mut samples = iter::repeat_with(|| { (Boolean::<Testnet3>::rand($rng), Scalar::<Testnet3>::rand($rng)) });
+            bench_instruction!($stack, $c, samples, $instruction { (Boolean, Boolean as Group), });
+            let mut samples = iter::repeat_with(|| { (Field::<Testnet3>::rand($rng), Scalar::<Testnet3>::rand($rng)) });
+            bench_instruction!($stack, $c, samples, $instruction { (Field, Scalar as Field), });
+            let mut samples = iter::repeat_with(|| { (Group::<Testnet3>::rand($rng), Scalar::<Testnet3>::rand($rng)) });
+            bench_instruction!($stack, $c, samples, $instruction { (Group, Scalar as Field), });
+            let mut samples = iter::repeat_with(|| { (I64::<Testnet3>::rand($rng), Scalar::<Testnet3>::rand($rng)) });
+            bench_instruction!($stack, $c, samples, $instruction { (I64, Scalar as Field), });
+            let mut samples = iter::repeat_with(|| { (I128::<Testnet3>::rand($rng), Scalar::<Testnet3>::rand($rng)) });
+            bench_instruction!($stack, $c, samples, $instruction { (I128, Scalar as Field), });
+            let mut samples = iter::repeat_with(|| { (U64::<Testnet3>::rand($rng), Scalar::<Testnet3>::rand($rng)) });
+            bench_instruction!($stack, $c, samples, $instruction { (U64, Scalar as Field), });
+            let mut samples = iter::repeat_with(|| { (U128::<Testnet3>::rand($rng), Scalar::<Testnet3>::rand($rng)) });
+            bench_instruction!($stack, $c, samples, $instruction { (U128, Scalar as Field), });
+            let mut samples = iter::repeat_with(|| { (Scalar::<Testnet3>::rand($rng), Scalar::<Testnet3>::rand($rng)) });
+            bench_instruction!($stack, $c, samples, $instruction { (Scalar, Scalar as Field), });
+            let mut samples = iter::repeat_with(|| { (Boolean::<Testnet3>::rand($rng), Scalar::<Testnet3>::rand($rng)) });
+            bench_instruction!($stack, $c, samples, $instruction { (Boolean, Boolean as Field), });
         }
     }
 
@@ -583,6 +661,16 @@ macro_rules! bench_assert {
         };
     };
 }
+
+macro_rules! bench_hash_functions_with_arrays {
+        ($stack:expr, $c:expr, $rng:expr, $hash:ident, $destination_type:ident, $lengths:expr, $depths:expr, { $( $array_type:ident, )+ }) => {
+            $($lengths.into_iter().for_each(|length| {
+                for depth in $depths {
+                    bench_instruction_with_default!($stack, $c, $rng, $hash { Array { $array_type, length, depth } into $destination_type });
+                }
+            });)+
+        }
+    }
 
 /// A helper function to construct a set of `FinalizeRegisters` with the given arguments.
 fn setup_finalize_registers(
@@ -1888,7 +1976,7 @@ fn bench_ternary_instructions(c: &mut Criterion) {
 // ### HASH INSTRUCTIONS ### //
 
 #[rustfmt::skip]
-fn bench_bhp_commit_instructions(c: &mut Criterion) {
+fn bench_commit_instructions(c: &mut Criterion) {
     // Initialize an RNG.
     let rng = &mut TestRng::default();
     // Initialize a process.
@@ -1896,27 +1984,33 @@ fn bench_bhp_commit_instructions(c: &mut Criterion) {
     // Get the stack for the credits program.
     let stack = process.get_stack("credits.aleo").unwrap();
     
-    // bench_commit_instruction!(stack, c, rng, CommitBHP256);
-    // bench_commit_instruction!(stack, c, rng, CommitBHP512);
-    // bench_commit_instruction!(stack, c, rng, CommitBHP768);
-    // bench_commit_instruction!(stack, c, rng, CommitBHP1024);
-}
+    bench_commit_instruction!(stack, c, rng, CommitBHP256);
+    bench_commit_instruction!(stack, c, rng, CommitBHP512);
+    bench_commit_instruction!(stack, c, rng, CommitBHP768);
+    bench_commit_instruction!(stack, c, rng, CommitBHP1024);
+    
+    bench_ped64_commit_instruction!(stack, c, rng, CommitPED64);
+    bench_ped64_commit_instruction!(stack, c, rng, CommitPED128);
+    let mut samples = iter::repeat_with(|| { (I64::<Testnet3>::rand(rng), Scalar::<Testnet3>::rand(rng)) });
+    let mut samples = iter::repeat_with(|| { (U64::<Testnet3>::rand(rng), Scalar::<Testnet3>::rand(rng)) });
 
-#[rustfmt::skip]
-fn bench_poseidon_commit_instructions(c: &mut Criterion) {
-    // Initialize an RNG.
-    let rng = &mut TestRng::default();
-    // Initialize a process.
-    let process = Process::<Testnet3>::load().unwrap();
-    // Get the stack for the credits program.
-    let stack = process.get_stack("credits.aleo").unwrap();
+    bench_hash_functions_with_arrays!(stack, c, rng, CommitBHP256, Group, [4, 8, 12], [0, 1, 2, 3], { I8, I32, I128, U8, U32, U128, Field, });
+    bench_hash_functions_with_arrays!(stack, c, rng, CommitBHP256, Field, [4, 8, 12], [0, 1, 2, 3], { I8, I32, I128, U8, U32, U128, Field, });
+
+    bench_hash_functions_with_arrays!(stack, c, rng, CommitBHP512, Group, [4, 8, 12], [0, 1, 2, 3], { I8, I32, I128, U8, U32, U128, Field, });
+    bench_hash_functions_with_arrays!(stack, c, rng, CommitBHP512, Field, [4, 8, 12], [0, 1, 2, 3], { I8, I32, I128, U8, U32, U128, Field, });
     
-    // bench_ped64_commit_instruction!(stack, c, rng, CommitPED64);
-    // bench_ped64_commit_instruction!(stack, c, rng, CommitPED128);
-    // let mut samples = iter::repeat_with(|| { (I64::<Testnet3>::rand(rng), Scalar::<Testnet3>::rand(rng)) });
-    // bench_instruction!(stack, c, samples, CommitPED128 { (I64, Scalar), });
-    // let mut samples = iter::repeat_with(|| { (U64::<Testnet3>::rand(rng), Scalar::<Testnet3>::rand(rng)) });
-    // bench_instruction!(stack, c, samples, CommitPED128 { (U64, Scalar), });
+    bench_hash_functions_with_arrays!(stack, c, rng, CommitBHP768, Group, [4, 8, 12], [0, 1, 2, 3], { I8, I32, I128, U8, U32, U128, Field, });
+    bench_hash_functions_with_arrays!(stack, c, rng, CommitBHP768, Field, [4, 8, 12], [0, 1, 2, 3], { I8, I32, I128, U8, U32, U128, Field, });
+    
+    bench_hash_functions_with_arrays!(stack, c, rng, CommitBHP1024, Group, [4, 8, 12], [0, 1, 2, 3], { I8, I32, I128, U8, U32, U128, Field, });
+    bench_hash_functions_with_arrays!(stack, c, rng, CommitBHP1024, Field, [4, 8, 12], [0, 1, 2, 3], { I8, I32, I128, U8, U32, U128, Field, });
+    
+    bench_hash_functions_with_arrays!(stack, c, rng, CommitPED64, Group, [4], [0], { I8, });
+    bench_hash_functions_with_arrays!(stack, c, rng, CommitPED64, Field, [4], [0], { I8, });
+    
+    bench_hash_functions_with_arrays!(stack, c, rng, CommitPED128, Group, [4, 8], [0], { I8, });
+    bench_hash_functions_with_arrays!(stack, c, rng, CommitPED128, Field, [4, 8], [0], { I8, });
 }
 
 #[rustfmt::skip]
@@ -1990,8 +2084,6 @@ fn bench_hash_instructions(c: &mut Criterion) {
     bench_hash_instruction!(stack, c, rng, HashSha3_256);
     bench_hash_instruction!(stack, c, rng, HashSha3_384);
     bench_hash_instruction!(stack, c, rng, HashSha3_512);
-    
-    
 }
 
 fn bench_hash_functions_with_complex_inputs(c: &mut Criterion) {
@@ -2001,16 +2093,6 @@ fn bench_hash_functions_with_complex_inputs(c: &mut Criterion) {
     let process = Process::<Testnet3>::load().unwrap();
     // Get the stack for the credits program.
     let stack = process.get_stack("credits.aleo").unwrap();
-
-    macro_rules! bench_hash_functions_with_arrays {
-        ($stack:expr, $c:expr, $rng:expr, $hash:ident, $destination_type:ident, $lengths:expr, $depths:expr, { $( $array_type:ident, )+ }) => {
-            $($lengths.into_iter().for_each(|length| {
-                for depth in $depths {
-                    bench_instruction_with_default!($stack, $c, $rng, $hash { Array { $array_type, length, depth } into $destination_type });
-                }
-            });)+
-        }
-    }
 
     bench_hash_functions_with_arrays!(stack, c, rng, HashBHP256, Group, [4, 8, 12], [0, 1, 2, 3], { I8, I32, I128, U8, U32, U128, Field, });
     bench_hash_functions_with_arrays!(stack, c, rng, HashBHP256, U128, [4, 8, 12], [0, 1, 2, 3], { I8, I32, I128, U8, U32, U128, Field, });
@@ -2040,13 +2122,21 @@ fn bench_hash_functions_with_complex_inputs(c: &mut Criterion) {
     bench_hash_functions_with_arrays!(stack, c, rng, HashPSD8, U128, [4, 8, 12], [0, 1, 2, 3], { I8, I32, I128, U8, U32, U128, Field, });
     bench_hash_functions_with_arrays!(stack, c, rng, HashPSD8, Field, [4, 8, 12], [0, 1, 2, 3], { I8, I32, I128, U8, U32, U128, Field, });
 
-    bench_hash_functions_with_arrays!(stack, c, rng, HashPED64, Group, [4, 8, 12], [0, 1, 2, 3], { I8, I32, I128, U8, U32, U128, Field, });
-    bench_hash_functions_with_arrays!(stack, c, rng, HashPED64, U128, [4, 8, 12], [0, 1, 2, 3], { I8, I32, I128, U8, U32, U128, Field, });
-    bench_hash_functions_with_arrays!(stack, c, rng, HashPED64, Field, [4, 8, 12], [0, 1, 2, 3], { I8, I32, I128, U8, U32, U128, Field, });
+    bench_hash_functions_with_arrays!(stack, c, rng, HashPED64, Group, [2, 3, 4], [0], { I8, });
+    bench_hash_functions_with_arrays!(stack, c, rng, HashPED64, U128, [2, 3, 4], [0], { I8, });
+    bench_hash_functions_with_arrays!(stack, c, rng, HashPED64, Field, [2, 3, 4], [0], { I8, });
 
-    bench_hash_functions_with_arrays!(stack, c, rng, HashPED128, Group, [4, 8, 12], [0, 1, 2, 3], { I8, I32, I128, U8, U32, U128, Field, });
-    bench_hash_functions_with_arrays!(stack, c, rng, HashPED128, U128, [4, 8, 12], [0, 1, 2, 3], { I8, I32, I128, U8, U32, U128, Field, });
-    bench_hash_functions_with_arrays!(stack, c, rng, HashPED128, Field, [4, 8, 12], [0, 1, 2, 3], { I8, I32, I128, U8, U32, U128, Field, });
+    bench_hash_functions_with_arrays!(stack, c, rng, HashPED64, Group, [2], [0], { I16, });
+    bench_hash_functions_with_arrays!(stack, c, rng, HashPED64, U128, [2], [0], { I16, });
+    bench_hash_functions_with_arrays!(stack, c, rng, HashPED64, Field, [2], [0], { I16, });
+
+    bench_hash_functions_with_arrays!(stack, c, rng, HashPED128, Group, [4, 8], [0], { I8, });
+    bench_hash_functions_with_arrays!(stack, c, rng, HashPED128, U128, [4, 8], [0], { I8, });
+    bench_hash_functions_with_arrays!(stack, c, rng, HashPED128, Field, [4, 8], [0], { I8, });
+
+    bench_hash_functions_with_arrays!(stack, c, rng, HashPED128, Group, [2, 3, 4], [0], { I16, });
+    bench_hash_functions_with_arrays!(stack, c, rng, HashPED128, U128, [2, 3, 4], [0], { I16, });
+    bench_hash_functions_with_arrays!(stack, c, rng, HashPED128, Field, [2, 3, 4], [0], { I16, });
 
     bench_hash_functions_with_arrays!(stack, c, rng, HashKeccak256, Group, [4, 8, 12], [0, 1, 2, 3], { I8, I32, I128, U8, U32, U128, Field, });
     bench_hash_functions_with_arrays!(stack, c, rng, HashKeccak256, U128, [4, 8, 12], [0, 1, 2, 3], { I8, I32, I128, U8, U32, U128, Field, });
@@ -2077,7 +2167,7 @@ fn bench_hash_functions_with_complex_inputs(c: &mut Criterion) {
 criterion_group! {
     name = bench;
     config = Criterion::default().sample_size(100);
-    targets = abs_instructions, bench_arithmetic_add_instructions, bench_arithmetic_div_instructions, bench_arithmetic_mul_instructions, bench_arithmetic_neg_and_sub_instructions, bench_assert_instructions, bench_bhp_commit_instructions, bench_cast_instruction, bench_equality_comparison_instructions, bench_hash_instructions, bench_hash_functions_with_complex_inputs, bench_logical_instructions, bench_order_comparison_instructions, bench_poseidon_commit_instructions, bench_power_and_remainder_instructions, bench_shift_left_instructions, bench_shift_right_instructions, bench_ternary_instructions,
+    targets = abs_instructions, bench_arithmetic_add_instructions, bench_arithmetic_div_instructions, bench_arithmetic_mul_instructions, bench_arithmetic_neg_and_sub_instructions, bench_assert_instructions, bench_commit_instructions, bench_cast_instruction, bench_equality_comparison_instructions, bench_hash_instructions, bench_hash_functions_with_complex_inputs, bench_logical_instructions, bench_order_comparison_instructions, bench_power_and_remainder_instructions, bench_shift_left_instructions, bench_shift_right_instructions, bench_ternary_instructions,
 }
 
 criterion_main!(bench);
