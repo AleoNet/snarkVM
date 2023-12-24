@@ -23,6 +23,9 @@ impl<N: Network, Instruction: InstructionTrait<N>> FromBytes for ClosureCore<N, 
 
         // Read the inputs.
         let num_inputs = u16::read_le(&mut reader)?;
+        if num_inputs.is_zero() {
+            return Err(error("Failed to deserialize a closure: needs at least one input".to_string()));
+        }
         if num_inputs > u16::try_from(N::MAX_INPUTS).map_err(error)? {
             return Err(error(format!("Failed to deserialize a closure: too many inputs ({num_inputs})")));
         }
@@ -33,6 +36,9 @@ impl<N: Network, Instruction: InstructionTrait<N>> FromBytes for ClosureCore<N, 
 
         // Read the instructions.
         let num_instructions = u32::read_le(&mut reader)?;
+        if num_instructions.is_zero() {
+            return Err(error("Failed to deserialize a closure: needs at least one instruction".to_string()));
+        }
         if num_instructions > u32::try_from(N::MAX_INSTRUCTIONS).map_err(error)? {
             return Err(error(format!("Failed to deserialize a closure: too many instructions ({num_instructions})")));
         }
@@ -70,7 +76,7 @@ impl<N: Network, Instruction: InstructionTrait<N>> ToBytes for ClosureCore<N, In
 
         // Write the number of inputs for the closure.
         let num_inputs = self.inputs.len();
-        match num_inputs <= N::MAX_INPUTS {
+        match 0 < num_inputs && num_inputs <= N::MAX_INPUTS {
             true => u16::try_from(num_inputs).map_err(error)?.write_le(&mut writer)?,
             false => return Err(error(format!("Failed to write {num_inputs} inputs as bytes"))),
         }
@@ -82,7 +88,7 @@ impl<N: Network, Instruction: InstructionTrait<N>> ToBytes for ClosureCore<N, In
 
         // Write the number of instructions for the closure.
         let num_instructions = self.instructions.len();
-        match num_instructions <= N::MAX_INSTRUCTIONS {
+        match 0 < num_instructions && num_instructions <= N::MAX_INSTRUCTIONS {
             true => u32::try_from(num_instructions).map_err(error)?.write_le(&mut writer)?,
             false => return Err(error(format!("Failed to write {num_instructions} instructions as bytes"))),
         }

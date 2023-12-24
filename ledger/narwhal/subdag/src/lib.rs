@@ -78,27 +78,48 @@ fn sanity_check_subdag_with_dfs<N: Network>(subdag: &BTreeMap<u64, IndexSet<Batc
     &commit == subdag
 }
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone)]
 pub struct Subdag<N: Network> {
     /// The subdag of round certificates.
     subdag: BTreeMap<u64, IndexSet<BatchCertificate<N>>>,
+    /// The election certificate IDs.
+    election_certificate_ids: IndexSet<Field<N>>,
 }
+
+impl<N: Network> PartialEq for Subdag<N> {
+    fn eq(&self, other: &Self) -> bool {
+        // Note: We do not check equality on `election_certificate_ids` as it would cause `Block::eq` to trigger false-positives.
+        self.subdag == other.subdag
+    }
+}
+
+impl<N: Network> Eq for Subdag<N> {}
 
 impl<N: Network> Subdag<N> {
     /// Initializes a new subdag.
-    pub fn from(subdag: BTreeMap<u64, IndexSet<BatchCertificate<N>>>) -> Result<Self> {
+    pub fn from(
+        subdag: BTreeMap<u64, IndexSet<BatchCertificate<N>>>,
+        election_certificate_ids: IndexSet<Field<N>>,
+    ) -> Result<Self> {
         // Ensure the subdag is not empty.
         ensure!(!subdag.is_empty(), "Subdag cannot be empty");
+        // Ensure the subdag does not exceed the maximum number of rounds.
+        ensure!(subdag.len() <= Self::MAX_ROUNDS, "Subdag cannot exceed the maximum number of rounds");
         // Ensure the anchor round is even.
         ensure!(subdag.iter().next_back().map_or(0, |(r, _)| *r) % 2 == 0, "Anchor round must be even");
         // Ensure there is only one leader certificate.
         ensure!(subdag.iter().next_back().map_or(0, |(_, c)| c.len()) == 1, "Subdag cannot have multiple leaders");
+        // Ensure the number of election certificate IDs is within bounds.
+        ensure!(
+            election_certificate_ids.len() <= BatchHeader::<N>::MAX_CERTIFICATES,
+            "Number of election certificate IDs exceeds the maximum"
+        );
         // Ensure the rounds are sequential.
         ensure!(is_sequential(&subdag), "Subdag rounds must be sequential");
         // Ensure the subdag structure matches the commit.
         ensure!(sanity_check_subdag_with_dfs(&subdag), "Subdag structure does not match commit");
         // Ensure the leader certificate is an even round.
-        Ok(Self { subdag })
+        Ok(Self { subdag, election_certificate_ids })
     }
 }
 
@@ -157,6 +178,11 @@ impl<N: Network> Subdag<N> {
                 timestamps[timestamps.len() / 2]
             }
         }
+    }
+
+    /// Returns the election certificate IDs.
+    pub fn election_certificate_ids(&self) -> &IndexSet<Field<N>> {
+        &self.election_certificate_ids
     }
 
     /// Returns the subdag root of the transactions.
@@ -239,8 +265,14 @@ pub mod test_helpers {
             );
         subdag.insert(starting_round + 2, indexset![certificate]);
 
+        // Initialize the election certificate IDs.
+        let mut election_certificate_ids = IndexSet::new();
+        for _ in 0..AVAILABILITY_THRESHOLD {
+            election_certificate_ids.insert(rng.gen());
+        }
+
         // Return the subdag.
-        Subdag::from(subdag).unwrap()
+        Subdag::from(subdag, election_certificate_ids).unwrap()
     }
 
     /// Returns a list of sample subdags, sampled at random.

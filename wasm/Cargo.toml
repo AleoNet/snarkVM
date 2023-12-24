@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-wasm"
-version = "0.16.12"
+version = "0.16.15"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "WASM for a decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -28,54 +28,79 @@ crate-type = [ "cdylib", "rlib" ]
 
 [features]
 default = [ "full" ]
-full = [ "console", "curves", "fields", "synthesizer", "utilities" ]
+full = [
+  "circuit",
+  "console",
+  "curves",
+  "fields",
+  "ledger",
+  "synthesizer",
+  "utilities"
+]
+circuit = [ "snarkvm-circuit-network" ]
 console = [ "snarkvm-console" ]
 curves = [ "snarkvm-curves" ]
 fields = [ "snarkvm-fields" ]
+ledger = [
+  "snarkvm-ledger-block",
+  "snarkvm-ledger-query",
+  "snarkvm-ledger-store"
+]
 synthesizer = [ "snarkvm-synthesizer" ]
 utilities = [ "snarkvm-utilities" ]
 
+[dependencies.snarkvm-circuit-network]
+path = "../circuit/network"
+version = "=0.16.15"
+features = [ "wasm" ]
+optional = true
+
 [dependencies.snarkvm-console]
 path = "../console"
-version = "=0.16.12"
+version = "=0.16.15"
 features = [ "wasm" ]
 optional = true
 
 [dependencies.snarkvm-curves]
 path = "../curves"
-version = "=0.16.12"
+version = "=0.16.15"
 optional = true
 
 [dependencies.snarkvm-fields]
 path = "../fields"
-version = "=0.16.12"
+version = "=0.16.15"
+optional = true
+
+[dependencies.snarkvm-ledger-block]
+path = "../ledger/block"
+version = "=0.16.15"
+features = [ "wasm" ]
+optional = true
+
+[dependencies.snarkvm-ledger-query]
+path = "../ledger/query"
+version = "=0.16.15"
+features = [ "async", "wasm" ]
+optional = true
+
+[dependencies.snarkvm-ledger-store]
+path = "../ledger/store"
+version = "=0.16.15"
+features = [ "wasm" ]
 optional = true
 
 [dependencies.snarkvm-synthesizer]
 path = "../synthesizer"
-version = "=0.16.12"
+version = "=0.16.15"
 default-features = false
-features = [ "wasm" ]
+features = [ "async", "wasm" ]
 optional = true
 
 [dependencies.snarkvm-utilities]
 path = "../utilities"
-version = "=0.16.12"
+version = "=0.16.15"
 features = [ "wasm" ]
 optional = true
-
-[dependencies.rand]
-version = "0.8"
-default-features = false
-
-[dependencies.serde]
-version = "1.0.188"
-default-features = false
-features = [ "derive" ]
-
-[dependencies.wasm-bindgen]
-version = "0.2"
-features = [ "serde-serialize" ]
 
 [dependencies.getrandom]
 version = "0.2"
