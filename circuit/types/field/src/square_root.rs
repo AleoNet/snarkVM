@@ -119,7 +119,7 @@ impl<E: Environment> Field<E> {
         let second_root = first_root.clone().neg();
 
         // The error flag is set iff self is a non-square, i.e. it is neither zero nor a non-zero square.
-        let is_nonzero = self.is_not_equal(&Field::zero());
+        let is_nonzero = !self.is_zero();
         let error_flag = is_nonzero.bitand(is_nonzero_square.not());
 
         (error_flag, first_root, second_root)

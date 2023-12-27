@@ -78,8 +78,8 @@ impl<E: Environment> Group<E> {
         }
         let point1_times_order = order_bits_be_constants.mul(point1);
         let point2_times_order = order_bits_be_constants.mul(point2);
-        let point1_is_in_subgroup = point1_times_order.is_equal(&Self::zero());
-        let point2_is_in_subgroup = point2_times_order.is_equal(&Self::zero());
+        let point1_is_in_subgroup = point1_times_order.is_zero();
+        let point2_is_in_subgroup = point2_times_order.is_zero();
 
         // We select y1 if (x, y1) is in the subgroup (which implies that (x, y2) is not in the subgroup),
         // or y2 if (x, y2) is in the subgroup (which implies that (x, y1) is not in the subgroup),
