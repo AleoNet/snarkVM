@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-circuit-collections"
-version = "0.16.12"
+version = "0.16.15"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Collections circuit library for a decentralized virtual machine"
 license = "Apache-2.0"
@@ -9,16 +9,16 @@ edition = "2021"
 [dependencies.console]
 package = "snarkvm-console-collections"
 path = "../../console/collections"
-version = "=0.16.12"
+version = "=0.16.15"
 optional = true
 
 [dependencies.snarkvm-circuit-algorithms]
 path = "../algorithms"
-version = "=0.16.12"
+version = "=0.16.15"
 
 [dependencies.snarkvm-circuit-types]
 path = "../types"
-version = "=0.16.12"
+version = "=0.16.15"
 
 [dev-dependencies.snarkvm-circuit-network]
 path = "../network"

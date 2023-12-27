@@ -30,6 +30,9 @@ use narwhal_transmission_id::TransmissionID;
 use core::hash::{Hash, Hasher};
 use indexmap::{IndexMap, IndexSet};
 
+#[cfg(not(feature = "serial"))]
+use rayon::prelude::*;
+
 #[derive(Clone)]
 pub enum BatchCertificate<N: Network> {
     // TODO (howardwu): For mainnet - Delete V1 and switch everyone to V2 as the default.
@@ -47,6 +50,11 @@ pub enum BatchCertificate<N: Network> {
         /// The signatures for the batch ID from the committee.
         signatures: IndexSet<Signature<N>>,
     },
+}
+
+impl<N: Network> BatchCertificate<N> {
+    /// The maximum number of signatures in a batch certificate.
+    pub const MAX_SIGNATURES: usize = BatchHeader::<N>::MAX_CERTIFICATES;
 }
 
 impl<N: Network> BatchCertificate<N> {
@@ -75,6 +83,8 @@ impl<N: Network> BatchCertificate<N> {
             // Hash the preimage.
             N::hash_bhp1024(&preimage.to_bits_le())
         }
+        // Ensure that the number of signatures is within bounds.
+        ensure!(signatures.len() <= Self::MAX_SIGNATURES, "Invalid number of signatures");
         // Compute the certificate ID.
         if certificate_id != compute_certificate_id(batch_header.batch_id(), &signatures)? {
             bail!("Invalid batch certificate ID")
@@ -92,12 +102,16 @@ impl<N: Network> BatchCertificate<N> {
 
     /// Initializes a new batch certificate.
     pub fn from(batch_header: BatchHeader<N>, signatures: IndexSet<Signature<N>>) -> Result<Self> {
+        // Ensure that the number of signatures is within bounds.
+        ensure!(signatures.len() <= Self::MAX_SIGNATURES, "Invalid number of signatures");
+
         // Verify the signatures are valid.
-        for signature in &signatures {
+        cfg_iter!(signatures).try_for_each(|signature| {
             if !signature.verify(&signature.to_address(), &[batch_header.batch_id()]) {
                 bail!("Invalid batch certificate signature")
             }
-        }
+            Ok(())
+        })?;
         // Return the batch certificate.
         Self::from_unchecked(batch_header, signatures)
     }
@@ -288,5 +302,17 @@ pub mod test_helpers {
         );
 
         (certificate, previous_certificates)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    type CurrentNetwork = console::network::Testnet3;
+
+    #[test]
+    fn test_maximum_signatures() {
+        assert_eq!(BatchHeader::<CurrentNetwork>::MAX_CERTIFICATES, BatchCertificate::<CurrentNetwork>::MAX_SIGNATURES);
     }
 }

@@ -60,7 +60,7 @@ use synthesizer_program::{FinalizeGlobalState, FinalizeOperation, FinalizeStoreT
 
 use aleo_std::prelude::{finish, lap, timer};
 use indexmap::{IndexMap, IndexSet};
-use parking_lot::RwLock;
+use parking_lot::{Mutex, RwLock};
 use std::sync::Arc;
 
 #[cfg(not(feature = "serial"))]
@@ -72,6 +72,10 @@ pub struct VM<N: Network, C: ConsensusStorage<N>> {
     process: Arc<RwLock<Process<N>>>,
     /// The VM store.
     store: ConsensusStore<N, C>,
+    /// The lock to guarantee atomicity over calls to speculate and finalize.
+    atomic_lock: Arc<Mutex<()>>,
+    /// The lock for ensuring there is no concurrency when advancing blocks.
+    block_lock: Arc<Mutex<()>>,
 }
 
 impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
@@ -169,7 +173,12 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         }
 
         // Return the new VM.
-        Ok(Self { process: Arc::new(RwLock::new(process)), store })
+        Ok(Self {
+            process: Arc::new(RwLock::new(process)),
+            store,
+            atomic_lock: Arc::new(Mutex::new(())),
+            block_lock: Arc::new(Mutex::new(())),
+        })
     }
 
     /// Returns `true` if a program with the given program ID exists.
@@ -310,6 +319,10 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// Adds the given block into the VM.
     #[inline]
     pub fn add_next_block(&self, block: &Block<N>) -> Result<()> {
+        // Acquire the block lock, which is needed to ensure this function is not called concurrently.
+        // Note: This lock must be held for the entire scope of this function.
+        let _block_lock = self.block_lock.lock();
+
         // Construct the finalize state.
         let state = FinalizeGlobalState::new::<N>(
             block.round(),
@@ -327,11 +340,16 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         // Next, finalize the transactions.
         match self.finalize(state, block.ratifications(), block.solutions(), block.transactions()) {
             Ok(_ratified_finalize_operations) => Ok(()),
-            Err(error) => {
+            Err(finalize_error) => {
                 // Rollback the block.
-                self.block_store().remove_last_n(1)?;
-                // Return the error.
-                Err(error)
+                self.block_store().remove_last_n(1).map_err(|removal_error| {
+                    // Log the finalize error.
+                    error!("Failed to finalize block {} - {finalize_error}", block.height());
+                    // Return the removal error.
+                    removal_error
+                })?;
+                // Return the finalize error.
+                Err(finalize_error)
             }
         }
     }

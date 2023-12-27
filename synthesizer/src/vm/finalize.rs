@@ -159,6 +159,11 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         Vec<(Transaction<N>, String)>,
         Vec<FinalizeOperation<N>>,
     )> {
+        // Acquire the atomic lock, which is needed to ensure this function is not called concurrently
+        // with other `atomic_finalize!` macro calls, which will cause a `bail!` to be triggered erroneously.
+        // Note: This lock must be held for the entire scope of the call to `atomic_finalize!`.
+        let _atomic_lock = self.atomic_lock.lock();
+
         let timer = timer!("VM::atomic_speculate");
 
         // Retrieve the number of transactions.
@@ -448,6 +453,11 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         solutions: Option<&CoinbaseSolution<N>>,
         transactions: &Transactions<N>,
     ) -> Result<Vec<FinalizeOperation<N>>> {
+        // Acquire the atomic lock, which is needed to ensure this function is not called concurrently
+        // with other `atomic_finalize!` macro calls, which will cause a `bail!` to be triggered erroneously.
+        // Note: This lock must be held for the entire scope of the call to `atomic_finalize!`.
+        let _atomic_lock = self.atomic_lock.lock();
+
         let timer = timer!("VM::atomic_finalize");
 
         // Perform the finalize operation on the preset finalize mode.
