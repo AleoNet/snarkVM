@@ -72,7 +72,7 @@ impl<E: Environment> Group<E> {
         // to get around the issue that the subgroup order is not of Scalar<E> type.
         let order = E::ScalarField::modulus();
         let order_bits_be = order.to_bits_be();
-        let mut order_bits_be_constants = Vec::new();
+        let mut order_bits_be_constants = Vec::with_capacity(order_bits_be.len());
         for bit in order_bits_be.iter() {
             order_bits_be_constants.push(Boolean::constant(*bit));
         }
