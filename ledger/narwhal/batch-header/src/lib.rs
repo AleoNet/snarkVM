@@ -94,13 +94,22 @@ impl<N: Network> BatchHeader<N> {
         }
 
         // Ensure that the number of transmissions is within bounds.
-        ensure!(transmission_ids.len() <= Self::MAX_TRANSMISSIONS, "Invalid number of transmission ids");
+        ensure!(
+            transmission_ids.len() <= Self::MAX_TRANSMISSIONS_PER_BATCH,
+            "Invalid number of transmission ids ({})",
+            transmission_ids.len()
+        );
         // Ensure that the number of previous certificate IDs is within bounds.
-        ensure!(previous_certificate_ids.len() <= Self::MAX_CERTIFICATES, "Invalid number of previous certificate IDs");
+        ensure!(
+            previous_certificate_ids.len() <= Self::MAX_CERTIFICATES as usize,
+            "Invalid number of previous certificate IDs ({})",
+            previous_certificate_ids.len()
+        );
         // Ensure the number of last election certificate IDs is within bounds.
         ensure!(
-            last_election_certificate_ids.len() <= Self::MAX_CERTIFICATES,
-            "Invalid number of last election certificate IDs"
+            last_election_certificate_ids.len() <= Self::MAX_CERTIFICATES as usize,
+            "Invalid number of last election certificate IDs ({})",
+            last_election_certificate_ids.len()
         );
 
         // Retrieve the address.
@@ -154,13 +163,22 @@ impl<N: Network> BatchHeader<N> {
         }
 
         // Ensure that the number of transmissions is within bounds.
-        ensure!(transmission_ids.len() <= Self::MAX_TRANSMISSIONS, "Invalid number of transmission ids");
+        ensure!(
+            transmission_ids.len() <= Self::MAX_TRANSMISSIONS_PER_BATCH,
+            "Invalid number of transmission ids ({})",
+            transmission_ids.len()
+        );
         // Ensure that the number of previous certificate IDs is within bounds.
-        ensure!(previous_certificate_ids.len() <= Self::MAX_CERTIFICATES, "Invalid number of previous certificate IDs");
+        ensure!(
+            previous_certificate_ids.len() <= Self::MAX_CERTIFICATES as usize,
+            "Invalid number of previous certificate IDs ({})",
+            previous_certificate_ids.len()
+        );
         // Ensure the number of last election certificate IDs is within bounds.
         ensure!(
-            last_election_certificate_ids.len() <= Self::MAX_CERTIFICATES,
-            "Invalid number of last election certificate IDs"
+            last_election_certificate_ids.len() <= Self::MAX_CERTIFICATES as usize,
+            "Invalid number of last election certificate IDs ({})",
+            last_election_certificate_ids.len()
         );
 
         // Compute the batch ID.

@@ -32,7 +32,7 @@ impl<N: Network> FromBytes for BatchCertificate<N> {
             // Read the number of signatures.
             let num_signatures = u32::read_le(&mut reader)?;
             // Ensure the number of signatures is within bounds.
-            if num_signatures as usize > Self::MAX_SIGNATURES {
+            if num_signatures > Self::MAX_SIGNATURES as u32 {
                 return Err(error(format!(
                     "Number of signatures ({num_signatures}) exceeds the maximum ({})",
                     Self::MAX_SIGNATURES
@@ -56,7 +56,7 @@ impl<N: Network> FromBytes for BatchCertificate<N> {
             // Read the number of signatures.
             let num_signatures = u16::read_le(&mut reader)?;
             // Ensure the number of signatures is within bounds.
-            if num_signatures as usize > Self::MAX_SIGNATURES {
+            if num_signatures > Self::MAX_SIGNATURES {
                 return Err(error(format!(
                     "Number of signatures ({num_signatures}) exceeds the maximum ({})",
                     Self::MAX_SIGNATURES
