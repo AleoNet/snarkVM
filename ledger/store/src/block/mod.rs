@@ -392,6 +392,11 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         self.transaction_store().finish_atomic()
     }
 
+    /// Either enables or disables the atomic override.
+    fn flip_atomic_override(&self) -> Result<bool> {
+        self.state_root_map().flip_atomic_override()
+    }
+
     /// Stores the given `(state root, block)` pair into storage.
     fn insert(&self, state_root: N::StateRoot, block: &Block<N>) -> Result<()> {
         // Prepare the confirmed transactions.
@@ -1146,6 +1151,11 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
     /// Returns the optional development ID.
     pub fn dev(&self) -> Option<u16> {
         self.storage.dev()
+    }
+
+    /// Either enables or disables the atomic override.
+    pub fn flip_atomic_override(&self) -> Result<bool> {
+        self.storage.flip_atomic_override()
     }
 }
 

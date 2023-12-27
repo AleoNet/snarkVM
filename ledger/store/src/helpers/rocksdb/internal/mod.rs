@@ -31,9 +31,10 @@ use serde::{de::DeserializeOwned, Serialize};
 use std::{
     borrow::Borrow,
     marker::PhantomData,
+    mem,
     ops::Deref,
     sync::{
-        atomic::{AtomicBool, AtomicUsize},
+        atomic::{AtomicBool, AtomicUsize, Ordering},
         Arc,
     },
 };
@@ -81,6 +82,8 @@ pub struct RocksDB {
     /// The depth of the current atomic write batch; it gets incremented with every call
     /// to `start_atomic` and decremented with each call to `finish_atomic`.
     pub(super) atomic_depth: Arc<AtomicUsize>,
+    /// A flag indicating whether the atomic override is currently in effect.
+    pub(super) atomic_override: Arc<AtomicBool>,
 }
 
 impl Deref for RocksDB {
@@ -125,6 +128,7 @@ impl Database for RocksDB {
                     dev,
                     atomic_batch: Default::default(),
                     atomic_depth: Default::default(),
+                    atomic_override: Default::default(),
                 })
             })?
             .clone();
@@ -189,6 +193,26 @@ impl Database for RocksDB {
 }
 
 impl RocksDB {
+    /// Toggles the atomic override; if it becomes disabled, the pending
+    /// operations get executed.
+    fn flip_atomic_override(&self) -> Result<bool> {
+        // https://github.com/rust-lang/rust/issues/98485
+        let previous_value = self.atomic_override.load(Ordering::SeqCst);
+
+        // A flip from enabled to disabled executes all pending operations
+        // as a single atomic batch.
+        if previous_value {
+            let batch = mem::take(&mut *self.atomic_batch.lock());
+            self.rocksdb.write(batch)?;
+        }
+
+        // Flip the flag.
+        self.atomic_override.store(!previous_value, Ordering::SeqCst);
+
+        // Return the current value of the flag.
+        Ok(!previous_value)
+    }
+
     /// Opens the test database.
     #[cfg(any(test, feature = "test"))]
     pub fn open_testing(temp_dir: std::path::PathBuf, dev: Option<u16>) -> Result<Self> {
@@ -238,6 +262,7 @@ impl RocksDB {
                 dev,
                 atomic_batch: Default::default(),
                 atomic_depth: Default::default(),
+                atomic_override: Default::default(),
             })
         }?;
 

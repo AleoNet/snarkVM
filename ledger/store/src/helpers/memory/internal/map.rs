@@ -228,6 +228,18 @@ impl<
 
         Ok(())
     }
+
+    ///
+    /// The atomic override can be used to merge disjoint atomic write batches.
+    /// When enabled, the subsequent atomic write batches no longer automatically
+    /// perform a write at the end of their scope; instead, they only extend the
+    /// pending write batch until `flip_atomic_override` is called again.
+    /// The returned boolean indicates the current state of the override (`true`
+    /// means it was enabled, `false` that it was disabled).
+    ///
+    fn flip_atomic_override(&self) -> Result<bool> {
+        Ok(false)
+    }
 }
 
 impl<

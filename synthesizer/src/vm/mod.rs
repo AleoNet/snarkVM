@@ -335,12 +335,27 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         // Attention: The following order is crucial because if 'finalize' fails, we can rollback the block.
         // If one first calls 'finalize', then calls 'insert(block)' and it fails, there is no way to rollback 'finalize'.
 
+        // Enable the atomic batch override, so that both the insertion and finalization belong to a single batch.
+        #[cfg(feature = "rocks")]
+        assert!(self.block_store().flip_atomic_override()?);
+
         // First, insert the block.
         self.block_store().insert(block)?;
         // Next, finalize the transactions.
         match self.finalize(state, block.ratifications(), block.solutions(), block.transactions()) {
-            Ok(_ratified_finalize_operations) => Ok(()),
+            Ok(_ratified_finalize_operations) => {
+                // Disable the atomic batch override, executing it.
+                #[cfg(feature = "rocks")]
+                assert!(!self.block_store().flip_atomic_override()?);
+                Ok(())
+            }
             Err(finalize_error) => {
+                // Rewind the pending operations related to block insertion.
+                #[cfg(feature = "rocks")]
+                self.block_store().atomic_rewind();
+                // Disable the atomic batch override.
+                #[cfg(feature = "rocks")]
+                assert!(!self.block_store().flip_atomic_override()?);
                 // Rollback the block.
                 self.block_store().remove_last_n(1).map_err(|removal_error| {
                     // Log the finalize error.
