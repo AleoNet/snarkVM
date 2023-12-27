@@ -84,6 +84,33 @@ impl<E: Environment> Group<E> {
         let two_minus_ax2_minus_y2 = two - ax2_plus_y2;
         E::enforce(|| (&double.y, two_minus_ax2_minus_y2, y2_minus_a_x2));
     }
+
+    /// Determine if `double` is `2 * self`.
+    pub fn is_double(&self, double: &Group<E>) -> Boolean<E> {
+        let a = Field::constant(console::Field::new(E::EDWARDS_A));
+        let two = Field::one().double();
+
+        // Compute xy, xx, yy, axx.
+        let xy = &self.x * &self.y;
+        let x2 = self.x.square();
+        let y2 = self.y.square();
+        let ax2 = &x2 * &a;
+
+        // Determine if double.x is the abscissa of the double of self.
+        // double.x * (ax^2 + y^2) = 2xy
+        let ax2_plus_y2 = &ax2 + &y2;
+        let two_xy = xy.double();
+        let is_abscissa = (&double.x * &ax2_plus_y2).is_equal(&two_xy);
+
+        // Determine if double.y is the ordinate of the double of self.
+        // double.y * (2 - (ax^2 + y^2)) = y^2 - ax^2
+        let y2_minus_a_x2 = y2 - ax2;
+        let two_minus_ax2_minus_y2 = two - ax2_plus_y2;
+        let is_ordinate = (&double.y * &two_minus_ax2_minus_y2).is_equal(&y2_minus_a_x2);
+
+        // Return the result.
+        is_abscissa & is_ordinate
+    }
 }
 
 #[cfg(test)]

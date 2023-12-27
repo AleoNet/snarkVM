@@ -92,6 +92,25 @@ impl<E: Environment> Group<E> {
         // Ensure y^2 * (dx^2 - 1) = (ax^2 - 1).
         E::enforce(|| (first, second, third));
     }
+
+    /// Returns a `Boolean` indicating whether or not `self` is on the curve.
+    ///
+    /// Determine if ax^2 + y^2 = 1 + dx^2y^2
+    /// by determining if y^2 * (dx^2 - 1) = (ax^2 - 1)
+    pub fn is_on_curve(&self) -> Boolean<E> {
+        let a = Field::constant(console::Field::new(E::EDWARDS_A));
+        let d = Field::constant(console::Field::new(E::EDWARDS_D));
+
+        let x2 = self.x.square();
+        let y2 = self.y.square();
+
+        let first = y2;
+        let second = (d * &x2) - &Field::one();
+        let third = (a * x2) - Field::one();
+
+        // Determine if y^2 * (dx^2 - 1) = (ax^2 - 1).
+        (first * second).is_equal(&third)
+    }
 }
 
 impl<E: Environment> Group<E> {
@@ -128,6 +147,44 @@ impl<E: Environment> Group<E> {
         // Enforce that the input point (self) is double the double of the point on the curve,
         // i.e. that it is 4 (= cofactor) times the postulated point on the curve.
         double_point.enforce_double(self);
+    }
+
+    /// Returns a `Boolean` indicating whether or not `self` is on the curve and in the largest prime-order subgroup.
+    pub fn is_in_group(&self) -> Boolean<E> {
+        let self_witness = self.eject_value();
+
+        // Each point in the subgroup is the quadruple of some point on the curve,
+        // where 'quadruple' refers to the cofactor 4 of the curve.
+        // Thus, to enforce that a given point is in the group,
+        // there must exist some point on the curve such that 4 times the latter yields the former.
+        // The point on the curve is existentially quantified,
+        // so the constraints introduce new coordinate variables for that point.
+
+        // For the internal variables of this circuit,
+        // the mode is constant if the input point is constant, otherwise private.
+        let mode = if self.eject_mode().is_constant() { Mode::Constant } else { Mode::Private };
+
+        // Postulate a point (two new R1CS variables) on the curve,
+        // whose witness is the witness of the input point divided by the cofactor.
+        let point_witness = self_witness.div_by_cofactor();
+        let point_x = Field::new(mode, point_witness.to_x_coordinate());
+        let point_y = Field::new(mode, point_witness.to_y_coordinate());
+        let point = Self { x: point_x, y: point_y };
+        let on_curve = point.is_on_curve();
+
+        // (For advanced users) The cofactor for this curve is `4`. Thus doubling is used to be performant.
+        debug_assert!(E::Affine::cofactor().len() == 1 && E::Affine::cofactor()[0] == 4);
+
+        // Double the point on the curve.
+        // This introduces two new R1CS variables for the doubled point.
+        let double_point = point.double();
+
+        // Determine if the input point (self) is double the double of the point on the curve,
+        // i.e. that it is 4 (= cofactor) times the postulated point on the curve.
+        let in_largest_subgroup = double_point.is_double(self);
+
+        // Return if the point is on the curve and in the largest prime-order subgroup.
+        on_curve & in_largest_subgroup
     }
 }
 

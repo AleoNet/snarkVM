@@ -57,7 +57,12 @@ impl<E: Environment> Group<E> {
         // Note that the Group<E> type is not restricted to the points in the subgroup or even on the curve;
         // it includes all possible points, i.e. all possible pairs of field elements.
         let point1 = Self { x: x.clone(), y: y1.clone() };
+        E::assert_eq(&point1.x, &x);
+        E::assert_eq(&point1.y, &y1);
+
         let point2 = Self { x: x.clone(), y: y2.clone() };
+        E::assert_eq(&point2.x, &x);
+        E::assert_eq(&point2.y, &y2);
 
         // We need to check whether either of the two points is in the subgroup.
         // There may be at most one, but in a circuit we need to always represent both computation paths.
@@ -70,16 +75,8 @@ impl<E: Environment> Group<E> {
         // which as mentioned above it can be performed on points outside the subgroup as well.
         // We turn the subgroup order into big endian bits,
         // to get around the issue that the subgroup order is not of Scalar<E> type.
-        let order = E::ScalarField::modulus();
-        let order_bits_be = order.to_bits_be();
-        let mut order_bits_be_constants = Vec::with_capacity(order_bits_be.len());
-        for bit in order_bits_be.iter() {
-            order_bits_be_constants.push(Boolean::constant(*bit));
-        }
-        let point1_times_order = order_bits_be_constants.mul(point1);
-        let point2_times_order = order_bits_be_constants.mul(point2);
-        let point1_is_in_subgroup = point1_times_order.is_zero();
-        let point2_is_in_subgroup = point2_times_order.is_zero();
+        let point1_is_in_subgroup = point1.is_in_group();
+        let point2_is_in_subgroup = point2.is_in_group();
 
         // We select y1 if (x, y1) is in the subgroup (which implies that (x, y2) is not in the subgroup),
         // or y2 if (x, y2) is in the subgroup (which implies that (x, y1) is not in the subgroup),
@@ -176,16 +173,16 @@ mod tests {
 
     #[test]
     fn test_from_x_coordinate_flagged_constant() {
-        check_from_x_coordinate_flagged(Mode::Constant, 3764, 0, 0, 0);
+        check_from_x_coordinate_flagged(Mode::Constant, 282, 0, 0, 0);
     }
 
     #[test]
     fn test_from_x_coordinate_flagged_public() {
-        check_from_x_coordinate_flagged(Mode::Public, 1756, 0, 5861, 5861);
+        check_from_x_coordinate_flagged(Mode::Public, 264, 0, 397, 397);
     }
 
     #[test]
     fn test_from_x_coordinate_flagged_private() {
-        check_from_x_coordinate_flagged(Mode::Private, 1756, 0, 5861, 5861);
+        check_from_x_coordinate_flagged(Mode::Private, 264, 0, 397, 397);
     }
 }
