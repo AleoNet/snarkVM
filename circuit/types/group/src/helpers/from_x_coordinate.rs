@@ -51,7 +51,7 @@ impl<E: Environment> Group<E> {
         // Compute both square roots of y^2, in no specified order, with a flag saying whether y^2 is a square or not.
         // That is, finish solving the curve equation for y.
         // If the x-coordinate line does not intersect the elliptic curve, this returns (1, 0, 0).
-        let (yy_is_not_square, y1, y2) = yy.square_roots_flagged_nondeterministic();
+        let (y1, y2, yy_is_not_square) = yy.square_roots_flagged_nondeterministic();
 
         // Form the two points, which are on the curve if yy_is_not_square is false.
         // Note that the Group<E> type is not restricted to the points in the subgroup or even on the curve;

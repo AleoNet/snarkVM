@@ -80,7 +80,7 @@ impl<E: Environment> Field<E> {
     /// This nondeterminism saves constraints, but generally this circuit should be only used
     /// as part of larger circuits for which the nondeterminism in the order of the two roots does not matter,
     /// and where the larger circuits represent deterministic computations despite this internal nondeterminism.
-    pub fn square_roots_flagged_nondeterministic(&self) -> (Boolean<E>, Self, Self) {
+    pub fn square_roots_flagged_nondeterministic(&self) -> (Self, Self, Boolean<E>) {
         // Obtain (p-1)/2, as a constant field element.
         let modulus_minus_one_div_two = match E::BaseField::from_bigint(E::BaseField::modulus_minus_one_div_two()) {
             Some(modulus_minus_one_div_two) => Field::constant(console::Field::new(modulus_minus_one_div_two)),
@@ -122,7 +122,7 @@ impl<E: Environment> Field<E> {
         let is_nonzero = !self.is_zero();
         let error_flag = is_nonzero.bitand(is_nonzero_square.not());
 
-        (error_flag, first_root, second_root)
+        (first_root, second_root, error_flag)
     }
 }
 
@@ -220,7 +220,7 @@ mod tests {
             // Compute square roots and error flag in circuit-land.
             let input = Field::<Circuit>::new(mode, given);
             Circuit::scope(name, || {
-                let (candidate_error_flag, candidate_first_root, candidate_second_root) =
+                let (candidate_first_root, candidate_second_root, candidate_error_flag) =
                     input.square_roots_flagged_nondeterministic();
                 // Although the order of the roots is unspecified in the circuit,
                 // the witness values are in a fixed order (first positive, then negative).
