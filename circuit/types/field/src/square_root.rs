@@ -89,7 +89,7 @@ impl<E: Environment> Field<E> {
 
         // Use Euler's criterion: self is a non-zero square iff self^((p-1)/2) is 1.
         let euler = self.pow(modulus_minus_one_div_two);
-        let is_nonzero_square = euler.is_equal(&Field::one());
+        let is_nonzero_square = euler.is_one();
 
         // Calculate the witness for the first square result.
         // The called function square_root returns the square root closer to 0.
