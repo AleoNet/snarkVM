@@ -65,7 +65,7 @@ impl<E: Environment> CastLossy<Group<E>> for Field<E> {
         debug_assert!(console::Group::from_x_coordinate(<console::Field<E::Network> as console::One>::one()).is_err());
 
         // Attempt to find a group element with self as the x-coordinate.
-        let (x_is_not_in_group, point_with_x) = Group::from_x_coordinate_flagged(self.clone());
+        let (point_with_x, x_is_not_in_group) = Group::from_x_coordinate_flagged(self.clone());
 
         // Determine if the field element is zero.
         let is_x_zero = self.is_zero();

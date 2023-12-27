@@ -30,7 +30,7 @@ impl<E: Environment> Group<E> {
     /// Initializes an affine group element from a given x-coordinate field element.
     /// Also returns an error flag, set if there is no group element with the given x-coordinate;
     /// in that case, the returned point is `(0, 0)`, but immaterial.
-    pub fn from_x_coordinate_flagged(x: Field<E>) -> (Boolean<E>, Self) {
+    pub fn from_x_coordinate_flagged(x: Field<E>) -> (Self, Boolean<E>) {
         // Obtain the A and D coefficients of the elliptic curve.
         let a = Field::constant(console::Field::new(E::EDWARDS_A));
         let d = Field::constant(console::Field::new(E::EDWARDS_D));
@@ -94,7 +94,7 @@ impl<E: Environment> Group<E> {
         let neither_in_subgroup = point1_is_in_subgroup.not().bitand(point2_is_in_subgroup.not());
         let error_flag = yy_is_not_square.bitor(&neither_in_subgroup);
 
-        (error_flag, Self { x, y })
+        (Self { x, y }, error_flag)
     }
 }
 
@@ -150,7 +150,7 @@ mod tests {
             // Compute error flag and point in circuit-land.
             let input = Field::<Circuit>::new(mode, x);
             Circuit::scope(format!("{mode} {i}"), || {
-                let (candidate_error_flag, candidate_point) = Group::from_x_coordinate_flagged(input);
+                let (candidate_point, candidate_error_flag) = Group::from_x_coordinate_flagged(input);
                 assert_eq!(expected_error_flag, candidate_error_flag.eject_value());
                 assert_eq!(expected_point, candidate_point.eject_value());
                 assert_scope!(num_constants, num_public, num_private, num_constraints);
