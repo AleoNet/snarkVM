@@ -30,6 +30,9 @@ use narwhal_transmission_id::TransmissionID;
 use core::hash::{Hash, Hasher};
 use indexmap::{IndexMap, IndexSet};
 
+#[cfg(not(feature = "serial"))]
+use rayon::prelude::*;
+
 #[derive(Clone)]
 pub enum BatchCertificate<N: Network> {
     // TODO (howardwu): For mainnet - Delete V1 and switch everyone to V2 as the default.
@@ -103,11 +106,12 @@ impl<N: Network> BatchCertificate<N> {
         ensure!(signatures.len() <= Self::MAX_SIGNATURES, "Invalid number of signatures");
 
         // Verify the signatures are valid.
-        for signature in &signatures {
+        cfg_iter!(signatures).try_for_each(|signature| {
             if !signature.verify(&signature.to_address(), &[batch_header.batch_id()]) {
                 bail!("Invalid batch certificate signature")
             }
-        }
+            Ok(())
+        })?;
         // Return the batch certificate.
         Self::from_unchecked(batch_header, signatures)
     }
