@@ -12,17 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::{
-    stack::{
-        Address,
-        ValueType::{ExternalRecord, Record},
-    },
-    CallStack,
-    Registers,
-    RegistersCall,
-    StackEvaluate,
-    StackExecute,
-};
+use crate::{stack::Address, CallStack, Registers, RegistersCall, StackEvaluate, StackExecute};
 use aleo_std::prelude::{finish, lap, timer};
 use console::{network::prelude::*, program::Request};
 use synthesizer_program::{
@@ -291,15 +281,7 @@ impl<N: Network> CallTrait<N> for Call<N> {
                         let outputs = function
                             .outputs()
                             .iter()
-                            .map(|output| match output.value_type() {
-                                ExternalRecord(locator) => {
-                                    // Retrieve the external stack.
-                                    let stack = substack.get_external_stack(locator.program_id())?;
-                                    // Sample the output.
-                                    stack.sample_value(&address, &Record(*locator.resource()), rng)
-                                }
-                                _ => substack.sample_value(&address, output.value_type(), rng),
-                            })
+                            .map(|output| substack.sample_value(&address, output.value_type(), rng))
                             .collect::<Result<Vec<_>>>()?;
 
                         // Retrieve the output operands.

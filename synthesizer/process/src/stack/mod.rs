@@ -310,7 +310,10 @@ impl<N: Network> StackProgram<N> for Stack<N> {
                 Ok(Value::Record(self.sample_record(burner_address, record_name, rng)?))
             }
             ValueType::ExternalRecord(locator) => {
-                bail!("Illegal operation: Cannot sample external records (for '{locator}.record').")
+                // Retrieve the external stack.
+                let stack = self.get_external_stack(locator.program_id())?;
+                // Sample the output.
+                Ok(Value::Record(stack.sample_record(burner_address, locator.resource(), rng)?))
             }
             ValueType::Future(locator) => Ok(Value::Future(self.sample_future(locator, rng)?)),
         }
