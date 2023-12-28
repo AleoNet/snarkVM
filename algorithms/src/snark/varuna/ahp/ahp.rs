@@ -191,7 +191,7 @@ impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
                     Ok::<_, AHPError>(public_input)
                 })
                 .collect::<Result<Vec<_>, _>>()?;
-            assert_eq!(public_inputs_i[0].len(), input_domain.size());
+            ensure!(public_inputs_i[0].len() == input_domain.size());
             formatted_public_inputs.push(public_inputs_i);
         }
 
