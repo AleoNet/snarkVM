@@ -108,7 +108,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
 }
 
 /// Splits candidate solutions into a collection of accepted ones and aborted ones.
-fn split_candidate_solutions<T, F>(
+pub fn split_candidate_solutions<T, F>(
     mut candidate_solutions: Vec<T>,
     max_solutions: usize,
     verification_fn: F,
