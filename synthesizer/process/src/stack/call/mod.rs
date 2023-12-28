@@ -283,15 +283,11 @@ impl<N: Network> CallTrait<N> for Call<N> {
                             .iter()
                             .map(|output| substack.sample_value(&address, output.value_type(), rng))
                             .collect::<Result<Vec<_>>>()?;
-
-                        // Retrieve the output operands.
-                        let output_operands =
-                            &function.outputs().iter().map(|output| output.operand()).collect::<Vec<_>>();
-
                         // Map the output operands to registers.
-                        let output_registers = output_operands
+                        let output_registers = function
+                            .outputs()
                             .iter()
-                            .map(|operand| match operand {
+                            .map(|output| match output.operand() {
                                 Operand::Register(register) => Some(register.clone()),
                                 _ => None,
                             })
