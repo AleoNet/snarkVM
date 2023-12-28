@@ -26,6 +26,7 @@ mod varuna {
         },
         traits::{AlgebraicSponge, SNARK},
     };
+
     use std::collections::BTreeMap;
 
     use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};
@@ -57,6 +58,8 @@ mod varuna {
                         let mul_depth = 1;
                         println!("running test with SM::ZK: {}, mul_depth: {}, num_constraints: {}, num_variables: {}", $snark_mode::ZK, mul_depth + i, num_constraints + i, num_variables + i);
                         let (circ, public_inputs) = TestCircuit::gen_rand(mul_depth + i, num_constraints + i, num_variables + i, rng);
+                        let mut fake_inputs = public_inputs.clone();
+                        fake_inputs[public_inputs.len() - 1] = random;
 
                         let (index_pk, index_vk) = $snark_inst::circuit_setup(&universal_srs, &circ).unwrap();
                         println!("Called circuit setup");
@@ -76,7 +79,7 @@ mod varuna {
                         assert!($snark_inst::verify(universal_verifier, &fs_parameters, &index_vk, public_inputs, &proof).unwrap());
                         println!("Called verifier");
                         eprintln!("\nShould not verify (i.e. verifier messages should print below):");
-                        assert!(!$snark_inst::verify(universal_verifier, &fs_parameters, &index_vk, [random, random], &proof).unwrap());
+                        assert!(!$snark_inst::verify(universal_verifier, &fs_parameters, &index_vk, fake_inputs, &proof).unwrap());
                     }
 
                     for circuit_batch_size in (0..4).map(|i| 2usize.pow(i)) {
@@ -129,7 +132,8 @@ mod varuna {
                             for instance_input in vks_to_inputs.values() {
                                 let mut fake_instance_input = Vec::with_capacity(instance_input.len());
                                 for input in instance_input.iter() {
-                                    let fake_input: Vec<_> = (0..input.len()).map(|_| Fr::rand(rng)).collect();
+                                    let mut fake_input = input.clone();
+                                    fake_input[input.len() - 1] = Fr::rand(rng);
                                     fake_instance_input.push(fake_input);
                                 }
                                 fake_instance_inputs.push(fake_instance_input);
@@ -332,6 +336,8 @@ mod varuna_hiding {
         for _ in 0..num_times {
             let mul_depth = 2;
             let (circuit, public_inputs) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, rng);
+            let mut fake_inputs = public_inputs.clone();
+            fake_inputs[public_inputs.len() - 1] = Fr::rand(rng);
 
             let (index_pk, index_vk) = VarunaInst::circuit_setup(&universal_srs, &circuit).unwrap();
             println!("Called circuit setup");
@@ -342,16 +348,7 @@ mod varuna_hiding {
             assert!(VarunaInst::verify(universal_verifier, &fs_parameters, &index_vk, public_inputs, &proof).unwrap());
             println!("Called verifier");
             eprintln!("\nShould not verify (i.e. verifier messages should print below):");
-            assert!(
-                !VarunaInst::verify(
-                    universal_verifier,
-                    &fs_parameters,
-                    &index_vk,
-                    [Fr::rand(rng), Fr::rand(rng)],
-                    &proof
-                )
-                .unwrap()
-            );
+            assert!(!VarunaInst::verify(universal_verifier, &fs_parameters, &index_vk, fake_inputs, &proof).unwrap());
         }
     }
 
