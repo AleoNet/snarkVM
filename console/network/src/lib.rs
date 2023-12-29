@@ -98,6 +98,10 @@ pub trait Network:
     const STARTING_SUPPLY: u64 = 1_500_000_000_000_000; // 1.5B credits
     /// The cost in microcredits per byte for the deployment transaction.
     const DEPLOYMENT_FEE_MULTIPLIER: u64 = 1_000; // 1 millicredit per byte
+    /// The cost in microcredits per constraint for the deployment transaction.
+    const SYNTH_FEE_MULTIPLIER: u64 = 25; // 25 microcredit per constraint to synthesize
+    /// The maximum number of constraints in a deployment
+    const MAX_DEPLOYMENT_CONSTRAINTS: u64 = 300_000;
     /// The maximum number of microcredits that can be spent as a fee.
     const MAX_FEE: u64 = 1_000_000_000_000_000;
 

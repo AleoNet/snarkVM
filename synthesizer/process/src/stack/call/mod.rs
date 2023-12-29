@@ -298,6 +298,11 @@ impl<N: Network> CallTrait<N> for Call<N> {
             // Inject the existing circuit.
             A::inject_r1cs(r1cs);
 
+            // If the circuit is in CheckDeployment mode, set a constraint maximum.
+            if let CallStack::CheckDeployment(_, _, _, num_constraints) = &registers.call_stack() {
+                A::set_constraint_maximum(*num_constraints);
+            }
+
             use circuit::Inject;
 
             // Inject the network ID as `Mode::Constant`.

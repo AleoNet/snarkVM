@@ -73,11 +73,17 @@ impl<N: Network> Stack<N> {
 
         let program_id = self.program.id();
 
+        // Check that the deployment does not require too many constraints
+        let total_num_constraints = deployment.num_constraints();
+        ensure!(total_num_constraints <= N::MAX_DEPLOYMENT_CONSTRAINTS);
+
         // Construct the call stacks and assignments used to verify the certificates.
         let mut call_stacks = Vec::with_capacity(deployment.verifying_keys().len());
 
         // Iterate through the program functions and construct the callstacks and corresponding assignments.
-        for function in deployment.program().functions().values() {
+        for (function, (_, (verifying_key, _))) in
+            deployment.program().functions().values().zip_eq(deployment.verifying_keys())
+        {
             // Initialize a burner private key.
             let burner_private_key = PrivateKey::new(rng)?;
             // Compute the burner address.
@@ -109,20 +115,27 @@ impl<N: Network> Stack<N> {
                 rng,
             )?;
             lap!(timer, "Compute the request for {}", function.name());
+            // Get the expected number of constraints
+            let expected_num_constraints = verifying_key.circuit_info.num_constraints as u64;
             // Initialize the assignments.
             let assignments = Assignments::<N>::default();
             // Initialize the call stack.
-            let call_stack = CallStack::CheckDeployment(vec![request], burner_private_key, assignments.clone());
+            let call_stack = CallStack::CheckDeployment(
+                vec![request],
+                burner_private_key,
+                assignments.clone(),
+                expected_num_constraints,
+            );
             // Append the function name, callstack, and assignments.
             call_stacks.push((function.name(), call_stack, assignments));
         }
 
         // Verify the certificates.
         let rngs = (0..call_stacks.len()).map(|_| StdRng::from_seed(rng.gen())).collect::<Vec<_>>();
-        cfg_iter!(call_stacks).zip_eq(deployment.verifying_keys()).zip_eq(rngs).try_for_each(
+        cfg_into_iter!(call_stacks).zip_eq(deployment.verifying_keys()).zip_eq(rngs).try_for_each(
             |(((function_name, call_stack, assignments), (_, (verifying_key, certificate))), mut rng)| {
                 // Synthesize the circuit.
-                if let Err(err) = self.execute_function::<A, _>(call_stack.clone(), None, &mut rng) {
+                if let Err(err) = self.execute_function::<A, _>(call_stack, None, &mut rng) {
                     bail!("Failed to synthesize the circuit for '{function_name}': {err}")
                 }
                 // Check the certificate.

@@ -481,6 +481,11 @@ impl Environment for AleoV0 {
         E::eject_assignment_and_reset()
     }
 
+    /// Sets a maximum amount of allowed constraints
+    fn set_constraint_maximum(new_max_num_constraints: u64) {
+        E::set_constraint_maximum(new_max_num_constraints)
+    }
+
     /// Clears the circuit and initializes an empty environment.
     fn reset() {
         E::reset()

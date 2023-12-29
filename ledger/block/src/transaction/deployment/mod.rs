@@ -124,6 +124,11 @@ impl<N: Network> Deployment<N> {
         &self.verifying_keys
     }
 
+    /// Returns the total number of constraints.
+    pub fn num_constraints(&self) -> u64 {
+        self.verifying_keys.iter().map(|(_, (vk, _))| vk.circuit_info.num_constraints).sum::<usize>() as u64
+    }
+
     /// Returns the deployment ID.
     pub fn to_deployment_id(&self) -> Result<Field<N>> {
         Ok(*Transaction::deployment_tree(self, None)?.root())

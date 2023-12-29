@@ -23,14 +23,16 @@ use synthesizer_program::{Command, Finalize, Instruction};
 
 use std::collections::HashMap;
 
-/// Returns the *minimum* cost in microcredits to publish the given deployment (total cost, (storage cost, namespace cost)).
-pub fn deployment_cost<N: Network>(deployment: &Deployment<N>) -> Result<(u64, (u64, u64))> {
+/// Returns the *minimum* cost in microcredits to publish the given deployment (total cost, (storage cost, namespace cost, synthesis cost)).
+pub fn deployment_cost<N: Network>(deployment: &Deployment<N>) -> Result<(u64, (u64, u64, u64))> {
     // Determine the number of bytes in the deployment.
     let size_in_bytes = deployment.size_in_bytes()?;
     // Retrieve the program ID.
     let program_id = deployment.program_id();
     // Determine the number of characters in the program ID.
     let num_characters = u32::try_from(program_id.name().to_string().len())?;
+    // Determine the number of constraints in the program
+    let num_constraints = deployment.num_constraints();
 
     // Compute the storage cost in microcredits.
     let storage_cost = size_in_bytes
@@ -43,12 +45,17 @@ pub fn deployment_cost<N: Network>(deployment: &Deployment<N>) -> Result<(u64, (
         .ok_or(anyhow!("The namespace cost computation overflowed for a deployment"))?
         .saturating_mul(1_000_000); // 1 microcredit = 1e-6 credits.
 
+    // Compute the synthesis cost in credits
+    let synthesis_cost = num_constraints * N::SYNTH_FEE_MULTIPLIER;
+
     // Compute the total cost in microcredits.
     let total_cost = storage_cost
         .checked_add(namespace_cost)
+        .ok_or(anyhow!("The total cost computation overflowed for a deployment"))?
+        .checked_add(synthesis_cost)
         .ok_or(anyhow!("The total cost computation overflowed for a deployment"))?;
 
-    Ok((total_cost, (storage_cost, namespace_cost)))
+    Ok((total_cost, (storage_cost, namespace_cost, synthesis_cost)))
 }
 
 /// Returns the *minimum* cost in microcredits to publish the given execution (total cost, (storage cost, namespace cost)).

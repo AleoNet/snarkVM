@@ -24,6 +24,7 @@ type Field = <console::Testnet3 as console::Environment>::Field;
 thread_local! {
     pub(super) static CIRCUIT: RefCell<R1CS<Field>> = RefCell::new(R1CS::new());
     pub(super) static IN_WITNESS: Cell<bool> = Cell::new(false);
+    pub(super) static MAX_NUM_CONSTRAINTS: Cell<u64> = Cell::new(u64::MAX);
     pub(super) static ZERO: LinearCombination<Field> = LinearCombination::zero();
     pub(super) static ONE: LinearCombination<Field> = LinearCombination::one();
 }
@@ -146,6 +147,13 @@ impl Environment for Circuit {
             // Ensure we are not in witness mode.
             if !in_witness.get() {
                 CIRCUIT.with(|circuit| {
+                    // Ensure we do not surpass maximum allowed number of constraints
+                    MAX_NUM_CONSTRAINTS.with(|max_constraints| {
+                        if circuit.borrow().num_constraints() > max_constraints.get() {
+                            Self::halt("Surpassing maximum allowed number of constraints")
+                        }
+                    });
+
                     let (a, b, c) = constraint();
                     let (a, b, c) = (a.into(), b.into(), c.into());
 
@@ -275,6 +283,8 @@ impl Environment for Circuit {
         CIRCUIT.with(|circuit| {
             // Reset the witness mode.
             IN_WITNESS.with(|in_witness| in_witness.replace(false));
+            // Reset the max num constraints.
+            MAX_NUM_CONSTRAINTS.with(|max_num_constraints| max_num_constraints.replace(u64::MAX));
             // Eject the R1CS instance.
             let r1cs = circuit.replace(R1CS::<<Self as Environment>::BaseField>::new());
             // Ensure the circuit is now empty.
@@ -294,6 +304,8 @@ impl Environment for Circuit {
         CIRCUIT.with(|circuit| {
             // Reset the witness mode.
             IN_WITNESS.with(|in_witness| in_witness.replace(false));
+            // Reset the num constraints.
+            MAX_NUM_CONSTRAINTS.with(|max_num_constraints| max_num_constraints.replace(u64::MAX));
             // Eject the R1CS instance.
             let r1cs = circuit.replace(R1CS::<<Self as Environment>::BaseField>::new());
             assert_eq!(0, circuit.borrow().num_constants());
@@ -305,11 +317,18 @@ impl Environment for Circuit {
         })
     }
 
+    /// Sets a maximum amount of allowed constraints
+    fn set_constraint_maximum(new_max_num_constraints: u64) {
+        MAX_NUM_CONSTRAINTS.with(|max_num_constraints| max_num_constraints.replace(new_max_num_constraints));
+    }
+
     /// Clears the circuit and initializes an empty environment.
     fn reset() {
         CIRCUIT.with(|circuit| {
             // Reset the witness mode.
             IN_WITNESS.with(|in_witness| in_witness.replace(false));
+            // Reset the max num constraints.
+            MAX_NUM_CONSTRAINTS.with(|max_num_constraints| max_num_constraints.replace(u64::MAX));
             *circuit.borrow_mut() = R1CS::<<Self as Environment>::BaseField>::new();
             assert_eq!(0, circuit.borrow().num_constants());
             assert_eq!(1, circuit.borrow().num_public());

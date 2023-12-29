@@ -169,6 +169,9 @@ pub trait Environment: 'static + Copy + Clone + fmt::Debug + fmt::Display + Eq +
     /// Returns the R1CS assignment of the circuit, resetting the circuit.
     fn eject_assignment_and_reset() -> Assignment<<Self::Network as console::Environment>::Field>;
 
+    /// Sets a maximum amount of allowed constraints
+    fn set_constraint_maximum(new_max_num_constraints: u64);
+
     /// Clears and initializes an empty environment.
     fn reset();
 }
