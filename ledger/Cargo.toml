@@ -117,6 +117,9 @@ version = "1.0.73"
 version = "2.0"
 features = [ "serde" ]
 
+[dependencies.lru]
+version = "0.12"
+
 [dependencies.parking_lot]
 version = "0.12"
 

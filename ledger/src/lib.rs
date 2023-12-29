@@ -69,13 +69,17 @@ use aleo_std::{
 use anyhow::Result;
 use core::ops::Range;
 use indexmap::IndexMap;
+use lru::LruCache;
 use parking_lot::RwLock;
 use rand::{prelude::IteratorRandom, rngs::OsRng};
-use std::{borrow::Cow, sync::Arc};
+use std::{borrow::Cow, num::NonZeroUsize, sync::Arc};
 use time::OffsetDateTime;
 
 #[cfg(not(feature = "serial"))]
 use rayon::prelude::*;
+
+/// The number of transactions to keep cached in order to not perform redundant checks.
+const NUM_CACHED_TRANSACTIONS: usize = Transactions::<console::network::Testnet3>::MAX_TRANSACTIONS;
 
 pub type RecordMap<N> = IndexMap<Field<N>, Record<N, Plaintext<N>>>;
 
@@ -107,6 +111,8 @@ pub struct Ledger<N: Network, C: ConsensusStorage<N>> {
     current_committee: Arc<RwLock<Option<Committee<N>>>>,
     /// The current block.
     current_block: Arc<RwLock<Block<N>>>,
+    /// A cache containing the list of recent succesfully checked transactions.
+    checked_transactions: Arc<RwLock<LruCache<N::TransactionID, ()>>>,
 }
 
 impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
@@ -169,6 +175,9 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             current_epoch_challenge: Default::default(),
             current_committee: Arc::new(RwLock::new(current_committee)),
             current_block: Arc::new(RwLock::new(genesis_block.clone())),
+            checked_transactions: Arc::new(RwLock::new(LruCache::new(
+                NonZeroUsize::new(NUM_CACHED_TRANSACTIONS).unwrap(),
+            ))),
         };
 
         // If the block store is empty, initialize the genesis block.

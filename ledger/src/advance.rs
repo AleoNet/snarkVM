@@ -87,6 +87,12 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         let mut current_block = self.current_block.write();
         // Update the VM.
         self.vm.add_next_block(block)?;
+        // Clear the checked transactions cache.
+        let mut transaction_cache = self.checked_transactions.write();
+        for transaction in block.transactions().iter() {
+            transaction_cache.pop(&transaction.id());
+        }
+        drop(transaction_cache);
         // Update the current block.
         *current_block = block.clone();
         // Drop the write lock on the current block.

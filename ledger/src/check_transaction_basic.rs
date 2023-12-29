@@ -22,6 +22,17 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         rejected_id: Option<Field<N>>,
         rng: &mut R,
     ) -> Result<()> {
-        self.vm().check_transaction(transaction, rejected_id, rng)
+        // Check if the transaction has already recently been checked.
+        if self.checked_transactions.read().peek(&transaction.id()).is_some() {
+            Ok(())
+        } else {
+            // Perform the full check.
+            self.vm().check_transaction(transaction, rejected_id, rng)?;
+
+            // If the check passes, save its ID to the cache.
+            self.checked_transactions.write().push(transaction.id(), ());
+
+            Ok(())
+        }
     }
 }
