@@ -16,15 +16,20 @@ categories = [ "cryptography", "web-programming" ]
 license = "Apache-2.0"
 edition = "2021"
 
-[[bench]]
-name = "block"
-path = "benches/block.rs"
-harness = false
+#[[bench]]
+#name = "block"
+#path = "benches/block.rs"
+#harness = false
 
 [[bench]]
-name = "transaction"
-path = "benches/transaction.rs"
+name = "mappings"
+path = "benches/mappings.rs"
 harness = false
+
+#[[bench]]
+#name = "transaction"
+#path = "benches/transaction.rs"
+#harness = false
 
 [features]
 default = [ "async", "indexmap/rayon", "rayon" ]
