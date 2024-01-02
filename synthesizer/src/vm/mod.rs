@@ -1078,6 +1078,40 @@ function check:
     }
 
     #[test]
+    fn test_deployment_synthesis_overload() {
+        let rng = &mut TestRng::default();
+
+        // Initialize a private key.
+        let private_key = sample_genesis_private_key(rng);
+
+        // Initialize the genesis block.
+        let genesis = sample_genesis_block(rng);
+
+        // Initialize the VM.
+        let vm = sample_vm();
+        // Update the VM.
+        vm.add_next_block(&genesis).unwrap();
+
+        // Deploy the base program.
+        let program = Program::from_str(
+            r"
+program program_layer_0.aleo;
+
+function do:
+    input r0 as [[u128; 32u32]; 2u32].private;
+    hash.sha3_256 r0 into r1 as field;
+    output r1 as field.public;",
+        )
+        .unwrap();
+
+        // Create the Deployment Transaction
+        let deployment = vm.deploy(&private_key, &program, None, 0, None, rng).unwrap();
+
+        // Verify the Deployment Transaction. It should fail because there are too many constraints.
+        assert!(vm.check_transaction(&deployment, None, rng).is_err());
+    }
+
+    #[test]
     #[ignore]
     fn test_deployment_memory_overload() {
         const NUM_DEPLOYMENTS: usize = 32;
