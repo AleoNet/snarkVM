@@ -490,7 +490,7 @@ function compute:
                 // Deploy.
                 let transaction = vm.deploy(&caller_private_key, &program, credits, 10, None, rng).unwrap();
                 // Verify.
-                vm.check_transaction(&transaction, None, rng).unwrap();
+                vm.check_transaction(&transaction, None, rng, false).unwrap();
                 // Return the transaction.
                 transaction
             })
@@ -533,7 +533,7 @@ function compute:
                 // Construct the execute transaction.
                 let transaction = vm.execute_authorization(authorization, None, None, rng).unwrap();
                 // Verify.
-                vm.check_transaction(&transaction, None, rng).unwrap();
+                vm.check_transaction(&transaction, None, rng, false).unwrap();
                 // Return the transaction.
                 transaction
             })
@@ -577,7 +577,7 @@ function compute:
                     .execute(&caller_private_key, ("credits.aleo", "transfer_public"), inputs, record, 0, None, rng)
                     .unwrap();
                 // Verify.
-                vm.check_transaction(&transaction, None, rng).unwrap();
+                vm.check_transaction(&transaction, None, rng, false).unwrap();
                 // Return the transaction.
                 transaction
             })
@@ -629,7 +629,7 @@ function compute:
                 // Construct the transaction.
                 let transaction = Transaction::from_execution(execution, Some(fee)).unwrap();
                 // Verify.
-                vm.check_transaction(&transaction, None, rng).unwrap();
+                vm.check_transaction(&transaction, None, rng, false).unwrap();
                 // Return the transaction.
                 transaction
             })
@@ -1049,7 +1049,7 @@ function check:
         .unwrap();
 
         let deployment = vm.deploy(&private_key, &program, None, 0, None, rng).unwrap();
-        assert!(vm.check_transaction(&deployment, None, rng).is_ok());
+        assert!(vm.check_transaction(&deployment, None, rng, false).is_ok());
         vm.add_next_block(&sample_next_block(&vm, &private_key, &[deployment], rng).unwrap()).unwrap();
 
         // Check that program is deployed.
@@ -1070,7 +1070,7 @@ function check:
         .unwrap();
 
         let deployment = vm.deploy(&private_key, &program, None, 0, None, rng).unwrap();
-        assert!(vm.check_transaction(&deployment, None, rng).is_ok());
+        assert!(vm.check_transaction(&deployment, None, rng, false).is_ok());
         vm.add_next_block(&sample_next_block(&vm, &private_key, &[deployment], rng).unwrap()).unwrap();
 
         // Check that program is deployed.
@@ -1213,6 +1213,6 @@ finalize do:
             vm.execute(&private_key, ("program_layer_30.aleo", "do"), inputs, record, 0, None, rng).unwrap();
 
         // Verify.
-        vm.check_transaction(&transaction, None, rng).unwrap();
+        vm.check_transaction(&transaction, None, rng, false).unwrap();
     }
 }

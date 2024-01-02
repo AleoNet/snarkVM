@@ -111,8 +111,8 @@ pub struct Ledger<N: Network, C: ConsensusStorage<N>> {
     current_committee: Arc<RwLock<Option<Committee<N>>>>,
     /// The current block.
     current_block: Arc<RwLock<Block<N>>>,
-    /// A cache containing the list of recent succesfully checked transactions.
-    checked_transactions: Arc<RwLock<LruCache<N::TransactionID, ()>>>,
+    /// A cache containing the list of recent succesfully verified transactions.
+    verified_transactions: Arc<RwLock<LruCache<N::TransactionID, ()>>>,
 }
 
 impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
@@ -175,7 +175,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             current_epoch_challenge: Default::default(),
             current_committee: Arc::new(RwLock::new(current_committee)),
             current_block: Arc::new(RwLock::new(genesis_block.clone())),
-            checked_transactions: Arc::new(RwLock::new(LruCache::new(
+            verified_transactions: Arc::new(RwLock::new(LruCache::new(
                 NonZeroUsize::new(NUM_CACHED_TRANSACTIONS).unwrap(),
             ))),
         };

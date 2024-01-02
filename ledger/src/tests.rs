@@ -283,7 +283,7 @@ finalize foo:
     // Deploy.
     let transaction = ledger.vm.deploy(&private_key, &program, credits, 0, None, rng).unwrap();
     // Verify.
-    ledger.vm().check_transaction(&transaction, None, rng).unwrap();
+    ledger.vm().check_transaction(&transaction, None, rng, false).unwrap();
 
     // Construct the next block.
     let block =
@@ -337,7 +337,7 @@ finalize foo:
     let transaction =
         ledger.vm.execute(&private_key, ("dummy.aleo", "foo"), inputs, Some(sufficient_record), 0, None, rng).unwrap();
     // Verify.
-    ledger.vm.check_transaction(&transaction, None, rng).unwrap();
+    ledger.vm.check_transaction(&transaction, None, rng, false).unwrap();
     // Ensure that the ledger deems the transaction valid.
     assert!(ledger.check_transaction_basic(&transaction, None, rng).is_ok());
 }
@@ -469,7 +469,7 @@ finalize foo:
     // Deploy.
     let transaction = ledger.vm.deploy(&private_key, &program, None, 0, None, rng).unwrap();
     // Verify.
-    ledger.vm().check_transaction(&transaction, None, rng).unwrap();
+    ledger.vm().check_transaction(&transaction, None, rng, false).unwrap();
 
     // Construct the next block.
     let block =

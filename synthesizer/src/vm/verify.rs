@@ -39,6 +39,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         transaction: &Transaction<N>,
         rejected_id: Option<Field<N>>,
         rng: &mut R,
+        already_verified: bool,
     ) -> Result<()> {
         let timer = timer!("VM::check_transaction");
 
@@ -94,6 +95,12 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
         // First, verify the fee.
         self.check_fee(transaction, rejected_id)?;
+
+        // If the transaction has already been verified (as indicated by the transaction cache), skip verification.
+        if already_verified {
+            finish!(timer, "Verify the transaction");
+            return Ok(());
+        }
 
         // Next, verify the deployment or execution.
         match transaction {
@@ -323,17 +330,17 @@ mod tests {
         // Fetch a deployment transaction.
         let deployment_transaction = crate::vm::test_helpers::sample_deployment_transaction(rng);
         // Ensure the transaction verifies.
-        vm.check_transaction(&deployment_transaction, None, rng).unwrap();
+        vm.check_transaction(&deployment_transaction, None, rng, false).unwrap();
 
         // Fetch an execution transaction.
         let execution_transaction = crate::vm::test_helpers::sample_execution_transaction_with_private_fee(rng);
         // Ensure the transaction verifies.
-        vm.check_transaction(&execution_transaction, None, rng).unwrap();
+        vm.check_transaction(&execution_transaction, None, rng, false).unwrap();
 
         // Fetch an execution transaction.
         let execution_transaction = crate::vm::test_helpers::sample_execution_transaction_with_public_fee(rng);
         // Ensure the transaction verifies.
-        vm.check_transaction(&execution_transaction, None, rng).unwrap();
+        vm.check_transaction(&execution_transaction, None, rng, false).unwrap();
     }
 
     #[test]
@@ -430,15 +437,15 @@ mod tests {
 
         // Fetch a valid execution transaction with a private fee.
         let valid_transaction = crate::vm::test_helpers::sample_execution_transaction_with_private_fee(rng);
-        vm.check_transaction(&valid_transaction, None, rng).unwrap();
+        vm.check_transaction(&valid_transaction, None, rng, false).unwrap();
 
         // Fetch a valid execution transaction with a public fee.
         let valid_transaction = crate::vm::test_helpers::sample_execution_transaction_with_public_fee(rng);
-        vm.check_transaction(&valid_transaction, None, rng).unwrap();
+        vm.check_transaction(&valid_transaction, None, rng, false).unwrap();
 
         // Fetch an valid execution transaction with no fee.
         let valid_transaction = crate::vm::test_helpers::sample_execution_transaction_without_fee(rng);
-        vm.check_transaction(&valid_transaction, None, rng).unwrap();
+        vm.check_transaction(&valid_transaction, None, rng, false).unwrap();
     }
 
     #[test]
@@ -534,7 +541,7 @@ mod tests {
             vm.execute(&caller_private_key, ("testing.aleo", "initialize"), inputs, credits, 10, None, rng).unwrap();
 
         // Verify.
-        vm.check_transaction(&transaction, None, rng).unwrap();
+        vm.check_transaction(&transaction, None, rng, false).unwrap();
     }
 
     #[test]
