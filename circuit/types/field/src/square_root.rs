@@ -64,22 +64,22 @@ impl<E: Environment> Field<E> {
 }
 
 impl<E: Environment> Field<E> {
-    /// Returns both square roots of `self` (hence the plural 'roots' in the name of the function),
-    /// along with a boolean error flag, which is set iff `self` is not a square.
+    /// Returns both square roots of `self` and a `Boolean` flag, which is set iff `self` is not a square.
     ///
-    /// In the console computation:
-    /// if `self` is a non-zero square,
-    /// the first field result is the positive root (i.e. closer to 0)
-    /// and the second field result is the negative root (i.e. closer to the prime);
-    /// if `self` is 0, both field results are 0;
-    /// if `self` is not a square, both field results are 0, but immaterial.
+    /// If `self` is a non-zero square,
+    ///  - the first field result is the positive root (i.e. closer to 0)
+    ///  - the second field result is the negative root (i.e. closer to the prime)
+    ///  - the flag is 0
     ///
-    /// The 'nondeterministic' part of the function name refers to the synthesized circuit,
-    /// whose represented computation, unlike the console computation just described,
-    /// returns the two roots (if `self` is a non-zero square) in no specified order.
-    /// This nondeterminism saves constraints, but generally this circuit should be only used
-    /// as part of larger circuits for which the nondeterminism in the order of the two roots does not matter,
-    /// and where the larger circuits represent deterministic computations despite this internal nondeterminism.
+    /// If `self` is 0,
+    ///  - both field results are 0
+    ///  - the flag is 0
+    ///
+    /// If `self` is not a square,
+    ///  - both field results are 0
+    ///  - the flag is 1
+    ///
+    /// Note that there is no ordering on the two roots returned by this function.
     pub fn square_roots_flagged_nondeterministic(&self) -> (Self, Self, Boolean<E>) {
         // Obtain (p-1)/2, as a constant field element.
         let modulus_minus_one_div_two = match E::BaseField::from_bigint(E::BaseField::modulus_minus_one_div_two()) {
@@ -92,30 +92,24 @@ impl<E: Environment> Field<E> {
         let is_nonzero_square = euler.is_one();
 
         // Calculate the witness for the first square result.
-        // The called function square_root returns the square root closer to 0.
+        // Note that the function `square_root` returns the square root closer to 0.
         let root_witness = match self.eject_value().square_root() {
             Ok(root) => root,
             Err(_) => console::Field::zero(),
         };
 
-        // In order to avoid actually calculating the square root in the circuit,
-        // we would like to generate a constraint saying that squaring the root yields self.
-        // But this constraint would have no solutions if self is not a square.
-        // So we introduce a new variable that is either self (if square) or 0 (otherwise):
-        // either way, this new variable is a square.
+        // Initialize the square element, which is either `self` or 0, depending on whether `self` is a square.
         let square = Self::ternary(&is_nonzero_square, self, &Field::zero());
 
-        // We introduce a variable for the first root we return,
-        // and constrain it to yield, when squared, the square introduced just above.
-        // Thus, if self is a square this is a square root of self; otherwise it is 0, because only 0 yields 0 when squared.
-        // The variable is actually a constant if self is constant, otherwise it is private (even if self is public).
+        // Initialize a new variable for the first root.
         let mode = if self.eject_mode() == Mode::Constant { Mode::Constant } else { Mode::Private };
         let first_root = Field::new(mode, root_witness);
+
+        // Enforce that the first root squared is equal to the square.
+        // Note that if `self` is not a square, then `first_root` and `square` are both zero and the constraint is satisfied.
         E::enforce(|| (&first_root, &first_root, &square));
 
-        // The second root returned by this function is the negation of the first one.
-        // So if self is a non-zero square, this is always different from the first root,
-        // but in the circuit it can be either positive (and the other negative) or vice versa.
+        // Initialize the second root as the negation of the first root.
         let second_root = first_root.clone().neg();
 
         // The error flag is set iff self is a non-square, i.e. it is neither zero nor a non-zero square.
