@@ -740,7 +740,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
                     // Construct the next committee map and next bonded map.
                     let (next_committee_map, next_bonded_map) =
-                        to_next_commitee_map_and_bonded_map(committee, &stakers);
+                        to_next_committee_map_and_bonded_map(committee, &stakers);
 
                     // Insert the next committee into storage.
                     store.committee_store().insert(state.block_height(), committee.clone())?;
@@ -833,7 +833,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     let next_committee = to_next_committee(&current_committee, state.block_round(), &next_stakers)?;
                     // Construct the next committee map and next bonded map.
                     let (next_committee_map, next_bonded_map) =
-                        to_next_commitee_map_and_bonded_map(&next_committee, &next_stakers);
+                        to_next_committee_map_and_bonded_map(&next_committee, &next_stakers);
 
                     // Insert the next committee into storage.
                     store.committee_store().insert(state.block_height(), next_committee)?;

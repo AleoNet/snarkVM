@@ -185,7 +185,7 @@ pub fn to_next_committee<N: Network>(
 }
 
 /// Returns the committee map and bonded map, given the committee and stakers.
-pub fn to_next_commitee_map_and_bonded_map<N: Network>(
+pub fn to_next_committee_map_and_bonded_map<N: Network>(
     next_committee: &Committee<N>,
     next_stakers: &IndexMap<Address<N>, (Address<N>, u64)>,
 ) -> (Vec<(Plaintext<N>, Value<N>)>, Vec<(Plaintext<N>, Value<N>)>) {
@@ -402,7 +402,7 @@ mod tests {
     }
 
     #[test]
-    fn test_to_next_commitee_map_and_bonded_map() {
+    fn test_to_next_committee_map_and_bonded_map() {
         let rng = &mut TestRng::default();
 
         // Sample a committee.
@@ -414,8 +414,8 @@ mod tests {
         let timer = std::time::Instant::now();
         // Ensure the next committee matches the current committee.
         // Note: We can perform this check, in this specific case only, because we did not apply staking rewards.
-        let (committee_map, bonded_map) = to_next_commitee_map_and_bonded_map(&committee, &stakers);
-        println!("to_next_commitee_map_and_bonded_map: {}ms", timer.elapsed().as_millis());
+        let (committee_map, bonded_map) = to_next_committee_map_and_bonded_map(&committee, &stakers);
+        println!("to_next_committee_map_and_bonded_map: {}ms", timer.elapsed().as_millis());
         assert_eq!(committee_map, to_committee_map(committee.members()));
         assert_eq!(bonded_map, to_bonded_map(&stakers));
     }
