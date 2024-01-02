@@ -35,6 +35,7 @@ function test_lossy_cast:
     cast.lossy r0 into r9 as u8;
     cast.lossy r0 into r10 as i8;
     cast.lossy r0 into r11 as boolean;
+    cast.lossy r0 into r12 as group;
     output r1 as u128.private;
     output r2 as i128.private;
     output r3 as u64.private;
@@ -46,3 +47,4 @@ function test_lossy_cast:
     output r9 as u8.private;
     output r10 as i8.private;
     output r11 as boolean.private;
+    output r12 as group.private;

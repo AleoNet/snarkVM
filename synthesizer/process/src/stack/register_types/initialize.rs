@@ -555,15 +555,10 @@ impl<N: Network> RegisterTypes<N> {
 
                     // Ensure the casted register type is valid and defined.
                     match operation.cast_type() {
-                        CastType::Plaintext(PlaintextType::Literal(literal_type)) => {
-                            // TODO (@d0cd) Remove restriction on lossy casts to a group element.
-                            ensure!(
-                                !matches!(literal_type, LiteralType::Group),
-                                "Casting to a group element is not supported for `cast.lossy (yet)`"
-                            );
+                        CastType::Plaintext(PlaintextType::Literal(_)) => {
                             ensure!(instruction.operands().len() == 1, "Expected 1 operand.");
                         }
-                        _ => bail!("`cast.lossy` is only supported for casting to a literal"),
+                        _ => bail!("`cast.lossy` is only supported for casting to a literal type."),
                     }
                 }
                 _ => bail!("Instruction '{instruction}' is not for opcode '{opcode}'."),
