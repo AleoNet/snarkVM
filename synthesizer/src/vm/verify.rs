@@ -96,12 +96,6 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         // First, verify the fee.
         self.check_fee(transaction, rejected_id)?;
 
-        // If the transaction has already been verified (as indicated by the transaction cache), skip verification.
-        if already_verified {
-            finish!(timer, "Verify the transaction");
-            return Ok(());
-        }
-
         // Next, verify the deployment or execution.
         match transaction {
             Transaction::Deploy(id, owner, deployment, _) => {
@@ -115,12 +109,17 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 if deployment.edition() != N::EDITION {
                     bail!("Invalid deployment transaction '{id}' - expected edition {}", N::EDITION)
                 }
-                // Ensure the program ID does not already exist..
+                // Ensure the program ID does not already exist in the store and the process.
                 if self.transaction_store().contains_program_id(deployment.program_id())? {
                     bail!("Program ID '{}' is already deployed", deployment.program_id())
                 }
-                // Verify the deployment.
-                self.check_deployment_internal(deployment, rng)?;
+                if self.contains_program(deployment.program_id()) {
+                    bail!("Program ID '{}' already exists", deployment.program_id());
+                }
+                // Verify the deployment if it hasn't been done before.
+                if !already_verified {
+                    self.check_deployment_internal(deployment, rng)?;
+                }
             }
             Transaction::Execute(id, execution, _) => {
                 // Compute the execution ID.
@@ -132,7 +131,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     bail!("Transaction '{id}' contains a previously rejected execution")
                 }
                 // Verify the execution.
-                self.check_execution_internal(execution)?;
+                self.check_execution_internal(execution, already_verified)?;
             }
             Transaction::Fee(..) => { /* no-op */ }
         }
@@ -236,11 +235,11 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// Note: This is an internal check only. To ensure all components of the execution are checked,
     /// use `VM::check_transaction` instead.
     #[inline]
-    fn check_execution_internal(&self, execution: &Execution<N>) -> Result<()> {
+    fn check_execution_internal(&self, execution: &Execution<N>, already_verified: bool) -> Result<()> {
         let timer = timer!("VM::check_execution");
 
-        // Verify the execution.
-        let verification = self.process.read().verify_execution(execution);
+        // Verify the execution if it hasn't been done yet.
+        let verification = if already_verified { Ok(()) } else { self.process.read().verify_execution(execution) };
         lap!(timer, "Verify the execution");
 
         // Ensure the global state root exists in the block store.
@@ -380,13 +379,13 @@ mod tests {
                     // Ensure the proof exists.
                     assert!(execution.proof().is_some());
                     // Verify the execution.
-                    vm.check_execution_internal(&execution).unwrap();
+                    vm.check_execution_internal(&execution, false).unwrap();
 
                     // Ensure that deserialization doesn't break the transaction verification.
                     let serialized_execution = execution.to_string();
                     let recovered_execution: Execution<CurrentNetwork> =
                         serde_json::from_str(&serialized_execution).unwrap();
-                    vm.check_execution_internal(&recovered_execution).unwrap();
+                    vm.check_execution_internal(&recovered_execution, false).unwrap();
                 }
                 _ => panic!("Expected an execution transaction"),
             }
