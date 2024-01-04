@@ -18,14 +18,15 @@ impl<E: Environment> Group<E> {
     /// Attempts to recover an affine group element from a given x-coordinate field element.
     /// For safety, the resulting point is always enforced to be on the curve and in the correct subgroup.
     pub fn from_x_coordinate(x_coordinate: Field<E>) -> Result<Self> {
-        if let Some(point) = E::Affine::from_x_coordinate(*x_coordinate, true) {
-            if point.is_in_correct_subgroup_assuming_on_curve() {
-                return Ok(Self::new(point));
+        if let Some(p1) = E::Affine::from_x_coordinate(*x_coordinate, true) {
+            if p1.is_in_correct_subgroup_assuming_on_curve() {
+                return Ok(Self::new(p1));
             }
-        }
-        if let Some(point) = E::Affine::from_x_coordinate(*x_coordinate, false) {
-            if point.is_in_correct_subgroup_assuming_on_curve() {
-                return Ok(Self::new(point));
+            // We can unwrap when checking the lexicgraphically smallest
+            // point as it's not a factor for the fallability of computation.
+            let p2 = E::Affine::from_x_coordinate(*x_coordinate, false).unwrap();
+            if p2.is_in_correct_subgroup_assuming_on_curve() {
+                return Ok(Self::new(p2));
             }
         }
         bail!("Failed to recover an affine group from an x-coordinate of {x_coordinate}")
