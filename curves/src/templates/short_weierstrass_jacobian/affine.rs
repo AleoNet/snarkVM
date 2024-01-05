@@ -155,6 +155,7 @@ impl<P: Parameters> AffineCurve for Affine<P> {
     ///
     /// Calling this should be equivalent (but likely more performant) to
     /// `(AffineCurve::from_x_coordinate(x, false), AffineCurve::from_x_coordinate(x, true))`.
+    #[inline]
     fn pair_from_x_coordinate(x: Self::BaseField) -> Option<(Self, Self)> {
         Self::from_x_coordinate(x, false).map(|p1| (p1, Self::new(p1.x, -p1.y, false)))
     }
