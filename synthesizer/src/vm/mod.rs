@@ -59,9 +59,12 @@ use synthesizer_process::{Authorization, Process, Trace};
 use synthesizer_program::{FinalizeGlobalState, FinalizeOperation, FinalizeStoreTrait, Program};
 
 use aleo_std::prelude::{finish, lap, timer};
-use indexmap::IndexMap;
-use parking_lot::RwLock;
+use indexmap::{IndexMap, IndexSet};
+use parking_lot::{Mutex, RwLock};
 use std::sync::Arc;
+
+#[cfg(not(feature = "serial"))]
+use rayon::prelude::*;
 
 #[derive(Clone)]
 pub struct VM<N: Network, C: ConsensusStorage<N>> {
@@ -69,6 +72,10 @@ pub struct VM<N: Network, C: ConsensusStorage<N>> {
     process: Arc<RwLock<Process<N>>>,
     /// The VM store.
     store: ConsensusStore<N, C>,
+    /// The lock to guarantee atomicity over calls to speculate and finalize.
+    atomic_lock: Arc<Mutex<()>>,
+    /// The lock for ensuring there is no concurrency when advancing blocks.
+    block_lock: Arc<Mutex<()>>,
 }
 
 impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
@@ -88,12 +95,12 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             }
         }
 
-        // A helper function to load the program into the process, and recursively load all imports.
+        // A helper function to retrieve all the deployments.
         fn load_deployment_and_imports<N: Network, T: TransactionStorage<N>>(
-            process: &mut Process<N>,
+            process: &Process<N>,
             transaction_store: &TransactionStore<N, T>,
             transaction_id: N::TransactionID,
-        ) -> Result<()> {
+        ) -> Result<Vec<(ProgramID<N>, Deployment<N>)>> {
             // Retrieve the deployment from the transaction id.
             let deployment = match transaction_store.get_deployment(&transaction_id)? {
                 Some(deployment) => deployment,
@@ -106,8 +113,11 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
             // Return early if the program is already loaded.
             if process.contains_program(program_id) {
-                return Ok(());
+                return Ok(vec![]);
             }
+
+            // Prepare a vector for the deployments.
+            let mut deployments = vec![];
 
             // Iterate through the program imports.
             for import_program_id in program.imports().keys() {
@@ -120,29 +130,55 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                         bail!("Transaction id for '{program_id}' is not found in storage.");
                     };
 
-                    // Recursively load the deployment and its imports.
-                    load_deployment_and_imports(process, transaction_store, transaction_id)?
+                    // Add the deployment and its imports found recursively.
+                    deployments.extend_from_slice(&load_deployment_and_imports(
+                        process,
+                        transaction_store,
+                        transaction_id,
+                    )?);
                 }
             }
 
-            // Load the deployment if it does not exist in the process yet.
-            if !process.contains_program(program_id) {
-                process.load_deployment(&deployment)?;
-            }
+            // Once all the imports have been included, add the parent deployment.
+            deployments.push((*program_id, deployment));
 
-            Ok(())
+            Ok(deployments)
         }
 
         // Retrieve the transaction store.
         let transaction_store = store.transaction_store();
+        // Retrieve the list of deployment transaction IDs.
+        let deployment_ids = transaction_store.deployment_transaction_ids().collect::<Vec<_>>();
         // Load the deployments from the store.
-        for transaction_id in transaction_store.deployment_transaction_ids() {
-            // Load the deployment and its imports.
-            load_deployment_and_imports(&mut process, transaction_store, *transaction_id)?;
+        for (i, chunk) in deployment_ids.chunks(256).enumerate() {
+            debug!(
+                "Loading deployments {}-{} (of {})...",
+                i * 256,
+                ((i + 1) * 256).min(deployment_ids.len()),
+                deployment_ids.len()
+            );
+            let deployments = cfg_iter!(chunk)
+                .map(|transaction_id| {
+                    // Load the deployment and its imports.
+                    load_deployment_and_imports(&process, transaction_store, **transaction_id)
+                })
+                .collect::<Result<Vec<_>>>()?;
+
+            for (program_id, deployment) in deployments.iter().flatten() {
+                // Load the deployment if it does not exist in the process yet.
+                if !process.contains_program(program_id) {
+                    process.load_deployment(deployment)?;
+                }
+            }
         }
 
         // Return the new VM.
-        Ok(Self { process: Arc::new(RwLock::new(process)), store })
+        Ok(Self {
+            process: Arc::new(RwLock::new(process)),
+            store,
+            atomic_lock: Arc::new(Mutex::new(())),
+            block_lock: Arc::new(Mutex::new(())),
+        })
     }
 
     /// Returns `true` if a program with the given program ID exists.
@@ -283,6 +319,10 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// Adds the given block into the VM.
     #[inline]
     pub fn add_next_block(&self, block: &Block<N>) -> Result<()> {
+        // Acquire the block lock, which is needed to ensure this function is not called concurrently.
+        // Note: This lock must be held for the entire scope of this function.
+        let _block_lock = self.block_lock.lock();
+
         // Construct the finalize state.
         let state = FinalizeGlobalState::new::<N>(
             block.round(),
@@ -300,11 +340,16 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         // Next, finalize the transactions.
         match self.finalize(state, block.ratifications(), block.solutions(), block.transactions()) {
             Ok(_ratified_finalize_operations) => Ok(()),
-            Err(error) => {
+            Err(finalize_error) => {
                 // Rollback the block.
-                self.block_store().remove_last_n(1)?;
-                // Return the error.
-                Err(error)
+                self.block_store().remove_last_n(1).map_err(|removal_error| {
+                    // Log the finalize error.
+                    error!("Failed to finalize block {} - {finalize_error}", block.height());
+                    // Return the removal error.
+                    removal_error
+                })?;
+                // Return the finalize error.
+                Err(finalize_error)
             }
         }
     }
@@ -974,6 +1019,62 @@ function multitransfer:
             )
             .unwrap();
         vm.add_next_block(&sample_next_block(&vm, &caller_private_key, &[execution], rng).unwrap()).unwrap();
+    }
+
+    #[test]
+    fn test_nested_deployment_with_assert() {
+        let rng = &mut TestRng::default();
+
+        // Initialize a private key.
+        let private_key = sample_genesis_private_key(rng);
+
+        // Initialize the genesis block.
+        let genesis = sample_genesis_block(rng);
+
+        // Initialize the VM.
+        let vm = sample_vm();
+        // Update the VM.
+        vm.add_next_block(&genesis).unwrap();
+
+        // Deploy the base program.
+        let program = Program::from_str(
+            r"
+program child_program.aleo;
+
+function check:
+    input r0 as field.private;
+    assert.eq r0 123456789123456789123456789123456789123456789123456789field;
+        ",
+        )
+        .unwrap();
+
+        let deployment = vm.deploy(&private_key, &program, None, 0, None, rng).unwrap();
+        assert!(vm.check_transaction(&deployment, None, rng).is_ok());
+        vm.add_next_block(&sample_next_block(&vm, &private_key, &[deployment], rng).unwrap()).unwrap();
+
+        // Check that program is deployed.
+        assert!(vm.contains_program(&ProgramID::from_str("child_program.aleo").unwrap()));
+
+        // Deploy the program that calls the program from the previous layer.
+        let program = Program::from_str(
+            r"
+import child_program.aleo;
+
+program parent_program.aleo;
+
+function check:
+    input r0 as field.private;
+    call child_program.aleo/check r0;
+        ",
+        )
+        .unwrap();
+
+        let deployment = vm.deploy(&private_key, &program, None, 0, None, rng).unwrap();
+        assert!(vm.check_transaction(&deployment, None, rng).is_ok());
+        vm.add_next_block(&sample_next_block(&vm, &private_key, &[deployment], rng).unwrap()).unwrap();
+
+        // Check that program is deployed.
+        assert!(vm.contains_program(&ProgramID::from_str("parent_program.aleo").unwrap()));
     }
 
     #[test]
