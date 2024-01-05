@@ -26,6 +26,11 @@ use synthesizer_program::{Command, Finalize, Instruction, Operand, StackProgram}
 
 use std::collections::HashMap;
 
+const HASH_BHP_BYTE_COST: u64 = 10000;
+const HASH_PSD_BYTE_COST: u64 = 3000;
+const SET_COMMAND_BYTE_COST: u64 = 1000;
+const HASH_BASE_BYTE_COST: u64 = 300;
+
 /// Returns the *minimum* cost in microcredits to publish the given deployment (total cost, (storage cost, namespace cost)).
 pub fn deployment_cost<N: Network>(deployment: &Deployment<N>) -> Result<(u64, (u64, u64))> {
     // Determine the number of bytes in the deployment.
@@ -105,19 +110,21 @@ pub fn cost_in_microcredits<N: Network>(stack: &Stack<N>, finalize: &Finalize<N>
     // Retrieve the finalize types.
     let finalize_types = stack.get_finalize_types(finalize.name())?;
 
+    fn literal_size_in_bytes<N: Network>(literal_type: &LiteralType) -> Result<u64> {
+        // Retrieve the literal size in bits.
+        let literal_size_in_bits = literal_type.size_in_bits::<N>() as u64;
+
+        // Compute the size in bytes.
+        let literal_size_in_bytes = literal_size_in_bits.saturating_add(7).saturating_div(8);
+
+        // Return the size of the literal.
+        Ok(literal_size_in_bytes)
+    }
+
     // Helper function to get the plaintext type in bytes
     fn plaintext_size_in_bytes<N: Network>(stack: &Stack<N>, plaintext_type: &PlaintextType<N>) -> Result<u64> {
         match plaintext_type {
-            PlaintextType::Literal(literal_type) => {
-                // Retrieve the literal size in bits.
-                let literal_size_in_bits = literal_type.size_in_bits::<N>() as u64;
-
-                // Compute the size in bytes.
-                let literal_size_in_bytes = literal_size_in_bits.saturating_add(7).saturating_div(8);
-
-                // Return the size of the literal.
-                Ok(literal_size_in_bytes)
-            }
+            PlaintextType::Literal(literal_type) => literal_size_in_bytes::<N>(literal_type),
             PlaintextType::Struct(struct_identifier) => {
                 // Retrieve the struct from the stack.
                 let plaintext_struct = stack.program().get_struct(struct_identifier)?;
@@ -160,6 +167,11 @@ pub fn cost_in_microcredits<N: Network>(stack: &Stack<N>, finalize: &Finalize<N>
         plaintext_size_in_bytes(stack, &plaintext_type)
     };
 
+    let size_cost = |operands: &[Operand<N>], multiplier: u64| {
+        let operand_size = operands.iter().map(operand_size_in_bytes).sum::<Result<u64>>()?;
+        Ok(operand_size.saturating_mul(multiplier))
+    };
+
     // Defines the cost of each command.
     let cost = |command: &Command<N>| match command {
         Command::Instruction(Instruction::Abs(_)) => Ok(2_000),
@@ -173,44 +185,32 @@ pub fn cost_in_microcredits<N: Network>(stack: &Stack<N>, finalize: &Finalize<N>
         Command::Instruction(Instruction::Call(_)) => bail!("`call` is not supported in finalize."),
         Command::Instruction(Instruction::Cast(_)) => Ok(2_000),
         Command::Instruction(Instruction::CastLossy(_)) => Ok(2_000),
-        Command::Instruction(Instruction::CommitBHP256(_)) => Ok(200_000),
-        Command::Instruction(Instruction::CommitBHP512(_)) => Ok(200_000),
-        Command::Instruction(Instruction::CommitBHP768(_)) => Ok(200_000),
-        Command::Instruction(Instruction::CommitBHP1024(_)) => Ok(200_000),
-        Command::Instruction(Instruction::CommitPED64(_)) => Ok(100_000),
-        Command::Instruction(Instruction::CommitPED128(_)) => Ok(100_000),
+        Command::Instruction(Instruction::CommitBHP256(commit)) => size_cost(commit.operands(), HASH_BHP_BYTE_COST),
+        Command::Instruction(Instruction::CommitBHP512(commit)) => size_cost(commit.operands(), HASH_BHP_BYTE_COST),
+        Command::Instruction(Instruction::CommitBHP768(commit)) => size_cost(commit.operands(), HASH_BHP_BYTE_COST),
+        Command::Instruction(Instruction::CommitBHP1024(commit)) => size_cost(commit.operands(), HASH_BHP_BYTE_COST),
+        Command::Instruction(Instruction::CommitPED64(commit)) => size_cost(commit.operands(), HASH_BASE_BYTE_COST),
+        Command::Instruction(Instruction::CommitPED128(commit)) => size_cost(commit.operands(), HASH_BASE_BYTE_COST),
         Command::Instruction(Instruction::Div(_)) => Ok(10_000),
         Command::Instruction(Instruction::DivWrapped(_)) => Ok(2_000),
         Command::Instruction(Instruction::Double(_)) => Ok(2_000),
         Command::Instruction(Instruction::GreaterThan(_)) => Ok(2_000),
         Command::Instruction(Instruction::GreaterThanOrEqual(_)) => Ok(2_000),
-        Command::Instruction(Instruction::HashBHP256(_)) => Ok(100_000),
-        Command::Instruction(Instruction::HashBHP512(_)) => Ok(100_000),
-        Command::Instruction(Instruction::HashBHP768(_)) => Ok(100_000),
-        Command::Instruction(Instruction::HashBHP1024(_)) => Ok(100_000),
-        Command::Instruction(Instruction::HashKeccak256(_)) => Ok(100_000),
-        Command::Instruction(Instruction::HashKeccak384(_)) => Ok(100_000),
-        Command::Instruction(Instruction::HashKeccak512(_)) => Ok(100_000),
-        Command::Instruction(Instruction::HashPED64(_)) => Ok(20_000),
-        Command::Instruction(Instruction::HashPED128(_)) => Ok(30_000),
-        Command::Instruction(Instruction::HashPSD2(hash)) => match hash.destination_type() {
-            PlaintextType::Literal(LiteralType::Address) | PlaintextType::Literal(LiteralType::Group) => Ok(600_000),
-            PlaintextType::Literal(..) => Ok(60_000),
-            plaintext_type => bail!("`hash.psd2` is not supported for plaintext type '{plaintext_type}'"),
-        },
-        Command::Instruction(Instruction::HashPSD4(hash)) => match hash.destination_type() {
-            PlaintextType::Literal(LiteralType::Address) | PlaintextType::Literal(LiteralType::Group) => Ok(700_000),
-            PlaintextType::Literal(..) => Ok(100_000),
-            plaintext_type => bail!("`hash.psd4` is not supported for plaintext type '{plaintext_type}'"),
-        },
-        Command::Instruction(Instruction::HashPSD8(hash)) => match hash.destination_type() {
-            PlaintextType::Literal(LiteralType::Address) | PlaintextType::Literal(LiteralType::Group) => Ok(800_000),
-            PlaintextType::Literal(..) => Ok(200_000),
-            plaintext_type => bail!("`hash.psd8` is not supported for plaintext type '{plaintext_type}'"),
-        },
-        Command::Instruction(Instruction::HashSha3_256(_)) => Ok(100_000),
-        Command::Instruction(Instruction::HashSha3_384(_)) => Ok(100_000),
-        Command::Instruction(Instruction::HashSha3_512(_)) => Ok(100_000),
+        Command::Instruction(Instruction::HashBHP256(hash)) => size_cost(hash.operands(), HASH_BHP_BYTE_COST),
+        Command::Instruction(Instruction::HashBHP512(hash)) => size_cost(hash.operands(), HASH_BHP_BYTE_COST),
+        Command::Instruction(Instruction::HashBHP768(hash)) => size_cost(hash.operands(), HASH_BHP_BYTE_COST),
+        Command::Instruction(Instruction::HashBHP1024(hash)) => size_cost(hash.operands(), HASH_BHP_BYTE_COST),
+        Command::Instruction(Instruction::HashKeccak256(hash)) => size_cost(hash.operands(), HASH_BASE_BYTE_COST),
+        Command::Instruction(Instruction::HashKeccak384(hash)) => size_cost(hash.operands(), HASH_BASE_BYTE_COST),
+        Command::Instruction(Instruction::HashKeccak512(hash)) => size_cost(hash.operands(), HASH_BASE_BYTE_COST),
+        Command::Instruction(Instruction::HashPED64(hash)) => size_cost(hash.operands(), HASH_BASE_BYTE_COST),
+        Command::Instruction(Instruction::HashPED128(hash)) => size_cost(hash.operands(), HASH_BASE_BYTE_COST),
+        Command::Instruction(Instruction::HashPSD2(hash)) => size_cost(hash.operands(), HASH_PSD_BYTE_COST),
+        Command::Instruction(Instruction::HashPSD4(hash)) => size_cost(hash.operands(), HASH_PSD_BYTE_COST),
+        Command::Instruction(Instruction::HashPSD8(hash)) => size_cost(hash.operands(), HASH_PSD_BYTE_COST),
+        Command::Instruction(Instruction::HashSha3_256(hash)) => size_cost(hash.operands(), HASH_BASE_BYTE_COST),
+        Command::Instruction(Instruction::HashSha3_384(hash)) => size_cost(hash.operands(), HASH_BASE_BYTE_COST),
+        Command::Instruction(Instruction::HashSha3_512(hash)) => size_cost(hash.operands(), HASH_BASE_BYTE_COST),
         Command::Instruction(Instruction::HashManyPSD2(_)) => {
             bail!("`hash_many.psd2` is not supported in finalize.")
         }
@@ -226,7 +226,19 @@ pub fn cost_in_microcredits<N: Network>(stack: &Stack<N>, finalize: &Finalize<N>
         Command::Instruction(Instruction::LessThan(_)) => Ok(2_000),
         Command::Instruction(Instruction::LessThanOrEqual(_)) => Ok(2_000),
         Command::Instruction(Instruction::Modulo(_)) => Ok(2_000),
-        Command::Instruction(Instruction::Mul(_)) => Ok(150_000),
+        Command::Instruction(Instruction::Mul(mul)) => mul.operands().iter().try_fold(0u64, |acc, operand| {
+            let finalize_type = finalize_types.get_type_from_operand(stack, operand)?;
+            let cost = match finalize_type {
+                FinalizeType::Plaintext(plaintext) => match plaintext {
+                    PlaintextType::Literal(LiteralType::Group) => acc + 50000,
+                    PlaintextType::Literal(LiteralType::Scalar) => acc + 50000,
+                    PlaintextType::Literal(_) => acc + 2000,
+                    _ => bail!("multiplication of structs or arrays is not supported."),
+                },
+                _ => bail!("multiplication of non-plaintext finalize types is not supported."),
+            };
+            Ok(cost)
+        }),
         Command::Instruction(Instruction::MulWrapped(_)) => Ok(2_000),
         Command::Instruction(Instruction::Nand(_)) => Ok(2_000),
         Command::Instruction(Instruction::Neg(_)) => Ok(2_000),
@@ -243,7 +255,7 @@ pub fn cost_in_microcredits<N: Network>(stack: &Stack<N>, finalize: &Finalize<N>
         Command::Instruction(Instruction::Shr(_)) => Ok(2_000),
         Command::Instruction(Instruction::ShrWrapped(_)) => Ok(2_000),
         Command::Instruction(Instruction::Square(_)) => Ok(2_000),
-        Command::Instruction(Instruction::SquareRoot(_)) => Ok(120_000),
+        Command::Instruction(Instruction::SquareRoot(_)) => Ok(50_000),
         Command::Instruction(Instruction::Sub(_)) => Ok(10_000),
         Command::Instruction(Instruction::SubWrapped(_)) => Ok(2_000),
         Command::Instruction(Instruction::Ternary(_)) => Ok(2_000),
@@ -251,26 +263,14 @@ pub fn cost_in_microcredits<N: Network>(stack: &Stack<N>, finalize: &Finalize<N>
         // TODO: The following 'finalize' commands are currently priced higher than expected.
         //  Expect these numbers to change as their usage is stabilized.
         Command::Await(_) => Ok(2_000),
-        Command::Contains(_) => Ok(12_500),
-        Command::Get(_) => Ok(25_000),
-        Command::GetOrUse(_) => Ok(25_000),
+        Command::Contains(_) => Ok(15_000),
+        Command::Get(_) => Ok(15_000),
+        Command::GetOrUse(_) => Ok(15_000),
         Command::RandChaCha(_) => Ok(25_000),
         Command::Remove(_) => Ok(10_000),
-        Command::Set(set) => {
-            // TODO (raychu86): Adjust this multiplier.
-            // The cost in microcredits per byte of storage used by the `set` command.
-            const SET_COMMAND_BYTE_MULTIPLIER: u64 = 1000;
-
-            // Get the size in bytes of the key and value types.
-            let key_size_in_bytes = operand_size_in_bytes(set.key())?;
-            let value_size_in_bytes = operand_size_in_bytes(set.value())?;
-
-            // Calculate the size in bytes of the key and value.
-            let stored_size_in_bytes = key_size_in_bytes.saturating_add(value_size_in_bytes);
-
-            // Calculate the cost.
-            Ok(stored_size_in_bytes.saturating_mul(SET_COMMAND_BYTE_MULTIPLIER))
-        }
+        Command::Set(set) => Ok(operand_size_in_bytes(set.key())?
+            .saturating_add(operand_size_in_bytes(set.value())?)
+            .saturating_mul(SET_COMMAND_BYTE_COST)),
         Command::BranchEq(_) | Command::BranchNeq(_) => Ok(5_000),
         Command::Position(_) => Ok(1_000),
     };

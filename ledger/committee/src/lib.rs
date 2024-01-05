@@ -296,6 +296,7 @@ pub mod test_helpers {
         while members.len() < num_members as usize - 1 {
             let stake = MIN_VALIDATOR_STAKE as f64;
             let is_open = rng.gen();
+            #[allow(clippy::cast_possible_truncation)]
             members.insert(Address::<CurrentNetwork>::new(rng.gen()), (stake as u64, is_open));
         }
         // Return the committee.
