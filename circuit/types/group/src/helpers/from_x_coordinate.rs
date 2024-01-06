@@ -50,7 +50,7 @@ impl<E: Environment> Group<E> {
 
         // Compute both square roots of y^2, with a flag indicating whether y^2 is a square or not.
         // Note that there is **no** ordering on the square roots in the circuit computation.
-        // Note that if the x-coordinate line does not intersect the elliptic curve, this returns (0, 0, false).
+        // Note that if the x-coordinate line does not intersect the elliptic curve, this returns (0, 0, true).
         let (y1, y2, yy_is_not_square) = yy.square_roots_flagged_nondeterministic();
 
         // Construct the two points.
