@@ -130,7 +130,8 @@ impl<E: Environment> Group<E> {
         double_point.enforce_double(self);
     }
 
-    /// Returns a `Boolean` indicating if `self` is in the largest prime-order subgroup.
+    /// Returns a `Boolean` indicating if `self` is in the largest prime-order subgroup,
+    /// assuming that `self` is on the curve.
     pub fn is_in_group(&self) -> Boolean<E> {
         // Initialize the order of the subgroup as a bits.
         let order = E::ScalarField::modulus();
