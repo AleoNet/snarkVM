@@ -129,6 +129,22 @@ impl<E: Environment> Group<E> {
         // i.e. that it is 4 (= cofactor) times the postulated point on the curve.
         double_point.enforce_double(self);
     }
+
+    /// Returns a `Boolean` indicating if `self` is in the largest prime-order subgroup,
+    /// assuming that `self` is on the curve.
+    pub fn is_in_group(&self) -> Boolean<E> {
+        // Initialize the order of the subgroup as a bits.
+        let order = E::ScalarField::modulus();
+        let order_bits_be = order.to_bits_be();
+        let mut order_bits_be_constants = Vec::with_capacity(order_bits_be.len());
+        for bit in order_bits_be.iter() {
+            order_bits_be_constants.push(Boolean::constant(*bit));
+        }
+        // Multiply `self` by the order of the subgroup.
+        let self_times_order = order_bits_be_constants.mul(self);
+        // Check if the result is zero.
+        self_times_order.is_zero()
+    }
 }
 
 #[cfg(console)]
@@ -381,5 +397,33 @@ mod tests {
                 assert_eq!(mode, candidate.eject_mode());
             }
         }
+    }
+
+    #[test]
+    fn test_is_in_group() {
+        fn check_is_in_group(mode: Mode, num_constants: u64, num_public: u64, num_private: u64, num_constraints: u64) {
+            let mut rng = TestRng::default();
+
+            for i in 0..ITERATIONS {
+                // Sample a random element.
+                let point: console::Group<<Circuit as Environment>::Network> = Uniform::rand(&mut rng);
+
+                // Inject the x-coordinate.
+                let x_coordinate = Field::new(mode, point.to_x_coordinate());
+
+                // Initialize the group element.
+                let element = Group::<Circuit>::from_x_coordinate(x_coordinate);
+
+                Circuit::scope(format!("{mode} {i}"), || {
+                    let is_in_group = element.is_in_group();
+                    assert!(is_in_group.eject_value());
+                    assert_scope!(num_constants, num_public, num_private, num_constraints);
+                });
+                Circuit::reset();
+            }
+        }
+        check_is_in_group(Mode::Constant, 1752, 0, 0, 0);
+        check_is_in_group(Mode::Public, 750, 0, 2755, 2755);
+        check_is_in_group(Mode::Private, 750, 0, 2755, 2755);
     }
 }

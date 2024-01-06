@@ -28,8 +28,9 @@ impl<E: Environment> Group<E> {
     }
 
     /// Initializes an affine group element from a given x-coordinate field element.
-    /// Also returns an error flag, set if there is no group element with the given x-coordinate;
-    /// in that case, the returned point is `(0, 0)`, but immaterial.
+    /// Additionally, returns an error flag.
+    /// If the error flag is set, there is **no** group element with the given x-coordinate.
+    /// If the error flag is set, the returned point is `(0, 0)`.
     pub fn from_x_coordinate_flagged(x: Field<E>) -> (Self, Boolean<E>) {
         // Obtain the A and D coefficients of the elliptic curve.
         let a = Field::constant(console::Field::new(E::EDWARDS_A));
@@ -48,50 +49,31 @@ impl<E: Environment> Group<E> {
         let yy: Field<E> = witness!(|a_xx_minus_1, d_xx_minus_1| { a_xx_minus_1 / d_xx_minus_1 });
         E::enforce(|| (&yy, &d_xx_minus_1, &a_xx_minus_1));
 
-        // Compute both square roots of y^2, in no specified order, with a flag saying whether y^2 is a square or not.
-        // That is, finish solving the curve equation for y.
-        // If the x-coordinate line does not intersect the elliptic curve, this returns (1, 0, 0).
+        // Compute both square roots of y^2, with a flag indicating whether y^2 is a square or not.
+        // Note that there is **no** ordering on the square roots in the circuit computation.
+        // Note that if the x-coordinate line does not intersect the elliptic curve, this returns (0, 0, true).
         let (y1, y2, yy_is_not_square) = yy.square_roots_flagged_nondeterministic();
 
-        // Form the two points, which are on the curve if yy_is_not_square is false.
-        // Note that the Group<E> type is not restricted to the points in the subgroup or even on the curve;
-        // it includes all possible points, i.e. all possible pairs of field elements.
+        // Construct the two points.
+        // Note that if `yy_is_not_square` is `false`, the points are guaranteed to be on the curve.
+        // Note that the two points are **not** necessarily in the subgroup.
         let point1 = Self { x: x.clone(), y: y1.clone() };
         let point2 = Self { x: x.clone(), y: y2.clone() };
 
-        // We need to check whether either of the two points is in the subgroup.
-        // There may be at most one, but in a circuit we need to always represent both computation paths.
-        // In fact, we represent this computation also when yy_is_not_square is true,
-        // in which case the results of checking whether either point is in the subgroup are meaningless,
-        // but ignored in the final selection of the results returned below.
-        // The criterion for membership in the subgroup is that
-        // multiplying the point by the subgroup order yields the zero point (0, 1).
-        // The group operation that we use here is for the type `Group<E>` of the subgroup,
-        // which as mentioned above it can be performed on points outside the subgroup as well.
-        // We turn the subgroup order into big endian bits,
-        // to get around the issue that the subgroup order is not of Scalar<E> type.
-        let order = E::ScalarField::modulus();
-        let order_bits_be = order.to_bits_be();
-        let mut order_bits_be_constants = Vec::with_capacity(order_bits_be.len());
-        for bit in order_bits_be.iter() {
-            order_bits_be_constants.push(Boolean::constant(*bit));
-        }
-        let point1_times_order = order_bits_be_constants.mul(point1);
-        let point2_times_order = order_bits_be_constants.mul(point2);
-        let point1_is_in_subgroup = point1_times_order.is_zero();
-        let point2_is_in_subgroup = point2_times_order.is_zero();
+        // Determine if either of the two points is in the subgroup.
+        // Note that at most **one** of the points can be in the subgroup.
+        let point1_is_in_group = point1.is_in_group();
+        let point2_is_in_group = point2.is_in_group();
 
-        // We select y1 if (x, y1) is in the subgroup (which implies that (x, y2) is not in the subgroup),
-        // or y2 if (x, y2) is in the subgroup (which implies that (x, y1) is not in the subgroup),
-        // or 0 if neither is in the subgroup, or x does not even intersect the elliptic curve.
-        // Since at most one of the two points can be in the subgroup, the order of y1 and y2 returned by square root is immaterial:
-        // that nondeterminism (in the circuit) is resolved, and the circuit for from_x_coordinate_flagged is deterministic.
-        let y2_or_zero = Field::ternary(&point2_is_in_subgroup, &y2, &Field::zero());
-        let y1_or_y2_or_zero = Field::ternary(&point1_is_in_subgroup, &y1, &y2_or_zero);
+        // Select y1 if (x, y1) is in the subgroup.
+        // Otherwise, select y2 if (x, y2) is in the subgroup.
+        // Otherwise, use the zero field element.
+        let y2_or_zero = Field::ternary(&point2_is_in_group, &y2, &Field::zero());
+        let y1_or_y2_or_zero = Field::ternary(&point1_is_in_group, &y1, &y2_or_zero);
         let y = Field::ternary(&yy_is_not_square, &Field::zero(), &y1_or_y2_or_zero);
 
         // The error flag is set iff x does not intersect the elliptic curve or neither intersection point is in the subgroup.
-        let neither_in_subgroup = point1_is_in_subgroup.not().bitand(point2_is_in_subgroup.not());
+        let neither_in_subgroup = point1_is_in_group.not().bitand(point2_is_in_group.not());
         let error_flag = yy_is_not_square.bitor(&neither_in_subgroup);
 
         (Self { x, y }, error_flag)
