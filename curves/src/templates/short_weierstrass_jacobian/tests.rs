@@ -29,6 +29,7 @@ pub const ITERATIONS: usize = 10;
 pub fn sw_tests<P: ShortWeierstrassParameters>(rng: &mut TestRng) {
     sw_curve_serialization_test::<P>(rng);
     sw_from_random_bytes::<P>(rng);
+    sw_from_x_coordinate::<P>(rng);
 }
 
 pub fn sw_curve_serialization_test<P: ShortWeierstrassParameters>(rng: &mut TestRng) {
@@ -135,6 +136,26 @@ pub fn sw_from_random_bytes<P: ShortWeierstrassParameters>(rng: &mut TestRng) {
             let p1 = Affine::<P>::deserialize_compressed(&mut cursor).unwrap();
             let p2 = Affine::<P>::from_random_bytes(&serialized).unwrap();
             assert_eq!(p1, p2);
+        }
+    }
+}
+
+pub fn sw_from_x_coordinate<P: ShortWeierstrassParameters>(rng: &mut TestRng) {
+    for _ in 0..ITERATIONS {
+        let a = Projective::<P>::rand(rng);
+        let a = a.to_affine();
+        {
+            let x = a.x;
+
+            let a1 = Affine::<P>::from_x_coordinate(x, true).unwrap();
+            let a2 = Affine::<P>::from_x_coordinate(x, false).unwrap();
+
+            assert!(a == a1 || a == a2);
+
+            let (b2, b1) = Affine::<P>::pair_from_x_coordinate(x).unwrap();
+
+            assert_eq!(a1, b1);
+            assert_eq!(a2, b2);
         }
     }
 }

@@ -201,6 +201,11 @@ where
             let a2 = Affine::<P>::from_x_coordinate(x, false).unwrap();
 
             assert!(a == a1 || a == a2);
+
+            let (b2, b1) = Affine::<P>::pair_from_x_coordinate(x).unwrap();
+
+            assert_eq!(a1, b1);
+            assert_eq!(a2, b2);
         }
         {
             let y = a.y;
