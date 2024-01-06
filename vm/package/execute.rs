@@ -96,7 +96,7 @@ impl<N: Network> Package<N> {
         process.insert_verifying_key(program_id, &function_name, verifier.verifying_key().clone())?;
 
         // Execute the circuit.
-        let (response, mut trace) = process.execute::<A>(authorization)?;
+        let (response, mut trace) = process.execute::<A, R>(authorization, rng)?;
 
         // Retrieve the call metrics.
         let call_metrics = trace.call_metrics().to_vec();

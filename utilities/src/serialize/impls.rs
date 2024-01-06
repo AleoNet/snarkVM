@@ -306,7 +306,7 @@ impl<T: CanonicalSerialize + ToOwned> CanonicalSerialize for Rc<T> {
 //     }
 // }
 
-impl<T: CanonicalSerialize + ToOwned> CanonicalSerialize for Arc<T> {
+impl<T: CanonicalSerialize> CanonicalSerialize for Arc<T> {
     #[inline]
     fn serialize_with_mode<W: Write>(&self, mut writer: W, compress: Compress) -> Result<(), SerializationError> {
         self.as_ref().serialize_with_mode(&mut writer, compress)
@@ -334,7 +334,7 @@ impl<T: Valid + Sync + Send> Valid for Arc<T> {
     }
 }
 
-impl<T: CanonicalDeserialize + ToOwned + Sync + Send> CanonicalDeserialize for Arc<T> {
+impl<T: CanonicalDeserialize + Sync + Send> CanonicalDeserialize for Arc<T> {
     #[inline]
     fn deserialize_with_mode<R: Read>(
         reader: R,
@@ -424,6 +424,7 @@ impl<T: CanonicalDeserialize> CanonicalDeserialize for Vec<T> {
     ) -> Result<Self, SerializationError> {
         let len = u64::deserialize_with_mode(&mut reader, compress, validate)?;
         let mut values = Vec::new();
+        let _ = values.try_reserve(len as usize);
         for _ in 0..len {
             values.push(T::deserialize_with_mode(&mut reader, compress, Validate::No)?);
         }

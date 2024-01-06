@@ -144,9 +144,11 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
     pub fn load_unchecked(genesis_block: Block<N>, dev: Option<u16>) -> Result<Self> {
         let timer = timer!("Ledger::load_unchecked");
 
+        info!("Loading the ledger from storage...");
         // Initialize the consensus store.
-        let Ok(store) = ConsensusStore::<N, C>::open(dev) else {
-            bail!("Failed to load ledger (run 'snarkos clean' and try again)");
+        let store = match ConsensusStore::<N, C>::open(dev) {
+            Ok(store) => store,
+            Err(e) => bail!("Failed to load ledger (run 'snarkos clean' and try again)\n\n{e}\n"),
         };
         lap!(timer, "Load consensus store");
 
@@ -319,20 +321,18 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
     /// Creates a deploy transaction.
     ///
     /// The `priority_fee_in_microcredits` is an additional fee **on top** of the deployment fee.
-    pub fn create_deploy(
+    pub fn create_deploy<R: Rng + CryptoRng>(
         &self,
         private_key: &PrivateKey<N>,
         program: &Program<N>,
         priority_fee_in_microcredits: u64,
         query: Option<Query<N, C::BlockStorage>>,
+        rng: &mut R,
     ) -> Result<Transaction<N>> {
         // Fetch the unspent records.
         let records = self.find_unspent_credits_records(&ViewKey::try_from(private_key)?)?;
         ensure!(!records.len().is_zero(), "The Aleo account has no records to spend.");
         let mut records = records.values();
-
-        // Initialize an RNG.
-        let rng = &mut ::rand::thread_rng();
 
         // Prepare the fee record.
         let fee_record = Some(records.next().unwrap().clone());
@@ -344,21 +344,19 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
     /// Creates a transfer transaction.
     ///
     /// The `priority_fee_in_microcredits` is an additional fee **on top** of the execution fee.
-    pub fn create_transfer(
+    pub fn create_transfer<R: Rng + CryptoRng>(
         &self,
         private_key: &PrivateKey<N>,
         to: Address<N>,
         amount_in_microcredits: u64,
         priority_fee_in_microcredits: u64,
         query: Option<Query<N, C::BlockStorage>>,
+        rng: &mut R,
     ) -> Result<Transaction<N>> {
         // Fetch the unspent records.
         let records = self.find_unspent_credits_records(&ViewKey::try_from(private_key)?)?;
         ensure!(!records.len().is_zero(), "The Aleo account has no records to spend.");
         let mut records = records.values();
-
-        // Initialize an RNG.
-        let rng = &mut rand::thread_rng();
 
         // Prepare the inputs.
         let inputs = [
@@ -392,11 +390,23 @@ pub(crate) mod test_helpers {
         prelude::*,
     };
     use ledger_block::Block;
-    use ledger_store::{helpers::memory::ConsensusMemory, ConsensusStore};
+    use ledger_store::ConsensusStore;
     use synthesizer::vm::VM;
 
     pub(crate) type CurrentNetwork = Testnet3;
-    pub(crate) type CurrentLedger = Ledger<CurrentNetwork, ConsensusMemory<CurrentNetwork>>;
+
+    #[cfg(not(feature = "rocks"))]
+    pub(crate) type CurrentLedger =
+        Ledger<CurrentNetwork, ledger_store::helpers::memory::ConsensusMemory<CurrentNetwork>>;
+    #[cfg(feature = "rocks")]
+    pub(crate) type CurrentLedger = Ledger<CurrentNetwork, ledger_store::helpers::rocksdb::ConsensusDB<CurrentNetwork>>;
+
+    #[cfg(not(feature = "rocks"))]
+    pub(crate) type CurrentConsensusStore =
+        ConsensusStore<CurrentNetwork, ledger_store::helpers::memory::ConsensusMemory<CurrentNetwork>>;
+    #[cfg(feature = "rocks")]
+    pub(crate) type CurrentConsensusStore =
+        ConsensusStore<CurrentNetwork, ledger_store::helpers::rocksdb::ConsensusDB<CurrentNetwork>>;
 
     #[allow(dead_code)]
     pub(crate) struct TestEnv {
@@ -426,7 +436,7 @@ pub(crate) mod test_helpers {
         rng: &mut (impl Rng + CryptoRng),
     ) -> CurrentLedger {
         // Initialize the store.
-        let store = ConsensusStore::<_, ConsensusMemory<_>>::open(None).unwrap();
+        let store = CurrentConsensusStore::open(None).unwrap();
         // Create a genesis block.
         let genesis = VM::from(store).unwrap().genesis_beacon(&private_key, rng).unwrap();
         // Initialize the ledger with the genesis block.

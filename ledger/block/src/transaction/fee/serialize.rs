@@ -19,7 +19,7 @@ impl<N: Network> Serialize for Fee<N> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
             true => {
-                let mut fee = serializer.serialize_struct("Fee", 3)?;
+                let mut fee = serializer.serialize_struct("Fee", 2 + self.proof.is_some() as usize)?;
                 fee.serialize_field("transition", &self.transition)?;
                 fee.serialize_field("global_state_root", &self.global_state_root)?;
                 if let Some(proof) = &self.proof {

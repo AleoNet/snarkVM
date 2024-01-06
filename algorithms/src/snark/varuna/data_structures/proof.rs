@@ -170,7 +170,7 @@ impl<F: PrimeField> Evaluations<F> {
 
         for (label, value) in map {
             if label == "g_1" {
-                break;
+                continue;
             }
 
             if label.contains("g_a") {
@@ -424,9 +424,9 @@ mod test {
     fn rand_evaluations<F: PrimeField>(rng: &mut TestRng, i: usize) -> Evaluations<F> {
         Evaluations {
             g_1_eval: F::rand(rng),
-            g_a_evals: vec![F::rand(rng); i],
-            g_b_evals: vec![F::rand(rng); i],
-            g_c_evals: vec![F::rand(rng); i],
+            g_a_evals: (0..i).map(|_| F::rand(rng)).collect(),
+            g_b_evals: (0..i).map(|_| F::rand(rng)).collect(),
+            g_c_evals: (0..i).map(|_| F::rand(rng)).collect(),
         }
     }
 

@@ -17,6 +17,7 @@ mod bytes;
 mod from_bits;
 mod serialize;
 mod size_in_bits;
+mod size_in_bytes;
 mod to_address;
 mod to_bits;
 mod to_fields;

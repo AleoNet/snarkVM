@@ -20,6 +20,7 @@ use crate::{
     r1cs::{SynthesisError, SynthesisResult},
     snark::varuna::{AHPError, AHPForR1CS, Circuit, SNARKMode},
 };
+use anyhow::anyhow;
 use snarkvm_fields::PrimeField;
 
 /// Circuit Specific State of the Prover
@@ -117,22 +118,23 @@ impl<'a, F: PrimeField, SM: SNARKMode> State<'a, F, SM> {
             .map(|(circuit, variable_assignments)| {
                 let index_info = &circuit.index_info;
 
-                let constraint_domain = EvaluationDomain::new(index_info.num_constraints)
-                    .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
+                let constraint_domain =
+                    EvaluationDomain::new(index_info.num_constraints).ok_or(SynthesisError::PolyTooLarge)?;
                 max_num_constraints = max_num_constraints.max(index_info.num_constraints);
 
                 let variable_domain =
-                    EvaluationDomain::new(index_info.num_variables).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
+                    EvaluationDomain::new(index_info.num_variables).ok_or(SynthesisError::PolyTooLarge)?;
                 max_num_variables = max_num_variables.max(index_info.num_variables);
 
                 let non_zero_domains = AHPForR1CS::<_, SM>::cmp_non_zero_domains(index_info, max_non_zero_domain)?;
                 max_non_zero_domain = non_zero_domains.max_non_zero_domain;
 
                 let first_padded_public_inputs = &variable_assignments[0].0;
-                let input_domain = EvaluationDomain::new(first_padded_public_inputs.len()).unwrap();
+                let input_domain = EvaluationDomain::new(first_padded_public_inputs.len())
+                    .ok_or(anyhow!("Cannot create EvaluationDomain"))?;
                 let batch_size = variable_assignments.len();
                 total_instances =
-                    total_instances.checked_add(batch_size).ok_or_else(|| anyhow::anyhow!("Batch size too large"))?;
+                    total_instances.checked_add(batch_size).ok_or_else(|| anyhow!("Batch size too large"))?;
                 let mut z_as = Vec::with_capacity(batch_size);
                 let mut z_bs = Vec::with_capacity(batch_size);
                 let mut z_cs = Vec::with_capacity(batch_size);
@@ -174,10 +176,8 @@ impl<'a, F: PrimeField, SM: SNARKMode> State<'a, F, SM> {
             .collect::<SynthesisResult<BTreeMap<_, _>>>()?;
 
         let max_non_zero_domain = max_non_zero_domain.ok_or(AHPError::BatchSizeIsZero)?;
-        let max_constraint_domain =
-            EvaluationDomain::new(max_num_constraints).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
-        let max_variable_domain =
-            EvaluationDomain::new(max_num_variables).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
+        let max_constraint_domain = EvaluationDomain::new(max_num_constraints).ok_or(SynthesisError::PolyTooLarge)?;
+        let max_variable_domain = EvaluationDomain::new(max_num_variables).ok_or(SynthesisError::PolyTooLarge)?;
 
         Ok(Self {
             max_constraint_domain,
