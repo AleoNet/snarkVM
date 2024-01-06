@@ -79,7 +79,7 @@ impl<E: Environment> Field<E> {
     ///  - both field results are 0
     ///  - the flag is 1
     ///
-    /// Note that there is no ordering on the two roots returned by this function.
+    /// Note that the constraints do **not** impose an ordering on the two roots returned by this function.
     pub fn square_roots_flagged_nondeterministic(&self) -> (Self, Self, Boolean<E>) {
         // Obtain (p-1)/2, as a constant field element.
         let modulus_minus_one_div_two = match E::BaseField::from_bigint(E::BaseField::modulus_minus_one_div_two()) {
@@ -92,13 +92,14 @@ impl<E: Environment> Field<E> {
         let is_nonzero_square = euler.is_one();
 
         // Calculate the witness for the first square result.
-        // Note that the function `square_root` returns the square root closer to 0.
+        // Note that the **console** function `square_root` returns the square root closer to 0.
         let root_witness = match self.eject_value().square_root() {
             Ok(root) => root,
             Err(_) => console::Field::zero(),
         };
 
         // Initialize the square element, which is either `self` or 0, depending on whether `self` is a square.
+        // This is done to ensure that the below constraint is satisfied even if `self` is not a square.
         let square = Self::ternary(&is_nonzero_square, self, &Field::zero());
 
         // Initialize a new variable for the first root.

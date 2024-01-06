@@ -132,13 +132,16 @@ impl<E: Environment> Group<E> {
 
     /// Returns a `Boolean` indicating if `self` is in the largest prime-order subgroup.
     pub fn is_in_group(&self) -> Boolean<E> {
+        // Initialize the order of the subgroup as a bits.
         let order = E::ScalarField::modulus();
         let order_bits_be = order.to_bits_be();
         let mut order_bits_be_constants = Vec::with_capacity(order_bits_be.len());
         for bit in order_bits_be.iter() {
             order_bits_be_constants.push(Boolean::constant(*bit));
         }
+        // Multiply `self` by the order of the subgroup.
         let self_times_order = order_bits_be_constants.mul(self);
+        // Check if the result is zero.
         self_times_order.is_zero()
     }
 }
