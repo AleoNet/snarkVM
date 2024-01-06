@@ -62,6 +62,12 @@ jobs:
           cargo bench --bench merkle_tree -- --output-format bencher | tee -a ../../output.txt
           cd ../..
           
+      - name: Benchmark console/types
+        run: |
+          cd console/types
+          cargo bench --bench group -- --output-format bencher | tee -a ../../output.txt
+          cd ../..
+
       - name: Benchmark curves
         run: |
           cd curves
