@@ -79,7 +79,8 @@ impl<E: Environment> Field<E> {
     ///  - both field results are 0
     ///  - the flag is 1
     ///
-    /// Note that the constraints do **not** impose an ordering on the two roots returned by this function.
+    /// Note that the constraints do **not** impose an ordering on the two roots returned by this function;
+    /// this is what the `nondeterministic` part of this function name refers to.
     pub fn square_roots_flagged_nondeterministic(&self) -> (Self, Self, Boolean<E>) {
         // Obtain (p-1)/2, as a constant field element.
         let modulus_minus_one_div_two = match E::BaseField::from_bigint(E::BaseField::modulus_minus_one_div_two()) {
