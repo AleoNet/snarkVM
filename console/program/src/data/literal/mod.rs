@@ -23,7 +23,7 @@ mod from_bits;
 mod parse;
 mod sample;
 mod serialize;
-mod size_in_bits;
+mod size;
 mod to_bits;
 mod to_type;
 mod variant;
