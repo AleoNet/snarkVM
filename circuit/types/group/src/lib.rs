@@ -414,7 +414,7 @@ mod tests {
 
         // (0,1) is in the large prime subgroup.
         let y1: Field<Circuit> = Field::new(Mode::Public, PrimitiveField::from_str("1field").unwrap());
-        let group0 = Group::<Circuit>::from_xy_coordinates_unchecked(Field::zero(),y1);
+        let group0 = Group::<Circuit>::from_xy_coordinates_unchecked(Field::zero(), y1);
         Circuit::scope("group0", || {
             let group0_is_in_group = group0.is_in_group();
             assert!(group0_is_in_group.eject_value());
@@ -425,7 +425,7 @@ mod tests {
         // The other three low order points are on the curve but not in the large prime subgroup.
         // Make sure is_in_group returns false for these.
         let minus1: Field<Circuit> = Field::new(Mode::Public, PrimitiveField::from_str(minus1_string).unwrap());
-        let half0 = Group::<Circuit>::from_xy_coordinates_unchecked(Field::zero(),minus1);
+        let half0 = Group::<Circuit>::from_xy_coordinates_unchecked(Field::zero(), minus1);
         Circuit::scope("half0", || {
             let half0_is_not_in_group = !half0.is_in_group();
             assert!(half0_is_not_in_group.eject_value());
