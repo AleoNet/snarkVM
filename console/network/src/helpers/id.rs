@@ -40,6 +40,7 @@ pub trait Bech32ID<F: FieldTrait>:
     + Sync
     + Send
     + Ord
+    + PartialOrd
 {
     fn prefix() -> String;
     fn size_in_bytes() -> usize;
@@ -222,6 +223,6 @@ impl<F: FieldTrait, const PREFIX: u16> Ord for AleoID<F, PREFIX> {
 impl<F: FieldTrait, const PREFIX: u16> PartialOrd for AleoID<F, PREFIX> {
     #[inline]
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.0.cmp(&other.0))
+        self.0.partial_cmp(&other.0)
     }
 }
