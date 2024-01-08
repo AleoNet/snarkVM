@@ -39,6 +39,7 @@ pub trait Bech32ID<F: FieldTrait>:
     + core::hash::Hash
     + Sync
     + Send
+    + Ord
 {
     fn prefix() -> String;
     fn size_in_bytes() -> usize;
@@ -208,5 +209,19 @@ impl<F: FieldTrait, const PREFIX: u16> Distribution<AleoID<F, PREFIX>> for Stand
     #[inline]
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> AleoID<F, PREFIX> {
         AleoID::<F, PREFIX>(Uniform::rand(rng))
+    }
+}
+
+impl<F: FieldTrait, const PREFIX: u16> Ord for AleoID<F, PREFIX> {
+    #[inline]
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.0.cmp(&other.0)
+    }
+}
+
+impl<F: FieldTrait, const PREFIX: u16> PartialOrd for AleoID<F, PREFIX> {
+    #[inline]
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.0.cmp(&other.0))
     }
 }
