@@ -22,23 +22,25 @@ use console::{
 };
 use ledger_block::{Deployment, Execution};
 use ledger_store::ConsensusStorage;
-use synthesizer_program::{Command, Finalize, Instruction, Operand, StackProgram};
+use synthesizer_program::{CastType, Command, Finalize, Instruction, Operand, StackProgram};
 
 use std::collections::HashMap;
 
 // Base finalize costs for compute heavy operations.
+const CAST_COMMAND_BASE_COST: u64 = 500;
+const GET_COMMAND_BASE_COST: u64 = 10_000;
+const HASH_BASE_COST: u64 = 10_000;
 const HASH_BHP_BASE_COST: u64 = 50_000;
 const HASH_PSD_BASE_COST: u64 = 40_000;
-const HASH_BASE_COST: u64 = 10_000;
 const SET_COMMAND_BASE_COST: u64 = 10_000;
-const GET_COMMAND_BASE_COST: u64 = 10_000;
 
 // Finalize cost per byte for compute heavy operations.
+const CAST_PER_BYTE_COST: u64 = 30;
+const GET_COMMAND_PER_BYTE_COST: u64 = 10;
 const HASH_BHP_PER_BYTE_COST: u64 = 300;
+const HASH_PER_BYTE_COST: u64 = 30;
 const HASH_PSD_PER_BYTE_COST: u64 = 75;
 const SET_COMMAND_PER_BYTE_COST: u64 = 100;
-const GET_COMMAND_PER_BYTE_COST: u64 = 10;
-const HASH_PER_BYTE_COST: u64 = 30;
 
 /// Returns the *minimum* cost in microcredits to publish the given deployment (total cost, (storage cost, namespace cost)).
 pub fn deployment_cost<N: Network>(deployment: &Deployment<N>) -> Result<(u64, (u64, u64))> {
@@ -150,8 +152,26 @@ pub fn cost_in_microcredits<N: Network>(stack: &Stack<N>, finalize: &Finalize<N>
         Command::Instruction(Instruction::AssertNeq(_)) => Ok(500),
         Command::Instruction(Instruction::Async(_)) => bail!("`async` is not supported in finalize."),
         Command::Instruction(Instruction::Call(_)) => bail!("`call` is not supported in finalize."),
-        Command::Instruction(Instruction::Cast(_)) => Ok(500),
-        Command::Instruction(Instruction::CastLossy(_)) => Ok(500),
+        Command::Instruction(Instruction::Cast(cast)) => {
+            let cast_type = cast.cast_type();
+            match cast_type {
+                CastType::Plaintext(PlaintextType::Literal(_)) => Ok(500),
+                CastType::Plaintext(plaintext_type) => Ok(plaintext_size_in_bytes(stack, plaintext_type)?
+                    .saturating_mul(CAST_PER_BYTE_COST)
+                    .saturating_add(CAST_COMMAND_BASE_COST)),
+                _ => Ok(500),
+            }
+        }
+        Command::Instruction(Instruction::CastLossy(cast_lossy)) => {
+            let cast_type = cast_lossy.cast_type();
+            match cast_type {
+                CastType::Plaintext(PlaintextType::Literal(_)) => Ok(500),
+                CastType::Plaintext(plaintext_type) => Ok(plaintext_size_in_bytes(stack, plaintext_type)?
+                    .saturating_mul(CAST_PER_BYTE_COST)
+                    .saturating_add(CAST_COMMAND_BASE_COST)),
+                _ => Ok(500),
+            }
+        }
         Command::Instruction(Instruction::CommitBHP256(commit)) => {
             size_cost(commit.operands(), HASH_BHP_PER_BYTE_COST, HASH_BHP_BASE_COST)
         }
@@ -170,7 +190,21 @@ pub fn cost_in_microcredits<N: Network>(stack: &Stack<N>, finalize: &Finalize<N>
         Command::Instruction(Instruction::CommitPED128(commit)) => {
             size_cost(commit.operands(), HASH_PER_BYTE_COST, HASH_BHP_BASE_COST)
         }
-        Command::Instruction(Instruction::Div(_)) => Ok(1_000),
+        Command::Instruction(Instruction::Div(div)) => {
+            let operands = div.operands();
+            if operands.len() == 2 {
+                let operand_type = finalize_types.get_type_from_operand(stack, &operands[0])?;
+                match operand_type {
+                    FinalizeType::Plaintext(PlaintextType::Literal(LiteralType::Field)) => Ok(1_500),
+                    FinalizeType::Plaintext(PlaintextType::Literal(_)) => Ok(500),
+                    FinalizeType::Plaintext(PlaintextType::Array(_)) => bail!("div opcode does not support arrays."),
+                    FinalizeType::Plaintext(PlaintextType::Struct(_)) => bail!("div opcode does not support structs."),
+                    _ => bail!("div opcode does not support futures."),
+                }
+            } else {
+                bail!("div opcode must have exactly two operands.");
+            }
+        }
         Command::Instruction(Instruction::DivWrapped(_)) => Ok(500),
         Command::Instruction(Instruction::Double(_)) => Ok(500),
         Command::Instruction(Instruction::GreaterThan(_)) => Ok(500),
@@ -229,36 +263,53 @@ pub fn cost_in_microcredits<N: Network>(stack: &Stack<N>, finalize: &Finalize<N>
         Command::Instruction(Instruction::HashManyPSD8(_)) => {
             bail!("`hash_many.psd8` is not supported in finalize.")
         }
-        Command::Instruction(Instruction::Inv(_)) => Ok(1000),
+        Command::Instruction(Instruction::Inv(_)) => Ok(1_000),
         Command::Instruction(Instruction::IsEq(_)) => Ok(500),
         Command::Instruction(Instruction::IsNeq(_)) => Ok(500),
         Command::Instruction(Instruction::LessThan(_)) => Ok(500),
         Command::Instruction(Instruction::LessThanOrEqual(_)) => Ok(500),
         Command::Instruction(Instruction::Modulo(_)) => Ok(500),
-        Command::Instruction(Instruction::Mul(mul)) => mul.operands().iter().try_fold(500, |acc, operand| {
-            let finalize_type = finalize_types.get_type_from_operand(stack, operand)?;
-            let cost = match finalize_type {
-                FinalizeType::Plaintext(plaintext) => match plaintext {
-                    PlaintextType::Literal(LiteralType::Group) => acc + 5_000,
-                    PlaintextType::Literal(LiteralType::Scalar) => acc + 5_000,
-                    PlaintextType::Literal(_) => acc,
-                    _ => bail!("multiplication of structs or arrays is not supported."),
-                },
-                _ => bail!("multiplication of non-plaintext finalize types is not supported."),
-            };
-            Ok(cost)
-        }),
+        Command::Instruction(Instruction::Mul(mul)) => {
+            let operands = mul.operands();
+            if operands.len() == 2 {
+                let operand_type = finalize_types.get_type_from_operand(stack, &operands[0])?;
+                match operand_type {
+                    FinalizeType::Plaintext(PlaintextType::Literal(LiteralType::Group)) => Ok(10_000),
+                    FinalizeType::Plaintext(PlaintextType::Literal(LiteralType::Scalar)) => Ok(10_000),
+                    FinalizeType::Plaintext(PlaintextType::Literal(_)) => Ok(500),
+                    FinalizeType::Plaintext(PlaintextType::Array(_)) => bail!("mul opcode does not support arrays."),
+                    FinalizeType::Plaintext(PlaintextType::Struct(_)) => bail!("mul opcode does not support structs."),
+                    _ => bail!("mul opcode does not support futures."),
+                }
+            } else {
+                bail!("pow opcode must have at exactly 2 operands.");
+            }
+        }
         Command::Instruction(Instruction::MulWrapped(_)) => Ok(500),
         Command::Instruction(Instruction::Nand(_)) => Ok(500),
         Command::Instruction(Instruction::Neg(_)) => Ok(500),
         Command::Instruction(Instruction::Nor(_)) => Ok(500),
         Command::Instruction(Instruction::Not(_)) => Ok(500),
         Command::Instruction(Instruction::Or(_)) => Ok(500),
-        Command::Instruction(Instruction::Pow(_)) => Ok(1_000),
+        Command::Instruction(Instruction::Pow(pow)) => {
+            let operands = pow.operands();
+            if operands.is_empty() {
+                bail!("pow opcode must have at least one operand.");
+            } else {
+                let operand_type = finalize_types.get_type_from_operand(stack, &operands[0])?;
+                match operand_type {
+                    FinalizeType::Plaintext(PlaintextType::Literal(LiteralType::Field)) => Ok(1_500),
+                    FinalizeType::Plaintext(PlaintextType::Literal(_)) => Ok(500),
+                    FinalizeType::Plaintext(PlaintextType::Array(_)) => bail!("pow opcode does not support arrays."),
+                    FinalizeType::Plaintext(PlaintextType::Struct(_)) => bail!("pow opcode does not support structs."),
+                    _ => bail!("pow opcode does not support futures."),
+                }
+            }
+        }
         Command::Instruction(Instruction::PowWrapped(_)) => Ok(500),
         Command::Instruction(Instruction::Rem(_)) => Ok(500),
         Command::Instruction(Instruction::RemWrapped(_)) => Ok(500),
-        Command::Instruction(Instruction::SignVerify(_)) => Ok(2_500),
+        Command::Instruction(Instruction::SignVerify(_)) => Ok(HASH_PSD_BASE_COST),
         Command::Instruction(Instruction::Shl(_)) => Ok(500),
         Command::Instruction(Instruction::ShlWrapped(_)) => Ok(500),
         Command::Instruction(Instruction::Shr(_)) => Ok(500),
@@ -326,157 +377,15 @@ fn plaintext_size_in_bytes<N: Network>(stack: &Stack<N>, plaintext_type: &Plaint
     }
 }
 
-#[macro_export]
-macro_rules! estimate_literal_size {
-    ($($variant:expr),*) => {{
-        let mut literal_sizes = vec![];
-        $(
-            let type_and_cost = ($variant.type_name(), $variant.size_in_bytes::<console::network::Testnet3>());
-            literal_sizes.push(type_and_cost);
-        )*
-        let mut file = std::fs::File::create("literal_sizes.txt").unwrap();
-        for (text, size) in literal_sizes {
-            writeln!(file, "{},{}", text, size).unwrap();
-        }
-    }};
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::{vm::test_helpers::CurrentNetwork, Process, Program};
     use circuit::network::AleoV0;
-    use console::program::{Identifier, ProgramID};
+    use console::program::Identifier;
 
     #[test]
-    fn byte_combinations() {
-        use itertools::Itertools;
-        use std::{
-            fs::File,
-            io::{BufWriter, Write},
-        };
-        let csv_data = "
-    address, Address,32
-    boolean, Boolean,1
-    field, Field,32
-    group, Group,32
-    i8, I8,1
-    i16, I16,2
-    i32, I32,4
-    i64, I64,8
-    i128, I128,16
-    scalar, Scalar,32
-    u8, U8,1
-    u16, U16,2
-    u32, U32,4
-    u64, U64,8
-    u128, U128,16";
-
-        let mut types = Vec::new();
-
-        for line in csv_data.trim().lines() {
-            let parts: Vec<&str> = line.split(',').map(|s| s.trim()).collect();
-            if parts.len() == 3 {
-                if let Ok(size) = parts[2].parse::<i32>() {
-                    types.push((parts[0], parts[1], size));
-                }
-            }
-        }
-
-        let file = File::create("primitive_combos.txt").unwrap();
-        let mut writer = BufWriter::new(file);
-
-        let binary_combinations = types.iter().combinations(2);
-        let ternary_combinations = types.iter().combinations(3);
-
-        for comb in binary_combinations.chain(ternary_combinations) {
-            let codes: Vec<&str> = comb.iter().map(|&(code, _, _)| *code).collect();
-            let names: Vec<&str> = comb.iter().map(|&(_, name, _)| *name).collect();
-            let total_size: i32 = comb.iter().map(|&(_, _, size)| size).sum();
-
-            writeln!(writer, "{}, {}, {}", codes.join("_"), names.join("_"), total_size).unwrap();
-        }
-    }
-
-    #[test]
-    fn bytes_per_op() {
-        estimate_literal_size!(
-            LiteralType::Address,
-            LiteralType::Boolean,
-            LiteralType::Field,
-            LiteralType::Group,
-            LiteralType::I8,
-            LiteralType::I16,
-            LiteralType::I32,
-            LiteralType::I64,
-            LiteralType::I128,
-            LiteralType::Scalar,
-            LiteralType::Signature,
-            LiteralType::U8,
-            LiteralType::U16,
-            LiteralType::U32,
-            LiteralType::U64,
-            LiteralType::U128
-        );
-        let process = Process::<CurrentNetwork>::load().unwrap();
-        let stack = process.get_stack("credits.aleo").unwrap();
-        let stack = (*stack.clone()).clone();
-
-        let primitive_types = [
-            "u8",
-            "u16",
-            "u32",
-            "u64",
-            "u128",
-            "i8",
-            "i16",
-            "i32",
-            "i64",
-            "i128",
-            "scalar",
-            "field",
-            "group",
-            "signature",
-            "address",
-            "boolean",
-        ];
-        let lengths = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
-        let depths = [0usize, 1usize, 2usize, 3usize];
-
-        fn create_array(base_type: &str, length: usize, depth: usize) -> (String, String) {
-            let array = match depth {
-                0 => format!("{}", base_type),
-                1 => format!("[{}; {}u32]", base_type, length),
-                2 => format!("[[{}; {}u32]; {}u32]", base_type, length, length),
-                3 => format!("[[[{}; {}u32]; {}u32]; {}u32]", base_type, length, length, length),
-                _ => panic!("Unsupported depth"),
-            };
-            (array, format!("Array_{}_length_{}_depth_{}", base_type, length, depth))
-        }
-
-        let mut complex_type_sizes = vec![];
-        for primitive in primitive_types {
-            for depth in depths.into_iter() {
-                for length in lengths {
-                    let (complex_type, type_name) = create_array(primitive, length, depth);
-                    let plaintext_type = PlaintextType::from_str(&complex_type).unwrap();
-                    let type_and_cost = (
-                        complex_type,
-                        type_name,
-                        plaintext_size_in_bytes::<console::network::Testnet3>(&stack, &plaintext_type).unwrap(),
-                    );
-                    complex_type_sizes.push(type_and_cost);
-                }
-            }
-        }
-        let mut file = std::fs::File::create("revised_complex_type_sizes.txt").unwrap();
-        for (complex_type, type_name, size) in complex_type_sizes {
-            writeln!(file, "{},{},{}", complex_type, type_name, size).unwrap();
-        }
-    }
-
-    #[test]
-    fn test_credits_finalize_costs() {
+    fn test_finalize_costs_credits() {
         // Get the credits.aleo program.
         let program = Program::<CurrentNetwork>::credits().unwrap();
 
@@ -489,74 +398,72 @@ mod tests {
         // Function: `bond_public`
         let function = program.get_function(&Identifier::from_str("bond_public").unwrap()).unwrap();
         let finalize_cost = cost_in_microcredits(stack, function.finalize_logic().unwrap()).unwrap();
-        println!("bond_public cost: {}", finalize_cost);
-        // assert_eq!(545000, finalize_cost);
+        println!("bond_public finalize cost: {}", finalize_cost);
+        assert_eq!(198550, finalize_cost);
 
         // Function: `unbond_public`
         let function = program.get_function(&Identifier::from_str("unbond_public").unwrap()).unwrap();
         let finalize_cost = cost_in_microcredits(stack, function.finalize_logic().unwrap()).unwrap();
-        println!("unbond_public cost: {}", finalize_cost);
-        // assert_eq!(840000, finalize_cost);
+        println!("unbond_public finalize cost: {}", finalize_cost);
+        assert_eq!(277880, finalize_cost);
 
         // Function: `unbond_delegator_as_validator`
         let function = program.get_function(&Identifier::from_str("unbond_delegator_as_validator").unwrap()).unwrap();
         let finalize_cost = cost_in_microcredits(stack, function.finalize_logic().unwrap()).unwrap();
-        println!("unbond_delegator_as_validator cost: {}", finalize_cost);
-        // assert_eq!(237500, finalize_cost);
+        println!("unbond_delegator_as_validator finalize cost: {}", finalize_cost);
+        assert_eq!(92310, finalize_cost);
 
         // Function `claim_unbond_public`
         let function = program.get_function(&Identifier::from_str("claim_unbond_public").unwrap()).unwrap();
         let finalize_cost = cost_in_microcredits(stack, function.finalize_logic().unwrap()).unwrap();
-        println!("claim_unbond_public cost: {}", finalize_cost);
-        // assert_eq!(106000, finalize_cost);
+        println!("claim_unbond_public finalize cost: {}", finalize_cost);
+        assert_eq!(49020, finalize_cost);
 
         // Function `set_validator_state`
         let function = program.get_function(&Identifier::from_str("set_validator_state").unwrap()).unwrap();
         let finalize_cost = cost_in_microcredits(stack, function.finalize_logic().unwrap()).unwrap();
-        println!("set_validator_state cost: {}", finalize_cost);
-        // assert_eq!(84000, finalize_cost);
+        println!("set_validator_state finalize cost: {}", finalize_cost);
+        assert_eq!(27270, finalize_cost);
 
         // Function: `transfer_public`
         let function = program.get_function(&Identifier::from_str("transfer_public").unwrap()).unwrap();
         let finalize_cost = cost_in_microcredits(stack, function.finalize_logic().unwrap()).unwrap();
-        println!("transfer_public cost: {}", finalize_cost);
-        // assert_eq!(142000, finalize_cost);
+        println!("transfer_public finalize cost: {}", finalize_cost);
+        assert_eq!(52520, finalize_cost);
 
         // Function: `transfer_private`
         let function = program.get_function(&Identifier::from_str("transfer_private").unwrap()).unwrap();
-        // let finalize_cost = cost_in_microcredits(stack, function.finalize_logic().unwrap()).unwrap();
-        // assert!(function.finalize_logic().is_none());
+        assert!(function.finalize_logic().is_none());
 
         // Function: `transfer_private_to_public`
         let function = program.get_function(&Identifier::from_str("transfer_private_to_public").unwrap()).unwrap();
         let finalize_cost = cost_in_microcredits(stack, function.finalize_logic().unwrap()).unwrap();
-        println!("transfer_private_to_public cost: {}", finalize_cost);
-        // assert_eq!(67000, finalize_cost);
+        println!("transfer_private_to_public finalize cost: {}", finalize_cost);
+        assert_eq!(27700, finalize_cost);
 
         // Function: `transfer_public_to_private`
         let function = program.get_function(&Identifier::from_str("transfer_public_to_private").unwrap()).unwrap();
         let finalize_cost = cost_in_microcredits(stack, function.finalize_logic().unwrap()).unwrap();
-        println!("transfer_public_to_private cost: {}", finalize_cost);
-        // assert_eq!(75000, finalize_cost);
+        println!("transfer_public_to_private finalize cost: {}", finalize_cost);
+        assert_eq!(24820, finalize_cost);
 
         // Function: `join`
         let function = program.get_function(&Identifier::from_str("join").unwrap()).unwrap();
-        // println!("join cost: {}", cost_in_microcredits(stack, function.finalize_logic().unwrap()).unwrap());
-        // assert!(function.finalize_logic().is_none());
+        assert!(function.finalize_logic().is_none());
 
         // Function: `split`
         let function = program.get_function(&Identifier::from_str("split").unwrap()).unwrap();
-        // assert!(function.finalize_logic().is_none());
+        assert!(function.finalize_logic().is_none());
 
         // Function: `fee_private`
-        // let function = program.get_function(&Identifier::from_str("fee_private").unwrap()).unwrap();
-        // assert!(function.finalize_logic().is_none());
+        let function = program.get_function(&Identifier::from_str("fee_private").unwrap()).unwrap();
+        assert!(function.finalize_logic().is_none());
 
         // Function: `fee_public`
         let function = program.get_function(&Identifier::from_str("fee_public").unwrap()).unwrap();
         let finalize_cost = cost_in_microcredits(stack, function.finalize_logic().unwrap()).unwrap();
-        println!("fee_public cost: {}", finalize_cost);
-        // assert_eq!(75000, finalize_cost);
+        println!("fee_public finalize cost: {}", finalize_cost);
+        assert_eq!(24820, finalize_cost);
     }
 
     #[test]
@@ -650,22 +557,26 @@ finalize store_xlarge:
         // Function: `store_small`
         let function = program.get_function(&Identifier::from_str("store_small").unwrap()).unwrap();
         let finalize_cost = cost_in_microcredits(stack, function.finalize_logic().unwrap()).unwrap();
-        assert_eq!(38000, finalize_cost);
+        println!("store_small struct finalize cost: {}", finalize_cost);
+        assert_eq!(13800, finalize_cost);
 
         // Function: `store_medium`
         let function = program.get_function(&Identifier::from_str("store_medium").unwrap()).unwrap();
         let finalize_cost = cost_in_microcredits(stack, function.finalize_logic().unwrap()).unwrap();
-        assert_eq!(105000, finalize_cost);
+        println!("store_medium struct finalize cost: {}", finalize_cost);
+        assert_eq!(20500, finalize_cost);
 
         // Function: `store_large`
         let function = program.get_function(&Identifier::from_str("store_large").unwrap()).unwrap();
         let finalize_cost = cost_in_microcredits(stack, function.finalize_logic().unwrap()).unwrap();
-        assert_eq!(305000, finalize_cost);
+        println!("store_large struct finalize cost: {}", finalize_cost);
+        assert_eq!(40500, finalize_cost);
 
         // Function: `store_xlarge`
         let function = program.get_function(&Identifier::from_str("store_xlarge").unwrap()).unwrap();
         let finalize_cost = cost_in_microcredits(stack, function.finalize_logic().unwrap()).unwrap();
-        assert_eq!(906000, finalize_cost);
+        println!("store_xlarge struct finalize cost: {}", finalize_cost);
+        assert_eq!(100600, finalize_cost);
     }
 
     #[test]
@@ -743,26 +654,30 @@ finalize store_xlarge:
         // Function: `store_small`
         let function = program.get_function(&Identifier::from_str("store_small").unwrap()).unwrap();
         let finalize_cost = cost_in_microcredits(stack, function.finalize_logic().unwrap()).unwrap();
-        assert_eq!(16000, finalize_cost);
+        println!("store_small array finalize cost: {}", finalize_cost);
+        assert_eq!(11600, finalize_cost);
 
         // Function: `store_medium`
         let function = program.get_function(&Identifier::from_str("store_medium").unwrap()).unwrap();
         let finalize_cost = cost_in_microcredits(stack, function.finalize_logic().unwrap()).unwrap();
-        assert_eq!(72000, finalize_cost);
+        println!("store_medium array finalize cost: {}", finalize_cost);
+        assert_eq!(17200, finalize_cost);
 
         // Function: `store_large`
         let function = program.get_function(&Identifier::from_str("store_large").unwrap()).unwrap();
         let finalize_cost = cost_in_microcredits(stack, function.finalize_logic().unwrap()).unwrap();
-        assert_eq!(520000, finalize_cost);
+        println!("store_large array finalize cost: {}", finalize_cost);
+        assert_eq!(62000, finalize_cost);
 
         // Function: `store_xlarge`
         let function = program.get_function(&Identifier::from_str("store_xlarge").unwrap()).unwrap();
         let finalize_cost = cost_in_microcredits(stack, function.finalize_logic().unwrap()).unwrap();
-        assert_eq!(4104000, finalize_cost);
+        println!("store_xlarge array finalize cost: {}", finalize_cost);
+        assert_eq!(420400, finalize_cost);
     }
 
     #[test]
-    fn test_finalize_costs_big_finalize() {
+    fn test_finalize_costs_heavy_set_usage() {
         let rng = &mut TestRng::default();
 
         // Define a program
@@ -829,6 +744,55 @@ finalize big_finalize:
         // Test the price of `big_finalize`.
         let function = program.get_function(&Identifier::from_str("big_finalize").unwrap()).unwrap();
         let finalize_cost = cost_in_microcredits(stack, function.finalize_logic().unwrap()).unwrap();
-        assert_eq!(524_607_000, finalize_cost);
+        println!("big_finalize cost: {}", finalize_cost);
+        assert_eq!(53_663_620, finalize_cost);
+    }
+
+    #[test]
+    fn test_finalize_costs_bhp_hash() {
+        let rng = &mut TestRng::default();
+
+        // Define a program
+        let program_str = r"
+program test_program.aleo;
+function big_hash_finalize:
+    async big_hash_finalize into r0;
+    output r0 as test_program.aleo/big_hash_finalize.future;
+finalize big_hash_finalize:
+    rand.chacha into r0 as u128;
+    cast  0u8 0u8 0u8 0u8 0u8 0u8 0u8 0u8 0u8 0u8 0u8 0u8 0u8 0u8 0u8 0u8 0u8 0u8 0u8 0u8 0u8 0u8 0u8 0u8 0u8 0u8 0u8 0u8 0u8 0u8 0u8 0u8 into r1 as [u8; 32u32];
+    cast  r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 into r2 as [[u8; 32u32]; 32u32];
+    cast  r2 r2 r2 r2 r2 r2 r2 r2 into r3 as [[[u8; 32u32]; 32u32]; 8u32];
+    hash.bhp256 r3 into r4 as field;
+    hash.bhp256 r3 into r5 as field;
+    hash.bhp256 r3 into r6 as field;
+    hash.bhp256 r3 into r7 as field;
+    hash.bhp256 r3 into r8 as field;
+    hash.bhp256 r3 into r9 as field;
+    hash.bhp256 r3 into r10 as field;
+    hash.bhp256 r3 into r11 as field;
+    hash.bhp256 r3 into r12 as field;
+    hash.bhp256 r3 into r13 as field;
+    hash.bhp256 r3 into r14 as field;
+        ";
+
+        // Compile the program.
+        let program = Program::<CurrentNetwork>::from_str(program_str).unwrap();
+
+        // Load the process.
+        let mut process = Process::<CurrentNetwork>::load().unwrap();
+
+        // Deploy and load the program.
+        let deployment = process.deploy::<AleoV0, _>(&program, rng).unwrap();
+        process.load_deployment(&deployment).unwrap();
+
+        // Get the stack.
+        let stack = process.get_stack(program.id()).unwrap();
+
+        // Test the price of `big_hash_finalize`.
+        let function = program.get_function(&Identifier::from_str("big_hash_finalize").unwrap()).unwrap();
+        let finalize_cost = cost_in_microcredits(stack, function.finalize_logic().unwrap()).unwrap();
+        println!("big_hash_finalize cost: {}", finalize_cost);
+        assert_eq!(27_887_540, finalize_cost);
     }
 }
