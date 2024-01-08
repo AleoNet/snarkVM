@@ -32,7 +32,6 @@ use console::{
         Record,
         TransactionsPath,
         TransactionsTree,
-        FINALIZE_ID_DEPTH,
         FINALIZE_OPERATIONS_DEPTH,
         TRANSACTIONS_DEPTH,
     },
@@ -168,7 +167,7 @@ impl<N: Network> Transactions<N> {
 
 impl<N: Network> Transactions<N> {
     /// The maximum number of transactions allowed in a block.
-    pub const MAX_TRANSACTIONS: usize = usize::pow(2, TRANSACTIONS_DEPTH as u32).saturating_sub(1);
+    pub const MAX_TRANSACTIONS: usize = usize::pow(2, TRANSACTIONS_DEPTH as u32);
 
     /// Returns an iterator over all transactions, for all transactions in `self`.
     pub fn iter(&self) -> impl '_ + ExactSizeIterator<Item = &ConfirmedTransaction<N>> {
