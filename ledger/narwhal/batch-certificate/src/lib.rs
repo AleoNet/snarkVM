@@ -25,6 +25,7 @@ use console::{
     types::Field,
 };
 use narwhal_batch_header::BatchHeader;
+use narwhal_traits::NarwhalCertificate;
 use narwhal_transmission_id::TransmissionID;
 
 use core::hash::{Hash, Hasher};
@@ -151,14 +152,6 @@ impl<N: Network> Hash for BatchCertificate<N> {
 }
 
 impl<N: Network> BatchCertificate<N> {
-    /// Returns the certificate ID.
-    pub const fn id(&self) -> Field<N> {
-        match self {
-            Self::V1 { certificate_id, .. } => *certificate_id,
-            Self::V2 { batch_header, .. } => batch_header.batch_id(),
-        }
-    }
-
     /// Returns the batch header.
     pub const fn batch_header(&self) -> &BatchHeader<N> {
         match self {
@@ -167,33 +160,43 @@ impl<N: Network> BatchCertificate<N> {
         }
     }
 
-    /// Returns the batch ID.
-    pub const fn batch_id(&self) -> Field<N> {
-        self.batch_header().batch_id()
-    }
-
-    /// Returns the author.
-    pub const fn author(&self) -> Address<N> {
-        self.batch_header().author()
-    }
-
-    /// Returns the round.
-    pub const fn round(&self) -> u64 {
-        self.batch_header().round()
-    }
-
     /// Returns the transmission IDs.
     pub const fn transmission_ids(&self) -> &IndexSet<TransmissionID<N>> {
         self.batch_header().transmission_ids()
     }
+}
+
+impl<N: Network> NarwhalCertificate<N> for BatchCertificate<N> {
+    /// Returns the certificate ID.
+    fn id(&self) -> Field<N> {
+        match self {
+            Self::V1 { certificate_id, .. } => *certificate_id,
+            Self::V2 { batch_header, .. } => batch_header.batch_id(),
+        }
+    }
+
+    /// Returns the batch ID.
+    fn batch_id(&self) -> Field<N> {
+        self.batch_header().batch_id()
+    }
+
+    /// Returns the author.
+    fn author(&self) -> Address<N> {
+        self.batch_header().author()
+    }
+
+    /// Returns the round.
+    fn round(&self) -> u64 {
+        self.batch_header().round()
+    }
 
     /// Returns the batch certificate IDs for the previous round.
-    pub const fn previous_certificate_ids(&self) -> &IndexSet<Field<N>> {
+    fn previous_certificate_ids(&self) -> &IndexSet<Field<N>> {
         self.batch_header().previous_certificate_ids()
     }
 
     /// Returns the timestamp of the batch header.
-    pub fn timestamp(&self) -> i64 {
+    fn timestamp(&self) -> i64 {
         match self {
             Self::V1 { batch_header, signatures, .. } => {
                 // Return the median timestamp.
@@ -207,7 +210,7 @@ impl<N: Network> BatchCertificate<N> {
     }
 
     /// Returns the signatures of the batch ID from the committee.
-    pub fn signatures(&self) -> Box<dyn '_ + ExactSizeIterator<Item = &Signature<N>>> {
+    fn signatures(&self) -> Box<dyn '_ + ExactSizeIterator<Item = &Signature<N>>> {
         match self {
             Self::V1 { signatures, .. } => Box::new(signatures.keys()),
             Self::V2 { signatures, .. } => Box::new(signatures.iter()),

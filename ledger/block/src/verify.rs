@@ -15,11 +15,13 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::type_complexity)]
 
+use std::collections::HashSet;
+
 use super::*;
 use ledger_coinbase::{CoinbasePuzzle, EpochChallenge};
+use ledger_narwhal_transmission_id::TransmissionID;
+use narwhal_batch_certificate::BatchCertificate;
 use synthesizer_program::FinalizeOperation;
-
-use std::collections::HashSet;
 
 #[cfg(not(feature = "serial"))]
 use rayon::prelude::*;
@@ -508,72 +510,97 @@ impl<N: Network> Block<N> {
         transactions: &Transactions<N>,
         aborted_transaction_ids: &[N::TransactionID],
     ) -> Result<()> {
-        // Prepare an iterator over the solution IDs.
-        let mut solutions = solutions.as_ref().map(|s| s.deref()).into_iter().flatten().peekable();
-        // Prepare an iterator over the unconfirmed transaction IDs.
-        let unconfirmed_transaction_ids = cfg_iter!(transactions)
-            .map(|confirmed| confirmed.to_unconfirmed_transaction_id())
-            .collect::<Result<Vec<_>>>()?;
-        let mut unconfirmed_transaction_ids = unconfirmed_transaction_ids.iter().peekable();
-
-        // Initialize a list of already seen transmission IDs.
-        let mut seen_transmission_ids = HashSet::new();
-
-        // Initialize a list of aborted or already-existing solution IDs.
-        let mut aborted_or_existing_solution_ids = Vec::new();
-        // Initialize a list of aborted or already-existing transaction IDs.
-        let mut aborted_or_existing_transaction_ids = Vec::new();
-
-        // Iterate over the transmission IDs.
-        for transmission_id in subdag.transmission_ids() {
-            // If the transmission ID has already been seen, then continue.
-            if !seen_transmission_ids.insert(transmission_id) {
-                continue;
-            }
-
-            // Process the transmission ID.
-            match transmission_id {
-                TransmissionID::Ratification => {}
-                TransmissionID::Solution(commitment) => {
-                    match solutions.peek() {
-                        // Check the next solution matches the expected commitment.
-                        Some((_, solution)) if solution.commitment() == *commitment => {
-                            // Increment the solution iterator.
-                            solutions.next();
-                        }
-                        // Otherwise, add the solution ID to the aborted or existing list.
-                        _ => aborted_or_existing_solution_ids.push(commitment),
-                    }
+        match subdag {
+            Subdag::Compact { .. } => {
+                // get length of solutions.
+                let solutions_len = solutions.as_ref().map(|c| c.len()).unwrap_or(0);
+                // get length of transactions.
+                let transactions_len = transactions.len() + aborted_transaction_ids.len();
+                // Get bitset of unique solution indices.
+                let solution_indices = subdag.solution_indices(solutions_len)?;
+                // Get bitset of unique transaction indices.
+                let tx_indices = subdag.transaction_indices(transactions_len)?;
+                // Ensure the Subdag contains all solution indices.
+                ensure!(solution_indices.len() == solutions_len, "Subdag does not contain all tx indices.");
+                for i in 0..2usize.pow(solutions_len as u32) {
+                    ensure!(solution_indices.contains(i), "Subdag does not contain all tx indices.");
                 }
-                TransmissionID::Transaction(transaction_id) => {
-                    match unconfirmed_transaction_ids.peek() {
-                        // Check the next transaction matches the expected transaction.
-                        Some(expected_id) if transaction_id == *expected_id => {
-                            // Increment the unconfirmed transaction ID iterator.
-                            unconfirmed_transaction_ids.next();
-                        }
-                        // Otherwise, add the transaction ID to the aborted or existing list.
-                        _ => aborted_or_existing_transaction_ids.push(*transaction_id),
-                    }
+                // Ensure the Subdag contains all transaction indices.
+                ensure!(tx_indices.len() == transactions_len, "Subdag does not contain all tx indices.");
+                for i in 0..2usize.pow(transactions_len as u32) {
+                    ensure!(tx_indices.contains(i), "Subdag does not contain all tx indices.");
                 }
             }
-        }
+            Subdag::Full { subdag, .. } => {
+                // Prepare an iterator over the solution IDs.
+                let mut solutions = solutions.as_ref().map(|s| s.deref()).into_iter().flatten().peekable();
+                // Prepare an iterator over the unconfirmed transaction IDs.
+                let unconfirmed_transaction_ids = cfg_iter!(transactions)
+                    .map(|confirmed| confirmed.to_unconfirmed_transaction_id())
+                    .collect::<Result<Vec<_>>>()?;
+                let mut unconfirmed_transaction_ids = unconfirmed_transaction_ids.iter().peekable();
 
-        // Ensure there are no more solutions in the block.
-        ensure!(solutions.next().is_none(), "There exists more solutions than expected.");
-        // Ensure there are no more transactions in the block.
-        ensure!(unconfirmed_transaction_ids.next().is_none(), "There exists more transactions than expected.");
+                // Initialize a list of already seen transmission IDs.
+                let mut seen_transmission_ids = HashSet::new();
 
-        // TODO: Move this check to be outside of this method, and check against the ledger for existence.
-        // Ensure there are no aborted or existing solution IDs.
-        // ensure!(aborted_or_existing_solution_ids.is_empty(), "Block contains aborted or already-existing solutions.");
-        // Ensure the aborted transaction IDs match.
-        for aborted_transaction_id in aborted_transaction_ids {
-            // If the aborted transaction ID is not found, throw an error.
-            if !aborted_or_existing_transaction_ids.contains(aborted_transaction_id) {
-                bail!(
-                    "Block contains an aborted transaction ID that is not found in the subdag (found '{aborted_transaction_id}')"
-                );
+                // Initialize a list of aborted or already-existing solution IDs.
+                let mut aborted_or_existing_solution_ids = Vec::new();
+                // Initialize a list of aborted or already-existing transaction IDs.
+                let mut aborted_or_existing_transaction_ids = Vec::new();
+
+                // Iterate over the transmission IDs.
+                let transmission_ids = subdag.values().flatten().flat_map(BatchCertificate::transmission_ids);
+                for transmission_id in transmission_ids {
+                    // If the transmission ID has already been seen, then continue.
+                    if !seen_transmission_ids.insert(transmission_id) {
+                        continue;
+                    }
+
+                    // Process the transmission ID.
+                    match transmission_id {
+                        TransmissionID::Ratification => {}
+                        TransmissionID::Solution(commitment) => {
+                            match solutions.peek() {
+                                // Check the next solution matches the expected commitment.
+                                Some((_, solution)) if solution.commitment() == *commitment => {
+                                    // Increment the solution iterator.
+                                    solutions.next();
+                                }
+                                // Otherwise, add the solution ID to the aborted or existing list.
+                                _ => aborted_or_existing_solution_ids.push(commitment),
+                            }
+                        }
+                        TransmissionID::Transaction(transaction_id) => {
+                            match unconfirmed_transaction_ids.peek() {
+                                // Check the next transaction matches the expected transaction.
+                                Some(expected_id) if transaction_id == *expected_id => {
+                                    // Increment the unconfirmed transaction ID iterator.
+                                    unconfirmed_transaction_ids.next();
+                                }
+                                // Otherwise, add the transaction ID to the aborted or existing list.
+                                _ => aborted_or_existing_transaction_ids.push(*transaction_id),
+                            }
+                        }
+                    }
+                }
+
+                // Ensure there are no more solutions in the block.
+                ensure!(solutions.next().is_none(), "There exists more solutions than expected.");
+                // Ensure there are no more transactions in the block.
+                ensure!(unconfirmed_transaction_ids.next().is_none(), "There exists more transactions than expected.");
+
+                // TODO: Move this check to be outside of this method, and check against the ledger for existence.
+                // Ensure there are no aborted or existing solution IDs.
+                // ensure!(aborted_or_existing_solution_ids.is_empty(), "Block contains aborted or already-existing solutions.");
+                // Ensure the aborted transaction IDs match.
+                for aborted_transaction_id in aborted_transaction_ids {
+                    // If the aborted transaction ID is not found, throw an error.
+                    if !aborted_or_existing_transaction_ids.contains(aborted_transaction_id) {
+                        bail!(
+                            "Block contains an aborted transaction ID that is not found in the subdag (found '{aborted_transaction_id}')"
+                        );
+                    }
+                }
             }
         }
 

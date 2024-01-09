@@ -405,9 +405,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         // Retrieve the certificate IDs to store.
         let certificates_to_store = match block.authority() {
             Authority::Beacon(_) => Vec::new(),
-            Authority::Quorum(subdag) => {
-                subdag.iter().flat_map(|(round, certificates)| certificates.iter().map(|c| (c.id(), *round))).collect()
-            }
+            Authority::Quorum(subdag) => subdag.certificate_ids_rounds(),
         };
 
         // Prepare the rejected transaction IDs and their corresponding unconfirmed transaction IDs.
@@ -526,9 +524,9 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         // Determine the certificate IDs to remove.
         let certificate_ids_to_remove = match self.authority_map().get_confirmed(block_hash)? {
             Some(authority) => match authority {
-                Cow::Owned(Authority::Beacon(_)) | Cow::Borrowed(Authority::Beacon(_)) => Vec::new(),
+                Cow::Owned(Authority::Beacon(_)) | Cow::Borrowed(Authority::Beacon(_)) => None,
                 Cow::Owned(Authority::Quorum(ref subdag)) | Cow::Borrowed(Authority::Quorum(ref subdag)) => {
-                    subdag.values().flatten().map(|c| c.id()).collect()
+                    Some(subdag.certificate_ids())
                 }
             },
             None => bail!("Failed to remove block: missing authority for block '{block_height}' ('{block_hash}')"),
@@ -551,8 +549,10 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
             self.authority_map().remove(block_hash)?;
 
             // Remove the block certificates.
-            for certificate_id in certificate_ids_to_remove.iter() {
-                self.certificate_map().remove(certificate_id)?;
+            if let Some(certificate_ids_to_remove) = certificate_ids_to_remove {
+                for certificate_id in certificate_ids_to_remove {
+                    self.certificate_map().remove(&certificate_id)?;
+                }
             }
 
             // Remove the block ratifications.
@@ -796,23 +796,48 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
             bail!("The authority for '{block_hash}' is missing in block storage")
         };
         // Retrieve the certificate for the given certificate ID.
-        match authority {
+        let compact_certificate = match authority {
             Cow::Owned(Authority::Quorum(ref subdag)) | Cow::Borrowed(Authority::Quorum(ref subdag)) => {
-                match subdag.get(&round) {
-                    Some(certificates) => {
-                        // Retrieve the certificate for the given certificate ID.
-                        match certificates.iter().find(|certificate| &certificate.id() == certificate_id) {
-                            Some(certificate) => Ok(Some(certificate.clone())),
-                            None => bail!("The certificate '{certificate_id}' is missing in block storage"),
-                        }
-                    }
-                    None => bail!("The certificates for round '{round}' is missing in block storage"),
+                match subdag.get_certificate_for_round(round, certificate_id) {
+                    Some(compact_certificate) => Ok::<_, anyhow::Error>(compact_certificate.clone()),
+                    None => bail!("The certificate '{certificate_id}' is missing in block storage"),
                 }
             }
             _ => bail!(
                 "Cannot fetch batch certificate '{certificate_id}' - The authority for block '{block_height}' is not a subdag"
             ),
-        }
+        }?;
+        // Retrieve this block's ratifications.
+        let Some(ratifications) = self.ratifications_map().get_confirmed(&block_hash)? else {
+            bail!("The ratifications for '{block_hash}' are missing in block storage")
+        };
+        // Retrieve this block's solutions.
+        let Some(solutions) = self.solutions_map().get_confirmed(&block_hash)? else {
+            bail!("The solutions for block '{block_hash}' are missing in block storage")
+        };
+        // Retrieve this block's transactions.
+        let Some(transactions) = self.transactions_map().get_confirmed(&block_hash)? else {
+            bail!("The transactions for '{block_hash}' are missing in block storage")
+        };
+        // Retrieve this block's transactions.
+        let Some(aborted_transaction_ids) = self.aborted_transaction_ids_map().get_confirmed(&block_hash)? else {
+            bail!("The aborted_transactions for '{block_hash}' are missing in block storage")
+        };
+        // Map solutions to an iterator of commitments.
+        let solutions = match solutions {
+            Cow::Owned(Some(ref solutions)) | Cow::Borrowed(Some(ref solutions)) => {
+                Some(solutions.iter().map(|(c, _)| c))
+            }
+            _ => None,
+        };
+        // Convert compact certificate to batch certificate.
+        let batch_certificate = compact_certificate.into_batch_certificate(
+            ratifications.ratification_ids(),
+            solutions,
+            transactions.iter(),
+            aborted_transaction_ids.iter(),
+        )?;
+        Ok(Some(batch_certificate))
     }
 
     /// Returns the block ratifications for the given `block hash`.

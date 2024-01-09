@@ -31,6 +31,18 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         // Construct the block template.
         let (header, ratifications, solutions, transactions, aborted_transaction_ids) =
             self.construct_block_template(&previous_block, Some(&subdag), ratifications, solutions, transactions)?;
+        // Construct Ratification IDs.
+        let ratification_ids = ratifications.ratification_ids().copied().collect_vec();
+        // Construct Transaction IDs.
+        let transaction_ids = transactions.transaction_ids().copied().collect_vec();
+
+        // Construct the compact Subdag
+        let subdag = subdag.into_compact(
+            ratification_ids,
+            solutions.as_ref(),
+            transaction_ids,
+            aborted_transaction_ids.clone(),
+        )?;
 
         // Construct the new quorum block.
         Block::new_quorum(

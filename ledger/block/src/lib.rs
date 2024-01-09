@@ -54,7 +54,6 @@ use ledger_authority::Authority;
 use ledger_coinbase::{CoinbaseSolution, ProverSolution, PuzzleCommitment};
 use ledger_committee::Committee;
 use ledger_narwhal_subdag::Subdag;
-use ledger_narwhal_transmission_id::TransmissionID;
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct Block<N: Network> {
@@ -215,6 +214,42 @@ impl<N: Network> Block<N> {
             solutions,
             aborted_transaction_ids,
         })
+    }
+
+    /// Consume the Block and return a Subdag with full batch certificates.
+    pub fn into_full_subdag(self) -> Result<Subdag<N>> {
+        let Block { ratifications, solutions, transactions, aborted_transaction_ids, authority, .. } = self;
+
+        // Check if Authority is a Quorum
+        let Authority::Quorum(subdag) = authority else {
+            bail!("Cannot convert block with Quorum Authority to compact subdag");
+        };
+
+        // Collect ratification IDs.
+        let ratification_ids = ratifications.ratification_ids().copied().collect_vec();
+        // Collect transaction IDs.
+        let transaction_ids = transactions.transaction_ids().copied().collect_vec();
+
+        // Convert Quorum authority to subdag with full batch certificates.
+        subdag.into_full(ratification_ids, solutions, transaction_ids, aborted_transaction_ids)
+    }
+
+    /// Borrow the Block and return a Subdag with full batch certificates.
+    pub fn to_full_subdag(&self) -> Result<Subdag<N>> {
+        let Block { ratifications, solutions, transactions, aborted_transaction_ids, authority, .. } = self;
+
+        // Check if Authority is a Quorum
+        let Authority::Quorum(subdag) = authority else {
+            bail!("Cannot convert block with Quorum Authority to compact subdag");
+        };
+
+        // Collect ratification IDs.
+        let ratification_ids = ratifications.ratification_ids().copied().collect_vec();
+        // Collect transaction IDs.
+        let transaction_ids = transactions.transaction_ids().copied().collect_vec();
+
+        // Convert Quorum authority to subdag with full batch certificates.
+        subdag.clone().into_full(ratification_ids, solutions.clone(), transaction_ids, aborted_transaction_ids.clone())
     }
 }
 

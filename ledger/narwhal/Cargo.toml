@@ -27,8 +27,11 @@ edition = "2021"
 default = [
   "batch-certificate",
   "batch-header",
+  "compact-certificate",
+  "compact-header",
   "data",
   "subdag",
+  "traits",
   "transmission",
   "transmission-id"
 ]
@@ -36,6 +39,8 @@ async = [ "narwhal-data/async" ]
 serial = [
   "narwhal-batch-certificate/serial",
   "narwhal-batch-header/serial",
+  "narwhal-compact-certificate/serial",
+  "narwhal-compact-header/serial",
   "narwhal-subdag/serial",
   "narwhal-transmission/serial",
   "narwhal-transmission-id/serial"
@@ -43,6 +48,8 @@ serial = [
 wasm = [
   "narwhal-batch-certificate/wasm",
   "narwhal-batch-header/wasm",
+  "narwhal-compact-certificate/wasm",
+  "narwhal-compact-header/wasm",
   "narwhal-subdag/wasm",
   "narwhal-transmission/wasm",
   "narwhal-transmission-id/wasm"
@@ -50,14 +57,19 @@ wasm = [
 test-helpers = [
   "narwhal-batch-certificate/test-helpers",
   "narwhal-batch-header/test-helpers",
+  "narwhal-compact-certificate/test-helpers",
+  "narwhal-compact-header/test-helpers",
   "narwhal-subdag/test-helpers",
   "narwhal-transmission/test-helpers",
   "narwhal-transmission-id/test-helpers"
 ]
 batch-certificate = [ "narwhal-batch-certificate" ]
 batch-header = [ "narwhal-batch-header" ]
+compact-certificate = [ "narwhal-compact-certificate" ]
+compact-header = [ "narwhal-compact-header" ]
 data = [ "narwhal-data" ]
 subdag = [ "narwhal-subdag" ]
+traits = [ "narwhal-traits" ]
 transmission = [ "narwhal-transmission" ]
 transmission-id = [ "narwhal-transmission-id" ]
 
@@ -73,6 +85,18 @@ path = "./batch-header"
 version = "=0.16.15"
 optional = true
 
+[dependencies.narwhal-compact-certificate]
+package = "snarkvm-ledger-narwhal-compact-certificate"
+path = "./compact-certificate"
+version = "=0.16.15"
+optional = true
+
+[dependencies.narwhal-compact-header]
+package = "snarkvm-ledger-narwhal-compact-header"
+path = "./compact-header"
+version = "=0.16.15"
+optional = true
+
 [dependencies.narwhal-data]
 package = "snarkvm-ledger-narwhal-data"
 path = "./data"
@@ -82,6 +106,12 @@ optional = true
 [dependencies.narwhal-subdag]
 package = "snarkvm-ledger-narwhal-subdag"
 path = "./subdag"
+version = "=0.16.15"
+optional = true
+
+[dependencies.narwhal-traits]
+package = "snarkvm-ledger-narwhal-traits"
+path = "./traits"
 version = "=0.16.15"
 optional = true
 

@@ -49,7 +49,7 @@ impl<N: Network> CoinbaseSolution<N> {
     }
 
     /// Returns the puzzle commitments.
-    pub fn puzzle_commitments(&self) -> impl '_ + Iterator<Item = &PuzzleCommitment<N>> {
+    pub fn puzzle_commitments(&self) -> impl '_ + ExactSizeIterator<Item = &PuzzleCommitment<N>> {
         self.solutions.keys()
     }
 

@@ -69,6 +69,8 @@ members = [
   "ledger/narwhal",
   "ledger/narwhal/batch-certificate",
   "ledger/narwhal/batch-header",
+  "ledger/narwhal/compact-certificate",
+  "ledger/narwhal/compact-header",
   "ledger/narwhal/data",
   "ledger/narwhal/subdag",
   "ledger/narwhal/transmission",

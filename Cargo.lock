@@ -3154,6 +3154,7 @@ dependencies = [
  "snarkvm-ledger-authority",
  "snarkvm-ledger-coinbase",
  "snarkvm-ledger-committee",
+ "snarkvm-ledger-narwhal-batch-certificate",
  "snarkvm-ledger-narwhal-batch-header",
  "snarkvm-ledger-narwhal-subdag",
  "snarkvm-ledger-narwhal-transmission-id",
@@ -3213,8 +3214,11 @@ dependencies = [
  "snarkvm-ledger-narwhal",
  "snarkvm-ledger-narwhal-batch-certificate",
  "snarkvm-ledger-narwhal-batch-header",
+ "snarkvm-ledger-narwhal-compact-certificate",
+ "snarkvm-ledger-narwhal-compact-header",
  "snarkvm-ledger-narwhal-data",
  "snarkvm-ledger-narwhal-subdag",
+ "snarkvm-ledger-narwhal-traits",
  "snarkvm-ledger-narwhal-transmission",
  "snarkvm-ledger-narwhal-transmission-id",
 ]
@@ -3230,6 +3234,7 @@ dependencies = [
  "snarkvm-console",
  "snarkvm-ledger-narwhal-batch-certificate",
  "snarkvm-ledger-narwhal-batch-header",
+ "snarkvm-ledger-narwhal-traits",
  "snarkvm-ledger-narwhal-transmission-id",
 ]
 
@@ -3242,6 +3247,40 @@ dependencies = [
  "serde_json",
  "snarkvm-console",
  "snarkvm-ledger-narwhal-batch-header",
+ "snarkvm-ledger-narwhal-transmission-id",
+ "time",
+]
+
+[[package]]
+name = "snarkvm-ledger-narwhal-compact-certificate"
+version = "0.16.15"
+dependencies = [
+ "bincode",
+ "bit-set",
+ "indexmap 2.0.2",
+ "rayon",
+ "serde_json",
+ "snarkvm-console",
+ "snarkvm-ledger-coinbase",
+ "snarkvm-ledger-narwhal-batch-certificate",
+ "snarkvm-ledger-narwhal-compact-certificate",
+ "snarkvm-ledger-narwhal-compact-header",
+ "snarkvm-ledger-narwhal-traits",
+]
+
+[[package]]
+name = "snarkvm-ledger-narwhal-compact-header"
+version = "0.16.15"
+dependencies = [
+ "bincode",
+ "bit-set",
+ "bit-vec",
+ "indexmap 2.0.2",
+ "serde_json",
+ "snarkvm-console",
+ "snarkvm-ledger-coinbase",
+ "snarkvm-ledger-narwhal-batch-header",
+ "snarkvm-ledger-narwhal-compact-header",
  "snarkvm-ledger-narwhal-transmission-id",
  "time",
 ]
@@ -3260,15 +3299,27 @@ dependencies = [
 name = "snarkvm-ledger-narwhal-subdag"
 version = "0.16.15"
 dependencies = [
+ "anyhow",
  "bincode",
+ "bit-set",
  "indexmap 2.0.2",
  "rayon",
  "serde_json",
  "snarkvm-console",
+ "snarkvm-ledger-coinbase",
  "snarkvm-ledger-narwhal-batch-certificate",
  "snarkvm-ledger-narwhal-batch-header",
+ "snarkvm-ledger-narwhal-compact-certificate",
  "snarkvm-ledger-narwhal-subdag",
- "snarkvm-ledger-narwhal-transmission-id",
+ "snarkvm-ledger-narwhal-traits",
+]
+
+[[package]]
+name = "snarkvm-ledger-narwhal-traits"
+version = "0.16.15"
+dependencies = [
+ "indexmap 2.0.2",
+ "snarkvm-console",
 ]
 
 [[package]]

@@ -55,6 +55,7 @@ use ledger_authority::Authority;
 use ledger_block::{Block, ConfirmedTransaction, Header, Metadata, Ratify, Transaction, Transactions};
 use ledger_coinbase::{CoinbasePuzzle, CoinbaseSolution, EpochChallenge, ProverSolution, PuzzleCommitment};
 use ledger_committee::Committee;
+pub use ledger_narwhal::NarwhalCertificate;
 use ledger_narwhal::{BatchCertificate, Subdag, Transmission, TransmissionID};
 use ledger_query::Query;
 use ledger_store::{ConsensusStorage, ConsensusStore};

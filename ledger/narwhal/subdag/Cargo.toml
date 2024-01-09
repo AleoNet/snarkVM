@@ -34,9 +34,19 @@ package = "snarkvm-console"
 path = "../../../console"
 version = "=0.16.15"
 
+[dependencies.ledger-coinbase]
+package = "snarkvm-ledger-coinbase"
+path = "../../coinbase"
+version = "=0.16.15"
+
 [dependencies.narwhal-batch-certificate]
 package = "snarkvm-ledger-narwhal-batch-certificate"
 path = "../batch-certificate"
+version = "=0.16.15"
+
+[dependencies.narwhal-compact-certificate]
+package = "snarkvm-ledger-narwhal-compact-certificate"
+path = "../compact-certificate"
 version = "=0.16.15"
 
 [dependencies.narwhal-batch-header]
@@ -44,10 +54,16 @@ package = "snarkvm-ledger-narwhal-batch-header"
 path = "../batch-header"
 version = "=0.16.15"
 
-[dependencies.narwhal-transmission-id]
-package = "snarkvm-ledger-narwhal-transmission-id"
-path = "../transmission-id"
+[dependencies.narwhal-traits]
+package = "snarkvm-ledger-narwhal-traits"
+path = "../traits"
 version = "=0.16.15"
+
+[dependencies.anyhow]
+version = "1.0.73"
+
+[dependencies.bit-set]
+version = "0.5.3"
 
 [dependencies.indexmap]
 version = "2.0"

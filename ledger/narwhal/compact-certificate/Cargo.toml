@@ -1,8 +1,8 @@
 [package]
-name = "snarkvm-ledger-narwhal-batch-certificate"
+name = "snarkvm-ledger-narwhal-compact-certificate"
 version = "0.16.15"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
-description = "A batch certificate for a Narwhal-style memory pool in a decentralized virtual machine"
+description = "A compact certificate for a Narwhal-style memory pool in a decentralized virtual machine"
 homepage = "https://aleo.org"
 repository = "https://github.com/AleoHQ/snarkVM"
 keywords = [
@@ -27,16 +27,26 @@ edition = "2021"
 default = [ "rayon" ]
 serial = [ "console/serial" ]
 wasm = [ "console/wasm" ]
-test-helpers = [ "narwhal-batch-header/test-helpers" ]
+test-helpers = [ "narwhal-compact-header/test-helpers" ]
 
 [dependencies.console]
 package = "snarkvm-console"
 path = "../../../console"
 version = "=0.16.15"
 
-[dependencies.narwhal-batch-header]
-package = "snarkvm-ledger-narwhal-batch-header"
-path = "../batch-header"
+[dependencies.ledger-coinbase]
+package = "snarkvm-ledger-coinbase"
+path = "../../coinbase"
+version = "=0.16.15"
+
+[dependencies.narwhal-batch-certificate]
+package = "snarkvm-ledger-narwhal-batch-certificate"
+path = "../batch-certificate"
+version = "=0.16.15"
+
+[dependencies.narwhal-compact-header]
+package = "snarkvm-ledger-narwhal-compact-header"
+path = "../compact-header"
 version = "=0.16.15"
 
 [dependencies.narwhal-traits]
@@ -44,10 +54,8 @@ package = "snarkvm-ledger-narwhal-traits"
 path = "../traits"
 version = "=0.16.15"
 
-[dependencies.narwhal-transmission-id]
-package = "snarkvm-ledger-narwhal-transmission-id"
-path = "../transmission-id"
-version = "=0.16.15"
+[dependencies.bit-set]
+version = "0.5.3"
 
 [dependencies.indexmap]
 version = "2.0"
@@ -64,6 +72,6 @@ features = [ "preserve_order" ]
 [dev-dependencies.bincode]
 version = "1.3"
 
-[dev-dependencies.snarkvm-ledger-narwhal-batch-certificate]
+[dev-dependencies.snarkvm-ledger-narwhal-compact-certificate]
 path = "."
 features = [ "test-helpers" ]

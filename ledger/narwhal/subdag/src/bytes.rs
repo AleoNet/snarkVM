@@ -21,10 +21,12 @@ impl<N: Network> FromBytes for Subdag<N> {
         let version = u8::read_le(&mut reader)?;
         // Ensure the version is valid.
         // TODO (howardwu): For mainnet - Change the version back to 1.
-        if version != 1 && version != 2 {
+        if version != 1 && version != 2 && version != 3 {
             return Err(error(format!("Invalid subdag version ({version})")));
         }
 
+        // Read the subdag type.
+        let subdag_type = u8::read_le(&mut reader)?;
         // Read the number of rounds.
         let num_rounds = u32::read_le(&mut reader)?;
         // Ensure the number of rounds is within bounds.
@@ -32,7 +34,8 @@ impl<N: Network> FromBytes for Subdag<N> {
             return Err(error(format!("Number of rounds ({num_rounds}) exceeds the maximum ({})", Self::MAX_ROUNDS)));
         }
         // Read the round certificates.
-        let mut subdag = BTreeMap::new();
+        let mut batch_subdag = BTreeMap::new();
+        let mut compact_subdag = BTreeMap::new();
         for _ in 0..num_rounds {
             // Read the round.
             let round = u64::read_le(&mut reader)?;
@@ -46,13 +49,29 @@ impl<N: Network> FromBytes for Subdag<N> {
                 )));
             }
             // Read the certificates.
-            let mut certificates = IndexSet::new();
-            for _ in 0..num_certificates {
-                // Read the certificate.
-                certificates.insert(BatchCertificate::read_le(&mut reader)?);
+            match subdag_type {
+                1 => {
+                    let mut certificates = IndexSet::new();
+                    for _ in 0..num_certificates {
+                        // Read the certificate.
+                        certificates.insert(BatchCertificate::read_le(&mut reader)?);
+                    }
+                    // Insert the round and certificates.
+                    batch_subdag.insert(round, certificates);
+                }
+                2 => {
+                    let mut certificates = IndexSet::new();
+                    for _ in 0..num_certificates {
+                        // Read the certificate.
+                        certificates.insert(CompactCertificate::read_le(&mut reader)?);
+                    }
+                    // Insert the round and certificates.
+                    compact_subdag.insert(round, certificates);
+                }
+                _ => {
+                    return Err(error(format!("Found unexpected subdag type ({subdag_type})")));
+                }
             }
-            // Insert the round and certificates.
-            subdag.insert(round, certificates);
         }
 
         // Read the election certificate IDs.
@@ -75,7 +94,11 @@ impl<N: Network> FromBytes for Subdag<N> {
         }
 
         // Return the subdag.
-        Self::from(subdag, election_certificate_ids).map_err(error)
+        match subdag_type {
+            1 => Self::from_full(batch_subdag, election_certificate_ids).map_err(error),
+            2 => Self::from_compact(compact_subdag, election_certificate_ids).map_err(error),
+            _ => Err(error(format!("Found unexpected subdag type ({subdag_type})"))),
+        }
     }
 }
 
@@ -84,25 +107,49 @@ impl<N: Network> ToBytes for Subdag<N> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Write the version.
         // TODO (howardwu): For mainnet - Change the version back to 1.
-        2u8.write_le(&mut writer)?;
+        3u8.write_le(&mut writer)?;
+        // Get the subdag type
+        let (subdag_type, subdag_len) = match self {
+            Self::Full { subdag, .. } => (1u8, subdag.len()),
+            Self::Compact { subdag, .. } => (2u8, subdag.len()),
+        };
+        // Write the subdag type
+        subdag_type.write_le(&mut writer)?;
         // Write the number of rounds.
-        u32::try_from(self.subdag.len()).map_err(error)?.write_le(&mut writer)?;
+        u32::try_from(subdag_len).map_err(error)?.write_le(&mut writer)?;
         // Write the round certificates.
-        for (round, certificates) in &self.subdag {
-            // Write the round.
-            round.write_le(&mut writer)?;
-            // Write the number of certificates.
-            u32::try_from(certificates.len()).map_err(error)?.write_le(&mut writer)?;
-            // Write the certificates.
-            for certificate in certificates {
-                // Write the certificate.
-                certificate.write_le(&mut writer)?;
+        match self {
+            Self::Full { subdag, .. } => {
+                for (round, certificates) in subdag {
+                    // Write the round.
+                    round.write_le(&mut writer)?;
+                    // Write the number of certificates.
+                    u32::try_from(certificates.len()).map_err(error)?.write_le(&mut writer)?;
+                    // Write the certificates.
+                    for certificate in certificates {
+                        // Write the certificate.
+                        certificate.write_le(&mut writer)?;
+                    }
+                }
+            }
+            Self::Compact { subdag, .. } => {
+                for (round, certificates) in subdag {
+                    // Write the round.
+                    round.write_le(&mut writer)?;
+                    // Write the number of certificates.
+                    u32::try_from(certificates.len()).map_err(error)?.write_le(&mut writer)?;
+                    // Write the certificates.
+                    for certificate in certificates {
+                        // Write the certificate.
+                        certificate.write_le(&mut writer)?;
+                    }
+                }
             }
         }
         // Write the number of election certificate IDs.
-        u16::try_from(self.election_certificate_ids.len()).map_err(error)?.write_le(&mut writer)?;
+        u16::try_from(self.election_certificate_ids().len()).map_err(error)?.write_le(&mut writer)?;
         // Write the election certificate IDs.
-        for election_certificate_id in &self.election_certificate_ids {
+        for election_certificate_id in self.election_certificate_ids() {
             // Write the election certificate ID.
             election_certificate_id.write_le(&mut writer)?;
         }

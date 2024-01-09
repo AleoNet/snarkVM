@@ -553,6 +553,24 @@ jobs:
           workspace_member: ledger/narwhal/batch-header
           cache_key: snarkvm-ledger-narwhal-batch-header-cache
 
+  ledger-narwhal-compact-certificate:
+    docker:
+      - image: cimg/rust:1.71.1
+    resource_class: 2xlarge
+    steps:
+      - run_serial:
+          workspace_member: ledger/narwhal/compact-certificate
+          cache_key: snarkvm-ledger-narwhal-compact-certificate-cache
+
+  ledger-narwhal-compact-header:
+    docker:
+      - image: cimg/rust:1.71.1
+    resource_class: 2xlarge
+    steps:
+      - run_serial:
+          workspace_member: ledger/narwhal/compact-header
+          cache_key: snarkvm-ledger-narwhal-compact-header-cache
+
   ledger-narwhal-data:
     docker:
       - image: cimg/rust:1.71.1

@@ -25,6 +25,16 @@ pub use narwhal_batch_header as batch_header;
 #[cfg(feature = "batch-header")]
 pub use narwhal_batch_header::BatchHeader;
 
+#[cfg(feature = "compact-certificate")]
+pub use narwhal_compact_certificate as compact_certificate;
+#[cfg(feature = "compact-certificate")]
+pub use narwhal_compact_certificate::CompactCertificate;
+
+#[cfg(feature = "compact-header")]
+pub use narwhal_compact_header as compact_header;
+#[cfg(feature = "compact-header")]
+pub use narwhal_compact_header::CompactHeader;
+
 #[cfg(feature = "data")]
 pub use narwhal_data as data;
 #[cfg(feature = "data")]
@@ -34,6 +44,11 @@ pub use narwhal_data::Data;
 pub use narwhal_subdag as subdag;
 #[cfg(feature = "subdag")]
 pub use narwhal_subdag::Subdag;
+
+#[cfg(feature = "traits")]
+pub use narwhal_traits as traits;
+#[cfg(feature = "traits")]
+pub use narwhal_traits::NarwhalCertificate;
 
 #[cfg(feature = "transmission")]
 pub use narwhal_transmission as transmission;
