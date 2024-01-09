@@ -64,9 +64,9 @@ impl<N: Network> Request<N> {
         // Compute the transition commitment `tcm` as `Hash(tvk)`.
         let tcm = N::hash_psd2(&[tvk])?;
 
-        // Get the network id
+        // Retrieve the network ID.
         let network_id = U16::new(N::ID);
-        // Compute the function id
+        // Compute the function ID.
         let function_id = compute_function_id(&network_id, &program_id, &function_name)?;
 
         // Construct the hash input as `(r * G, pk_sig, pr_sig, signer, [tvk, tcm, function ID, input IDs])`.
