@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::sync::Arc;
+
 use crate::{FinalizeGlobalState, Function, Operand, Program};
 use console::{
     network::Network,
@@ -33,6 +35,7 @@ use console::{
     },
     types::{Address, Field},
 };
+use rand::{CryptoRng, Rng};
 
 pub trait StackMatches<N: Network> {
     /// Checks that the given value matches the layout of the value type.
@@ -65,7 +68,7 @@ pub trait StackProgram<N: Network> {
     fn contains_external_record(&self, locator: &Locator<N>) -> bool;
 
     /// Returns the external stack for the given program ID.
-    fn get_external_stack(&self, program_id: &ProgramID<N>) -> Result<&Self>;
+    fn get_external_stack(&self, program_id: &ProgramID<N>) -> Result<&Arc<Self>>;
 
     /// Returns the external program for the given program ID.
     fn get_external_program(&self, program_id: &ProgramID<N>) -> Result<&Program<N>>;
@@ -81,6 +84,14 @@ pub trait StackProgram<N: Network> {
 
     /// Returns the expected number of calls for the given function name.
     fn get_number_of_calls(&self, function_name: &Identifier<N>) -> Result<usize>;
+
+    /// Samples a value for the given value_type.
+    fn sample_value<R: Rng + CryptoRng>(
+        &self,
+        burner_address: &Address<N>,
+        value_type: &ValueType<N>,
+        rng: &mut R,
+    ) -> Result<Value<N>>;
 }
 
 pub trait FinalizeRegistersState<N: Network> {

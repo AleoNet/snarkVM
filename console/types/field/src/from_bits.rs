@@ -45,12 +45,14 @@ impl<E: Environment> FromBits for Field<E> {
             // Return the field.
             Ok(Field { field: E::Field::from_bigint(field).ok_or_else(|| anyhow!("Invalid field from bits"))? })
         } else {
-            // Construct the sanitized list of bits, resizing up if necessary.
-            let mut bits_le = bits_le.iter().take(size_in_bits).cloned().collect::<Vec<_>>();
-            bits_le.resize(size_in_bits, false);
+            // Construct the sanitized list of bits padded with `false`
+            let mut sanitized_bits = vec![false; size_in_bits];
+            // Note: This is safe, because we just checked that the length of bits isn't bigger
+            // than `size_in_data_bits` which is equal to `size_in_bits - 1`.
+            sanitized_bits[..num_bits].copy_from_slice(bits_le);
 
             // Recover the native field.
-            let field = E::Field::from_bigint(E::BigInteger::from_bits_le(&bits_le)?)
+            let field = E::Field::from_bigint(E::BigInteger::from_bits_le(&sanitized_bits)?)
                 .ok_or_else(|| anyhow!("Invalid field from bits"))?;
 
             // Return the field.

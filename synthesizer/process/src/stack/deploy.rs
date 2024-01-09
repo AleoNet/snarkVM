@@ -14,6 +14,8 @@
 
 use super::*;
 
+use rand::{rngs::StdRng, SeedableRng};
+
 impl<N: Network> Stack<N> {
     /// Deploys the given program ID, if it does not exist.
     #[inline]
@@ -116,10 +118,11 @@ impl<N: Network> Stack<N> {
         }
 
         // Verify the certificates.
-        cfg_iter!(call_stacks).zip_eq(deployment.verifying_keys()).try_for_each(
-            |((function_name, call_stack, assignments), (_, (verifying_key, certificate)))| {
+        let rngs = (0..call_stacks.len()).map(|_| StdRng::from_seed(rng.gen())).collect::<Vec<_>>();
+        cfg_iter!(call_stacks).zip_eq(deployment.verifying_keys()).zip_eq(rngs).try_for_each(
+            |(((function_name, call_stack, assignments), (_, (verifying_key, certificate))), mut rng)| {
                 // Synthesize the circuit.
-                if let Err(err) = self.execute_function::<A>(call_stack.clone(), None) {
+                if let Err(err) = self.execute_function::<A, _>(call_stack.clone(), None, &mut rng) {
                     bail!("Failed to synthesize the circuit for '{function_name}': {err}")
                 }
                 // Check the certificate.

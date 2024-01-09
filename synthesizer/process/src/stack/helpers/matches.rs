@@ -13,7 +13,6 @@
 // limitations under the License.
 
 use super::*;
-use console::program::{Argument, FinalizeType};
 
 impl<N: Network> StackMatches<N> for Stack<N> {
     /// Checks that the given value matches the layout of the value type.
@@ -223,8 +222,14 @@ impl<N: Network> Stack<N> {
                     Plaintext::Array(..) => bail!("'{struct_name}' is invalid: expected struct, found array"),
                 };
 
-                // Ensure the number of struct members does not exceed the maximum.
                 let num_members = members.len();
+                // Ensure the number of struct members does not go below the minimum.
+                ensure!(
+                    num_members >= N::MIN_STRUCT_ENTRIES,
+                    "'{struct_name}' cannot be less than {} entries",
+                    N::MIN_STRUCT_ENTRIES
+                );
+                // Ensure the number of struct members does not exceed the maximum.
                 ensure!(
                     num_members <= N::MAX_STRUCT_ENTRIES,
                     "'{struct_name}' cannot exceed {} entries",

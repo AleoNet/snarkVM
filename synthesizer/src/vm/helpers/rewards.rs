@@ -169,7 +169,7 @@ mod tests {
         // Sample a committee.
         let committee = ledger_committee::test_helpers::sample_committee_for_round_and_size(1, 100, rng);
         // Convert the committee into stakers.
-        let stakers = crate::committee::test_helpers::to_stakers(committee.members());
+        let stakers = crate::committee::test_helpers::to_stakers(committee.members(), rng);
 
         // Start a timer.
         let timer = std::time::Instant::now();

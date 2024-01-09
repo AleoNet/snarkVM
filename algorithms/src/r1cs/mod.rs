@@ -33,13 +33,19 @@ pub use linear_combination::*;
 mod namespace;
 pub use namespace::*;
 
+#[cfg(feature = "test")]
 mod optional_vec;
+#[cfg(feature = "test")]
 pub use optional_vec::*;
 
+#[cfg(feature = "test")]
 mod test_constraint_system;
+#[cfg(feature = "test")]
 pub use test_constraint_system::{Fr, TestConstraintSystem};
 
+#[cfg(feature = "test")]
 mod test_constraint_checker;
+#[cfg(feature = "test")]
 pub use test_constraint_checker::TestConstraintChecker;
 
 use snarkvm_utilities::serialize::*;
@@ -67,9 +73,9 @@ impl Variable {
 /// Represents the index of either a public variable (input) or a private variable (auxiliary).
 #[derive(Copy, Clone, PartialEq, Debug, Eq, Hash)]
 pub enum Index {
-    /// Index of an public variable.
+    /// Index of a public variable.
     Public(usize),
-    /// Index of an private variable.
+    /// Index of a private variable.
     Private(usize),
 }
 

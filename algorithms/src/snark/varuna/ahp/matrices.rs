@@ -24,33 +24,38 @@ use crate::{
     },
 };
 use snarkvm_fields::{Field, PrimeField};
-use snarkvm_utilities::{cfg_iter, cfg_iter_mut, serialize::*};
+use snarkvm_utilities::{cfg_into_iter, cfg_iter, cfg_iter_mut, serialize::*};
 
-use anyhow::{ensure, Result};
+use anyhow::{anyhow, ensure, Result};
+
+#[cfg(feature = "serial")]
 use itertools::Itertools;
-use std::collections::BTreeMap;
-
 #[cfg(not(feature = "serial"))]
 use rayon::prelude::*;
 
 // This function converts a matrix output by Zexe's constraint infrastructure
 // to the one used in this crate.
-pub(crate) fn to_matrix_helper<F: Field>(
-    matrix: &[Vec<(F, VarIndex)>],
+pub(crate) fn into_matrix_helper<F: Field>(
+    matrix: Vec<Vec<(F, VarIndex)>>,
     num_input_variables: usize,
 ) -> Result<Matrix<F>> {
-    cfg_iter!(matrix)
+    cfg_into_iter!(matrix)
         .map(|row| {
-            let mut row_map = BTreeMap::new();
-            for (val, column) in row.iter() {
-                ensure!(*val != F::zero(), "matrix entries should be non-zero");
+            let mut row_map = Vec::with_capacity(row.len());
+            for (val, column) in row {
+                ensure!(val != F::zero(), "matrix entries should be non-zero");
                 let column = match column {
-                    VarIndex::Public(i) => *i,
+                    VarIndex::Public(i) => i,
                     VarIndex::Private(i) => num_input_variables + i,
                 };
-                *row_map.entry(column).or_insert_with(F::zero) += *val;
+                match row_map.binary_search_by_key(&column, |(_, c)| *c) {
+                    Ok(idx) => row_map[idx].0 += val,
+                    Err(idx) => {
+                        row_map.insert(idx, (val, column));
+                    }
+                }
             }
-            Ok(row_map.into_iter().map(|(column, coeff)| (coeff, column)).collect())
+            Ok(row_map)
         })
         .collect()
 }
@@ -60,7 +65,7 @@ pub(crate) fn to_matrix_helper<F: Field>(
 pub(crate) fn add_randomizing_variables<F: PrimeField, CS: ConstraintSystem<F>>(
     cs: &mut CS,
     rand_assignments: Option<[F; 3]>,
-) {
+) -> Result<()> {
     let mut assignments = [F::one(); 3];
     if let Some(r) = rand_assignments {
         assignments = r;
@@ -69,28 +74,30 @@ pub(crate) fn add_randomizing_variables<F: PrimeField, CS: ConstraintSystem<F>>(
     let zk_vars = assignments
         .into_iter()
         .enumerate()
-        .map(|(i, assignment)| cs.alloc(|| format!("random_{i}"), || Ok(assignment)).unwrap())
-        .collect_vec();
+        .map(|(i, assignment)| cs.alloc(|| format!("random_{i}"), || Ok(assignment)))
+        .collect::<Result<Vec<_>, _>>()?;
     cs.enforce(|| "constraint zk", |lc| lc + zk_vars[0], |lc| lc + zk_vars[1], |lc| lc + zk_vars[2]);
+    Ok(())
 }
 
 /// Pads the public variables up to the closest power of two.
-pub(crate) fn pad_input_for_indexer_and_prover<F: PrimeField, CS: ConstraintSystem<F>>(cs: &mut CS) {
+pub(crate) fn pad_input_for_indexer_and_prover<F: PrimeField, CS: ConstraintSystem<F>>(cs: &mut CS) -> Result<()> {
     let num_public_variables = cs.num_public_variables();
 
-    let power_of_two = EvaluationDomain::<F>::new(num_public_variables);
-    assert!(power_of_two.is_some());
+    let power_of_two =
+        EvaluationDomain::<F>::new(num_public_variables).ok_or(anyhow!("Could not create EvaluationDomain"))?;
 
     // Allocated `zero` variables to pad the public input up to the next power of two.
-    let padded_size = power_of_two.unwrap().size();
+    let padded_size = power_of_two.size();
     if padded_size > num_public_variables {
         for i in 0..(padded_size - num_public_variables) {
-            cs.alloc_input(|| format!("pad_input_{i}"), || Ok(F::zero())).unwrap();
+            cs.alloc_input(|| format!("pad_input_{i}"), || Ok(F::zero()))?;
         }
     }
+    Ok(())
 }
 
-#[derive(Clone, Debug, CanonicalSerialize, CanonicalDeserialize, PartialEq, Eq)]
+#[derive(Debug, CanonicalSerialize, CanonicalDeserialize, PartialEq, Eq)]
 pub struct MatrixEvals<F: PrimeField> {
     /// Evaluations of the `row` polynomial.
     pub row: EvaluationsOnDomain<F>,
@@ -105,11 +112,14 @@ pub struct MatrixEvals<F: PrimeField> {
 
 impl<F: PrimeField> MatrixEvals<F> {
     pub(crate) fn evaluate(&self, lagrange_coefficients_at_point: &[F]) -> Result<[F; 4]> {
-        ensure!(self.row_col.is_some(), "row_col evaluations are not available");
         Ok([
             self.row.evaluate_with_coeffs(lagrange_coefficients_at_point),
             self.col.evaluate_with_coeffs(lagrange_coefficients_at_point),
-            self.row_col.as_ref().unwrap().evaluate_with_coeffs(lagrange_coefficients_at_point),
+            self.row_col
+                .as_ref()
+                .ok_or("row_col evaluations are not available")
+                .map_err(anyhow::Error::msg)?
+                .evaluate_with_coeffs(lagrange_coefficients_at_point),
             self.row_col_val.evaluate_with_coeffs(lagrange_coefficients_at_point),
         ])
     }
@@ -207,6 +217,7 @@ impl<F: PrimeField> MatrixArithmetization<F> {
         let row_col = if let Some(row_col) = matrix_evals.row_col.as_ref() {
             row_col.clone().interpolate()
         } else {
+            ensure!(matrix_evals.row.evaluations.len() == matrix_evals.col.evaluations.len());
             let row_col_evals: Vec<F> = cfg_iter!(matrix_evals.row.evaluations)
                 .zip_eq(&matrix_evals.col.evaluations)
                 .map(|(&r, &c)| r * c)
@@ -216,8 +227,8 @@ impl<F: PrimeField> MatrixArithmetization<F> {
         let row_col_val = matrix_evals.row_col_val.clone().interpolate();
         end_timer!(interpolate_time);
 
-        let label = &[label];
-        let mut labels = AHPForR1CS::<F, VarunaHidingMode>::index_polynomial_labels(label, std::iter::once(id));
+        let mut labels = AHPForR1CS::<F, VarunaHidingMode>::index_polynomial_labels_single(label, id);
+        ensure!(labels.len() == 4);
 
         Ok(MatrixArithmetization {
             row: LabeledPolynomial::new(labels.next().unwrap(), row, None, None),
@@ -228,7 +239,7 @@ impl<F: PrimeField> MatrixArithmetization<F> {
     }
 
     /// Iterate over the indexed polynomials.
-    pub fn into_iter(self) -> impl Iterator<Item = LabeledPolynomial<F>> {
+    pub fn into_iter(self) -> impl ExactSizeIterator<Item = LabeledPolynomial<F>> {
         // Alphabetical order
         [self.col, self.row, self.row_col, self.row_col_val].into_iter()
     }

@@ -253,7 +253,7 @@ pub mod test_helpers {
             )
             .unwrap();
         // Construct the fee trace.
-        let (_, mut trace) = process.execute::<CurrentAleo>(authorization).unwrap();
+        let (_, mut trace) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
 
         // Initialize a new block store.
         let block_store = BlockStore::<CurrentNetwork, BlockMemory<_>>::open(None).unwrap();
@@ -309,7 +309,7 @@ pub mod test_helpers {
             )
             .unwrap();
         // Construct the fee trace.
-        let (_, mut trace) = process.execute::<CurrentAleo>(authorization).unwrap();
+        let (_, mut trace) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
 
         // Initialize a new block store.
         let block_store = BlockStore::<CurrentNetwork, BlockMemory<_>>::open(None).unwrap();

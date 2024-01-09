@@ -34,7 +34,7 @@ impl<N: Network> RegisterTypes<N> {
 
         // Step 2. Check the instructions are well-formed.
         for instruction in closure.instructions() {
-            // Ensure the closure contains no aysnc instructions.
+            // Ensure the closure contains no async instructions.
             ensure!(instruction.opcode() != Opcode::Async, "An 'async' instruction is not allowed in closures");
             // Ensure the closure contains no call instructions.
             ensure!(instruction.opcode() != Opcode::Call, "A 'call' instruction is not allowed in closures");
@@ -305,6 +305,7 @@ impl<N: Network> RegisterTypes<N> {
         operand: &Operand<N>,
         register_type: &RegisterType<N>,
     ) -> Result<()> {
+        #[cfg(feature = "aleo-cli")]
         match operand {
             // Inform the user the output operand is an input register, to ensure this is intended behavior.
             Operand::Register(register) if self.is_input(register) => {
@@ -553,7 +554,27 @@ impl<N: Network> RegisterTypes<N> {
                         }
                     }
                 }
-                "cast.lossy" => bail!("Instruction '{instruction}' is not supported yet."),
+                "cast.lossy" => {
+                    // Retrieve the cast operation.
+                    let operation = match instruction {
+                        Instruction::CastLossy(operation) => operation,
+                        _ => bail!("Instruction '{instruction}' is not a cast.lossy operation."),
+                    };
+
+                    // Ensure the instruction has one destination register.
+                    ensure!(
+                        instruction.destinations().len() == 1,
+                        "Instruction '{instruction}' has multiple destinations."
+                    );
+
+                    // Ensure the casted register type is valid and defined.
+                    match operation.cast_type() {
+                        CastType::Plaintext(PlaintextType::Literal(_)) => {
+                            ensure!(instruction.operands().len() == 1, "Expected 1 operand.");
+                        }
+                        _ => bail!("`cast.lossy` is only supported for casting to a literal type."),
+                    }
+                }
                 _ => bail!("Instruction '{instruction}' is not for opcode '{opcode}'."),
             },
             Opcode::Command(opcode) => {

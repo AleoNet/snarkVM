@@ -128,6 +128,14 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 }
 
 impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
+    /// The maximum number of confirmed transactions allowed in a block.
+    #[cfg(not(any(test, feature = "test")))]
+    pub const MAXIMUM_CONFIRMED_TRANSACTIONS: usize = Transactions::<N>::MAX_TRANSACTIONS;
+    /// The maximum number of confirmed transactions allowed in a block.
+    /// This is set to a deliberately low value (8) for testing purposes only.
+    #[cfg(any(test, feature = "test"))]
+    pub const MAXIMUM_CONFIRMED_TRANSACTIONS: usize = 8;
+
     /// Performs atomic speculation over a list of transactions.
     ///
     /// Returns the ratifications, confirmed transactions, aborted transactions,
@@ -151,6 +159,11 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         Vec<(Transaction<N>, String)>,
         Vec<FinalizeOperation<N>>,
     )> {
+        // Acquire the atomic lock, which is needed to ensure this function is not called concurrently
+        // with other `atomic_finalize!` macro calls, which will cause a `bail!` to be triggered erroneously.
+        // Note: This lock must be held for the entire scope of the call to `atomic_finalize!`.
+        let _atomic_lock = self.atomic_lock.lock();
+
         let timer = timer!("VM::atomic_speculate");
 
         // Retrieve the number of transactions.
@@ -159,11 +172,11 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         // Perform the finalize operation on the preset finalize mode.
         atomic_finalize!(self.finalize_store(), FinalizeMode::DryRun, {
             // Ensure the number of transactions does not exceed the maximum.
-            if num_transactions > Transactions::<N>::MAX_TRANSACTIONS {
+            if num_transactions > 2 * Transactions::<N>::MAX_TRANSACTIONS {
                 // Note: This will abort the entire atomic batch.
                 return Err(format!(
                     "Too many transactions in the block - {num_transactions} (max: {})",
-                    Transactions::<N>::MAX_TRANSACTIONS
+                    2 * Transactions::<N>::MAX_TRANSACTIONS
                 ));
             }
 
@@ -204,12 +217,36 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             let mut confirmed = Vec::with_capacity(num_transactions);
             // Initialize a list of the aborted transactions.
             let mut aborted = Vec::new();
+            // Initialize a list of the successful deployments.
+            let mut deployments = IndexSet::new();
+            // Initialize a counter for the confirmed transaction index.
+            let mut counter = 0u32;
+            // Initialize a list of spent input IDs.
+            let mut input_ids: IndexSet<Field<N>> = IndexSet::new();
 
             // Finalize the transactions.
-            'outer: for (index, transaction) in transactions.enumerate() {
-                // Convert the transaction index to a u32.
-                // Note: On failure, this will abort the entire atomic batch.
-                let index = u32::try_from(index).map_err(|_| "Failed to convert transaction index".to_string())?;
+            'outer: for transaction in transactions {
+                // Ensure the number of confirmed transactions does not exceed the maximum.
+                // Upon reaching the maximum number of confirmed transactions, all remaining transactions are aborted.
+                if confirmed.len() >= Self::MAXIMUM_CONFIRMED_TRANSACTIONS {
+                    // Store the aborted transaction.
+                    aborted.push((transaction.clone(), "Exceeds block transaction limit".to_string()));
+                    // Continue to the next transaction.
+                    continue 'outer;
+                }
+
+                // Ensure that the transaction is not double-spending an input.
+                for input_id in transaction.input_ids() {
+                    // If the input ID is already spent in this block or previous blocks, abort the transaction.
+                    if input_ids.contains(input_id)
+                        || self.transition_store().contains_input_id(input_id).unwrap_or(true)
+                    {
+                        // Store the aborted transaction.
+                        aborted.push((transaction.clone(), format!("Double-spending input {input_id}")));
+                        // Continue to the next transaction.
+                        continue 'outer;
+                    }
+                }
 
                 // Process the transaction in an isolated atomic batch.
                 // - If the transaction succeeds, the finalize operations are stored.
@@ -218,25 +255,50 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     // The finalize operation here involves appending the 'stack',
                     // and adding the program to the finalize tree.
                     Transaction::Deploy(_, program_owner, deployment, fee) => {
-                        match process.finalize_deployment(state, store, deployment, fee) {
-                            // Construct the accepted deploy transaction.
-                            Ok((_, finalize)) => {
-                                ConfirmedTransaction::accepted_deploy(index, transaction.clone(), finalize)
-                                    .map_err(|e| e.to_string())
-                            }
-                            // Construct the rejected deploy transaction.
-                            Err(_error) => {
-                                // Finalize the fee, to ensure it is valid.
-                                match process.finalize_fee(state, store, fee).and_then(|finalize| {
-                                    Transaction::from_fee(fee.clone()).map(|fee_tx| (fee_tx, finalize))
-                                }) {
-                                    Ok((fee_tx, finalize)) => {
-                                        // Construct the rejected deployment.
-                                        let rejected = Rejected::new_deployment(*program_owner, *deployment.clone());
-                                        // Construct the rejected deploy transaction.
-                                        ConfirmedTransaction::rejected_deploy(index, fee_tx, rejected, finalize)
+                        // Define the closure for processing a rejected deployment.
+                        let process_rejected_deployment =
+                            |fee: &Fee<N>,
+                             deployment: Deployment<N>|
+                             -> Result<Result<ConfirmedTransaction<N>, String>> {
+                                process
+                                    .finalize_fee(state, store, fee)
+                                    .and_then(|finalize| {
+                                        Transaction::from_fee(fee.clone()).map(|fee_tx| (fee_tx, finalize))
+                                    })
+                                    .map(|(fee_tx, finalize)| {
+                                        let rejected = Rejected::new_deployment(*program_owner, deployment);
+                                        ConfirmedTransaction::rejected_deploy(counter, fee_tx, rejected, finalize)
                                             .map_err(|e| e.to_string())
-                                    }
+                                    })
+                            };
+
+                        // Check if the program has already been deployed in this block.
+                        match deployments.contains(deployment.program_id()) {
+                            // If the program has already been deployed, construct the rejected deploy transaction.
+                            true => match process_rejected_deployment(fee, *deployment.clone()) {
+                                Ok(result) => result,
+                                Err(error) => {
+                                    // Note: On failure, skip this transaction, and continue speculation.
+                                    #[cfg(debug_assertions)]
+                                    eprintln!("Failed to finalize the fee in a rejected deploy - {error}");
+                                    // Store the aborted transaction.
+                                    aborted.push((transaction.clone(), error.to_string()));
+                                    // Continue to the next transaction.
+                                    continue 'outer;
+                                }
+                            },
+                            // If the program has not yet been deployed, attempt to deploy it.
+                            false => match process.finalize_deployment(state, store, deployment, fee) {
+                                // Construct the accepted deploy transaction.
+                                Ok((_, finalize)) => {
+                                    // Add the program id to the list of deployments.
+                                    deployments.insert(*deployment.program_id());
+                                    ConfirmedTransaction::accepted_deploy(counter, transaction.clone(), finalize)
+                                        .map_err(|e| e.to_string())
+                                }
+                                // Construct the rejected deploy transaction.
+                                Err(_error) => match process_rejected_deployment(fee, *deployment.clone()) {
+                                    Ok(result) => result,
                                     Err(error) => {
                                         // Note: On failure, skip this transaction, and continue speculation.
                                         #[cfg(debug_assertions)]
@@ -246,8 +308,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                                         // Continue to the next transaction.
                                         continue 'outer;
                                     }
-                                }
-                            }
+                                },
+                            },
                         }
                     }
                     // The finalize operation here involves calling 'update_key_value',
@@ -256,7 +318,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                         match process.finalize_execution(state, store, execution, fee.as_ref()) {
                             // Construct the accepted execute transaction.
                             Ok(finalize) => {
-                                ConfirmedTransaction::accepted_execute(index, transaction.clone(), finalize)
+                                ConfirmedTransaction::accepted_execute(counter, transaction.clone(), finalize)
                                     .map_err(|e| e.to_string())
                             }
                             // Construct the rejected execute transaction.
@@ -270,7 +332,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                                             // Construct the rejected execution.
                                             let rejected = Rejected::new_execution(execution.clone());
                                             // Construct the rejected execute transaction.
-                                            ConfirmedTransaction::rejected_execute(index, fee_tx, rejected, finalize)
+                                            ConfirmedTransaction::rejected_execute(counter, fee_tx, rejected, finalize)
                                                 .map_err(|e| e.to_string())
                                         }
                                         Err(error) => {
@@ -298,7 +360,14 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
                 match outcome {
                     // If the transaction succeeded, store it and continue to the next transaction.
-                    Ok(confirmed_transaction) => confirmed.push(confirmed_transaction),
+                    Ok(confirmed_transaction) => {
+                        // Add the input IDs to the set of spent input IDs.
+                        input_ids.extend(confirmed_transaction.transaction().input_ids());
+                        // Store the confirmed transaction.
+                        confirmed.push(confirmed_transaction);
+                        // Increment the transaction index counter.
+                        counter = counter.saturating_add(1);
+                    }
                     // If the transaction failed, abort the entire batch.
                     Err(error) => {
                         eprintln!("Critical bug in speculate: {error}\n\n{transaction}");
@@ -384,6 +453,11 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         solutions: Option<&CoinbaseSolution<N>>,
         transactions: &Transactions<N>,
     ) -> Result<Vec<FinalizeOperation<N>>> {
+        // Acquire the atomic lock, which is needed to ensure this function is not called concurrently
+        // with other `atomic_finalize!` macro calls, which will cause a `bail!` to be triggered erroneously.
+        // Note: This lock must be held for the entire scope of the call to `atomic_finalize!`.
+        let _atomic_lock = self.atomic_lock.lock();
+
         let timer = timer!("VM::atomic_finalize");
 
         // Perform the finalize operation on the preset finalize mode.
@@ -918,7 +992,6 @@ finalize transfer_public:
         // Speculate on the candidate ratifications, solutions, and transactions.
         let (ratifications, transactions, aborted_transaction_ids, ratified_finalize_operations) =
             vm.speculate(sample_finalize_state(1), None, vec![], None, transactions.iter())?;
-        assert!(aborted_transaction_ids.is_empty());
 
         // Construct the metadata associated with the block.
         let metadata = Metadata::new(
@@ -1028,7 +1101,7 @@ finalize transfer_public:
             .execute(&caller_private_key, (program_id, function_name), inputs.into_iter(), credits, 1, None, rng)
             .unwrap();
         // Verify.
-        vm.check_transaction(&transaction, None).unwrap();
+        vm.check_transaction(&transaction, None, rng).unwrap();
 
         // Return the transaction.
         transaction
@@ -1541,5 +1614,76 @@ finalize compute:
             .unwrap();
         let expected = Value::<CurrentNetwork>::from_str("3u8").unwrap();
         assert_eq!(value, expected);
+    }
+
+    #[test]
+    fn test_excess_transactions_should_be_aborted() {
+        let rng = &mut TestRng::default();
+
+        // Sample a private key.
+        let caller_private_key = test_helpers::sample_genesis_private_key(rng);
+        let caller_address = Address::try_from(&caller_private_key).unwrap();
+
+        // Initialize the vm.
+        let vm = test_helpers::sample_vm_with_genesis_block(rng);
+
+        // Deploy a new program.
+        let genesis =
+            vm.block_store().get_block(&vm.block_store().get_block_hash(0).unwrap().unwrap()).unwrap().unwrap();
+
+        // Get the unspent records.
+        let mut unspent_records = genesis
+            .transitions()
+            .cloned()
+            .flat_map(Transition::into_records)
+            .map(|(_, record)| record)
+            .collect::<Vec<_>>();
+
+        // Construct the deployment block.
+        let (program_id, deployment_block) =
+            new_program_deployment(&vm, &caller_private_key, &genesis, &mut unspent_records, rng).unwrap();
+
+        // Add the deployment block to the VM.
+        vm.add_next_block(&deployment_block).unwrap();
+
+        // Generate more records to use for the next block.
+        let splits_block =
+            generate_splits(&vm, &caller_private_key, &deployment_block, &mut unspent_records, rng).unwrap();
+
+        // Add the splits block to the VM.
+        vm.add_next_block(&splits_block).unwrap();
+
+        // Generate more records to use for the next block.
+        let splits_block = generate_splits(&vm, &caller_private_key, &splits_block, &mut unspent_records, rng).unwrap();
+
+        // Add the splits block to the VM.
+        vm.add_next_block(&splits_block).unwrap();
+
+        // Generate the transactions.
+        let mut transactions = Vec::new();
+        let mut excess_transaction_ids = Vec::new();
+
+        for _ in 0..VM::<CurrentNetwork, ConsensusMemory<_>>::MAXIMUM_CONFIRMED_TRANSACTIONS + 1 {
+            let transaction =
+                sample_mint_public(&vm, caller_private_key, &program_id, caller_address, 10, &mut unspent_records, rng);
+            // Abort the transaction if the block is full.
+            if transactions.len() >= VM::<CurrentNetwork, ConsensusMemory<_>>::MAXIMUM_CONFIRMED_TRANSACTIONS {
+                excess_transaction_ids.push(transaction.id());
+            }
+
+            transactions.push(transaction);
+        }
+
+        // Construct the next block.
+        let next_block =
+            sample_next_block(&vm, &caller_private_key, &transactions, &splits_block, &mut unspent_records, rng)
+                .unwrap();
+
+        // Ensure that the excess transactions were aborted.
+        assert_eq!(next_block.aborted_transaction_ids(), &excess_transaction_ids);
+        assert_eq!(
+            next_block.transactions().len(),
+            VM::<CurrentNetwork, ConsensusMemory<_>>::MAXIMUM_CONFIRMED_TRANSACTIONS
+        );
     }
 }

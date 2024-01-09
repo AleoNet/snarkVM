@@ -61,8 +61,11 @@ impl<E: Environment> CastLossy<Group<E>> for Field<E> {
     #[inline]
     fn cast_lossy(&self) -> Group<E> {
         // This method requires that an `x-coordinate` of 1 is an invalid group element.
-        // This is used by the ternary below, which uses 'is_one' to determine whether to return the generator.
+        // This is used by the ternary below, which uses 'is_x_one' to determine whether to return the generator.
         debug_assert!(console::Group::from_x_coordinate(<console::Field<E::Network> as console::One>::one()).is_err());
+
+        // Attempt to find a group element with self as the x-coordinate.
+        let (point_with_x, x_is_not_in_group) = Group::from_x_coordinate_flagged(self.clone());
 
         // Determine if the field element is zero.
         let is_x_zero = self.is_zero();
@@ -73,35 +76,20 @@ impl<E: Environment> CastLossy<Group<E>> for Field<E> {
         let generator = Group::generator();
 
         // Determine the input to Elligator-2, based on the x-coordinate.
+        // If self is 0, we pass 1 to Elligator-2 instead.
+        // Note that, in this case, we won't use the result of Elligator-2,
+        // because the point (0, 1) is in the subgroup, and that is what we return.
         let elligator_input = Field::ternary(&is_x_zero, &Field::one(), self);
         // Perform Elligator-2 on the field element, to recover a group element.
-        let elligator = Elligator2::encode(&elligator_input);
+        let elligator_point = Elligator2::encode(&elligator_input);
 
-        // Determine the initial x-coordinate, if the given field element is one.
-        let initial_x = Field::ternary(&is_x_one, &generator.to_x_coordinate(), &elligator.to_x_coordinate());
-        // Determine the initial y-coordinate, if the given field element is one.
-        let initial_y = Field::ternary(&is_x_one, &generator.to_y_coordinate(), &elligator.to_y_coordinate());
+        // Select either the generator or the result of Elligator-2, depending on whether x is 1 or not.
+        // This is only used when x is not in the group, see below.
+        let generator_or_elligator_point = Group::ternary(&is_x_one, &generator, &elligator_point);
 
-        // Determine the y-coordinate, if the x-coordinate is valid.
-        let possible_y: Field<E> = {
-            // Set the x-coordinate.
-            let x = self.clone();
-            // Derive the y-coordinate.
-            witness!(|x| match console::Group::from_x_coordinate(x) {
-                Ok(point) => point.to_y_coordinate(),
-                Err(_) => console::Zero::zero(),
-            })
-        };
-        // Determine if the recovered y-coordinate is zero.
-        let is_y_zero = possible_y.is_zero();
-
-        // Determine the final x-coordinate, based on whether the possible y-coordinate is zero.
-        let final_x = Field::ternary(&is_y_zero, &initial_x, self);
-        // Determine the final y-coordinate, based on whether the possible y-coordinate is zero.
-        let final_y = Field::ternary(&is_y_zero, &initial_y, &possible_y);
-
-        // Return the result.
-        Group::from_xy_coordinates(final_x, final_y)
+        // Select either the group point with x or the generator or the result of Elligator-2,
+        // depending on whether x is in the group or not, and, if it is not, based on whether it is 1 or not.
+        Group::ternary(&x_is_not_in_group, &generator_or_elligator_point, &point_with_x)
     }
 }
 
@@ -157,15 +145,15 @@ mod tests {
     fn test_field_to_address() {
         check_cast_lossy::<Address<Circuit>, console_root::types::Address<Testnet3>>(
             Mode::Constant,
-            count_less_than!(551, 0, 0, 0),
+            count_less_than!(4303, 0, 0, 0),
         );
         check_cast_lossy::<Address<Circuit>, console_root::types::Address<Testnet3>>(
             Mode::Public,
-            count_is!(277, 0, 899, 904),
+            count_is!(2029, 0, 6745, 6750),
         );
         check_cast_lossy::<Address<Circuit>, console_root::types::Address<Testnet3>>(
             Mode::Private,
-            count_is!(277, 0, 899, 904),
+            count_is!(2029, 0, 6745, 6750),
         );
     }
 
@@ -196,15 +184,15 @@ mod tests {
     fn test_field_to_group() {
         check_cast_lossy::<Group<Circuit>, console_root::types::Group<Testnet3>>(
             Mode::Constant,
-            count_less_than!(551, 0, 0, 0),
+            count_less_than!(4303, 0, 0, 0),
         );
         check_cast_lossy::<Group<Circuit>, console_root::types::Group<Testnet3>>(
             Mode::Public,
-            count_is!(277, 0, 899, 904),
+            count_is!(2029, 0, 6745, 6750),
         );
         check_cast_lossy::<Group<Circuit>, console_root::types::Group<Testnet3>>(
             Mode::Private,
-            count_is!(277, 0, 899, 904),
+            count_is!(2029, 0, 6745, 6750),
         );
     }
 

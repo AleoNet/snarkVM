@@ -137,16 +137,12 @@ impl<N: Network> Block<N> {
         previous_height: u32,
         current_committee: &Committee<N>,
     ) -> Result<(u64, u32, i64)> {
+        // Note: Do not remove this. This ensures that all blocks after genesis are quorum blocks.
+        #[cfg(not(any(test, feature = "test")))]
+        ensure!(self.authority.is_quorum(), "The next block must be a quorum block");
+
         // Determine the expected height.
         let expected_height = previous_height.saturating_add(1);
-        // Ensure the block type is correct.
-        match expected_height == 0 {
-            true => ensure!(self.authority.is_beacon(), "The genesis block must be a beacon block"),
-            false => {
-                #[cfg(not(any(test, feature = "test")))]
-                ensure!(self.authority.is_quorum(), "The next block must be a quorum block");
-            }
-        }
 
         // Determine the expected round.
         let expected_round = match &self.authority {
@@ -226,7 +222,7 @@ impl<N: Network> Block<N> {
         let height = self.height();
 
         // Ensure there are sufficient ratifications.
-        ensure!(!self.ratifications.len() >= 2, "Block {height} must contain at least 2 ratifications");
+        ensure!(self.ratifications.len() >= 2, "Block {height} must contain at least 2 ratifications");
 
         // Initialize a ratifications iterator.
         let mut ratifications_iter = self.ratifications.iter();
@@ -271,10 +267,10 @@ impl<N: Network> Block<N> {
             Some(coinbase) => {
                 // Ensure the number of solutions is within the allowed range.
                 ensure!(
-                    coinbase.len() <= N::MAX_PROVER_SOLUTIONS,
+                    coinbase.len() <= N::MAX_SOLUTIONS,
                     "Block {height} contains too many prover solutions (found '{}', expected '{}')",
                     coinbase.len(),
-                    N::MAX_PROVER_SOLUTIONS
+                    N::MAX_SOLUTIONS
                 );
                 // Ensure the solutions are not accepted after the block height at year 10.
                 if height > block_height_at_year(N::BLOCK_TIME, 10) {
@@ -390,8 +386,19 @@ impl<N: Network> Block<N> {
         ensure!(!self.transactions.is_empty(), "Block {height} must contain at least 1 transaction");
 
         // Ensure the number of transactions is within the allowed range.
-        if self.transactions.len() + self.aborted_transaction_ids.len() > Transactions::<N>::MAX_TRANSACTIONS {
-            bail!("Cannot validate a block with more than {} transactions", Transactions::<N>::MAX_TRANSACTIONS);
+        if self.transactions.len() > Transactions::<N>::MAX_TRANSACTIONS {
+            bail!(
+                "Cannot validate a block with more than {} confirmed transactions",
+                Transactions::<N>::MAX_TRANSACTIONS
+            );
+        }
+
+        // Ensure the number of aborted transaction IDs is within the allowed range.
+        if self.aborted_transaction_ids.len() > Transactions::<N>::MAX_TRANSACTIONS {
+            bail!(
+                "Cannot validate a block with more than {} aborted transaction IDs",
+                Transactions::<N>::MAX_TRANSACTIONS
+            );
         }
 
         // Ensure there are no duplicate transaction IDs.
@@ -402,6 +409,13 @@ impl<N: Network> Block<N> {
         // Ensure there are no duplicate transition IDs.
         if has_duplicates(self.transition_ids()) {
             bail!("Found a duplicate transition in block {height}");
+        }
+
+        // Ensure there are no duplicate program IDs.
+        if has_duplicates(
+            self.transactions().iter().filter_map(|tx| tx.transaction().deployment().map(|d| d.program_id())),
+        ) {
+            bail!("Found a duplicate program ID in block {height}");
         }
 
         /* Input */

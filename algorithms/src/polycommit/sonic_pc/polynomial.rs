@@ -17,7 +17,7 @@ use crate::fft::{DensePolynomial, EvaluationDomain, Evaluations as EvaluationsOn
 use snarkvm_fields::{Field, PrimeField};
 use snarkvm_utilities::{cfg_iter, cfg_iter_mut, CanonicalDeserialize, CanonicalSerialize};
 
-use hashbrown::HashMap;
+use anyhow::Result;
 use std::borrow::Cow;
 
 #[cfg(feature = "serial")]
@@ -141,7 +141,7 @@ impl<F: Field> LabeledPolynomial<F> {
 #[derive(Debug, Clone)]
 pub struct LabeledPolynomialWithBasis<'a, F: PrimeField> {
     pub info: PolynomialInfo,
-    pub polynomial: Vec<(F, PolynomialWithBasis<'a, F>)>,
+    pub polynomial: PolynomialWithBasis<'a, F>,
 }
 
 impl<'a, F: PrimeField> LabeledPolynomialWithBasis<'a, F> {
@@ -154,16 +154,6 @@ impl<'a, F: PrimeField> LabeledPolynomialWithBasis<'a, F> {
     ) -> Self {
         let polynomial = PolynomialWithBasis::new_monomial_basis_ref(polynomial, degree_bound);
         let info = PolynomialInfo::new(label, degree_bound, hiding_bound);
-        Self { info, polynomial: vec![(F::one(), polynomial)] }
-    }
-
-    /// Construct a new labeled polynomial by consuming `polynomial`.
-    pub fn new_linear_combination(
-        label: PolynomialLabel,
-        polynomial: Vec<(F, PolynomialWithBasis<'a, F>)>,
-        hiding_bound: Option<usize>,
-    ) -> Self {
-        let info = PolynomialInfo::new(label, None, hiding_bound);
         Self { info, polynomial }
     }
 
@@ -174,7 +164,7 @@ impl<'a, F: PrimeField> LabeledPolynomialWithBasis<'a, F> {
     ) -> Self {
         let polynomial = PolynomialWithBasis::new_lagrange_basis(polynomial);
         let info = PolynomialInfo::new(label, None, hiding_bound);
-        Self { info, polynomial: vec![(F::one(), polynomial)] }
+        Self { info, polynomial }
     }
 
     pub fn new_lagrange_basis_ref(
@@ -184,7 +174,7 @@ impl<'a, F: PrimeField> LabeledPolynomialWithBasis<'a, F> {
     ) -> Self {
         let polynomial = PolynomialWithBasis::new_lagrange_basis_ref(polynomial);
         let info = PolynomialInfo::new(label, None, hiding_bound);
-        Self { info, polynomial: vec![(F::one(), polynomial)] }
+        Self { info, polynomial }
     }
 
     /// Return the label for `self`.
@@ -198,94 +188,23 @@ impl<'a, F: PrimeField> LabeledPolynomialWithBasis<'a, F> {
     }
 
     pub fn degree(&self) -> usize {
-        self.polynomial
-            .iter()
-            .map(|(_, p)| match p {
-                PolynomialWithBasis::Lagrange { evaluations } => evaluations.domain().size() - 1,
-                PolynomialWithBasis::Monomial { polynomial, .. } => polynomial.degree(),
-            })
-            .max()
-            .unwrap_or(0)
+        match &self.polynomial {
+            PolynomialWithBasis::Lagrange { evaluations } => evaluations.domain().size() - 1,
+            PolynomialWithBasis::Monomial { polynomial, .. } => polynomial.degree(),
+        }
     }
 
     /// Evaluate the polynomial in `self`.
     pub fn evaluate(&self, point: F) -> F {
-        self.polynomial.iter().map(|(coeff, p)| p.evaluate(point) * coeff).sum()
-    }
-
-    /// Compute a linear combination of the terms in `self.polynomial`, producing an iterator
-    /// over polynomials of the same time.
-    pub fn sum(&self) -> impl Iterator<Item = PolynomialWithBasis<'a, F>> {
-        if self.polynomial.len() == 1 && self.polynomial[0].0.is_one() {
-            vec![self.polynomial[0].1.clone()].into_iter()
-        } else {
-            use PolynomialWithBasis::*;
-            let mut lagrange_polys = HashMap::<usize, Vec<_>>::new();
-            let mut dense_polys = HashMap::<_, DensePolynomial<F>>::new();
-            let mut sparse_poly = SparsePolynomial::zero();
-            // We have sets of polynomials divided along three critera:
-            // 1. All `Lagrange` polynomials are in the set corresponding to their domain.
-            // 2. All `Dense` polynomials are in the set corresponding to their degree bound.
-            // 3. All `Sparse` polynomials are in the set corresponding to their degree bound.
-            for (c, poly) in self.polynomial.iter() {
-                match poly {
-                    Monomial { polynomial, degree_bound } => {
-                        use Polynomial::*;
-                        match polynomial.as_ref() {
-                            Dense(p) => {
-                                if let Some(e) = dense_polys.get_mut(degree_bound) {
-                                    // Zip safety: `p` could be of smaller degree than `e` (or vice versa),
-                                    // so it's okay to just use `zip` here.
-                                    cfg_iter_mut!(e).zip(&p.coeffs).for_each(|(e, f)| *e += *c * f)
-                                } else {
-                                    let mut e: DensePolynomial<F> = p.clone().into_owned();
-                                    cfg_iter_mut!(e).for_each(|e| *e *= c);
-                                    dense_polys.insert(degree_bound, e);
-                                }
-                            }
-                            Sparse(p) => sparse_poly += (*c, p.as_ref()),
-                        }
-                    }
-                    Lagrange { evaluations } => {
-                        let domain = evaluations.domain().size();
-                        if let Some(e) = lagrange_polys.get_mut(&domain) {
-                            cfg_iter_mut!(e).zip_eq(&evaluations.evaluations).for_each(|(e, f)| *e += *c * f)
-                        } else {
-                            let mut e = evaluations.clone().into_owned().evaluations;
-                            cfg_iter_mut!(e).for_each(|e| *e *= c);
-                            lagrange_polys.insert(domain, e);
-                        }
-                    }
-                }
-            }
-            let sparse_poly = Polynomial::from(sparse_poly);
-            let sparse_poly = Monomial { polynomial: Cow::Owned(sparse_poly), degree_bound: None };
-            lagrange_polys
-                .into_iter()
-                .map(|(k, v)| {
-                    let domain = EvaluationDomain::new(k).unwrap();
-                    Lagrange { evaluations: Cow::Owned(EvaluationsOnDomain::from_vec_and_domain(v, domain)) }
-                })
-                .chain({
-                    dense_polys
-                        .into_iter()
-                        .map(|(degree_bound, p)| PolynomialWithBasis::new_dense_monomial_basis(p, *degree_bound))
-                })
-                .chain([sparse_poly])
-                .collect::<Vec<_>>()
-                .into_iter()
-        }
+        self.polynomial.evaluate(point)
     }
 
     /// Retrieve the degree bound in `self`.
     pub fn degree_bound(&self) -> Option<usize> {
-        self.polynomial
-            .iter()
-            .filter_map(|(_, p)| match p {
-                PolynomialWithBasis::Monomial { degree_bound, .. } => *degree_bound,
-                _ => None,
-            })
-            .max()
+        match self.polynomial {
+            PolynomialWithBasis::Monomial { degree_bound, .. } => degree_bound,
+            _ => None,
+        }
     }
 
     /// Retrieve whether the polynomial in `self` should be hidden.
@@ -305,7 +224,7 @@ impl<'a, F: PrimeField> From<&'a LabeledPolynomial<F>> for LabeledPolynomialWith
             polynomial: Cow::Borrowed(other.polynomial()),
             degree_bound: other.degree_bound(),
         };
-        Self { info: other.info.clone(), polynomial: vec![(F::one(), polynomial)] }
+        Self { info: other.info.clone(), polynomial }
     }
 }
 
@@ -315,7 +234,7 @@ impl<'a, F: PrimeField> From<LabeledPolynomial<F>> for LabeledPolynomialWithBasi
             polynomial: Cow::Owned(other.polynomial),
             degree_bound: other.info.degree_bound,
         };
-        Self { info: other.info.clone(), polynomial: vec![(F::one(), polynomial)] }
+        Self { info: other.info.clone(), polynomial }
     }
 }
 
