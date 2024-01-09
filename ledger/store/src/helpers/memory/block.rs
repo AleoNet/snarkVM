@@ -47,6 +47,10 @@ pub struct BlockMemory<N: Network> {
     solutions_map: MemoryMap<N::BlockHash, Option<CoinbaseSolution<N>>>,
     /// The puzzle commitments map.
     puzzle_commitments_map: MemoryMap<PuzzleCommitment<N>, u32>,
+    /// The aborted solution IDs map.
+    aborted_solution_ids_map: MemoryMap<N::BlockHash, Vec<PuzzleCommitment<N>>>,
+    /// The aborted puzzle commitments map.
+    aborted_puzzle_commitments_map: MemoryMap<PuzzleCommitment<N>, u32>,
     /// The transactions map.
     transactions_map: MemoryMap<N::BlockHash, Vec<N::TransactionID>>,
     /// The aborted transaction IDs map.
@@ -73,6 +77,8 @@ impl<N: Network> BlockStorage<N> for BlockMemory<N> {
     type RatificationsMap = MemoryMap<N::BlockHash, Ratifications<N>>;
     type SolutionsMap = MemoryMap<N::BlockHash, Option<CoinbaseSolution<N>>>;
     type PuzzleCommitmentsMap = MemoryMap<PuzzleCommitment<N>, u32>;
+    type AbortedSolutionIDsMap = MemoryMap<N::BlockHash, Vec<PuzzleCommitment<N>>>;
+    type AbortedPuzzleCommitmentsMap = MemoryMap<PuzzleCommitment<N>, u32>;
     type TransactionsMap = MemoryMap<N::BlockHash, Vec<N::TransactionID>>;
     type AbortedTransactionIDsMap = MemoryMap<N::BlockHash, Vec<N::TransactionID>>;
     type RejectedOrAbortedTransactionIDMap = MemoryMap<N::TransactionID, N::BlockHash>;
@@ -99,6 +105,8 @@ impl<N: Network> BlockStorage<N> for BlockMemory<N> {
             ratifications_map: MemoryMap::default(),
             solutions_map: MemoryMap::default(),
             puzzle_commitments_map: MemoryMap::default(),
+            aborted_solution_ids_map: MemoryMap::default(),
+            aborted_puzzle_commitments_map: MemoryMap::default(),
             transactions_map: MemoryMap::default(),
             aborted_transaction_ids_map: MemoryMap::default(),
             rejected_or_aborted_transaction_id_map: MemoryMap::default(),
@@ -156,6 +164,16 @@ impl<N: Network> BlockStorage<N> for BlockMemory<N> {
     /// Returns the puzzle commitments map.
     fn puzzle_commitments_map(&self) -> &Self::PuzzleCommitmentsMap {
         &self.puzzle_commitments_map
+    }
+
+    /// Returns the aborted solution IDs map.
+    fn aborted_solution_ids_map(&self) -> &Self::AbortedSolutionIDsMap {
+        &self.aborted_solution_ids_map
+    }
+
+    /// Returns the puzzle commitments map.
+    fn aborted_puzzle_commitments_map(&self) -> &Self::AbortedPuzzleCommitmentsMap {
+        &self.aborted_puzzle_commitments_map
     }
 
     /// Returns the transactions map.
