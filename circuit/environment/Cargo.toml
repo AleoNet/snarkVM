@@ -59,7 +59,7 @@ version = "1.18.0"
 
 [dev-dependencies.snarkvm-algorithms]
 path = "../../algorithms"
-features = [ "polycommit_full", "snark" ]
+features = [ "polycommit_full", "snark", "test" ]
 
 [dev-dependencies.snarkvm-circuit]
 path = "../../circuit"
