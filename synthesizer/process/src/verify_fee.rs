@@ -76,7 +76,7 @@ impl<N: Network> Process<N> {
     fn verify_fee_private(&self, fee: &&Fee<N>) -> Result<()> {
         let timer = timer!("Process::verify_fee_private");
 
-        // Get the network id
+        // Retrieve the network ID.
         let network_id = U16::new(N::ID);
         // Compute the function ID.
         let function_id = compute_function_id(&network_id, fee.program_id(), fee.function_name())?;
