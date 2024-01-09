@@ -107,6 +107,61 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
     }
 }
 
+/// Splits candidate solutions into a collection of accepted ones and aborted ones.
+pub fn split_candidate_solutions<T, F>(
+    mut candidate_solutions: Vec<T>,
+    max_solutions: usize,
+    verification_fn: F,
+) -> (Vec<T>, Vec<T>)
+where
+    T: Sized + Send,
+    F: Fn(&T) -> bool + Send + Sync,
+{
+    // Separate the candidate solutions into valid and aborted solutions.
+    let mut valid_candidate_solutions = Vec::with_capacity(max_solutions);
+    let mut aborted_candidate_solutions = Vec::new();
+    // Reverse the candidate solutions in order to be able to chunk them more efficiently.
+    candidate_solutions.reverse();
+    // Verify the candidate solutions in chunks. This is done so that we can potentially
+    // perform these operations in parallel while keeping the end result deterministic.
+    let chunk_size = 16;
+    while !candidate_solutions.is_empty() {
+        // Check if the collection of valid solutions is full.
+        if valid_candidate_solutions.len() >= max_solutions {
+            // If that's the case, mark the rest of the candidates as aborted.
+            aborted_candidate_solutions.extend(candidate_solutions.into_iter().rev());
+            break;
+        }
+
+        // Split off a chunk of the candidate solutions.
+        let candidates_chunk = if candidate_solutions.len() > chunk_size {
+            candidate_solutions.split_off(candidate_solutions.len() - chunk_size)
+        } else {
+            std::mem::take(&mut candidate_solutions)
+        };
+
+        // Verify the solutions in the chunk.
+        let verification_results: Vec<_> = cfg_into_iter!(candidates_chunk)
+            .rev()
+            .map(|solution| {
+                let verified = verification_fn(&solution);
+                (solution, verified)
+            })
+            .collect();
+
+        // Process the results of the verification.
+        for (solution, is_valid) in verification_results.into_iter() {
+            if is_valid && valid_candidate_solutions.len() < max_solutions {
+                valid_candidate_solutions.push(solution);
+            } else {
+                aborted_candidate_solutions.push(solution);
+            }
+        }
+    }
+
+    (valid_candidate_solutions, aborted_candidate_solutions)
+}
+
 impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
     /// Constructs a block template for the next block in the ledger.
     #[allow(clippy::type_complexity)]
@@ -127,28 +182,14 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                 let coinbase_verifying_key = self.coinbase_puzzle.coinbase_verifying_key();
                 // Retrieve the latest epoch challenge.
                 let latest_epoch_challenge = self.latest_epoch_challenge()?;
-                // TODO: For mainnet - Add `aborted_solution_ids` to the block. And optimize this logic.
-                // Verify the candidate solutions.
-                let verification_results: Vec<_> = cfg_into_iter!(candidate_solutions)
-                    .map(|solution| {
-                        (
-                            solution,
-                            solution
-                                .verify(coinbase_verifying_key, &latest_epoch_challenge, self.latest_proof_target())
-                                .unwrap_or(false),
-                        )
-                    })
-                    .collect();
+                // TODO: For mainnet - Add `aborted_solution_ids` to the block.
                 // Separate the candidate solutions into valid and aborted solutions.
-                let mut valid_candidate_solutions = Vec::with_capacity(N::MAX_SOLUTIONS);
-                let mut aborted_candidate_solutions = Vec::new();
-                for (solution, is_valid) in verification_results.into_iter() {
-                    if is_valid && valid_candidate_solutions.len() < N::MAX_SOLUTIONS {
-                        valid_candidate_solutions.push(solution);
-                    } else {
-                        aborted_candidate_solutions.push(solution);
-                    }
-                }
+                let (valid_candidate_solutions, _aborted_candidate_solutions) =
+                    split_candidate_solutions(candidate_solutions, N::MAX_SOLUTIONS, |solution| {
+                        solution
+                            .verify(coinbase_verifying_key, &latest_epoch_challenge, self.latest_proof_target())
+                            .unwrap_or(false)
+                    });
 
                 // Check if there are any valid solutions.
                 match valid_candidate_solutions.is_empty() {
