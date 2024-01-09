@@ -73,7 +73,7 @@ impl<N: Network> Process<N> {
             // Ensure the number of outputs is within the allowed range.
             ensure!(transition.outputs().len() <= N::MAX_OUTPUTS, "Transition exceeded maximum number of outputs");
 
-            // Get the network id
+            // Retrieve the network ID.
             let network_id = U16::new(N::ID);
             // Compute the function ID.
             let function_id = compute_function_id(&network_id, transition.program_id(), transition.function_name())?;
