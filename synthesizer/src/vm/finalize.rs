@@ -1024,6 +1024,7 @@ finalize transfer_public:
             header,
             ratifications,
             None,
+            vec![],
             transactions,
             aborted_transaction_ids,
             rng,

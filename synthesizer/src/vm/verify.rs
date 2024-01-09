@@ -507,6 +507,7 @@ mod tests {
             deployment_header,
             ratifications,
             None,
+            vec![],
             transactions,
             aborted_transaction_ids,
             rng,
