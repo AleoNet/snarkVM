@@ -53,6 +53,10 @@ pub struct BlockDB<N: Network> {
     solutions_map: DataMap<N::BlockHash, Option<CoinbaseSolution<N>>>,
     /// The puzzle commitments map.
     puzzle_commitments_map: DataMap<PuzzleCommitment<N>, u32>,
+    /// The aborted solution IDs map.
+    aborted_solution_ids_map: DataMap<N::BlockHash, Vec<PuzzleCommitment<N>>>,
+    /// The aborted puzzle commitments map.
+    aborted_puzzle_commitments_map: DataMap<PuzzleCommitment<N>, u32>,
     /// The transactions map.
     transactions_map: DataMap<N::BlockHash, Vec<N::TransactionID>>,
     /// The aborted transaction IDs map.
@@ -79,6 +83,8 @@ impl<N: Network> BlockStorage<N> for BlockDB<N> {
     type RatificationsMap = DataMap<N::BlockHash, Ratifications<N>>;
     type SolutionsMap = DataMap<N::BlockHash, Option<CoinbaseSolution<N>>>;
     type PuzzleCommitmentsMap = DataMap<PuzzleCommitment<N>, u32>;
+    type AbortedSolutionIDsMap = DataMap<N::BlockHash, Vec<PuzzleCommitment<N>>>;
+    type AbortedPuzzleCommitmentsMap = DataMap<PuzzleCommitment<N>, u32>;
     type TransactionsMap = DataMap<N::BlockHash, Vec<N::TransactionID>>;
     type AbortedTransactionIDsMap = DataMap<N::BlockHash, Vec<N::TransactionID>>;
     type RejectedOrAbortedTransactionIDMap = DataMap<N::TransactionID, N::BlockHash>;
@@ -105,6 +111,8 @@ impl<N: Network> BlockStorage<N> for BlockDB<N> {
             ratifications_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::Ratifications))?,
             solutions_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::Solutions))?,
             puzzle_commitments_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::PuzzleCommitments))?,
+            aborted_solution_ids_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::AbortedSolutionIDs))?,
+            aborted_puzzle_commitments_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::AbortedPuzzleCommitments))?,
             transactions_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::Transactions))?,
             aborted_transaction_ids_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::AbortedTransactionIDs))?,
             rejected_or_aborted_transaction_id_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::RejectedOrAbortedTransactionID))?,
@@ -162,6 +170,16 @@ impl<N: Network> BlockStorage<N> for BlockDB<N> {
     /// Returns the puzzle commitments map.
     fn puzzle_commitments_map(&self) -> &Self::PuzzleCommitmentsMap {
         &self.puzzle_commitments_map
+    }
+
+    /// Returns the aborted solution IDs map.
+    fn aborted_solution_ids_map(&self) -> &Self::AbortedSolutionIDsMap {
+        &self.aborted_solution_ids_map
+    }
+
+    /// Returns the puzzle commitments map.
+    fn aborted_puzzle_commitments_map(&self) -> &Self::AbortedPuzzleCommitmentsMap {
+        &self.aborted_puzzle_commitments_map
     }
 
     /// Returns the transactions map.
