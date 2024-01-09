@@ -199,6 +199,7 @@ impl<N: Network> Block<N> {
                 Self::check_subdag_transmissions(
                     subdag,
                     &self.solutions,
+                    &self.aborted_solution_ids,
                     &self.transactions,
                     &self.aborted_transaction_ids,
                 )?;
@@ -260,6 +261,23 @@ impl<N: Network> Block<N> {
     ) -> Result<(u128, u128, u64, u64, u64, i64, u64, u64)> {
         let height = self.height();
         let timestamp = self.timestamp();
+
+        // Ensure the number of aborted solution IDs is within the allowed range.
+        if self.aborted_solution_ids.len() > N::MAX_SOLUTIONS {
+            bail!("Cannot validate a block with more than {} aborted solution IDs", N::MAX_SOLUTIONS);
+        }
+
+        // Ensure there are no duplicate solution IDs.
+        if has_duplicates(
+            self.solutions
+                .as_ref()
+                .map(|solution| solution.puzzle_commitments())
+                .into_iter()
+                .flatten()
+                .chain(self.aborted_solution_ids().iter()),
+        ) {
+            bail!("Found a duplicate solution in block {height}");
+        }
 
         let (combined_proof_target, expected_cumulative_proof_target, is_coinbase_target_reached) = match &self
             .solutions
@@ -506,6 +524,7 @@ impl<N: Network> Block<N> {
     pub(super) fn check_subdag_transmissions(
         subdag: &Subdag<N>,
         solutions: &Option<CoinbaseSolution<N>>,
+        aborted_solution_ids: &[PuzzleCommitment<N>],
         transactions: &Transactions<N>,
         aborted_transaction_ids: &[N::TransactionID],
     ) -> Result<()> {
@@ -566,8 +585,15 @@ impl<N: Network> Block<N> {
         ensure!(unconfirmed_transaction_ids.next().is_none(), "There exists more transactions than expected.");
 
         // TODO: Move this check to be outside of this method, and check against the ledger for existence.
-        // Ensure there are no aborted or existing solution IDs.
-        // ensure!(aborted_or_existing_solution_ids.is_empty(), "Block contains aborted or already-existing solutions.");
+        // Ensure the aborted solution IDs match.
+        for aborted_solution_id in aborted_solution_ids {
+            // If the aborted transaction ID is not found, throw an error.
+            if !aborted_or_existing_solution_ids.contains(&aborted_solution_id) {
+                bail!(
+                    "Block contains an aborted solution ID that is not found in the subdag (found '{aborted_solution_id}')"
+                );
+            }
+        }
         // Ensure the aborted transaction IDs match.
         for aborted_transaction_id in aborted_transaction_ids {
             // If the aborted transaction ID is not found, throw an error.

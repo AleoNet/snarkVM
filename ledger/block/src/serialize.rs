@@ -19,7 +19,7 @@ impl<N: Network> Serialize for Block<N> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
             true => {
-                let mut block = serializer.serialize_struct("Block", 7 + self.solutions.is_some() as usize)?;
+                let mut block = serializer.serialize_struct("Block", 8 + self.solutions.is_some() as usize)?;
                 block.serialize_field("block_hash", &self.block_hash)?;
                 block.serialize_field("previous_hash", &self.previous_hash)?;
                 block.serialize_field("header", &self.header)?;
@@ -29,6 +29,7 @@ impl<N: Network> Serialize for Block<N> {
                 if let Some(solutions) = &self.solutions {
                     block.serialize_field("solutions", solutions)?;
                 }
+                block.serialize_field("aborted_transaction_ids", &self.aborted_solution_ids)?;
 
                 block.serialize_field("transactions", &self.transactions)?;
                 block.serialize_field("aborted_transaction_ids", &self.aborted_transaction_ids)?;
@@ -57,6 +58,7 @@ impl<'de, N: Network> Deserialize<'de> for Block<N> {
                     DeserializeExt::take_from_value::<D>(&mut block, "authority")?,
                     DeserializeExt::take_from_value::<D>(&mut block, "ratifications")?,
                     serde_json::from_value(solutions).map_err(de::Error::custom)?,
+                    DeserializeExt::take_from_value::<D>(&mut block, "aborted_solution_ids")?,
                     DeserializeExt::take_from_value::<D>(&mut block, "transactions")?,
                     DeserializeExt::take_from_value::<D>(&mut block, "aborted_transaction_ids")?,
                 )

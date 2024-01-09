@@ -46,18 +46,30 @@ impl<N: Network> FromBytes for Block<N> {
             _ => return Err(error("Invalid solutions variant in the block")),
         };
 
+        // Read the number of aborted solution IDs.
+        let num_aborted_solutions = u32::read_le(&mut reader)?;
+        // Ensure the number of aborted solutions IDs is within bounds (this is an early safety check).
+        if num_aborted_solutions as usize > N::MAX_SOLUTIONS {
+            return Err(error("Invalid number of aborted solutions IDs in the block"));
+        }
+        // Read the aborted solution IDs.
+        let mut aborted_solution_ids = Vec::with_capacity(num_aborted_solutions as usize);
+        for _ in 0..num_aborted_solutions {
+            aborted_solution_ids.push(FromBytes::read_le(&mut reader)?);
+        }
+
         // Read the transactions.
         let transactions = FromBytes::read_le(&mut reader)?;
 
         // Read the number of aborted transaction IDs.
-        let num_aborted = u32::read_le(&mut reader)?;
+        let num_aborted_transactions = u32::read_le(&mut reader)?;
         // Ensure the number of aborted transaction IDs is within bounds (this is an early safety check).
-        if num_aborted as usize > Transactions::<N>::MAX_TRANSACTIONS {
+        if num_aborted_transactions as usize > Transactions::<N>::MAX_TRANSACTIONS {
             return Err(error("Invalid number of aborted transaction IDs in the block"));
         }
         // Read the aborted transaction IDs.
-        let mut aborted_transaction_ids = Vec::with_capacity(num_aborted as usize);
-        for _ in 0..num_aborted {
+        let mut aborted_transaction_ids = Vec::with_capacity(num_aborted_transactions as usize);
+        for _ in 0..num_aborted_transactions {
             aborted_transaction_ids.push(FromBytes::read_le(&mut reader)?);
         }
 
@@ -68,6 +80,7 @@ impl<N: Network> FromBytes for Block<N> {
             authority,
             ratifications,
             solutions,
+            aborted_solution_ids,
             transactions,
             aborted_transaction_ids,
         )
@@ -109,6 +122,10 @@ impl<N: Network> ToBytes for Block<N> {
                 solutions.write_le(&mut writer)?;
             }
         }
+
+        // Write the aborted solution IDs.
+        (u32::try_from(self.aborted_solution_ids.len()).map_err(error))?.write_le(&mut writer)?;
+        self.aborted_solution_ids.write_le(&mut writer)?;
 
         // Write the transactions.
         self.transactions.write_le(&mut writer)?;
