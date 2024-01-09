@@ -660,7 +660,27 @@ impl<N: Network> FinalizeTypes<N> {
                         }
                     }
                 }
-                "cast.lossy" => bail!("Instruction '{instruction}' is not supported yet."),
+                "cast.lossy" => {
+                    // Retrieve the cast operation.
+                    let operation = match instruction {
+                        Instruction::CastLossy(operation) => operation,
+                        _ => bail!("Instruction '{instruction}' is not a cast.lossy operation."),
+                    };
+
+                    // Ensure the instruction has one destination register.
+                    ensure!(
+                        instruction.destinations().len() == 1,
+                        "Instruction '{instruction}' has multiple destinations."
+                    );
+
+                    // Ensure the casted register type is valid and defined.
+                    match operation.cast_type() {
+                        CastType::Plaintext(PlaintextType::Literal(_)) => {
+                            ensure!(instruction.operands().len() == 1, "Expected 1 operand.");
+                        }
+                        _ => bail!("`cast.lossy` is only supported for casting to a literal type."),
+                    }
+                }
                 _ => bail!("Instruction '{instruction}' is not for opcode '{opcode}'."),
             },
             Opcode::Command(opcode) => {
