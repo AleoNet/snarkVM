@@ -23,8 +23,8 @@ use synthesizer_program::{Command, Finalize, Instruction};
 
 use std::collections::HashMap;
 
-/// Returns the *minimum* cost in microcredits to publish the given deployment (total cost, (storage cost, namespace cost, synthesis cost)).
-pub fn deployment_cost<N: Network>(deployment: &Deployment<N>) -> Result<(u64, (u64, u64, u64))> {
+/// Returns the *minimum* cost in microcredits to publish the given deployment total cost.
+pub fn deployment_cost<N: Network>(deployment: &Deployment<N>) -> Result<u64> {
     // Determine the number of bytes in the deployment.
     let size_in_bytes = deployment.size_in_bytes()?;
     // Retrieve the program ID.
@@ -51,11 +51,10 @@ pub fn deployment_cost<N: Network>(deployment: &Deployment<N>) -> Result<(u64, (
     // Compute the total cost in microcredits.
     let total_cost = storage_cost
         .checked_add(namespace_cost)
-        .ok_or(anyhow!("The total cost computation overflowed for a deployment"))?
-        .checked_add(synthesis_cost)
+        .and_then(|x| x.checked_add(synthesis_cost))
         .ok_or(anyhow!("The total cost computation overflowed for a deployment"))?;
 
-    Ok((total_cost, (storage_cost, namespace_cost, synthesis_cost)))
+    Ok(total_cost)
 }
 
 /// Returns the *minimum* cost in microcredits to publish the given execution (total cost, (storage cost, namespace cost)).
