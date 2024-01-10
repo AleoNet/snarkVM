@@ -390,11 +390,9 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             let inputs = [caller.to_string(), format!("{amount}_u64")];
 
             // Prepare the transactions.
-            let transactions = (0..Block::<N>::NUM_GENESIS_TRANSACTIONS)
+            (0..Block::<N>::NUM_GENESIS_TRANSACTIONS)
                 .map(|_| self.execute(private_key, locator, inputs.iter(), None, 0, None, rng))
-                .collect::<Result<Vec<_>, _>>()?;
-
-            transactions
+                .collect::<Result<Vec<_>, _>>()?
         };
 
         // Prepare the transfers to Coinbase from the customer addresses.
