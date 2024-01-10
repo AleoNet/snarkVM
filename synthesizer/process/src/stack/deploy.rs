@@ -80,6 +80,11 @@ impl<N: Network> Stack<N> {
         // Construct the call stacks and assignments used to verify the certificates.
         let mut call_stacks = Vec::with_capacity(deployment.verifying_keys().len());
 
+        // Check that the number of functions matches the number of verifying keys.
+        ensure!(
+            deployment.program().functions().len() == deployment.verifying_keys().len(),
+            "The number of functions in the program does not match the number of verifying keys"
+        );
         // Iterate through the program functions and construct the callstacks and corresponding assignments.
         for (function, (_, (verifying_key, _))) in
             deployment.program().functions().values().zip_eq(deployment.verifying_keys())
