@@ -317,7 +317,7 @@ impl Environment for Circuit {
         })
     }
 
-    /// Sets a maximum amount of allowed constraints
+    /// Sets a maximum number of allowed constraints.
     fn set_constraint_maximum(new_max_num_constraints: u64) {
         MAX_NUM_CONSTRAINTS.with(|max_num_constraints| max_num_constraints.replace(new_max_num_constraints));
     }
