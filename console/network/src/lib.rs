@@ -100,6 +100,8 @@ pub trait Network:
     const DEPLOYMENT_FEE_MULTIPLIER: u64 = 1_000; // 1 millicredit per byte
     /// The maximum number of microcredits that can be spent as a fee.
     const MAX_FEE: u64 = 1_000_000_000_000_000;
+    /// The fixed cost in microcredits to verify Executions.
+    const EXECUTION_FEE: u64 = 25_000; // 25 millicredits
 
     /// The anchor height, defined as the expected number of blocks to reach the coinbase target.
     const ANCHOR_HEIGHT: u32 = Self::ANCHOR_TIME as u32 / Self::BLOCK_TIME as u32;

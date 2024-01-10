@@ -55,7 +55,7 @@ pub fn deployment_cost<N: Network>(deployment: &Deployment<N>) -> Result<(u64, (
 pub fn execution_cost<N: Network, C: ConsensusStorage<N>>(
     vm: &VM<N, C>,
     execution: &Execution<N>,
-) -> Result<(u64, (u64, u64))> {
+) -> Result<(u64, (u64, u64, u64))> {
     // Compute the storage cost in microcredits.
     let storage_cost = execution.size_in_bytes()?;
 
@@ -89,12 +89,16 @@ pub fn execution_cost<N: Network, C: ConsensusStorage<N>>(
             .ok_or(anyhow!("The finalize cost computation overflowed for an execution"))?;
     }
 
+    // Compute the fixed execution cost in microcredits
+    let execution_cost = N::EXECUTION_FEE;
+
     // Compute the total cost in microcredits.
     let total_cost = storage_cost
         .checked_add(finalize_cost)
+        .and_then(|x| x.checked_add(execution_cost))
         .ok_or(anyhow!("The total cost computation overflowed for an execution"))?;
 
-    Ok((total_cost, (storage_cost, finalize_cost)))
+    Ok((total_cost, (storage_cost, finalize_cost, execution_cost)))
 }
 
 /// Returns the minimum number of microcredits required to run the finalize.
