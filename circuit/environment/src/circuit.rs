@@ -149,7 +149,7 @@ impl Environment for Circuit {
                 CIRCUIT.with(|circuit| {
                     // Ensure we do not surpass maximum allowed number of constraints
                     MAX_NUM_CONSTRAINTS.with(|max_constraints| {
-                        if circuit.borrow().num_constraints() > max_constraints.get() {
+                        if circuit.borrow().num_constraints() >= max_constraints.get() {
                             Self::halt("Surpassing maximum allowed number of constraints")
                         }
                     });
