@@ -168,7 +168,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     // If the fee is required, then check that the base fee amount is satisfied.
                     if is_fee_required {
                         // Compute the execution cost.
-                        let (cost, _) = execution_cost(self, execution)?;
+                        let cost = execution_cost(self, execution)?;
                         // Ensure the fee is sufficient to cover the cost.
                         if *fee.base_amount()? < cost {
                             bail!(

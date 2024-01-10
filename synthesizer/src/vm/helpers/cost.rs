@@ -52,10 +52,7 @@ pub fn deployment_cost<N: Network>(deployment: &Deployment<N>) -> Result<(u64, (
 }
 
 /// Returns the *minimum* cost in microcredits to publish the given execution (total cost, (storage cost, namespace cost)).
-pub fn execution_cost<N: Network, C: ConsensusStorage<N>>(
-    vm: &VM<N, C>,
-    execution: &Execution<N>,
-) -> Result<(u64, (u64, u64, u64))> {
+pub fn execution_cost<N: Network, C: ConsensusStorage<N>>(vm: &VM<N, C>, execution: &Execution<N>) -> Result<u64> {
     // Compute the storage cost in microcredits.
     let storage_cost = execution.size_in_bytes()?;
 
@@ -98,7 +95,7 @@ pub fn execution_cost<N: Network, C: ConsensusStorage<N>>(
         .and_then(|x| x.checked_add(execution_cost))
         .ok_or(anyhow!("The total cost computation overflowed for an execution"))?;
 
-    Ok((total_cost, (storage_cost, finalize_cost, execution_cost)))
+    Ok(total_cost)
 }
 
 /// Returns the minimum number of microcredits required to run the finalize.
