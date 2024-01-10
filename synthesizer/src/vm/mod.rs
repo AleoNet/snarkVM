@@ -355,6 +355,152 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     }
 }
 
+impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
+    /// Returns a new custom genesis block for a quorum chain. This includes the initial transfers from Coinbase customers
+    /// to Coinbase's address.
+    /// Note: The customer balances must already be included in the `public_balances`.
+    pub fn custom_genesis_quorum<R: Rng + CryptoRng>(
+        &self,
+        private_key: &PrivateKey<N>,
+        committee: Committee<N>,
+        public_balances: IndexMap<Address<N>, u64>,
+        coinbase_private_key: PrivateKey<N>,              // Coinbase's private key.
+        customer_transfers: IndexMap<PrivateKey<N>, u64>, // Initial transfers from customers to Coinbase's address.
+        coinbase_bond_amount: u64,                        // Amount Coinbase will bond to validator 0.
+        rng: &mut R,
+    ) -> Result<Block<N>> {
+        // Retrieve the total stake.
+        let total_stake = committee.total_stake();
+        // Compute the account supply.
+        let account_supply = public_balances.values().fold(0u64, |acc, x| acc.saturating_add(*x));
+        // Compute the total supply.
+        let total_supply = total_stake.checked_add(account_supply).ok_or_else(|| anyhow!("Invalid total supply"))?;
+        // Ensure the total supply matches.
+        ensure!(total_supply == N::STARTING_SUPPLY, "Invalid total supply");
+
+        // Prepare the initial public to private transfers.
+        let initial_transactions = {
+            // Prepare the caller.
+            let caller = Address::try_from(private_key)?;
+            // Prepare the locator.
+            let locator = ("credits.aleo", "transfer_public_to_private");
+            // Prepare the amount for each call to the function.
+            let amount = ledger_committee::MIN_VALIDATOR_STAKE;
+            // Prepare the function inputs.
+            let inputs = [caller.to_string(), format!("{amount}_u64")];
+
+            // Prepare the transactions.
+            let transactions = (0..Block::<N>::NUM_GENESIS_TRANSACTIONS)
+                .map(|_| self.execute(private_key, locator, inputs.iter(), None, 0, None, rng))
+                .collect::<Result<Vec<_>, _>>()?;
+
+            transactions
+        };
+
+        // Prepare the transfers to Coinbase from the customer addresses.
+        let coinbase_transfer_transactions = {
+            // Prepare the locator.
+            let locator = ("credits.aleo", "transfer_public");
+            // Initialize the recipient address for Coinbase.
+            let coinbase_recipient_address = Address::try_from(&coinbase_private_key)?;
+
+            let mut transactions = vec![];
+
+            // Construct the transactions.
+            for (customer_private_key, amount) in customer_transfers.iter() {
+                let customer_address = Address::try_from(customer_private_key)?;
+
+                // Fetch the existing balance.
+                let existing_balance = public_balances.get(&customer_address).unwrap_or(&0u64);
+
+                // TODO: Consider the `transfer_public` fee amount. This is just the base fee amount on testnet3.
+                let transfer_public_fee_amount = 263388u64;
+                ensure!(
+                    *existing_balance >= amount + transfer_public_fee_amount,
+                    "The sender must have enough funds in the public balance."
+                );
+
+                // Prepare the function inputs.
+                let inputs = [coinbase_recipient_address.to_string(), format!("{amount}_u64")];
+                // Construct the transaction.
+                let transaction = self.execute(customer_private_key, locator, inputs.iter(), None, 0, None, rng)?;
+
+                transactions.push(transaction);
+            }
+
+            transactions
+        };
+
+        // Construct the staking transaction for the `Coinbase` account.
+        let coinbase_staking_transactions = {
+            // Prepare the locator.
+            let locator = ("credits.aleo", "bond_public");
+
+            let validator_address = committee.members().get_index(0).ok_or_else(|| anyhow!("Program ID not found."))?.0;
+
+            // Get the balance of the `Coinbase` address after the customer transfers.
+            let coinbase_balance: u64 = customer_transfers.values().copied().sum();
+            // TODO: Consider the `bond_public` fee amount. This is just a random amount.
+            let bond_public_fee_amount = 5000000;
+            ensure!(
+                coinbase_balance >= coinbase_bond_amount + bond_public_fee_amount,
+                "The coinbase accout must have enough funds to bond."
+            );
+
+            // Prepare the function inputs.
+            let inputs = [validator_address.to_string(), format!("{coinbase_bond_amount}_u64")];
+
+            // Construct the bond_public transaction for Coinbase.
+            let transaction = self.execute(&coinbase_private_key, locator, inputs.iter(), None, 0, None, rng)?;
+
+            vec![transaction]
+        };
+
+        // Concatenate the initial transactions and the coinbase transactions.
+        let transactions =
+            [initial_transactions, coinbase_transfer_transactions, coinbase_staking_transactions].concat();
+
+        // Prepare the ratifications.
+        let ratifications = vec![Ratify::Genesis(committee, public_balances)];
+        // Prepare the solutions.
+        let solutions = None; // The genesis block does not require solutions.
+
+        // Construct the finalize state.
+        let state = FinalizeGlobalState::new_genesis::<N>()?;
+        // Speculate on the ratifications, solutions, and transactions.
+        let (ratifications, transactions, aborted_transaction_ids, ratified_finalize_operations) =
+            self.speculate(state, None, ratifications, solutions.as_ref(), transactions.iter())?;
+        ensure!(
+            aborted_transaction_ids.is_empty(),
+            "Failed to initialize a genesis block - found aborted transaction IDs"
+        );
+
+        // Prepare the block header.
+        let header = Header::genesis(&ratifications, &transactions, ratified_finalize_operations)?;
+        // Prepare the previous block hash.
+        let previous_hash = N::BlockHash::default();
+
+        // Construct the block.
+        let block = Block::new_beacon(
+            private_key,
+            previous_hash,
+            header,
+            ratifications,
+            solutions,
+            transactions,
+            aborted_transaction_ids,
+            rng,
+        )?;
+
+        // TODO (raychu86): This check needs to be updated, because `is_genesis` is looking for a set number of transactions.
+        // Ensure the block is valid genesis block.
+        match block.is_genesis() {
+            true => Ok(block),
+            false => bail!("Failed to initialize a genesis block"),
+        }
+    }
+}
+
 #[cfg(test)]
 pub(crate) mod test_helpers {
     use super::*;
