@@ -100,7 +100,7 @@ fn weighted_median(timestamps_and_stake: Vec<(i64, u64)>) -> i64 {
     for (timestamp, stake) in timestamps_and_stake.iter() {
         accumulated_stake = accumulated_stake.saturating_add(*stake);
         current_timestamp = *timestamp;
-        if accumulated_stake >= total_stake.saturating_div(2) {
+        if accumulated_stake.saturating_mul(2) >= total_stake {
             break;
         }
     }
@@ -327,6 +327,10 @@ mod tests {
 
         // Test a case with a empty set.
         assert_eq!(weighted_median(vec![]), 0);
+
+        // Test a case where there is possible truncation.
+        let data = vec![(1, 1), (2, 1), (3, 1), (4, 1), (5, 1)];
+        assert_eq!(weighted_median(data), 3);
 
         // Test a case where weights of 0 do not affect the median.
         let data = vec![(1, 10), (2, 0), (3, 0), (4, 0), (5, 20), (6, 0), (7, 10)];
