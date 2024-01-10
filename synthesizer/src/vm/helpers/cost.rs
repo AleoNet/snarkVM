@@ -45,7 +45,7 @@ pub fn deployment_cost<N: Network>(deployment: &Deployment<N>) -> Result<u64> {
         .ok_or(anyhow!("The namespace cost computation overflowed for a deployment"))?
         .saturating_mul(1_000_000); // 1 microcredit = 1e-6 credits.
 
-    // Compute the synthesis cost in credits
+    // Compute the synthesis cost in microcredits.
     let synthesis_cost = num_constraints * N::SYNTH_FEE_MULTIPLIER;
 
     // Compute the total cost in microcredits.
