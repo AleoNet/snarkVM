@@ -35,6 +35,7 @@ use console::{
     },
     types::{Address, Field},
 };
+use rand::{CryptoRng, Rng};
 
 pub trait StackMatches<N: Network> {
     /// Checks that the given value matches the layout of the value type.
@@ -83,6 +84,14 @@ pub trait StackProgram<N: Network> {
 
     /// Returns the expected number of calls for the given function name.
     fn get_number_of_calls(&self, function_name: &Identifier<N>) -> Result<usize>;
+
+    /// Samples a value for the given value_type.
+    fn sample_value<R: Rng + CryptoRng>(
+        &self,
+        burner_address: &Address<N>,
+        value_type: &ValueType<N>,
+        rng: &mut R,
+    ) -> Result<Value<N>>;
 }
 
 pub trait FinalizeRegistersState<N: Network> {

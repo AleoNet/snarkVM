@@ -209,43 +209,34 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
                     hiding_bound,
                 ));
 
-                let (comm, rand) = p
-                    .sum()?
-                    .map(move |p| {
-                        let rng_ref = rng.as_mut().map(|s| s as _);
-                        match p {
-                            PolynomialWithBasis::Lagrange { evaluations } => {
-                                let domain = crate::fft::EvaluationDomain::new(evaluations.evaluations.len()).unwrap();
-                                let lagrange_basis = ck
-                                    .lagrange_basis(domain)
-                                    .ok_or(PCError::UnsupportedLagrangeBasisSize(domain.size()))?;
-                                assert!(domain.size().is_power_of_two());
-                                assert!(lagrange_basis.size().is_power_of_two());
-                                kzg10::KZG10::commit_lagrange(
-                                    &lagrange_basis,
-                                    &evaluations.evaluations,
-                                    hiding_bound,
-                                    rng_ref,
-                                )
-                            }
-                            PolynomialWithBasis::Monomial { polynomial, degree_bound } => {
-                                let powers = if let Some(degree_bound) = degree_bound {
-                                    ck.shifted_powers_of_beta_g(degree_bound).unwrap()
-                                } else {
-                                    ck.powers()
-                                };
-
-                                kzg10::KZG10::commit(&powers, &polynomial, hiding_bound, rng_ref)
-                            }
+                let (comm, rand) = {
+                    let rng_ref = rng.as_mut().map(|s| s as _);
+                    match p.polynomial {
+                        PolynomialWithBasis::Lagrange { evaluations } => {
+                            let domain = crate::fft::EvaluationDomain::new(evaluations.evaluations.len()).unwrap();
+                            let lagrange_basis = ck
+                                .lagrange_basis(domain)
+                                .ok_or(PCError::UnsupportedLagrangeBasisSize(domain.size()))?;
+                            assert!(domain.size().is_power_of_two());
+                            assert!(lagrange_basis.size().is_power_of_two());
+                            kzg10::KZG10::commit_lagrange(
+                                &lagrange_basis,
+                                &evaluations.evaluations,
+                                hiding_bound,
+                                rng_ref,
+                            )?
                         }
-                    })
-                    .try_fold((E::G1Projective::zero(), Randomness::empty()), |mut a, b| {
-                        let b = b?;
-                        a.0.add_assign_mixed(&b.0.0);
-                        a.1 += (E::Fr::one(), &b.1);
-                        Ok::<_, PCError>(a)
-                    })?;
-                let comm = kzg10::KZGCommitment(comm.to_affine());
+                        PolynomialWithBasis::Monomial { polynomial, degree_bound } => {
+                            let powers = if let Some(degree_bound) = degree_bound {
+                                ck.shifted_powers_of_beta_g(degree_bound).unwrap()
+                            } else {
+                                ck.powers()
+                            };
+
+                            kzg10::KZG10::commit(&powers, &polynomial, hiding_bound, rng_ref)?
+                        }
+                    }
+                };
 
                 Ok((LabeledCommitment::new(label.to_string(), comm, degree_bound), rand))
             });
