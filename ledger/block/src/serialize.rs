@@ -29,7 +29,7 @@ impl<N: Network> Serialize for Block<N> {
                 if let Some(solutions) = &self.solutions {
                     block.serialize_field("solutions", solutions)?;
                 }
-                block.serialize_field("aborted_transaction_ids", &self.aborted_solution_ids)?;
+                block.serialize_field("aborted_solution_ids", &self.aborted_solution_ids)?;
 
                 block.serialize_field("transactions", &self.transactions)?;
                 block.serialize_field("aborted_transaction_ids", &self.aborted_transaction_ids)?;
