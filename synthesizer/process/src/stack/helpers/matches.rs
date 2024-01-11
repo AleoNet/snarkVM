@@ -13,7 +13,6 @@
 // limitations under the License.
 
 use super::*;
-use console::program::{Argument, FinalizeType};
 
 impl<N: Network> StackMatches<N> for Stack<N> {
     /// Checks that the given value matches the layout of the value type.
