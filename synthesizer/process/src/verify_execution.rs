@@ -73,16 +73,10 @@ impl<N: Network> Process<N> {
             // Ensure the number of outputs is within the allowed range.
             ensure!(transition.outputs().len() <= N::MAX_OUTPUTS, "Transition exceeded maximum number of outputs");
 
-            // Compute the function ID as `Hash(network_id, program_id, function_name)`.
-            let function_id = N::hash_bhp1024(
-                &(
-                    U16::<N>::new(N::ID),
-                    transition.program_id().name(),
-                    transition.program_id().network(),
-                    transition.function_name(),
-                )
-                    .to_bits_le(),
-            )?;
+            // Retrieve the network ID.
+            let network_id = U16::new(N::ID);
+            // Compute the function ID.
+            let function_id = compute_function_id(&network_id, transition.program_id(), transition.function_name())?;
 
             // Ensure each input is valid.
             if transition

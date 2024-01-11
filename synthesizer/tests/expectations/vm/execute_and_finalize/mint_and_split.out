@@ -13,6 +13,6 @@ additional:
 - child_outputs:
     credits.aleo/fee_public:
       outputs:
-      - '{"type":"future","id":"2224596965693604846363254284152512550549945382876106932610187515185636813504field","value":"{\n  program_id: credits.aleo,\n  function_name: fee_public,\n  arguments: [\n    aleo19e6k5ferx3k8a9k79xtj4uuaztt2jl4eza7k43pygsu977yazypqqwdmw6,\n    1414u64\n  ]\n}"}'
+      - '{"type":"future","id":"8121404646185643523817169669755623614020572191631587303252879200167824265866field","value":"{\n  program_id: credits.aleo,\n  function_name: fee_public,\n  arguments: [\n    aleo19e6k5ferx3k8a9k79xtj4uuaztt2jl4eza7k43pygsu977yazypqqwdmw6,\n    1414u64\n  ]\n}"}'
 - {}
 - {}
