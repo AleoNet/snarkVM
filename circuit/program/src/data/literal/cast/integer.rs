@@ -79,7 +79,7 @@ impl<E: Environment, I0: IntegerType, I1: IntegerType> Cast<Integer<E, I1>> for 
                 // Then instantiate the new integer from the lower bits.
                 false => {
                     Boolean::assert_bits_are_zero(&bits_le[(I1::BITS.saturating_sub(1) as usize)..]);
-                    Integer::<E, I1>::from_bits_le(&bits_le[..(I1::BITS.saturating_sub(1) as usize)])
+                    Integer::<E, I1>::from_bits_le(&bits_le[..(I1::BITS as usize)])
                 }
             },
             // If the source type is signed and the destination type is unsigned, perform the required checks.
@@ -88,7 +88,7 @@ impl<E: Environment, I0: IntegerType, I1: IntegerType> Cast<Integer<E, I1>> for 
                 // Then instantiate the new integer from the lower bits.
                 true => {
                     E::assert(!&bits_le[I0::BITS.saturating_sub(1) as usize]);
-                    Integer::<E, I1>::from_bits_le(&bits_le[..(I0::BITS.saturating_sub(1) as usize)])
+                    Integer::<E, I1>::from_bits_le(&bits_le)
                 }
                 // If the source type is larger than the destination type, check that the upper bits are zero.
                 // Then instantiate the new integer from the lower bits.

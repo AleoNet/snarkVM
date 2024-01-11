@@ -88,6 +88,18 @@ pub trait MapRead<
     type Values: Iterator<Item = Cow<'a, V>>;
 
     ///
+    /// Returns the number of confirmed entries in the map.
+    ///
+    fn len_confirmed(&self) -> usize;
+
+    ///
+    /// Checks whether there are any confirmed entries in the map.
+    ///
+    fn is_empty_confirmed(&self) -> bool {
+        self.len_confirmed() == 0
+    }
+
+    ///
     /// Returns `true` if the given key exists in the map.
     ///
     fn contains_key_confirmed<Q>(&self, key: &Q) -> Result<bool>

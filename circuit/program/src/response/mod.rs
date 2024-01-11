@@ -18,7 +18,7 @@ use snarkvm_circuit_types::environment::assert_scope;
 mod from_outputs;
 mod process_outputs_from_callback;
 
-use crate::{Identifier, ProgramID, Value};
+use crate::{compute_function_id, Identifier, ProgramID, Value};
 use snarkvm_circuit_network::Aleo;
 use snarkvm_circuit_types::{environment::prelude::*, Field, U16};
 

@@ -16,6 +16,7 @@ use crate::Index;
 use snarkvm_fields::PrimeField;
 
 use indexmap::IndexMap;
+use std::sync::Arc;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum AssignmentVariable<F: PrimeField> {
@@ -84,9 +85,9 @@ impl<F: PrimeField> AssignmentLC<F> {
 /// and constraint assignments.
 #[derive(Clone, Debug)]
 pub struct Assignment<F: PrimeField> {
-    public: Vec<(Index, F)>,
-    private: Vec<(Index, F)>,
-    constraints: Vec<(AssignmentLC<F>, AssignmentLC<F>, AssignmentLC<F>)>,
+    public: Arc<[(Index, F)]>,
+    private: Arc<[(Index, F)]>,
+    constraints: Arc<[(AssignmentLC<F>, AssignmentLC<F>, AssignmentLC<F>)]>,
 }
 
 impl<F: PrimeField> From<crate::R1CS<F>> for Assignment<F> {
@@ -109,17 +110,17 @@ impl<F: PrimeField> From<crate::R1CS<F>> for Assignment<F> {
 
 impl<F: PrimeField> Assignment<F> {
     /// Returns the public inputs of the assignment.
-    pub const fn public_inputs(&self) -> &Vec<(Index, F)> {
+    pub const fn public_inputs(&self) -> &Arc<[(Index, F)]> {
         &self.public
     }
 
     /// Returns the private inputs of the assignment.
-    pub const fn private_inputs(&self) -> &Vec<(Index, F)> {
+    pub const fn private_inputs(&self) -> &Arc<[(Index, F)]> {
         &self.private
     }
 
     /// Returns the constraints of the assignment.
-    pub const fn constraints(&self) -> &Vec<(AssignmentLC<F>, AssignmentLC<F>, AssignmentLC<F>)> {
+    pub const fn constraints(&self) -> &Arc<[(AssignmentLC<F>, AssignmentLC<F>, AssignmentLC<F>)]> {
         &self.constraints
     }
 
