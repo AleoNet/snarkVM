@@ -87,7 +87,7 @@ impl<N: Network> VerifyingKey<N> {
                     "{}",
                     format!(" • Verified '{locator}': {is_valid} (in {} ms)", timer.elapsed().as_millis()).dimmed()
                 );
-                if is_valid { Ok(()) } else { bail!("batch proof is invalid") }
+                if is_valid { Ok(()) } else { bail!("'verify_batch' failed") }
             }
             Err(error) => {
                 #[cfg(feature = "aleo-cli")]
