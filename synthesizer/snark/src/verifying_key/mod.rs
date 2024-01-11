@@ -73,7 +73,7 @@ impl<N: Network> VerifyingKey<N> {
         let num_expected_keys = inputs.len();
         let keys_to_inputs: BTreeMap<_, _> =
             inputs.iter().map(|(verifying_key, inputs)| (verifying_key.deref(), inputs.as_slice())).collect();
-        ensure!(keys_to_inputs.len() == num_expected_keys, "invalid number of keys for batch proof");
+        ensure!(keys_to_inputs.len() == num_expected_keys, "Incorrect number of verifying keys for batch proof");
 
         // Retrieve the verification parameters.
         let universal_verifier = N::varuna_universal_verifier();
