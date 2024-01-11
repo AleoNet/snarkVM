@@ -70,7 +70,7 @@ impl<N: Network> ProvingKey<N> {
             .iter()
             .map(|(proving_key, assignments)| (proving_key.deref(), assignments.as_slice()))
             .collect();
-        ensure!(instances.len() == num_expected_instances, "Found duplicate proving keys");
+        ensure!(instances.len() == num_expected_instances, "Incorrect number of proving keys for batch proof");
 
         // Retrieve the proving parameters.
         let universal_prover = N::varuna_universal_prover();
