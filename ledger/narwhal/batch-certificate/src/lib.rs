@@ -105,6 +105,14 @@ impl<N: Network> BatchCertificate<N> {
         // Ensure that the number of signatures is within bounds.
         ensure!(signatures.len() <= Self::MAX_SIGNATURES, "Invalid number of signatures");
 
+        // Ensure that the signature is from a unique signer and not from the author.
+        let signature_authors = signatures.iter().map(|signature| signature.to_address()).collect::<Vec<_>>();
+        ensure!(
+            !signature_authors.contains(&batch_header.author()),
+            "The author's signature was included in the signers"
+        );
+        ensure!(!has_duplicates(signature_authors), "A duplicate author was found in the set of signatures");
+
         // Verify the signatures are valid.
         cfg_iter!(signatures).try_for_each(|signature| {
             if !signature.verify(&signature.to_address(), &[batch_header.batch_id()]) {
