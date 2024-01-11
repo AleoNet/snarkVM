@@ -43,11 +43,8 @@ impl<N: Network> Request<N> {
         // Retrieve the response from the signature.
         let response = self.signature.response();
 
-        // Compute the function ID as `Hash(network_id, program_id, function_name)`.
-        let function_id = match N::hash_bhp1024(
-            &(U16::<N>::new(N::ID), self.program_id.name(), self.program_id.network(), &self.function_name)
-                .to_bits_le(),
-        ) {
+        // Compute the function ID.
+        let function_id = match compute_function_id(&self.network_id, &self.program_id, &self.function_name) {
             Ok(function_id) => function_id,
             Err(error) => {
                 eprintln!("Failed to construct the function ID: {error}");

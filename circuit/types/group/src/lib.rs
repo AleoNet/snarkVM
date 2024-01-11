@@ -129,6 +129,22 @@ impl<E: Environment> Group<E> {
         // i.e. that it is 4 (= cofactor) times the postulated point on the curve.
         double_point.enforce_double(self);
     }
+
+    /// Returns a `Boolean` indicating if `self` is in the largest prime-order subgroup,
+    /// assuming that `self` is on the curve.
+    pub fn is_in_group(&self) -> Boolean<E> {
+        // Initialize the order of the subgroup as a bits.
+        let order = E::ScalarField::modulus();
+        let order_bits_be = order.to_bits_be();
+        let mut order_bits_be_constants = Vec::with_capacity(order_bits_be.len());
+        for bit in order_bits_be.iter() {
+            order_bits_be_constants.push(Boolean::constant(*bit));
+        }
+        // Multiply `self` by the order of the subgroup.
+        let self_times_order = order_bits_be_constants.mul(self);
+        // Check if the result is zero.
+        self_times_order.is_zero()
+    }
 }
 
 #[cfg(console)]
@@ -381,5 +397,83 @@ mod tests {
                 assert_eq!(mode, candidate.eject_mode());
             }
         }
+    }
+
+    #[test]
+    fn test_is_in_group() {
+        type PrimitiveField = console::Field<<Circuit as Environment>::Network>;
+
+        // First test the points that have low order.
+
+        // The two halves of (0,1) in group arithmetic are (0,1) and (0,-1).
+        let minus1_string = "8444461749428370424248824938781546531375899335154063827935233455917409239040field";
+        // The two halves of (0,-1) in group arithmetic are (q1x,0) and (q2x,0),
+        // where q1x = sqrt(-1) mod F_q  and  q2x = -sqrt(-1) mod F_q.
+        let q1x_string = "880904806456922042258150504921383618666682042621506879489field";
+        let q2x_string = "8444461749428370423367920132324624489117748830232680209268551413295902359552field";
+
+        // (0,1) is in the large prime subgroup.
+        let y1: Field<Circuit> = Field::new(Mode::Public, PrimitiveField::from_str("1field").unwrap());
+        let group0 = Group::<Circuit>::from_xy_coordinates_unchecked(Field::zero(), y1);
+        Circuit::scope("group0", || {
+            let group0_is_in_group = group0.is_in_group();
+            assert!(group0_is_in_group.eject_value());
+            assert_scope!(750, 0, 2253, 2253);
+        });
+        Circuit::reset();
+
+        // The other three low order points are on the curve but not in the large prime subgroup.
+        // Make sure is_in_group returns false for these.
+        let minus1: Field<Circuit> = Field::new(Mode::Public, PrimitiveField::from_str(minus1_string).unwrap());
+        let half0 = Group::<Circuit>::from_xy_coordinates_unchecked(Field::zero(), minus1);
+        Circuit::scope("half0", || {
+            let half0_is_not_in_group = !half0.is_in_group();
+            assert!(half0_is_not_in_group.eject_value());
+            assert_scope!(750, 0, 2253, 2253);
+        });
+        Circuit::reset();
+
+        let q1x: Field<Circuit> = Field::new(Mode::Public, PrimitiveField::from_str(q1x_string).unwrap());
+        let quarter1 = Group::<Circuit>::from_xy_coordinates_unchecked(q1x, Field::zero());
+        Circuit::scope("quarter1", || {
+            let quarter1_is_not_in_group = !quarter1.is_in_group();
+            assert!(quarter1_is_not_in_group.eject_value());
+            assert_scope!(750, 0, 2253, 2253);
+        });
+        Circuit::reset();
+
+        let q2x: Field<Circuit> = Field::new(Mode::Public, PrimitiveField::from_str(q2x_string).unwrap());
+        let quarter2 = Group::<Circuit>::from_xy_coordinates_unchecked(q2x, Field::zero());
+        Circuit::scope("quarter2", || {
+            let quarter2_is_not_in_group = !quarter2.is_in_group();
+            assert!(quarter2_is_not_in_group.eject_value());
+            assert_scope!(750, 0, 2253, 2253);
+        });
+        Circuit::reset();
+
+        fn check_is_in_group(mode: Mode, num_constants: u64, num_public: u64, num_private: u64, num_constraints: u64) {
+            let mut rng = TestRng::default();
+
+            for i in 0..ITERATIONS {
+                // Sample a random element.
+                let point: console::Group<<Circuit as Environment>::Network> = Uniform::rand(&mut rng);
+
+                // Inject the x-coordinate.
+                let x_coordinate = Field::new(mode, point.to_x_coordinate());
+
+                // Initialize the group element.
+                let element = Group::<Circuit>::from_x_coordinate(x_coordinate);
+
+                Circuit::scope(format!("{mode} {i}"), || {
+                    let is_in_group = element.is_in_group();
+                    assert!(is_in_group.eject_value());
+                    assert_scope!(num_constants, num_public, num_private, num_constraints);
+                });
+                Circuit::reset();
+            }
+        }
+        check_is_in_group(Mode::Constant, 1752, 0, 0, 0);
+        check_is_in_group(Mode::Public, 750, 0, 2755, 2755);
+        check_is_in_group(Mode::Private, 750, 0, 2755, 2755);
     }
 }

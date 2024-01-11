@@ -22,6 +22,9 @@ use snarkvm_circuit_network::AleoV0 as Circuit;
 mod data;
 pub use data::*;
 
+mod function_id;
+pub use function_id::*;
+
 mod id;
 pub use id::*;
 
