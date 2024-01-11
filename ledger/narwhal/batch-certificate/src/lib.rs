@@ -29,6 +29,7 @@ use narwhal_transmission_id::TransmissionID;
 
 use core::hash::{Hash, Hasher};
 use indexmap::{IndexMap, IndexSet};
+use std::collections::HashSet;
 
 #[cfg(not(feature = "serial"))]
 use rayon::prelude::*;
@@ -106,7 +107,7 @@ impl<N: Network> BatchCertificate<N> {
         ensure!(signatures.len() <= Self::MAX_SIGNATURES, "Invalid number of signatures");
 
         // Ensure that the signature is from a unique signer and not from the author.
-        let signature_authors = signatures.iter().map(|signature| signature.to_address()).collect::<IndexSet<_>>();
+        let signature_authors = signatures.iter().map(|signature| signature.to_address()).collect::<HashSet<_>>();
         ensure!(
             !signature_authors.contains(&batch_header.author()),
             "The author's signature was included in the signers"
