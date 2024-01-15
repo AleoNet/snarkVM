@@ -26,7 +26,11 @@ impl<N: Network> FromBytes for Subdag<N> {
         }
 
         // Read the subdag type.
-        let subdag_type = u8::read_le(&mut reader)?;
+        let subdag_type = match version {
+            3 => u8::read_le(&mut reader)?,
+            _ => 1u8,
+        };
+
         // Read the number of rounds.
         let num_rounds = u32::read_le(&mut reader)?;
         // Ensure the number of rounds is within bounds.
