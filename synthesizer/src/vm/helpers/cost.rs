@@ -26,9 +26,9 @@ use std::collections::HashMap;
 #[allow(unused)]
 /// Helper struct for i.a. SDK to return costs for users.
 pub struct ExecutionCosts {
-    storage_cost: u64,
-    finalize_cost: u64,
-    execution_cost: u64,
+    pub storage_cost: u64,
+    pub finalize_cost: u64,
+    pub execution_cost: u64,
 }
 
 /// Returns the *minimum* cost in microcredits to publish the given deployment (total cost, (storage cost, namespace cost)).
