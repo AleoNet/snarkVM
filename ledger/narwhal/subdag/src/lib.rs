@@ -356,14 +356,19 @@ impl<N: Network> Subdag<N> {
 
     /// Returns the subdag root of the transactions.
     pub fn to_subdag_root(&self) -> Result<Field<N>> {
-        let Self::Full { subdag, .. } = self else { bail!("We cannot compute the root of a compact Subdag") };
         // Prepare the leaves.
-        let leaves = cfg_iter!(subdag)
-            .map(|(_, certificates)| {
-                certificates.iter().flat_map(|certificate| certificate.id().to_bits_le()).collect::<Vec<_>>()
-            })
-            .collect::<Vec<_>>();
-
+        let leaves = match self {
+            Self::Full { subdag, .. } => cfg_iter!(subdag)
+                .map(|(_, certificates)| {
+                    certificates.iter().flat_map(|certificate| certificate.id().to_bits_le()).collect::<Vec<_>>()
+                })
+                .collect::<Vec<_>>(),
+            Self::Compact { subdag, .. } => cfg_iter!(subdag)
+                .map(|(_, certificates)| {
+                    certificates.iter().flat_map(|certificate| certificate.id().to_bits_le()).collect::<Vec<_>>()
+                })
+                .collect::<Vec<_>>(),
+        };
         // Compute the subdag tree.
         let tree = N::merkle_tree_bhp::<SUBDAG_CERTIFICATES_DEPTH>(&leaves)?;
         // Return the subdag root.

@@ -222,7 +222,7 @@ impl<N: Network> Block<N> {
 
         // Check if Authority is a Quorum
         let Authority::Quorum(subdag) = authority else {
-            bail!("Cannot convert block with Quorum Authority to compact subdag");
+            bail!("Can only convert block with Quorum Authority to full subdag");
         };
 
         // Collect ratification IDs.
@@ -240,7 +240,7 @@ impl<N: Network> Block<N> {
 
         // Check if Authority is a Quorum
         let Authority::Quorum(subdag) = authority else {
-            bail!("Cannot convert block with Quorum Authority to compact subdag");
+            bail!("Can only convert block with Quorum Authority to full subdag");
         };
 
         // Collect ratification IDs.

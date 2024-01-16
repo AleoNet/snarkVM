@@ -34,7 +34,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         // Construct Ratification IDs.
         let ratification_ids = ratifications.ratification_ids().copied().collect_vec();
         // Construct Transaction IDs.
-        let transaction_ids = transactions.transaction_ids().copied().collect_vec();
+        let transaction_ids = transactions.unconfirmed_transaction_ids()?;
 
         // Construct the compact Subdag
         let subdag = subdag.into_compact(

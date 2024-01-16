@@ -70,21 +70,30 @@ impl<N: Network> CompactHeader<N> {
     /// Initializes a new batch header.
     pub fn new<'a>(
         batch_header: &BatchHeader<N>,
-        ratifications: impl ExactSizeIterator<Item = &'a N::RatificationID>,
+        _ratifications: impl ExactSizeIterator<Item = &'a N::RatificationID>,
         solutions: Option<impl ExactSizeIterator<Item = &'a PuzzleCommitment<N>>>,
+        // previously_included_solutions: impl ExactSizeIterator<Item = &'a N::TransactionID>,
         transactions: impl ExactSizeIterator<Item = &'a N::TransactionID>,
-        rejected_transactions: impl ExactSizeIterator<Item = &'a N::TransactionID>,
+        aborted_transactions: impl ExactSizeIterator<Item = &'a N::TransactionID>,
+        // previously_included_transactions: impl ExactSizeIterator<Item = &'a N::TransactionID>,
     ) -> Result<Self> {
         let transmission_ids = batch_header.transmission_ids();
 
-        ensure!(ratifications.len() == 0, "Invalid batch, contains ratifications");
+        // NOTE: if we support ratifications in BatchHeaders, then we'll also have to add a ratification_indices BitSet in CompactHeader.
+        ensure!(
+            transmission_ids.iter().all(|id| !matches!(id, TransmissionID::Ratification)),
+            "Invalid batch, contains ratifications"
+        );
 
         // Check which transaction_indices the certificate contains.
-        let num_transactions = transactions.len() + rejected_transactions.len();
+        // let mut found_transactions = IndexSet::new(); // TODO: can or should we preallocate?
+        let num_transactions = transactions.len() + aborted_transactions.len();
         let mut transaction_indices = BitSet::with_capacity(num_transactions);
-        for (i, transaction_id) in transactions.chain(rejected_transactions).enumerate() {
-            if transmission_ids.contains(&TransmissionID::Transaction(*transaction_id)) {
+        for (i, transaction_id) in transactions.chain(aborted_transactions).enumerate() {
+            let transmission_id = TransmissionID::Transaction(*transaction_id);
+            if transmission_ids.contains(&transmission_id) {
                 transaction_indices.insert(i);
+                // found_transactions.insert(transmission_id);
             }
         }
 
@@ -102,10 +111,17 @@ impl<N: Network> CompactHeader<N> {
             .unwrap_or_default();
 
         // Check if we found all Transmission IDs.
-        ensure!(
-            transaction_indices.len() + solution_indices.len() == batch_header.transmission_ids().len(),
-            "Could not find all Transmission IDs to construct Compact Header"
-        );
+        // TODO: I might remove this check entirely. Some transmissions might be in the ledger...
+        // if transaction_indices.len() + solution_indices.len() != transmission_ids.len() {
+        //     for transmission_id in transmission_ids.difference(&found_transactions) {
+        //         match transmission_id {
+        //             TransmissionID::Transaction(transaction_id) => {
+        //                 ensure!(ledger.contains_transaction(*transaction_id));
+        //             },
+        //             _ => {}
+        //         }
+        //     }
+        // }
 
         // Return the compact header.
         Ok(Self {
@@ -231,7 +247,8 @@ impl<N: Network> CompactHeader<N> {
         transactions: impl Iterator<Item = &'a N::TransactionID>,
         rejected_transactions: impl Iterator<Item = &'a N::TransactionID>,
     ) -> Result<BatchHeader<N>> {
-        ensure!(ratifications.len() == 0, "Invalid batch, contains ratifications");
+        println!("ratifications: {:?}", ratifications.collect_vec());
+        // ensure!(ratifications.len() == 0, "Invalid batch, contains ratifications");
 
         // TODO (howardwu): For mainnet - Remove this version from the struct, we only use it here for backwards compatibility.
         //  NOTE: You must keep the version encoding in the byte serialization, just remove it from the struct in memory.
