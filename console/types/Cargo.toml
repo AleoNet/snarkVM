@@ -55,7 +55,7 @@ version = "0.5.1"
 
 [dev-dependencies.snarkvm-console-network]
 path = "../network"
-version = "=0.16.15"
+version = "=0.16.16"
 
 [features]
 default = [
