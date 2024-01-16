@@ -364,7 +364,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         private_key: &PrivateKey<N>,
         committee: Committee<N>,
         public_balances: IndexMap<Address<N>, u64>,
-        coinbase_private_key: PrivateKey<N>,          // Coinbase's private key.
+        // coinbase_private_key: PrivateKey<N>,          // Coinbase's private key.
         customer_bonds: IndexMap<PrivateKey<N>, u64>, // Initial transfers from customers to Coinbase's address.
         rng: &mut R,
     ) -> Result<Block<N>> {
@@ -394,31 +394,31 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 .collect::<Result<Vec<_>, _>>()?
         };
 
-        // Prepare the transfers to Coinbase from the customer addresses.
-        let coinbase_transfer_transactions = {
-            // Prepare the locator.
-            let locator = ("credits.aleo", "transfer_public");
-
-            let mut transactions = vec![];
-
-            // Construct the transactions.
-            for (customer_private_key, amount) in customer_bonds.iter() {
-                let customer_address = Address::try_from(customer_private_key)?;
-
-                // TODO: Consider the `bond_public` fee amount. This is just the base fee amount on testnet3.
-                let bond_public_fee_amount = 843880u64;
-                let amount = amount.saturating_add(bond_public_fee_amount);
-
-                // Prepare the function inputs.
-                let inputs = [customer_address.to_string(), format!("{amount}_u64")];
-                // Construct the transaction.
-                let transaction = self.execute(&coinbase_private_key, locator, inputs.iter(), None, 0, None, rng)?;
-
-                transactions.push(transaction);
-            }
-
-            transactions
-        };
+        // // Prepare the transfers to Coinbase from the customer addresses.
+        // let coinbase_transfer_transactions = {
+        //     // Prepare the locator.
+        //     let locator = ("credits.aleo", "transfer_public");
+        //
+        //     let mut transactions = vec![];
+        //
+        //     // Construct the transactions.
+        //     for (customer_private_key, amount) in customer_bonds.iter() {
+        //         let customer_address = Address::try_from(customer_private_key)?;
+        //
+        //         // TODO: Consider the `bond_public` fee amount. This is just the base fee amount on testnet3.
+        //         let bond_public_fee_amount = 843880u64;
+        //         let amount = amount.saturating_add(bond_public_fee_amount);
+        //
+        //         // Prepare the function inputs.
+        //         let inputs = [customer_address.to_string(), format!("{amount}_u64")];
+        //         // Construct the transaction.
+        //         let transaction = self.execute(&coinbase_private_key, locator, inputs.iter(), None, 0, None, rng)?;
+        //
+        //         transactions.push(transaction);
+        //     }
+        //
+        //     transactions
+        // };
 
         // Construct the staking transaction for the `Coinbase` account.
         let customer_staking_transactions = {
@@ -444,8 +444,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         };
 
         // Concatenate the initial transactions and the coinbase transactions.
-        let transactions =
-            [initial_transactions, coinbase_transfer_transactions, customer_staking_transactions].concat();
+        let transactions = [initial_transactions, customer_staking_transactions].concat();
 
         // Prepare the ratifications.
         let ratifications = vec![Ratify::Genesis(committee, public_balances)];
