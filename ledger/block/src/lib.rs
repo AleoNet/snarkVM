@@ -88,7 +88,7 @@ impl<N: Network> Block<N> {
         header: Header<N>,
         ratifications: Ratifications<N>,
         solutions: Option<CoinbaseSolution<N>>,
-        prior_solution_ids: Vec<PuzzleCommitment<N>>, // TODO: we could change all these Vecs to IndexSets
+        prior_solution_ids: Vec<PuzzleCommitment<N>>,
         transactions: Transactions<N>,
         prior_transaction_ids: Vec<N::TransactionID>,
         aborted_transaction_ids: Vec<N::TransactionID>,
@@ -322,9 +322,19 @@ impl<N: Network> Block<N> {
         self.solutions.as_ref()
     }
 
+    /// Returns the prior solution ids in the block.
+    pub const fn prior_solution_ids(&self) -> &Vec<PuzzleCommitment<N>> {
+        &self.prior_solution_ids
+    }
+
     /// Returns the transactions in this block.
     pub const fn transactions(&self) -> &Transactions<N> {
         &self.transactions
+    }
+
+    /// Returns the prior transactions ids in the block.
+    pub const fn prior_transaction_ids(&self) -> &Vec<N::TransactionID> {
+        &self.prior_transaction_ids
     }
 
     /// Returns the aborted transaction IDs in this block.

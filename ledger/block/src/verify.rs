@@ -526,12 +526,8 @@ impl<N: Network> Block<N> {
                 let tx_indices = subdag.transaction_indices(transactions_len)?;
                 // Ensure the Subdag contains all solution indices.
                 ensure!(solution_indices.len() == solutions_len, "Subdag does not contain all solution indices.");
-                // TODO: not sure if this will hold true for all cases.
-                ensure!(solution_indices.get_ref().all(), "Subdag does not contain all solution indices.");
                 // Ensure the Subdag contains all transaction indices.
                 ensure!(tx_indices.len() == transactions_len, "Subdag does not contain all tx indices.");
-                // TODO: not sure if this will hold true for all cases.
-                ensure!(tx_indices.get_ref().all(), "Subdag does not contain all tx indices.");
             }
             Subdag::Full { subdag, .. } => {
                 // Prepare an iterator over the solution IDs.

@@ -27,7 +27,7 @@ edition = "2021"
 default = [ ]
 serial = [ "console/serial" ]
 wasm = [ "console/wasm" ]
-test-helpers = [ "narwhal-transmission-id/test-helpers", "time" ]
+test-helpers = [ "narwhal-transmission-id/test-helpers", "narwhal-batch-header/test-helpers", "time" ]
 
 [dependencies.console]
 package = "snarkvm-console"

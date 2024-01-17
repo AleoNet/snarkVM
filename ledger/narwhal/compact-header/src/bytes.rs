@@ -35,17 +35,8 @@ impl<N: Network> FromBytes for CompactHeader<N> {
         // Read the timestamp.
         let timestamp = i64::read_le(&mut reader)?;
 
-        // Read the number of transmission IDs.
-        let num_transmission_ids = u32::read_le(&mut reader)?;
-        // Ensure the number of transmission IDs is within bounds.
-        if num_transmission_ids as usize > Self::MAX_TRANSMISSIONS {
-            return Err(error(format!(
-                "Number of transmission IDs ({num_transmission_ids}) exceeds the maximum ({})",
-                Self::MAX_TRANSMISSIONS,
-            )));
-        }
         // Read the number of transaction indices.
-        let num_transaction_indices = u32::read_le(&mut reader)?;
+        let num_transaction_indices = u16::read_le(&mut reader)?;
         let mut transaction_indices = Vec::with_capacity(num_transaction_indices as usize);
         // Read the transaction indices.
         for _ in 0..num_transaction_indices {
@@ -54,7 +45,7 @@ impl<N: Network> FromBytes for CompactHeader<N> {
         let transaction_indices = BitSet::from_bit_vec(BitVec::from_bytes(&transaction_indices));
 
         // Read the number of solution indices.
-        let num_solution_indices = u32::read_le(&mut reader)?;
+        let num_solution_indices = u16::read_le(&mut reader)?;
         let mut solution_indices = Vec::with_capacity(num_solution_indices as usize);
         // Read the transaction indices.
         for _ in 0..num_solution_indices {
@@ -78,15 +69,8 @@ impl<N: Network> FromBytes for CompactHeader<N> {
             previous_certificate_ids.insert(Field::read_le(&mut reader)?);
         }
 
-        // TODO (howardwu): For mainnet - Change this to always encode the number of committed certificate IDs.
-        //  We currently only encode the size and certificates in the new version, for backwards compatibility.
-        let num_last_election_certificate_ids = if version == 2 {
-            // Read the number of last election certificate IDs.
-            u16::read_le(&mut reader)?
-        } else {
-            // Set the number of last election certificate IDs to zero.
-            0
-        };
+        // Read the number of last election certificate IDs.
+        let num_last_election_certificate_ids = u16::read_le(&mut reader)?;
         // Ensure the number of last election certificate IDs is within bounds.
         if num_last_election_certificate_ids as usize > Self::MAX_CERTIFICATES {
             return Err(error(format!(
@@ -142,14 +126,14 @@ impl<N: Network> ToBytes for CompactHeader<N> {
         // Get transaction indices vector.
         let transaction_indices = self.transaction_indices.get_ref().to_bytes();
         // Write the number of transaction indices.
-        u32::try_from(transaction_indices.len()).map_err(error)?.write_le(&mut writer)?;
+        u16::try_from(transaction_indices.len()).map_err(error)?.write_le(&mut writer)?;
         // Write the transaction indices.
         transaction_indices.into_iter().try_for_each(|b| b.write_le(&mut writer))?;
         // Get solution indices vector.
         let solution_indices = self.solution_indices.get_ref().to_bytes();
         // Write the number of solution indices.
-        u32::try_from(solution_indices.len()).map_err(error)?.write_le(&mut writer)?;
-        // Write the transaction indices.
+        u16::try_from(solution_indices.len()).map_err(error)?.write_le(&mut writer)?;
+        // Write the solution indices.
         solution_indices.into_iter().try_for_each(|b| b.write_le(&mut writer))?;
         // Write the number of previous certificate IDs.
         u32::try_from(self.previous_certificate_ids.len()).map_err(|e| error(e.to_string()))?.write_le(&mut writer)?;

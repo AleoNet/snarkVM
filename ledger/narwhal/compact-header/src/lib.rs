@@ -21,7 +21,6 @@ mod serialize;
 mod string;
 
 use bit_set::BitSet;
-use bit_vec::BitVec;
 use console::{
     account::{Address, Signature},
     prelude::*,

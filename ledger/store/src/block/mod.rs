@@ -451,6 +451,9 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
             // Store the block solutions.
             self.solutions_map().insert(block.hash(), block.solutions().cloned())?;
 
+            // Store the prior solution IDs.
+            self.prior_solution_ids_map().insert(block.hash(), block.prior_solution_ids().clone())?;
+
             // Store the block puzzle commitments.
             if let Some(solutions) = block.solutions() {
                 for puzzle_commitment in solutions.keys() {
@@ -460,6 +463,9 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
 
             // Store the transaction IDs.
             self.transactions_map().insert(block.hash(), block.transaction_ids().copied().collect())?;
+
+            // Store the prior transaction IDs.
+            self.prior_transaction_ids_map().insert(block.hash(), block.prior_transaction_ids().clone())?;
 
             // Store the aborted transaction IDs.
             self.aborted_transaction_ids_map().insert(block.hash(), block.aborted_transaction_ids().clone())?;

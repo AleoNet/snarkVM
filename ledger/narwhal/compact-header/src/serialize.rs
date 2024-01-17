@@ -24,14 +24,9 @@ impl<N: Network> Serialize for CompactHeader<N> {
                 header.serialize_field("author", &self.author)?;
                 header.serialize_field("round", &self.round)?;
                 header.serialize_field("timestamp", &self.timestamp)?;
-                header.serialize_field::<Vec<_>>(
-                    "transaction_indices",
-                    self.transaction_indices.get_ref().to_bytes().as_ref(),
-                )?;
-                header.serialize_field::<Vec<_>>(
-                    "solution_indices",
-                    self.solution_indices.get_ref().to_bytes().as_ref(),
-                )?;
+                header
+                    .serialize_field::<Vec<_>>("transaction_indices", &self.transaction_indices.iter().collect_vec())?;
+                header.serialize_field::<Vec<_>>("solution_indices", &self.solution_indices.iter().collect_vec())?;
                 header.serialize_field("previous_certificate_ids", &self.previous_certificate_ids)?;
                 header.serialize_field("last_election_certificate_ids", &self.last_election_certificate_ids)?;
                 header.serialize_field("signature", &self.signature)?;
@@ -53,18 +48,29 @@ impl<'de, N: Network> Deserialize<'de> for CompactHeader<N> {
                 // Parse the last election certificate IDs.
                 let last_election_certificate_ids =
                     DeserializeExt::take_from_value::<D>(&mut header, "last_election_certificate_ids")?;
-
-                let transaction_indices: Vec<_> =
+                // Parse the transaction indices.
+                let transaction_indices_vec: Vec<_> =
                     DeserializeExt::take_from_value::<D>(&mut header, "transaction_indices")?;
-                let solution_indices: Vec<_> = DeserializeExt::take_from_value::<D>(&mut header, "solution_indices")?;
+                let mut transaction_indices = BitSet::with_capacity(transaction_indices_vec.len());
+                for index in transaction_indices_vec {
+                    transaction_indices.insert(index);
+                }
+                // Parse the solution indices.
+                let solution_indices_vec: Vec<_> =
+                    DeserializeExt::take_from_value::<D>(&mut header, "solution_indices")?;
+                let mut solution_indices = BitSet::with_capacity(solution_indices_vec.len());
+                for index in solution_indices_vec {
+                    solution_indices.insert(index);
+                }
+
                 // Recover the header.
                 let batch_header = Self::from(
                     batch_id,
                     DeserializeExt::take_from_value::<D>(&mut header, "author")?,
                     DeserializeExt::take_from_value::<D>(&mut header, "round")?,
                     DeserializeExt::take_from_value::<D>(&mut header, "timestamp")?,
-                    BitSet::from_bit_vec(BitVec::from_bytes(transaction_indices.as_ref())),
-                    BitSet::from_bit_vec(BitVec::from_bytes(solution_indices.as_ref())),
+                    transaction_indices,
+                    solution_indices,
                     DeserializeExt::take_from_value::<D>(&mut header, "previous_certificate_ids")?,
                     last_election_certificate_ids,
                     DeserializeExt::take_from_value::<D>(&mut header, "signature")?,
