@@ -24,7 +24,7 @@ license = "Apache-2.0"
 edition = "2021"
 
 [dependencies.metrics]
-version = "0.21"
+version = "0.22"
 
 [dependencies.metrics-exporter-prometheus]
-version = "0.12"
+version = "0.13"
