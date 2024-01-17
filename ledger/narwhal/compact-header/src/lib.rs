@@ -246,14 +246,11 @@ impl<N: Network> CompactHeader<N> {
     /// Convert compact header to batch header
     pub fn into_batch_header<'a>(
         self,
-        ratifications: impl ExactSizeIterator<Item = &'a N::RatificationID>,
+        _ratifications: impl ExactSizeIterator<Item = &'a N::RatificationID>,
         solutions: Option<impl Iterator<Item = &'a PuzzleCommitment<N>>>,
         transactions: impl Iterator<Item = &'a N::TransactionID>,
         rejected_transactions: impl Iterator<Item = &'a N::TransactionID>,
     ) -> Result<BatchHeader<N>> {
-        println!("ratifications: {:?}", ratifications.collect_vec());
-        // ensure!(ratifications.len() == 0, "Invalid batch, contains ratifications");
-
         // TODO (howardwu): For mainnet - Remove this version from the struct, we only use it here for backwards compatibility.
         //  NOTE: You must keep the version encoding in the byte serialization, just remove it from the struct in memory.
         // TODO (howardwu): For mainnet - Remove the version from BatchHeader.
