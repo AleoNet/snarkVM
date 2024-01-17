@@ -24,9 +24,8 @@ impl<N: Network> Serialize for CompactHeader<N> {
                 header.serialize_field("author", &self.author)?;
                 header.serialize_field("round", &self.round)?;
                 header.serialize_field("timestamp", &self.timestamp)?;
-                header
-                    .serialize_field::<Vec<_>>("transaction_indices", &self.transaction_indices.iter().collect_vec())?;
-                header.serialize_field::<Vec<_>>("solution_indices", &self.solution_indices.iter().collect_vec())?;
+                header.serialize_field("transaction_indices", &self.transaction_indices.iter().collect_vec())?;
+                header.serialize_field("solution_indices", &self.solution_indices.iter().collect_vec())?;
                 header.serialize_field("previous_certificate_ids", &self.previous_certificate_ids)?;
                 header.serialize_field("last_election_certificate_ids", &self.last_election_certificate_ids)?;
                 header.serialize_field("signature", &self.signature)?;

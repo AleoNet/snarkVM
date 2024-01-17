@@ -19,15 +19,15 @@ mod bytes;
 mod serialize;
 mod string;
 
-use bit_set::BitSet;
 use console::{account::Address, prelude::*, program::SUBDAG_CERTIFICATES_DEPTH, types::Field};
 use ledger_coinbase::{CoinbaseSolution, PuzzleCommitment};
 use narwhal_batch_certificate::BatchCertificate;
 use narwhal_batch_header::BatchHeader;
 use narwhal_compact_certificate::CompactCertificate;
-
-use indexmap::IndexSet;
 use narwhal_traits::NarwhalCertificate;
+
+use bit_set::BitSet;
+use indexmap::IndexSet;
 use std::collections::BTreeMap;
 
 #[cfg(not(feature = "serial"))]
@@ -425,7 +425,9 @@ impl<N: Network> Subdag<N> {
         self,
         ratifications: Vec<N::RatificationID>,
         solutions: Option<CoinbaseSolution<N>>,
+        prior_solutions: Vec<PuzzleCommitment<N>>,
         transaction_ids: Vec<N::TransactionID>,
+        prior_transactions: Vec<N::TransactionID>,
         aborted_transaction_ids: Vec<N::TransactionID>,
     ) -> Result<Subdag<N>> {
         let Self::Compact { subdag, election_certificate_ids } = self else {
@@ -441,14 +443,18 @@ impl<N: Network> Subdag<N> {
                 // Create iters.
                 let ratifications_iter = ratifications.iter();
                 let solutions_iter = solutions.as_ref().map(|s| s.puzzle_commitments());
+                let prior_solutions_iter = prior_solutions.iter();
                 let transactions_iter = transaction_ids.iter();
+                let prior_transactions_iter = prior_transactions.iter();
                 let aborted_tx_iter = aborted_transaction_ids.iter();
 
                 // Convert compact certificate to batch certificate.
                 let batch_certificate = certificate.into_batch_certificate(
                     ratifications_iter,
                     solutions_iter,
+                    prior_solutions_iter,
                     transactions_iter,
+                    prior_transactions_iter,
                     aborted_tx_iter,
                 )?;
                 batch_certificates.insert(batch_certificate);

@@ -56,13 +56,13 @@ pub struct CompactHeader<N: Network> {
 
 impl<N: Network> CompactHeader<N> {
     /// The maximum number of certificates in a batch.
-    pub const MAX_CERTIFICATES: usize = 200;
+    pub const MAX_CERTIFICATES: usize = BatchHeader::<N>::MAX_CERTIFICATES;
     /// The maximum number of solutions in a batch.
-    pub const MAX_SOLUTIONS: usize = N::MAX_SOLUTIONS;
+    pub const MAX_SOLUTIONS: usize = BatchHeader::<N>::MAX_SOLUTIONS;
     /// The maximum number of transactions in a batch.
-    pub const MAX_TRANSACTIONS: usize = usize::pow(2, console::program::TRANSACTIONS_DEPTH as u32);
+    pub const MAX_TRANSACTIONS: usize = BatchHeader::<N>::MAX_TRANSACTIONS;
     /// The maximum number of transmissions in a batch.
-    pub const MAX_TRANSMISSIONS: usize = Self::MAX_SOLUTIONS + Self::MAX_TRANSACTIONS;
+    pub const MAX_TRANSMISSIONS: usize = BatchHeader::<N>::MAX_TRANSMISSIONS;
 }
 
 impl<N: Network> CompactHeader<N> {
@@ -248,7 +248,9 @@ impl<N: Network> CompactHeader<N> {
         self,
         _ratifications: impl ExactSizeIterator<Item = &'a N::RatificationID>,
         solutions: Option<impl Iterator<Item = &'a PuzzleCommitment<N>>>,
+        prior_solutions: impl ExactSizeIterator<Item = &'a PuzzleCommitment<N>>,
         transactions: impl Iterator<Item = &'a N::TransactionID>,
+        prior_transactions: impl ExactSizeIterator<Item = &'a N::TransactionID>,
         rejected_transactions: impl Iterator<Item = &'a N::TransactionID>,
     ) -> Result<BatchHeader<N>> {
         // TODO (howardwu): For mainnet - Remove this version from the struct, we only use it here for backwards compatibility.
@@ -257,18 +259,30 @@ impl<N: Network> CompactHeader<N> {
         let version = 2u8;
 
         let mut transmission_ids = IndexSet::new();
-        transactions.chain(rejected_transactions).enumerate().for_each(|(index, transaction_id)| {
-            if self.transaction_indices.contains(index) {
-                transmission_ids.insert(TransmissionID::Transaction(*transaction_id));
-            }
-        });
-        if let Some(block_solutions) = solutions {
-            block_solutions.enumerate().for_each(|(index, puzzle_commitment)| {
+        transactions.chain(rejected_transactions).chain(prior_transactions).enumerate().for_each(
+            |(index, transaction_id)| {
                 if self.transaction_indices.contains(index) {
-                    transmission_ids.insert(TransmissionID::Solution(*puzzle_commitment));
+                    transmission_ids.insert(TransmissionID::Transaction(*transaction_id));
                 }
-            });
-        }
+            },
+        );
+        match solutions {
+            Some(solutions) => {
+                solutions.chain(prior_solutions).enumerate().for_each(|(index, puzzle_commitment)| {
+                    if self.transaction_indices.contains(index) {
+                        transmission_ids.insert(TransmissionID::Solution(*puzzle_commitment));
+                    }
+                });
+            }
+            None => {
+                prior_solutions.enumerate().for_each(|(index, puzzle_commitment)| {
+                    if self.transaction_indices.contains(index) {
+                        transmission_ids.insert(TransmissionID::Solution(*puzzle_commitment));
+                    }
+                });
+            }
+        };
+
         ensure!(
             transmission_ids.len() == self.transaction_indices.len() + self.solution_indices.len(),
             "Could not find all transmission_ids"
@@ -319,23 +333,39 @@ pub mod test_helpers {
             sample_batch_header_for_round_with_previous_certificate_ids(round, previous_certificate_ids, rng);
         // Construct a set of all transmission IDs.
         let mut solutions = IndexSet::new();
-        let prior_solutions = IndexSet::new();
+        let mut prior_solutions = IndexSet::new();
         let mut tx_ids = IndexSet::new();
-        let prior_tx_ids = IndexSet::new();
-        let rejected_tx_ids = IndexSet::new();
-        for transmission_id in batch_header.transmission_ids() {
+        let mut prior_tx_ids = IndexSet::new();
+        let mut rejected_tx_ids = IndexSet::new();
+        for (i, transmission_id) in batch_header.transmission_ids().iter().enumerate() {
             match transmission_id {
-                TransmissionID::Solution(solution) => {
-                    solutions.insert(*solution);
-                }
-                TransmissionID::Transaction(transaction_id) => {
-                    tx_ids.insert(*transaction_id);
-                }
+                TransmissionID::Solution(solution) => match i % 2 {
+                    0 => {
+                        solutions.insert(*solution);
+                    }
+                    1 => {
+                        prior_solutions.insert(*solution);
+                    }
+                    _ => panic!("Invalid solution index"),
+                },
+                TransmissionID::Transaction(transaction_id) => match i % 3 {
+                    0 => {
+                        tx_ids.insert(*transaction_id);
+                    }
+                    1 => {
+                        prior_tx_ids.insert(*transaction_id);
+                    }
+                    2 => {
+                        rejected_tx_ids.insert(*transaction_id);
+                    }
+                    _ => panic!("Invalid solution index"),
+                },
                 TransmissionID::Ratification => {}
             }
         }
+
         // Return the compact header.
-        CompactHeader::new(
+        let compact_header = CompactHeader::new(
             &batch_header,
             std::iter::empty(),
             Some(solutions.iter()),
@@ -344,7 +374,21 @@ pub mod test_helpers {
             prior_tx_ids.iter(),
             rejected_tx_ids.iter(),
         )
-        .unwrap()
+        .unwrap();
+
+        let check_batch_header = compact_header
+            .clone()
+            .into_batch_header(
+                std::iter::empty(),
+                Some(solutions.iter()),
+                prior_solutions.iter(),
+                tx_ids.iter(),
+                prior_tx_ids.iter(),
+                rejected_tx_ids.iter(),
+            )
+            .unwrap();
+        assert_eq!(batch_header, check_batch_header);
+        compact_header
     }
 
     /// Returns a list of sample compact headers, sampled at random.

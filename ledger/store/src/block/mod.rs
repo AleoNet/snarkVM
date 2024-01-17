@@ -829,11 +829,19 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         let Some(solutions) = self.solutions_map().get_confirmed(&block_hash)? else {
             bail!("The solutions for block '{block_hash}' are missing in block storage")
         };
+        // Retrieve this block's prior solutions.
+        let Some(prior_solutions) = self.prior_solution_ids_map().get_confirmed(&block_hash)? else {
+            bail!("The prior solution ids for block '{block_hash}' are missing in block storage")
+        };
         // Retrieve this block's transactions.
         let Some(transactions) = self.transactions_map().get_confirmed(&block_hash)? else {
             bail!("The transactions for '{block_hash}' are missing in block storage")
         };
-        // Retrieve this block's transactions.
+        // Retrieve this block's prior transactions.
+        let Some(prior_transactions) = self.prior_transaction_ids_map().get_confirmed(&block_hash)? else {
+            bail!("The transactions for '{block_hash}' are missing in block storage")
+        };
+        // Retrieve this block's aborted transactions.
         let Some(aborted_transaction_ids) = self.aborted_transaction_ids_map().get_confirmed(&block_hash)? else {
             bail!("The aborted_transactions for '{block_hash}' are missing in block storage")
         };
@@ -848,7 +856,9 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         let batch_certificate = compact_certificate.into_batch_certificate(
             ratifications.ratification_ids(),
             solutions,
+            prior_solutions.iter(),
             transactions.iter(),
+            prior_transactions.iter(),
             aborted_transaction_ids.iter(),
         )?;
         Ok(Some(batch_certificate))

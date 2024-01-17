@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// TODO: search if this new directory needs to be included in any of the higher up files/dirs.
-
 use console::{
     program::{Network, Signature},
     types::{Address, Field},

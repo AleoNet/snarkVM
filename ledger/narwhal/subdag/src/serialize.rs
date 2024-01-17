@@ -70,58 +70,58 @@ impl<'de, N: Network> Deserialize<'de> for Subdag<N> {
     }
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-//     fn check_serde_json<
-//         T: Serialize + for<'a> Deserialize<'a> + Debug + Display + PartialEq + Eq + FromStr + ToBytes + FromBytes,
-//     >(
-//         expected: T,
-//     ) {
-//         // Serialize
-//         let expected_string = expected.to_string();
-//         let candidate_string = serde_json::to_string(&expected).unwrap();
-//         let candidate = serde_json::from_str::<T>(&candidate_string).unwrap();
-//         assert_eq!(expected, candidate);
-//         assert_eq!(expected_string, candidate_string);
-//         assert_eq!(expected_string, candidate.to_string());
+    fn check_serde_json<
+        T: Serialize + for<'a> Deserialize<'a> + Debug + Display + PartialEq + Eq + FromStr + ToBytes + FromBytes,
+    >(
+        expected: T,
+    ) {
+        // Serialize
+        let expected_string = expected.to_string();
+        let candidate_string = serde_json::to_string(&expected).unwrap();
+        let candidate = serde_json::from_str::<T>(&candidate_string).unwrap();
+        assert_eq!(expected, candidate);
+        assert_eq!(expected_string, candidate_string);
+        assert_eq!(expected_string, candidate.to_string());
 
-//         // Deserialize
-//         assert_eq!(expected, T::from_str(&expected_string).unwrap_or_else(|_| panic!("FromStr: {expected_string}")));
-//         assert_eq!(expected, serde_json::from_str(&candidate_string).unwrap());
-//     }
+        // Deserialize
+        assert_eq!(expected, T::from_str(&expected_string).unwrap_or_else(|_| panic!("FromStr: {expected_string}")));
+        assert_eq!(expected, serde_json::from_str(&candidate_string).unwrap());
+    }
 
-//     fn check_bincode<
-//         T: Serialize + for<'a> Deserialize<'a> + Debug + Display + PartialEq + Eq + FromStr + ToBytes + FromBytes,
-//     >(
-//         expected: T,
-//     ) {
-//         // Serialize
-//         let expected_bytes = expected.to_bytes_le().unwrap();
-//         let expected_bytes_with_size_encoding = bincode::serialize(&expected).unwrap();
-//         assert_eq!(&expected_bytes[..], &expected_bytes_with_size_encoding[8..]);
+    fn check_bincode<
+        T: Serialize + for<'a> Deserialize<'a> + Debug + Display + PartialEq + Eq + FromStr + ToBytes + FromBytes,
+    >(
+        expected: T,
+    ) {
+        // Serialize
+        let expected_bytes = expected.to_bytes_le().unwrap();
+        let expected_bytes_with_size_encoding = bincode::serialize(&expected).unwrap();
+        assert_eq!(&expected_bytes[..], &expected_bytes_with_size_encoding[8..]);
 
-//         // Deserialize
-//         assert_eq!(expected, T::read_le(&expected_bytes[..]).unwrap());
-//         assert_eq!(expected, bincode::deserialize(&expected_bytes_with_size_encoding[..]).unwrap());
-//     }
+        // Deserialize
+        assert_eq!(expected, T::read_le(&expected_bytes[..]).unwrap());
+        assert_eq!(expected, bincode::deserialize(&expected_bytes_with_size_encoding[..]).unwrap());
+    }
 
-//     #[test]
-//     fn test_serde_json() {
-//         let rng = &mut TestRng::default();
+    #[test]
+    fn test_serde_json() {
+        let rng = &mut TestRng::default();
 
-//         for expected in crate::test_helpers::sample_subdags(rng) {
-//             check_serde_json(expected);
-//         }
-//     }
+        for expected in crate::test_helpers::sample_subdags(rng) {
+            check_serde_json(expected);
+        }
+    }
 
-//     #[test]
-//     fn test_bincode() {
-//         let rng = &mut TestRng::default();
+    #[test]
+    fn test_bincode() {
+        let rng = &mut TestRng::default();
 
-//         for expected in crate::test_helpers::sample_subdags(rng) {
-//             check_bincode(expected);
-//         }
-//     }
-// }
+        for expected in crate::test_helpers::sample_subdags(rng) {
+            check_bincode(expected);
+        }
+    }
+}

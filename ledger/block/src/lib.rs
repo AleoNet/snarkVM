@@ -261,7 +261,16 @@ impl<N: Network> Block<N> {
 
     /// Consume the Block and return a Subdag with full batch certificates.
     pub fn into_full_subdag(self) -> Result<Subdag<N>> {
-        let Block { ratifications, solutions, transactions, aborted_transaction_ids, authority, .. } = self;
+        let Block {
+            ratifications,
+            solutions,
+            prior_solution_ids,
+            transactions,
+            prior_transaction_ids,
+            aborted_transaction_ids,
+            authority,
+            ..
+        } = self;
 
         // Check if Authority is a Quorum
         let Authority::Quorum(subdag) = authority else {
@@ -274,12 +283,28 @@ impl<N: Network> Block<N> {
         let transaction_ids = transactions.transaction_ids().copied().collect_vec();
 
         // Convert Quorum authority to subdag with full batch certificates.
-        subdag.into_full(ratification_ids, solutions, transaction_ids, aborted_transaction_ids)
+        subdag.into_full(
+            ratification_ids,
+            solutions,
+            prior_solution_ids,
+            transaction_ids,
+            prior_transaction_ids,
+            aborted_transaction_ids,
+        )
     }
 
     /// Borrow the Block and return a Subdag with full batch certificates.
     pub fn to_full_subdag(&self) -> Result<Subdag<N>> {
-        let Block { ratifications, solutions, transactions, aborted_transaction_ids, authority, .. } = self;
+        let Block {
+            ratifications,
+            solutions,
+            prior_solution_ids,
+            transactions,
+            prior_transaction_ids,
+            aborted_transaction_ids,
+            authority,
+            ..
+        } = self;
 
         // Check if Authority is a Quorum
         let Authority::Quorum(subdag) = authority else {
@@ -292,7 +317,14 @@ impl<N: Network> Block<N> {
         let transaction_ids = transactions.transaction_ids().copied().collect_vec();
 
         // Convert Quorum authority to subdag with full batch certificates.
-        subdag.clone().into_full(ratification_ids, solutions.clone(), transaction_ids, aborted_transaction_ids.clone())
+        subdag.clone().into_full(
+            ratification_ids,
+            solutions.clone(),
+            prior_solution_ids.clone(),
+            transaction_ids,
+            prior_transaction_ids.clone(),
+            aborted_transaction_ids.clone(),
+        )
     }
 }
 
