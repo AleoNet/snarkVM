@@ -72,56 +72,46 @@ impl<N: Network> CompactHeader<N> {
         batch_header: &BatchHeader<N>,
         _ratifications: impl ExactSizeIterator<Item = &'a N::RatificationID>,
         solutions: Option<impl ExactSizeIterator<Item = &'a PuzzleCommitment<N>>>,
-        // previously_included_solutions: impl ExactSizeIterator<Item = &'a N::TransactionID>,
+        prior_solutions: impl ExactSizeIterator<Item = &'a PuzzleCommitment<N>>,
         transactions: impl ExactSizeIterator<Item = &'a N::TransactionID>,
+        prior_transactions: impl ExactSizeIterator<Item = &'a N::TransactionID>,
         aborted_transactions: impl ExactSizeIterator<Item = &'a N::TransactionID>,
-        // previously_included_transactions: impl ExactSizeIterator<Item = &'a N::TransactionID>,
     ) -> Result<Self> {
         let transmission_ids = batch_header.transmission_ids();
 
-        // NOTE: if we support ratifications in BatchHeaders, then we'll also have to add a ratification_indices BitSet in CompactHeader.
-        ensure!(
-            transmission_ids.iter().all(|id| !matches!(id, TransmissionID::Ratification)),
-            "Invalid batch, contains ratifications"
-        );
+        // Check the number of transactions and solutions in the batch.
+        let mut num_transactions = 0;
+        let mut num_solutions = 0;
+        for id in transmission_ids.iter() {
+            match id {
+                TransmissionID::Solution(_) => num_solutions += 1,
+                TransmissionID::Transaction(_) => num_transactions += 1,
+                TransmissionID::Ratification => bail!("Invalid batch, contains ratifications"),
+            }
+        }
 
         // Check which transaction_indices the certificate contains.
-        // let mut found_transactions = IndexSet::new(); // TODO: can or should we preallocate?
-        let num_transactions = transactions.len() + aborted_transactions.len();
         let mut transaction_indices = BitSet::with_capacity(num_transactions);
-        for (i, transaction_id) in transactions.chain(aborted_transactions).enumerate() {
+        for (i, transaction_id) in transactions.chain(aborted_transactions).chain(prior_transactions).enumerate() {
             let transmission_id = TransmissionID::Transaction(*transaction_id);
             if transmission_ids.contains(&transmission_id) {
                 transaction_indices.insert(i);
-                // found_transactions.insert(transmission_id);
             }
         }
 
         // Check which solution_indices the certificate contains.
-        let solution_indices = solutions
-            .map(|solutions| {
-                let mut solution_indices = BitSet::with_capacity(solutions.len());
-                for (i, solution_id) in solutions.enumerate() {
-                    if transmission_ids.contains(&TransmissionID::Solution(*solution_id)) {
-                        solution_indices.insert(i);
-                    }
-                }
-                solution_indices
-            })
-            .unwrap_or_default();
+        let solution_indices = match solutions {
+            Some(solutions) => {
+                Self::create_solution_indices(solutions.chain(prior_solutions), transmission_ids, num_solutions)
+            }
+            None => Self::create_solution_indices(prior_solutions, transmission_ids, num_solutions),
+        };
 
         // Check if we found all Transmission IDs.
-        // TODO: I might remove this check entirely. Some transmissions might be in the ledger...
-        // if transaction_indices.len() + solution_indices.len() != transmission_ids.len() {
-        //     for transmission_id in transmission_ids.difference(&found_transactions) {
-        //         match transmission_id {
-        //             TransmissionID::Transaction(transaction_id) => {
-        //                 ensure!(ledger.contains_transaction(*transaction_id));
-        //             },
-        //             _ => {}
-        //         }
-        //     }
-        // }
+        ensure!(
+            transaction_indices.len() + solution_indices.len() == transmission_ids.len(),
+            "Could not find all transmission_ids"
+        );
 
         // Return the compact header.
         Ok(Self {
@@ -135,6 +125,21 @@ impl<N: Network> CompactHeader<N> {
             last_election_certificate_ids: batch_header.last_election_certificate_ids().clone(),
             signature: *batch_header.signature(),
         })
+    }
+
+    /// Creates solution_indices from transmission_ids.
+    fn create_solution_indices<'a>(
+        block_solutions: impl Iterator<Item = &'a PuzzleCommitment<N>>,
+        transmission_ids: &IndexSet<TransmissionID<N>>,
+        num_solutions_in_batch: usize,
+    ) -> BitSet {
+        let mut solution_indices = BitSet::with_capacity(num_solutions_in_batch);
+        for (i, solution_id) in block_solutions.enumerate() {
+            if transmission_ids.contains(&TransmissionID::Solution(*solution_id)) {
+                solution_indices.insert(i);
+            }
+        }
+        solution_indices
     }
 
     /// Initializes a new compact header.
@@ -318,7 +323,9 @@ pub mod test_helpers {
             sample_batch_header_for_round_with_previous_certificate_ids(round, previous_certificate_ids, rng);
         // Construct a set of all transmission IDs.
         let mut solutions = IndexSet::new();
+        let prior_solutions = IndexSet::new();
         let mut tx_ids = IndexSet::new();
+        let prior_tx_ids = IndexSet::new();
         let rejected_tx_ids = IndexSet::new();
         for transmission_id in batch_header.transmission_ids() {
             match transmission_id {
@@ -336,7 +343,9 @@ pub mod test_helpers {
             &batch_header,
             std::iter::empty(),
             Some(solutions.iter()),
+            prior_solutions.iter(),
             tx_ids.iter(),
+            prior_tx_ids.iter(),
             rejected_tx_ids.iter(),
         )
         .unwrap()

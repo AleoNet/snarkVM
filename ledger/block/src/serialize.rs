@@ -25,12 +25,12 @@ impl<N: Network> Serialize for Block<N> {
                 block.serialize_field("header", &self.header)?;
                 block.serialize_field("authority", &self.authority)?;
                 block.serialize_field("ratifications", &self.ratifications)?;
-
                 if let Some(solutions) = &self.solutions {
                     block.serialize_field("solutions", solutions)?;
                 }
-
+                block.serialize_field("prior_solution_ids", &self.prior_solution_ids)?;
                 block.serialize_field("transactions", &self.transactions)?;
+                block.serialize_field("prior_transaction_ids", &self.prior_transaction_ids)?;
                 block.serialize_field("aborted_transaction_ids", &self.aborted_transaction_ids)?;
                 block.end()
             }
@@ -57,7 +57,9 @@ impl<'de, N: Network> Deserialize<'de> for Block<N> {
                     DeserializeExt::take_from_value::<D>(&mut block, "authority")?,
                     DeserializeExt::take_from_value::<D>(&mut block, "ratifications")?,
                     serde_json::from_value(solutions).map_err(de::Error::custom)?,
+                    DeserializeExt::take_from_value::<D>(&mut block, "prior_solution_ids")?,
                     DeserializeExt::take_from_value::<D>(&mut block, "transactions")?,
+                    DeserializeExt::take_from_value::<D>(&mut block, "prior_transaction_ids")?,
                     DeserializeExt::take_from_value::<D>(&mut block, "aborted_transaction_ids")?,
                 )
                 .map_err(de::Error::custom)?;

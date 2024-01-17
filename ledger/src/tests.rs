@@ -210,8 +210,9 @@ fn test_insufficient_public_fees() {
             .execute(&private_key, ("credits.aleo", "transfer_public"), inputs.into_iter(), None, 0, None, rng)
             .unwrap();
 
-        let block =
-            ledger.prepare_advance_to_next_beacon_block(&private_key, vec![], vec![], vec![transaction], rng).unwrap();
+        let block = ledger
+            .prepare_advance_to_next_beacon_block(&private_key, vec![], vec![], vec![], vec![transaction], vec![], rng)
+            .unwrap();
 
         // Check that the next block is valid.
         ledger.check_next_block(&block, rng).unwrap();
@@ -230,8 +231,9 @@ fn test_insufficient_public_fees() {
             .execute(&recipient_private_key, ("credits.aleo", "bond_public"), inputs.into_iter(), None, 0, None, rng)
             .unwrap();
 
-        let block =
-            ledger.prepare_advance_to_next_beacon_block(&private_key, vec![], vec![], vec![transaction], rng).unwrap();
+        let block = ledger
+            .prepare_advance_to_next_beacon_block(&private_key, vec![], vec![], vec![], vec![transaction], vec![], rng)
+            .unwrap();
 
         // Check that the next block is valid.
         ledger.check_next_block(&block, rng).unwrap();
@@ -286,8 +288,9 @@ finalize foo:
     ledger.vm().check_transaction(&transaction, None, rng).unwrap();
 
     // Construct the next block.
-    let block =
-        ledger.prepare_advance_to_next_beacon_block(&private_key, vec![], vec![], vec![transaction], rng).unwrap();
+    let block = ledger
+        .prepare_advance_to_next_beacon_block(&private_key, vec![], vec![], vec![], vec![transaction], vec![], rng)
+        .unwrap();
     // Advance to the next block.
     ledger.advance_to_next_block(&block).unwrap();
     assert_eq!(ledger.latest_height(), 1);
@@ -298,7 +301,15 @@ finalize foo:
 
     // Construct the next block.
     let block = ledger
-        .prepare_advance_to_next_beacon_block(&private_key, vec![], vec![], vec![transfer_transaction.clone()], rng)
+        .prepare_advance_to_next_beacon_block(
+            &private_key,
+            vec![],
+            vec![],
+            vec![],
+            vec![transfer_transaction.clone()],
+            vec![],
+            rng,
+        )
         .unwrap();
     // Advance to the next block.
     ledger.advance_to_next_block(&block).unwrap();
@@ -387,7 +398,15 @@ finalize failed_assert:
 
     // Construct the deployment block.
     let deployment_block = ledger
-        .prepare_advance_to_next_beacon_block(&private_key, vec![], vec![], vec![deployment_transaction], rng)
+        .prepare_advance_to_next_beacon_block(
+            &private_key,
+            vec![],
+            vec![],
+            vec![],
+            vec![deployment_transaction],
+            vec![],
+            rng,
+        )
         .unwrap();
 
     // Check that the next block is valid.
@@ -417,7 +436,9 @@ finalize failed_assert:
             &private_key,
             vec![],
             vec![],
+            vec![],
             vec![failed_assert_transaction.clone()],
+            vec![],
             rng,
         )
         .unwrap();
@@ -472,8 +493,9 @@ finalize foo:
     ledger.vm().check_transaction(&transaction, None, rng).unwrap();
 
     // Construct the next block.
-    let block =
-        ledger.prepare_advance_to_next_beacon_block(&private_key, vec![], vec![], vec![transaction], rng).unwrap();
+    let block = ledger
+        .prepare_advance_to_next_beacon_block(&private_key, vec![], vec![], vec![], vec![transaction], vec![], rng)
+        .unwrap();
     // Advance to the next block.
     ledger.advance_to_next_block(&block).unwrap();
     assert_eq!(ledger.latest_height(), 1);
@@ -505,7 +527,15 @@ fn test_bond_and_unbond_validator() {
 
     // Construct the next block.
     let transfer_block = ledger
-        .prepare_advance_to_next_beacon_block(&private_key, vec![], vec![], vec![transfer_transaction], rng)
+        .prepare_advance_to_next_beacon_block(
+            &private_key,
+            vec![],
+            vec![],
+            vec![],
+            vec![transfer_transaction],
+            vec![],
+            rng,
+        )
         .unwrap();
 
     // Check that the next block is valid.
@@ -527,7 +557,15 @@ fn test_bond_and_unbond_validator() {
 
     // Construct the next block.
     let bond_public_block = ledger
-        .prepare_advance_to_next_beacon_block(&private_key, vec![], vec![], vec![bond_public_transaction], rng)
+        .prepare_advance_to_next_beacon_block(
+            &private_key,
+            vec![],
+            vec![],
+            vec![],
+            vec![bond_public_transaction],
+            vec![],
+            rng,
+        )
         .unwrap();
 
     // Check that the committee does not include the new member.
@@ -554,7 +592,15 @@ fn test_bond_and_unbond_validator() {
 
     // Construct the next block.
     let unbond_public_block = ledger
-        .prepare_advance_to_next_beacon_block(&private_key, vec![], vec![], vec![unbond_public_transaction], rng)
+        .prepare_advance_to_next_beacon_block(
+            &private_key,
+            vec![],
+            vec![],
+            vec![],
+            vec![unbond_public_transaction],
+            vec![],
+            rng,
+        )
         .unwrap();
 
     // Check that the next block is valid.
@@ -592,7 +638,15 @@ fn test_aborted_transaction_indexing() {
 
     // Construct the next block.
     let transfer_block = ledger
-        .prepare_advance_to_next_beacon_block(&private_key, vec![], vec![], vec![transfer_transaction], rng)
+        .prepare_advance_to_next_beacon_block(
+            &private_key,
+            vec![],
+            vec![],
+            vec![],
+            vec![transfer_transaction],
+            vec![],
+            rng,
+        )
         .unwrap();
 
     // Check that the next block is valid.
@@ -622,7 +676,9 @@ fn test_aborted_transaction_indexing() {
             &private_key,
             vec![],
             vec![],
+            vec![],
             vec![transfer_transaction, transfer_transaction_2],
+            vec![],
             rng,
         )
         .unwrap();
@@ -717,7 +773,9 @@ fn test_execute_duplicate_input_ids() {
             &private_key,
             vec![],
             vec![],
+            vec![],
             vec![transfer_1, transfer_2, transfer_3],
+            vec![],
             rng,
         )
         .unwrap();
@@ -743,7 +801,15 @@ fn test_execute_duplicate_input_ids() {
 
     // Create a block.
     let block = ledger
-        .prepare_advance_to_next_beacon_block(&private_key, vec![], vec![], vec![transfer_4, transfer_5], rng)
+        .prepare_advance_to_next_beacon_block(
+            &private_key,
+            vec![],
+            vec![],
+            vec![],
+            vec![transfer_4, transfer_5],
+            vec![],
+            rng,
+        )
         .unwrap();
 
     // Check that the next block is valid.
@@ -810,7 +876,15 @@ finalize foo2:
 
     // Create a block.
     let block = ledger
-        .prepare_advance_to_next_beacon_block(&private_key, vec![], vec![], vec![deployment_1, deployment_2], rng)
+        .prepare_advance_to_next_beacon_block(
+            &private_key,
+            vec![],
+            vec![],
+            vec![],
+            vec![deployment_1, deployment_2],
+            vec![],
+            rng,
+        )
         .unwrap();
 
     // Check that the next block is valid.

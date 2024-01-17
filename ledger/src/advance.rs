@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use indexmap::IndexSet;
+
 use super::*;
 
 impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
@@ -20,14 +22,21 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         &self,
         subdag: Subdag<N>,
         transmissions: IndexMap<TransmissionID<N>, Transmission<N>>,
+        prior_transmission_ids: IndexSet<TransmissionID<N>>,
     ) -> Result<Block<N>> {
         // Retrieve the latest block as the previous block (for the next block).
         let previous_block = self.latest_block();
 
         // Decouple the transmissions into ratifications, solutions, and transactions.
         let (ratifications, solutions, transactions) = decouple_transmissions(transmissions.into_iter())?;
+        // Decouple the prior_transmissions into ratifications, solutions, and transactions.
+        let (prior_ratifications, prior_solution_ids, prior_transaction_ids) =
+            decouple_transmission_ids(prior_transmission_ids)?;
         // Currently, we do not support ratifications from the memory pool.
-        ensure!(ratifications.is_empty(), "Ratifications are currently unsupported from the memory pool");
+        ensure!(
+            ratifications.is_empty() && prior_ratifications.is_empty(),
+            "Ratifications are currently unsupported from the memory pool"
+        );
         // Construct the block template.
         let (header, ratifications, solutions, transactions, aborted_transaction_ids) =
             self.construct_block_template(&previous_block, Some(&subdag), ratifications, solutions, transactions)?;
@@ -40,7 +49,9 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         let subdag = subdag.into_compact(
             ratification_ids,
             solutions.as_ref(),
+            prior_solution_ids.clone(),
             transaction_ids,
+            prior_transaction_ids.clone(),
             aborted_transaction_ids.clone(),
         )?;
 
@@ -51,18 +62,23 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             subdag,
             ratifications,
             solutions,
+            prior_solution_ids,
             transactions,
+            prior_transaction_ids,
             aborted_transaction_ids,
         )
     }
 
     /// Returns a candidate for the next block in the ledger.
+    #[allow(clippy::too_many_arguments)]
     pub fn prepare_advance_to_next_beacon_block<R: Rng + CryptoRng>(
         &self,
         private_key: &PrivateKey<N>,
         candidate_ratifications: Vec<Ratify<N>>,
         candidate_solutions: Vec<ProverSolution<N>>,
+        prior_solution_ids: Vec<PuzzleCommitment<N>>,
         candidate_transactions: Vec<Transaction<N>>,
+        prior_transaction_ids: Vec<N::TransactionID>,
         rng: &mut R,
     ) -> Result<Block<N>> {
         // Currently, we do not support ratifications from the memory pool.
@@ -87,7 +103,9 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             header,
             ratifications,
             solutions,
+            prior_solution_ids,
             transactions,
+            prior_transaction_ids,
             aborted_transaction_ids,
             rng,
         )

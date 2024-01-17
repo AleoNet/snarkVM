@@ -305,7 +305,9 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             header,
             ratifications,
             solutions,
+            vec![],
             transactions,
+            vec![],
             aborted_transaction_ids,
             rng,
         )?;
@@ -683,7 +685,9 @@ function compute:
             header,
             ratifications,
             None,
+            vec![],
             transactions,
+            vec![],
             aborted_transaction_ids,
             rng,
         )

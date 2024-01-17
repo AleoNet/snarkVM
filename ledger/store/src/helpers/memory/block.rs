@@ -45,10 +45,14 @@ pub struct BlockMemory<N: Network> {
     ratifications_map: MemoryMap<N::BlockHash, Ratifications<N>>,
     /// The solutions map.
     solutions_map: MemoryMap<N::BlockHash, Option<CoinbaseSolution<N>>>,
+    /// The solution ids map.
+    solution_ids_map: MemoryMap<N::BlockHash, Vec<PuzzleCommitment<N>>>,
     /// The puzzle commitments map.
     puzzle_commitments_map: MemoryMap<PuzzleCommitment<N>, u32>,
     /// The transactions map.
     transactions_map: MemoryMap<N::BlockHash, Vec<N::TransactionID>>,
+    /// The transaction ids map.
+    transaction_ids_map: MemoryMap<N::BlockHash, Vec<N::TransactionID>>,
     /// The aborted transaction IDs map.
     aborted_transaction_ids_map: MemoryMap<N::BlockHash, Vec<N::TransactionID>>,
     /// The rejected transaction ID or aborted transaction ID map.
@@ -72,8 +76,10 @@ impl<N: Network> BlockStorage<N> for BlockMemory<N> {
     type CertificateMap = MemoryMap<Field<N>, (u32, u64)>;
     type RatificationsMap = MemoryMap<N::BlockHash, Ratifications<N>>;
     type SolutionsMap = MemoryMap<N::BlockHash, Option<CoinbaseSolution<N>>>;
+    type PriorSolutionIDsMap = MemoryMap<N::BlockHash, Vec<PuzzleCommitment<N>>>;
     type PuzzleCommitmentsMap = MemoryMap<PuzzleCommitment<N>, u32>;
     type TransactionsMap = MemoryMap<N::BlockHash, Vec<N::TransactionID>>;
+    type PriorTransactionIDsMap = MemoryMap<N::BlockHash, Vec<N::TransactionID>>;
     type AbortedTransactionIDsMap = MemoryMap<N::BlockHash, Vec<N::TransactionID>>;
     type RejectedOrAbortedTransactionIDMap = MemoryMap<N::TransactionID, N::BlockHash>;
     type ConfirmedTransactionsMap = MemoryMap<N::TransactionID, (N::BlockHash, ConfirmedTxType, Vec<u8>)>;
@@ -98,8 +104,10 @@ impl<N: Network> BlockStorage<N> for BlockMemory<N> {
             certificate_map: MemoryMap::default(),
             ratifications_map: MemoryMap::default(),
             solutions_map: MemoryMap::default(),
+            solution_ids_map: MemoryMap::default(),
             puzzle_commitments_map: MemoryMap::default(),
             transactions_map: MemoryMap::default(),
+            transaction_ids_map: MemoryMap::default(),
             aborted_transaction_ids_map: MemoryMap::default(),
             rejected_or_aborted_transaction_id_map: MemoryMap::default(),
             confirmed_transactions_map: MemoryMap::default(),
@@ -153,6 +161,11 @@ impl<N: Network> BlockStorage<N> for BlockMemory<N> {
         &self.solutions_map
     }
 
+    /// Returns the prior solution ids map.
+    fn prior_solution_ids_map(&self) -> &Self::PriorSolutionIDsMap {
+        &self.solution_ids_map
+    }
+
     /// Returns the puzzle commitments map.
     fn puzzle_commitments_map(&self) -> &Self::PuzzleCommitmentsMap {
         &self.puzzle_commitments_map
@@ -161,6 +174,11 @@ impl<N: Network> BlockStorage<N> for BlockMemory<N> {
     /// Returns the transactions map.
     fn transactions_map(&self) -> &Self::TransactionsMap {
         &self.transactions_map
+    }
+
+    /// Returns the prior transaction ids map.
+    fn prior_transaction_ids_map(&self) -> &Self::PriorTransactionIDsMap {
+        &self.transaction_ids_map
     }
 
     /// Returns the aborted transaction IDs map.

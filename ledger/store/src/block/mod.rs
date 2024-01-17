@@ -187,12 +187,16 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
     type RatificationsMap: for<'a> Map<'a, N::BlockHash, Ratifications<N>>;
     /// The mapping of `block hash` to `block solutions`.
     type SolutionsMap: for<'a> Map<'a, N::BlockHash, Option<CoinbaseSolution<N>>>;
+    /// The mapping of `block hash` to `[prior solution ID]`.
+    type PriorSolutionIDsMap: for<'a> Map<'a, N::BlockHash, Vec<PuzzleCommitment<N>>>;
     /// The mapping of `puzzle commitment` to `block height`.
     type PuzzleCommitmentsMap: for<'a> Map<'a, PuzzleCommitment<N>, u32>;
     /// The mapping of `block hash` to `[transaction ID]`.
     type TransactionsMap: for<'a> Map<'a, N::BlockHash, Vec<N::TransactionID>>;
     /// The mapping of `block hash` to `[aborted transaction ID]`.
     type AbortedTransactionIDsMap: for<'a> Map<'a, N::BlockHash, Vec<N::TransactionID>>;
+    /// The mapping of `block hash` to `[prior transaction ID]`.
+    type PriorTransactionIDsMap: for<'a> Map<'a, N::BlockHash, Vec<N::TransactionID>>;
     /// The mapping of rejected or aborted `transaction ID` to `block hash`.
     type RejectedOrAbortedTransactionIDMap: for<'a> Map<'a, N::TransactionID, N::BlockHash>;
     /// The mapping of `transaction ID` to `(block hash, confirmed tx type, confirmed blob)`.
@@ -227,12 +231,16 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
     fn ratifications_map(&self) -> &Self::RatificationsMap;
     /// Returns the solutions map.
     fn solutions_map(&self) -> &Self::SolutionsMap;
+    /// Returns the prior solution IDs map.
+    fn prior_solution_ids_map(&self) -> &Self::PriorSolutionIDsMap;
     /// Returns the puzzle commitments map.
     fn puzzle_commitments_map(&self) -> &Self::PuzzleCommitmentsMap;
     /// Returns the accepted transactions map.
     fn transactions_map(&self) -> &Self::TransactionsMap;
     /// Returns the aborted transaction IDs map.
     fn aborted_transaction_ids_map(&self) -> &Self::AbortedTransactionIDsMap;
+    /// Returns the prior transaction IDs map.
+    fn prior_transaction_ids_map(&self) -> &Self::PriorTransactionIDsMap;
     /// Returns the rejected or aborted transaction ID map.
     fn rejected_or_aborted_transaction_id_map(&self) -> &Self::RejectedOrAbortedTransactionIDMap;
     /// Returns the confirmed transactions map.
@@ -905,6 +913,22 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         }
     }
 
+    /// Returns the block prior transaction IDs for the given `block hash`.
+    fn get_block_prior_transaction_ids(&self, block_hash: &N::BlockHash) -> Result<Option<Vec<N::TransactionID>>> {
+        match self.prior_transaction_ids_map().get_confirmed(block_hash)? {
+            Some(prior_transaction_ids) => Ok(Some(cow_to_cloned!(prior_transaction_ids))),
+            None => Ok(None),
+        }
+    }
+
+    /// Returns the block prior solution IDs for the given `block hash`.
+    fn get_block_prior_solution_ids(&self, block_hash: &N::BlockHash) -> Result<Option<Vec<PuzzleCommitment<N>>>> {
+        match self.prior_solution_ids_map().get_confirmed(block_hash)? {
+            Some(prior_solution_ids) => Ok(Some(cow_to_cloned!(prior_solution_ids))),
+            None => Ok(None),
+        }
+    }
+
     /// Returns the transaction for the given `transaction ID`.
     fn get_transaction(&self, transaction_id: &N::TransactionID) -> Result<Option<Transaction<N>>> {
         // Check if the transaction was rejected or aborted.
@@ -996,9 +1020,17 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         let Ok(solutions) = self.get_block_solutions(block_hash) else {
             bail!("Missing solutions for block {height} ('{block_hash}')");
         };
+        // Retrieve the block prior_solution_ids.
+        let Some(prior_solution_ids) = self.get_block_prior_solution_ids(block_hash)? else {
+            bail!("Missing prior_solution_ids for block {height} ('{block_hash}')");
+        };
         // Retrieve the block transactions.
         let Some(transactions) = self.get_block_transactions(block_hash)? else {
             bail!("Missing transactions for block {height} ('{block_hash}')");
+        };
+        // Retrieve the block prior_transaction_ids.
+        let Some(prior_transaction_ids) = self.get_block_prior_transaction_ids(block_hash)? else {
+            bail!("Missing prior_transaction_ids for block {height} ('{block_hash}')");
         };
         // Retrieve the block aborted transaction IDs.
         let Some(aborted_transaction_ids) = self.get_block_aborted_transaction_ids(block_hash)? else {
@@ -1012,7 +1044,9 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
             authority,
             ratifications,
             solutions,
+            prior_solution_ids,
             transactions,
+            prior_transaction_ids,
             aborted_transaction_ids,
         )?))
     }

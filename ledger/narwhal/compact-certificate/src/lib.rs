@@ -79,14 +79,18 @@ impl<N: Network> CompactCertificate<N> {
         batch_certificate: BatchCertificate<N>,
         ratifications: impl ExactSizeIterator<Item = &'a N::RatificationID>,
         solutions: Option<impl ExactSizeIterator<Item = &'a PuzzleCommitment<N>>>,
+        prior_solutions: impl ExactSizeIterator<Item = &'a PuzzleCommitment<N>>,
         transactions: impl ExactSizeIterator<Item = &'a N::TransactionID>,
+        prior_transactions: impl ExactSizeIterator<Item = &'a N::TransactionID>,
         aborted_transactions: impl ExactSizeIterator<Item = &'a N::TransactionID>,
     ) -> Result<Self> {
         let compact_header = CompactHeader::new(
             batch_certificate.batch_header(),
             ratifications,
             solutions,
+            prior_solutions,
             transactions,
+            prior_transactions,
             aborted_transactions,
         )?;
         let signatures = match batch_certificate {

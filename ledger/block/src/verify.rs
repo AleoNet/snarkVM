@@ -200,7 +200,9 @@ impl<N: Network> Block<N> {
                 Self::check_subdag_transmissions(
                     subdag,
                     &self.solutions,
+                    &self.prior_solution_ids,
                     &self.transactions,
+                    &self.prior_transaction_ids,
                     &self.aborted_transaction_ids,
                 )?;
             }
@@ -507,15 +509,17 @@ impl<N: Network> Block<N> {
     pub(super) fn check_subdag_transmissions(
         subdag: &Subdag<N>,
         solutions: &Option<CoinbaseSolution<N>>,
+        prior_solution_ids: &[PuzzleCommitment<N>],
         transactions: &Transactions<N>,
+        prior_transaction_ids: &[N::TransactionID],
         aborted_transaction_ids: &[N::TransactionID],
     ) -> Result<()> {
         match subdag {
             Subdag::Compact { .. } => {
                 // get length of solutions.
-                let solutions_len = solutions.as_ref().map(|c| c.len()).unwrap_or(0);
+                let solutions_len = solutions.as_ref().map(|c| c.len()).unwrap_or(0) + prior_solution_ids.len();
                 // get length of transactions.
-                let transactions_len = transactions.len() + aborted_transaction_ids.len();
+                let transactions_len = transactions.len() + prior_transaction_ids.len() + aborted_transaction_ids.len();
                 // Get bitset of unique solution indices.
                 let solution_indices = subdag.solution_indices(solutions_len)?;
                 // Get bitset of unique transaction indices.

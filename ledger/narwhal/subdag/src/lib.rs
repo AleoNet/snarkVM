@@ -21,7 +21,7 @@ mod string;
 
 use bit_set::BitSet;
 use console::{account::Address, prelude::*, program::SUBDAG_CERTIFICATES_DEPTH, types::Field};
-use ledger_coinbase::CoinbaseSolution;
+use ledger_coinbase::{CoinbaseSolution, PuzzleCommitment};
 use narwhal_batch_certificate::BatchCertificate;
 use narwhal_batch_header::BatchHeader;
 use narwhal_compact_certificate::CompactCertificate;
@@ -380,7 +380,9 @@ impl<N: Network> Subdag<N> {
         self,
         ratifications: Vec<N::RatificationID>,
         solutions: Option<&CoinbaseSolution<N>>,
+        prior_solutions: Vec<PuzzleCommitment<N>>,
         transaction_ids: Vec<N::TransactionID>,
+        prior_transaction_ids: Vec<N::TransactionID>,
         aborted_transaction_ids: Vec<N::TransactionID>,
     ) -> Result<Subdag<N>> {
         let Self::Full { subdag, election_certificate_ids } = self else {
@@ -396,13 +398,17 @@ impl<N: Network> Subdag<N> {
                 .map(|batch_certificate| {
                     let ratifications_iter = ratifications.iter();
                     let solutions_iter = solutions.map(|s| s.puzzle_commitments());
+                    let prior_solutions_iter = prior_solutions.iter();
                     let transactions_iter = transaction_ids.iter();
+                    let prior_transactions_iter = prior_transaction_ids.iter();
                     let aborted_tx_iter = aborted_transaction_ids.iter();
                     CompactCertificate::from_batch_certificate(
                         batch_certificate,
                         ratifications_iter,
                         solutions_iter,
+                        prior_solutions_iter,
                         transactions_iter,
+                        prior_transactions_iter,
                         aborted_tx_iter,
                     )
                 })
