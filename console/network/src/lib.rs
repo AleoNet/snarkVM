@@ -111,6 +111,8 @@ pub trait Network:
     const COINBASE_PUZZLE_DEGREE: u32 = (1 << 13) - 1; // 8,191
     /// The maximum number of solutions that can be included per block.
     const MAX_SOLUTIONS: usize = 1 << 8; // 256 solutions
+    /// The maximum number of transactions and solutions that can be included per block per round per validator.
+    const MAX_TRANSMISSIONS_PER_BATCH: usize = 250;
     /// The number of blocks per epoch.
     const NUM_BLOCKS_PER_EPOCH: u32 = 3600 / Self::BLOCK_TIME as u32; // 360 blocks == ~1 hour
 
