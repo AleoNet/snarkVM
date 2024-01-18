@@ -31,7 +31,10 @@ impl<N: Network> Serialize for Block<N> {
                 }
 
                 block.serialize_field("transactions", &self.transactions)?;
-                block.serialize_field("aborted_transaction_ids", &self.aborted_transaction_ids)?;
+                block.serialize_field(
+                    "aborted_transaction_ids_and_error_codes",
+                    &self.aborted_transaction_ids_and_error_codes().collect::<IndexMap<_, _>>(),
+                )?;
                 block.end()
             }
             false => ToBytesSerializer::serialize_with_size_encoding(self, serializer),
@@ -50,6 +53,10 @@ impl<'de, N: Network> Deserialize<'de> for Block<N> {
                 // Retrieve the solutions.
                 let solutions = block.get_mut("solutions").unwrap_or(&mut serde_json::Value::Null).take();
 
+                // Retrieve the aborted_transaction_ids_and_error_codes.
+                let aborted_transactions: IndexMap<N::TransactionID, u8> =
+                    DeserializeExt::take_from_value::<D>(&mut block, "aborted_transaction_ids_and_error_codes")?;
+
                 // Recover the block.
                 let block = Self::from(
                     DeserializeExt::take_from_value::<D>(&mut block, "previous_hash")?,
@@ -58,7 +65,10 @@ impl<'de, N: Network> Deserialize<'de> for Block<N> {
                     DeserializeExt::take_from_value::<D>(&mut block, "ratifications")?,
                     serde_json::from_value(solutions).map_err(de::Error::custom)?,
                     DeserializeExt::take_from_value::<D>(&mut block, "transactions")?,
-                    DeserializeExt::take_from_value::<D>(&mut block, "aborted_transaction_ids")?,
+                    aborted_transactions
+                        .into_iter()
+                        .map(|(id, error_code)| Ok((id, error_code.try_into().map_err(de::Error::custom)?)))
+                        .try_collect()?,
                 )
                 .map_err(de::Error::custom)?;
 

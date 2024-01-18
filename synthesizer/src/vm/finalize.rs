@@ -33,7 +33,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         candidate_ratifications: Vec<Ratify<N>>,
         candidate_solutions: Option<&CoinbaseSolution<N>>,
         candidate_transactions: impl ExactSizeIterator<Item = &'a Transaction<N>>,
-    ) -> Result<(Ratifications<N>, Transactions<N>, Vec<N::TransactionID>, Vec<FinalizeOperation<N>>)> {
+    ) -> Result<(Ratifications<N>, Transactions<N>, Vec<(N::TransactionID, AbortedError)>, Vec<FinalizeOperation<N>>)>
+    {
         let timer = timer!("VM::speculate");
 
         // Performs a **dry-run** over the list of ratifications, solutions, and transactions.
@@ -50,7 +51,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         let mut aborted_transaction_ids = Vec::with_capacity(aborted_transactions.len());
         for (tx, error) in aborted_transactions {
             warn!("Speculation safely aborted a transaction - {error} ({})", tx.id());
-            aborted_transaction_ids.push(tx.id());
+            aborted_transaction_ids.push((tx.id(), error));
         }
 
         finish!(timer, "Finished dry-run of the transactions");
@@ -156,7 +157,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     ) -> Result<(
         Ratifications<N>,
         Vec<ConfirmedTransaction<N>>,
-        Vec<(Transaction<N>, String)>,
+        Vec<(Transaction<N>, AbortedError)>,
         Vec<FinalizeOperation<N>>,
     )> {
         // Acquire the atomic lock, which is needed to ensure this function is not called concurrently
@@ -232,32 +233,32 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 // Upon reaching the maximum number of confirmed transactions, all remaining transactions are aborted.
                 if confirmed.len() >= Self::MAXIMUM_CONFIRMED_TRANSACTIONS {
                     // Store the aborted transaction.
-                    aborted.push((transaction.clone(), "Exceeds block transaction limit".to_string()));
+                    aborted.push((transaction.clone(), AbortedError::ExceedsTransactionLimit));
                     // Continue to the next transaction.
                     continue 'outer;
                 }
 
                 // Ensure that the transaction is not double-spending an input.
-                for input_id in transaction.input_ids() {
+                for &input_id in transaction.input_ids() {
                     // If the input ID is already spent in this block or previous blocks, abort the transaction.
-                    if input_ids.contains(input_id)
-                        || self.transition_store().contains_input_id(input_id).unwrap_or(true)
+                    if input_ids.contains(&input_id)
+                        || self.transition_store().contains_input_id(&input_id).unwrap_or(true)
                     {
                         // Store the aborted transaction.
-                        aborted.push((transaction.clone(), format!("Double-spending input {input_id}")));
+                        aborted.push((transaction.clone(), AbortedError::DoubleSpendInput));
                         // Continue to the next transaction.
                         continue 'outer;
                     }
                 }
 
                 // Ensure that the transaction is not producing a duplicate output.
-                for output_id in transaction.output_ids() {
+                for &output_id in transaction.output_ids() {
                     // If the output ID is already spent in this block or previous blocks, abort the transaction.
-                    if output_ids.contains(output_id)
-                        || self.transition_store().contains_output_id(output_id).unwrap_or(true)
+                    if output_ids.contains(&output_id)
+                        || self.transition_store().contains_output_id(&output_id).unwrap_or(true)
                     {
                         // Store the aborted transaction.
-                        aborted.push((transaction.clone(), format!("Duplicate output {output_id}")));
+                        aborted.push((transaction.clone(), AbortedError::DuplicateOutput));
                         // Continue to the next transaction.
                         continue 'outer;
                     }
@@ -297,7 +298,10 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                                     #[cfg(debug_assertions)]
                                     eprintln!("Failed to finalize the fee in a rejected deploy - {error}");
                                     // Store the aborted transaction.
-                                    aborted.push((transaction.clone(), error.to_string()));
+                                    aborted.push((
+                                        transaction.clone(),
+                                        AbortedError::FeeFinalizeFailedForExistingDeployment,
+                                    ));
                                     // Continue to the next transaction.
                                     continue 'outer;
                                 }
@@ -319,7 +323,10 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                                         #[cfg(debug_assertions)]
                                         eprintln!("Failed to finalize the fee in a rejected deploy - {error}");
                                         // Store the aborted transaction.
-                                        aborted.push((transaction.clone(), error.to_string()));
+                                        aborted.push((
+                                            transaction.clone(),
+                                            AbortedError::FeeFinalizeFailedForNewDeployment,
+                                        ));
                                         // Continue to the next transaction.
                                         continue 'outer;
                                     }
@@ -355,7 +362,10 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                                             #[cfg(debug_assertions)]
                                             eprintln!("Failed to finalize the fee in a rejected execute - {error}");
                                             // Store the aborted transaction.
-                                            aborted.push((transaction.clone(), error.to_string()));
+                                            aborted.push((
+                                                transaction.clone(),
+                                                AbortedError::FeeFinalizeFailedForNewExecution,
+                                            ));
                                             // Continue to the next transaction.
                                             continue 'outer;
                                         }

@@ -29,6 +29,7 @@ use console::{
 };
 use ledger_authority::Authority;
 use ledger_block::{
+    AbortedError,
     Block,
     ConfirmedTransaction,
     Header,
@@ -195,6 +196,8 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
     type AbortedTransactionIDsMap: for<'a> Map<'a, N::BlockHash, Vec<N::TransactionID>>;
     /// The mapping of rejected or aborted `transaction ID` to `block hash`.
     type RejectedOrAbortedTransactionIDMap: for<'a> Map<'a, N::TransactionID, N::BlockHash>;
+    /// The mapping of aborted `transaction ID` to AbortedError code.
+    type AbortedTransactionIDErrorCodeMap: for<'a> Map<'a, N::TransactionID, u8>;
     /// The mapping of `transaction ID` to `(block hash, confirmed tx type, confirmed blob)`.
     /// TODO (howardwu): For mainnet - With recent DB changes, to prevent breaking compatibility,
     ///  include rejected (d or e) ID into `ConfirmedTxType`, and change from `Vec<u8>` to `Vec<FinalizeOps>`.
@@ -235,6 +238,8 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
     fn aborted_transaction_ids_map(&self) -> &Self::AbortedTransactionIDsMap;
     /// Returns the rejected or aborted transaction ID map.
     fn rejected_or_aborted_transaction_id_map(&self) -> &Self::RejectedOrAbortedTransactionIDMap;
+    /// Returns the aborted transaction ID error codes map.
+    fn aborted_transaction_ids_error_codes_map(&self) -> &Self::AbortedTransactionIDsErrorCodeMap;
     /// Returns the confirmed transactions map.
     fn confirmed_transactions_map(&self) -> &Self::ConfirmedTransactionsMap;
     /// Returns the rejected deployment or execution map.
@@ -267,6 +272,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         self.transactions_map().start_atomic();
         self.aborted_transaction_ids_map().start_atomic();
         self.rejected_or_aborted_transaction_id_map().start_atomic();
+        self.aborted_transaction_ids_error_codes_map().start_atomic();
         self.confirmed_transactions_map().start_atomic();
         self.rejected_deployment_or_execution_map().start_atomic();
         self.transaction_store().start_atomic();
@@ -287,6 +293,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
             || self.transactions_map().is_atomic_in_progress()
             || self.aborted_transaction_ids_map().is_atomic_in_progress()
             || self.rejected_or_aborted_transaction_id_map().is_atomic_in_progress()
+            || self.aborted_transaction_ids_error_codes_map().is_atomic_in_progress()
             || self.confirmed_transactions_map().is_atomic_in_progress()
             || self.rejected_deployment_or_execution_map().is_atomic_in_progress()
             || self.transaction_store().is_atomic_in_progress()
@@ -307,6 +314,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         self.transactions_map().atomic_checkpoint();
         self.aborted_transaction_ids_map().atomic_checkpoint();
         self.rejected_or_aborted_transaction_id_map().atomic_checkpoint();
+        self.aborted_transaction_ids_error_codes_map().atomic_checkpoint();
         self.confirmed_transactions_map().atomic_checkpoint();
         self.rejected_deployment_or_execution_map().atomic_checkpoint();
         self.transaction_store().atomic_checkpoint();
@@ -327,6 +335,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         self.transactions_map().clear_latest_checkpoint();
         self.aborted_transaction_ids_map().clear_latest_checkpoint();
         self.rejected_or_aborted_transaction_id_map().clear_latest_checkpoint();
+        self.aborted_transaction_ids_error_codes_map().clear_latest_checkpoint();
         self.confirmed_transactions_map().clear_latest_checkpoint();
         self.rejected_deployment_or_execution_map().clear_latest_checkpoint();
         self.transaction_store().clear_latest_checkpoint();
@@ -347,6 +356,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         self.transactions_map().atomic_rewind();
         self.aborted_transaction_ids_map().atomic_rewind();
         self.rejected_or_aborted_transaction_id_map().atomic_rewind();
+        self.aborted_transaction_ids_error_codes_map().atomic_rewind();
         self.confirmed_transactions_map().atomic_rewind();
         self.rejected_deployment_or_execution_map().atomic_rewind();
         self.transaction_store().atomic_rewind();
@@ -367,6 +377,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         self.transactions_map().abort_atomic();
         self.aborted_transaction_ids_map().abort_atomic();
         self.rejected_or_aborted_transaction_id_map().abort_atomic();
+        self.aborted_transaction_ids_error_codes_map().abort_atomic();
         self.confirmed_transactions_map().abort_atomic();
         self.rejected_deployment_or_execution_map().abort_atomic();
         self.transaction_store().abort_atomic();
@@ -387,6 +398,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         self.transactions_map().finish_atomic()?;
         self.aborted_transaction_ids_map().finish_atomic()?;
         self.rejected_or_aborted_transaction_id_map().finish_atomic()?;
+        self.aborted_transaction_ids_error_codes_map().finish_atomic()?;
         self.confirmed_transactions_map().finish_atomic()?;
         self.rejected_deployment_or_execution_map().finish_atomic()?;
         self.transaction_store().finish_atomic()
@@ -903,6 +915,18 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
                 None => bail!("Missing transactions for block '{block_hash}' in block storage"),
             },
             None => self.transaction_store().get_transaction(transaction_id),
+        }
+    }
+
+    /// Returns the transaction for the given `transaction ID`.
+    fn get_aborted_transaction_error(&self, transaction_id: &N::TransactionID) -> Result<Option<AbortedError>> {
+        // Note: We can only retrieve accepted or rejected transactions. We cannot retrieve aborted transactions.
+        // TODO: think about what interface we want to offer, e.g. if this call fails, then someone can call get_aborted_transaction_error_code.
+        // TODO: would we also want to return an error_code for rejected transactions...?
+        // TODO: think about what mappings we'd need for this.
+        match self.aborted_transaction_ids_error_codes_map().get_confirmed(transaction_id)? {
+            Some(error_code) => Ok(Some(error_code.try_into())),
+            None => Ok(None),
         }
     }
 

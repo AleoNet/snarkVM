@@ -58,7 +58,9 @@ impl<N: Network> FromBytes for Block<N> {
         // Read the aborted transaction IDs.
         let mut aborted_transaction_ids = Vec::with_capacity(num_aborted as usize);
         for _ in 0..num_aborted {
-            aborted_transaction_ids.push(FromBytes::read_le(&mut reader)?);
+            let tx_id = FromBytes::read_le(&mut reader)?;
+            let error_code = u8::read_le(&mut reader)?;
+            aborted_transaction_ids.push((tx_id, error_code.try_into().map_err(error)?));
         }
 
         // Construct the block.
@@ -115,7 +117,11 @@ impl<N: Network> ToBytes for Block<N> {
 
         // Write the aborted transaction IDs.
         (u32::try_from(self.aborted_transaction_ids.len()).map_err(error))?.write_le(&mut writer)?;
-        self.aborted_transaction_ids.write_le(&mut writer)
+        for (tx_id, error_code) in self.aborted_transaction_ids_and_error_codes() {
+            tx_id.write_le(&mut writer)?;
+            error_code.write_le(&mut writer)?;
+        }
+        Ok(())
     }
 }
 

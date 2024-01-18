@@ -38,11 +38,15 @@ pub use transactions::*;
 pub mod transition;
 pub use transition::*;
 
+mod aborted;
+pub use aborted::AbortedError;
 mod bytes;
 mod genesis;
 mod serialize;
 mod string;
 mod verify;
+
+use indexmap::IndexMap;
 
 use console::{
     account::PrivateKey,
@@ -73,7 +77,7 @@ pub struct Block<N: Network> {
     /// The transactions in this block.
     transactions: Transactions<N>,
     /// The aborted transaction IDs in this block.
-    aborted_transaction_ids: Vec<N::TransactionID>,
+    aborted_transaction_ids: Vec<(N::TransactionID, AbortedError)>,
 }
 
 impl<N: Network> Block<N> {
@@ -86,7 +90,7 @@ impl<N: Network> Block<N> {
         ratifications: Ratifications<N>,
         solutions: Option<CoinbaseSolution<N>>,
         transactions: Transactions<N>,
-        aborted_transaction_ids: Vec<N::TransactionID>,
+        aborted_transaction_ids: Vec<(N::TransactionID, AbortedError)>,
         rng: &mut R,
     ) -> Result<Self> {
         // Compute the block hash.
@@ -106,7 +110,7 @@ impl<N: Network> Block<N> {
         ratifications: Ratifications<N>,
         solutions: Option<CoinbaseSolution<N>>,
         transactions: Transactions<N>,
-        aborted_transaction_ids: Vec<N::TransactionID>,
+        aborted_transaction_ids: Vec<(N::TransactionID, AbortedError)>,
     ) -> Result<Self> {
         // Construct the beacon authority.
         let authority = Authority::new_quorum(subdag);
@@ -123,7 +127,7 @@ impl<N: Network> Block<N> {
         ratifications: Ratifications<N>,
         solutions: Option<CoinbaseSolution<N>>,
         transactions: Transactions<N>,
-        aborted_transaction_ids: Vec<N::TransactionID>,
+        aborted_transaction_ids: Vec<(N::TransactionID, AbortedError)>,
     ) -> Result<Self> {
         // Ensure the block contains transactions.
         ensure!(!transactions.is_empty(), "Cannot create a block with zero transactions");
@@ -157,7 +161,12 @@ impl<N: Network> Block<N> {
             }
             Authority::Quorum(subdag) => {
                 // Ensure the transmission IDs from the subdag correspond to the block.
-                Self::check_subdag_transmissions(subdag, &solutions, &transactions, &aborted_transaction_ids)?;
+                Self::check_subdag_transmissions(
+                    subdag,
+                    &solutions,
+                    &transactions,
+                    aborted_transaction_ids.iter().map(|(id, _)| id),
+                )?;
             }
         }
 
@@ -202,7 +211,7 @@ impl<N: Network> Block<N> {
         ratifications: Ratifications<N>,
         solutions: Option<CoinbaseSolution<N>>,
         transactions: Transactions<N>,
-        aborted_transaction_ids: Vec<N::TransactionID>,
+        aborted_transaction_ids: Vec<(N::TransactionID, AbortedError)>,
     ) -> Result<Self> {
         // Return the block.
         Ok(Self {
@@ -247,11 +256,6 @@ impl<N: Network> Block<N> {
     /// Returns the transactions in this block.
     pub const fn transactions(&self) -> &Transactions<N> {
         &self.transactions
-    }
-
-    /// Returns the aborted transaction IDs in this block.
-    pub const fn aborted_transaction_ids(&self) -> &Vec<N::TransactionID> {
-        &self.aborted_transaction_ids
     }
 }
 
@@ -427,6 +431,16 @@ impl<N: Network> Block<N> {
     /// Returns an iterator over the transaction IDs, for all transactions in `self`.
     pub fn transaction_ids(&self) -> impl '_ + Iterator<Item = &N::TransactionID> {
         self.transactions.transaction_ids()
+    }
+
+    /// Returns an iterator over the aborted transaction IDs, for all transactions in `self`.
+    pub fn aborted_transaction_ids(&self) -> impl '_ + Iterator<Item = &N::TransactionID> {
+        self.aborted_transaction_ids.iter().map(|(id, _)| id)
+    }
+
+    /// Returns aborted transaction ids and error codes
+    pub fn aborted_transaction_ids_and_error_codes(&self) -> impl '_ + Iterator<Item = (N::TransactionID, u8)> {
+        self.aborted_transaction_ids.iter().map(|(id, err)| (*id, *err as u8))
     }
 
     /// Returns an iterator over all transactions in `self` that are accepted deploy transactions.

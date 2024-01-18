@@ -199,7 +199,7 @@ impl<N: Network> Block<N> {
                     subdag,
                     &self.solutions,
                     &self.transactions,
-                    &self.aborted_transaction_ids,
+                    self.aborted_transaction_ids(),
                 )?;
             }
         }
@@ -401,7 +401,7 @@ impl<N: Network> Block<N> {
         }
 
         // Ensure there are no duplicate transaction IDs.
-        if has_duplicates(self.transaction_ids().chain(self.aborted_transaction_ids.iter())) {
+        if has_duplicates(self.transaction_ids().chain(self.aborted_transaction_ids())) {
             bail!("Found a duplicate transaction in block {height}");
         }
 
@@ -502,11 +502,11 @@ impl<N: Network> Block<N> {
     }
 
     /// Checks that the transmission IDs in the given subdag matches the solutions and transactions in the block.
-    pub(super) fn check_subdag_transmissions(
+    pub(super) fn check_subdag_transmissions<'a>(
         subdag: &Subdag<N>,
         solutions: &Option<CoinbaseSolution<N>>,
         transactions: &Transactions<N>,
-        aborted_transaction_ids: &[N::TransactionID],
+        aborted_transaction_ids: impl Iterator<Item = &'a N::TransactionID>,
     ) -> Result<()> {
         // Prepare an iterator over the solution IDs.
         let mut solutions = solutions.as_ref().map(|s| s.deref()).into_iter().flatten().peekable();
