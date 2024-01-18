@@ -208,7 +208,7 @@ impl<N: Network> Subdag<N> {
                     .map(|certificate| (certificate.timestamp(), committee.get_stake(certificate.author())))
                     .collect::<Vec<_>>();
 
-                // Return the weighted median timestamp
+                // Return the weighted median timestamp.
                 weighted_median(timestamps_and_stakes)
             }
         }
