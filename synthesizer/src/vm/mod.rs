@@ -244,8 +244,10 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             Address::try_from(private_keys[2])? => remaining_supply / 4,
             Address::try_from(private_keys[3])? => remaining_supply / 4,
         };
+        // Construct the bonded balances.
+        let bonded_balances = indexmap::indexmap! {};
         // Return the genesis block.
-        self.genesis_quorum(private_key, committee, public_balances, rng)
+        self.genesis_quorum(private_key, committee, public_balances, bonded_balances, rng)
     }
 
     /// Returns a new genesis block for a quorum chain.
@@ -254,6 +256,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         private_key: &PrivateKey<N>,
         committee: Committee<N>,
         public_balances: IndexMap<Address<N>, u64>,
+        bonded_balances: IndexMap<Address<N>, (Address<N>, u64)>,
         rng: &mut R,
     ) -> Result<Block<N>> {
         // Retrieve the total stake.
@@ -275,7 +278,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         let inputs = [caller.to_string(), format!("{amount}_u64")];
 
         // Prepare the ratifications.
-        let ratifications = vec![Ratify::Genesis(committee, public_balances)];
+        let ratifications = vec![Ratify::Genesis(committee, public_balances, bonded_balances)];
         // Prepare the solutions.
         let solutions = None; // The genesis block does not require solutions.
         // Prepare the transactions.

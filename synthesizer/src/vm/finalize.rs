@@ -182,12 +182,12 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
             // Initialize an iterator for ratifications before finalize.
             let pre_ratifications = ratifications.iter().filter(|r| match r {
-                Ratify::Genesis(_, _) => true,
+                Ratify::Genesis(_, _, _) => true,
                 Ratify::BlockReward(..) | Ratify::PuzzleReward(..) => false,
             });
             // Initialize an iterator for ratifications after finalize.
             let post_ratifications = ratifications.iter().filter(|r| match r {
-                Ratify::Genesis(_, _) => false,
+                Ratify::Genesis(_, _, _) => false,
                 Ratify::BlockReward(..) | Ratify::PuzzleReward(..) => true,
             });
 
@@ -464,12 +464,12 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         atomic_finalize!(self.finalize_store(), FinalizeMode::RealRun, {
             // Initialize an iterator for ratifications before finalize.
             let pre_ratifications = ratifications.iter().filter(|r| match r {
-                Ratify::Genesis(_, _) => true,
+                Ratify::Genesis(_, _, _) => true,
                 Ratify::BlockReward(..) | Ratify::PuzzleReward(..) => false,
             });
             // Initialize an iterator for ratifications after finalize.
             let post_ratifications = ratifications.iter().filter(|r| match r {
-                Ratify::Genesis(_, _) => false,
+                Ratify::Genesis(_, _, _) => false,
                 Ratify::BlockReward(..) | Ratify::PuzzleReward(..) => true,
             });
 
@@ -707,7 +707,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         // Iterate over the ratifications.
         for ratify in pre_ratifications {
             match ratify {
-                Ratify::Genesis(committee, public_balances) => {
+                Ratify::Genesis(committee, public_balances, bonded_balances) => {
                     // Ensure this is the genesis block.
                     ensure!(state.block_height() == 0, "Ratify::Genesis(..) expected a genesis block");
                     // Ensure the genesis committee round is 0.
@@ -768,6 +768,25 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                         })));
                         // Update the public balance in finalize storage.
                         let operation = store.update_key_value(program_id, account_mapping, key, next_value)?;
+                        finalize_operations.push(operation);
+                    }
+
+                    // Iterate over the bonded balances.
+                    for (address, (_validator_address, amount)) in bonded_balances {
+                        // Construct the key.
+                        let key = Plaintext::from(Literal::Address(*address));
+                        // Retrieve the current bonded balance.
+                        let value = store.get_value_speculative(program_id, bonded_mapping, &key)?;
+                        // Compute the next bonded balance.
+                        let next_value = Value::from(Literal::U64(U64::new(match value {
+                            Some(Value::Plaintext(Plaintext::Literal(Literal::U64(value), _))) => {
+                                (*value).saturating_add(*amount)
+                            }
+                            None => *amount,
+                            v => bail!("Critical bug in pre-ratify - Invalid bonded balance type ({v:?})"),
+                        })));
+                        // Update the bonded balance in finalize storage.
+                        let operation = store.update_key_value(program_id, bonded_mapping, key, next_value)?;
                         finalize_operations.push(operation);
                     }
 
