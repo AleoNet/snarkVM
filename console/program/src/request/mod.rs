@@ -184,7 +184,7 @@ mod test_helpers {
                 let input_external_record = Value::from_str(&record_string).unwrap();
                 let inputs = vec![input_constant, input_public, input_private, input_record, input_external_record];
 
-                // Construct is_root
+                // Construct 'is_root'.
                 let is_root = false;
 
                 // Construct the input types.
