@@ -13,7 +13,6 @@
 // limitations under the License.
 
 use super::*;
-use indexmap::indexmap;
 
 impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// Speculates on the given list of transactions in the VM.
