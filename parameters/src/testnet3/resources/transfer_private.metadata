@@ -1,6 +1,6 @@
 {
-  "prover_checksum": "f54ee74775e7ca163990a2499483f1c4c099fc479ef030e64a7e426d6017fda2",
-  "prover_size": 75824060,
-  "verifier_checksum": "f9b8045919c925a37944f509676b4e203465d0a240625e31ad7807849767a751",
+  "prover_checksum": "e34b8992d3023e30d76bd877a75d234f8ab6bbe41c5378017d35c81be62e45b9",
+  "prover_size": 75824020,
+  "verifier_checksum": "75d0acae871833bedd7ce978cfd97cb51a616358509bff975802c4875841053a",
   "verifier_size": 665
 }
