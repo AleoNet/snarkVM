@@ -29,7 +29,7 @@ impl<A: Aleo> Request<A> {
         // Compute the function ID.
         let function_id = compute_function_id(&self.network_id, &self.program_id, &self.function_name);
 
-        // Compute the is_root field
+        // Compute 'is_root' as a field element.
         let is_root = Ternary::ternary(&is_root, &Field::<A>::one(), &Field::<A>::zero());
 
         // Construct the signature message as `[tvk, tcm, function ID, input IDs]`.
