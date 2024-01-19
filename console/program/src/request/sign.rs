@@ -64,7 +64,7 @@ impl<N: Network> Request<N> {
         let tvk = (*signer * r).to_x_coordinate();
         // Compute the transition commitment `tcm` as `Hash(tvk)`.
         let tcm = N::hash_psd2(&[tvk])?;
-        // Compute the is_root field
+        // Compute 'is_root' as a field element.
         let is_root = if is_root { Field::<N>::one() } else { Field::<N>::zero() };
 
         // Retrieve the network ID.
