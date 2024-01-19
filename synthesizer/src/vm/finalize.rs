@@ -744,6 +744,11 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                                 *amount >= 10_000_000_u64,
                                 "Ratify::Genesis(..) the delegator {address} must stake at least 10_000_000",
                             );
+                            // If the address is a delegator, check that the corresponding validator is open.
+                            ensure!(
+                                committee.is_committee_member_open(*validator_address),
+                                "Ratify::Genesis(..) the delegator {address} is delegating to a closed validator {validator_address}",
+                            );
                         }
                         // Ensure that each staker has an entry in `public_balances`.
                         ensure!(
