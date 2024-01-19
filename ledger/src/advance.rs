@@ -88,7 +88,8 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         // Update the VM.
         self.vm.add_next_block(block)?;
         // Clear the verified transactions cache.
-        let mut transaction_cache = self.verified_transactions.write();
+        let verified_transactions = self.vm().verified_transactions();
+        let mut transaction_cache = verified_transactions.write();
         for transaction in block.transactions().iter() {
             transaction_cache.pop(&transaction.id());
         }

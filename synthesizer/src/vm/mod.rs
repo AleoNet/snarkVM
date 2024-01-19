@@ -60,11 +60,15 @@ use synthesizer_program::{FinalizeGlobalState, FinalizeOperation, FinalizeStoreT
 
 use aleo_std::prelude::{finish, lap, timer};
 use indexmap::{IndexMap, IndexSet};
+use lru::LruCache;
 use parking_lot::{Mutex, RwLock};
-use std::sync::Arc;
+use std::{num::NonZeroUsize, sync::Arc};
 
 #[cfg(not(feature = "serial"))]
 use rayon::prelude::*;
+
+/// The number of transactions to keep cached in order to not perform redundant checks.
+const NUM_CACHED_TRANSACTIONS: usize = Transactions::<console::network::Testnet3>::MAX_TRANSACTIONS;
 
 #[derive(Clone)]
 pub struct VM<N: Network, C: ConsensusStorage<N>> {
@@ -76,6 +80,8 @@ pub struct VM<N: Network, C: ConsensusStorage<N>> {
     atomic_lock: Arc<Mutex<()>>,
     /// The lock for ensuring there is no concurrency when advancing blocks.
     block_lock: Arc<Mutex<()>>,
+    /// A cache containing the list of recent succesfully verified transactions.
+    verified_transactions: Arc<RwLock<LruCache<N::TransactionID, ()>>>,
 }
 
 impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
@@ -178,6 +184,9 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             store,
             atomic_lock: Arc::new(Mutex::new(())),
             block_lock: Arc::new(Mutex::new(())),
+            verified_transactions: Arc::new(RwLock::new(LruCache::new(
+                NonZeroUsize::new(NUM_CACHED_TRANSACTIONS).unwrap(),
+            ))),
         })
     }
 
@@ -191,6 +200,12 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     #[inline]
     pub fn process(&self) -> Arc<RwLock<Process<N>>> {
         self.process.clone()
+    }
+
+    /// Returns the pre-verified transactions.
+    #[inline]
+    pub fn verified_transactions(&self) -> Arc<RwLock<LruCache<N::TransactionID, ()>>> {
+        self.verified_transactions.clone()
     }
 }
 
@@ -490,7 +505,7 @@ function compute:
                 // Deploy.
                 let transaction = vm.deploy(&caller_private_key, &program, credits, 10, None, rng).unwrap();
                 // Verify.
-                vm.check_transaction(&transaction, None, rng, false).unwrap();
+                vm.check_transaction(&transaction, None, rng).unwrap();
                 // Return the transaction.
                 transaction
             })
@@ -533,7 +548,7 @@ function compute:
                 // Construct the execute transaction.
                 let transaction = vm.execute_authorization(authorization, None, None, rng).unwrap();
                 // Verify.
-                vm.check_transaction(&transaction, None, rng, false).unwrap();
+                vm.check_transaction(&transaction, None, rng).unwrap();
                 // Return the transaction.
                 transaction
             })
@@ -577,7 +592,7 @@ function compute:
                     .execute(&caller_private_key, ("credits.aleo", "transfer_public"), inputs, record, 0, None, rng)
                     .unwrap();
                 // Verify.
-                vm.check_transaction(&transaction, None, rng, false).unwrap();
+                vm.check_transaction(&transaction, None, rng).unwrap();
                 // Return the transaction.
                 transaction
             })
@@ -629,7 +644,7 @@ function compute:
                 // Construct the transaction.
                 let transaction = Transaction::from_execution(execution, Some(fee)).unwrap();
                 // Verify.
-                vm.check_transaction(&transaction, None, rng, false).unwrap();
+                vm.check_transaction(&transaction, None, rng).unwrap();
                 // Return the transaction.
                 transaction
             })
@@ -1049,7 +1064,7 @@ function check:
         .unwrap();
 
         let deployment = vm.deploy(&private_key, &program, None, 0, None, rng).unwrap();
-        assert!(vm.check_transaction(&deployment, None, rng, false).is_ok());
+        assert!(vm.check_transaction(&deployment, None, rng).is_ok());
         vm.add_next_block(&sample_next_block(&vm, &private_key, &[deployment], rng).unwrap()).unwrap();
 
         // Check that program is deployed.
@@ -1070,7 +1085,7 @@ function check:
         .unwrap();
 
         let deployment = vm.deploy(&private_key, &program, None, 0, None, rng).unwrap();
-        assert!(vm.check_transaction(&deployment, None, rng, false).is_ok());
+        assert!(vm.check_transaction(&deployment, None, rng).is_ok());
         vm.add_next_block(&sample_next_block(&vm, &private_key, &[deployment], rng).unwrap()).unwrap();
 
         // Check that program is deployed.
@@ -1213,6 +1228,6 @@ finalize do:
             vm.execute(&private_key, ("program_layer_30.aleo", "do"), inputs, record, 0, None, rng).unwrap();
 
         // Verify.
-        vm.check_transaction(&transaction, None, rng, false).unwrap();
+        vm.check_transaction(&transaction, None, rng).unwrap();
     }
 }

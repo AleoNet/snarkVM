@@ -22,21 +22,6 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         rejected_id: Option<Field<N>>,
         rng: &mut R,
     ) -> Result<()> {
-        // Check if the transaction exists in the cache.
-        if self.verified_transactions.read().peek(&transaction.id()).is_some() {
-            // If it does, perform a check without verification.
-            self.vm().check_transaction(transaction, rejected_id, rng, true)
-        } else {
-            // Otherwise, perform the full transaction check.
-            self.vm().check_transaction(transaction, rejected_id, rng, false)?;
-
-            // If the check passes and it's not a fee transaction,
-            // save its ID to the cache.
-            if !matches!(transaction, Transaction::Fee(..)) {
-                self.verified_transactions.write().push(transaction.id(), ());
-            }
-
-            Ok(())
-        }
+        self.vm().check_transaction(transaction, rejected_id, rng)
     }
 }

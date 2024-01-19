@@ -80,7 +80,7 @@ function hello:
 
     c.bench_function("Transaction::Deploy - verify", |b| {
         let transaction = vm.deploy(&private_key, &program, Some(records[0].clone()), 600000, None, rng).unwrap();
-        b.iter(|| vm.check_transaction(&transaction, None, rng, false).unwrap())
+        b.iter(|| vm.check_transaction(&transaction, None, rng).unwrap())
     });
 }
 
@@ -124,7 +124,7 @@ fn execute(c: &mut Criterion) {
             .unwrap();
 
         c.bench_function("Transaction::Execute(transfer_public) - verify", |b| {
-            b.iter(|| vm.check_transaction(&transaction, None, rng, false).unwrap())
+            b.iter(|| vm.check_transaction(&transaction, None, rng).unwrap())
         });
     }
 
@@ -162,7 +162,7 @@ fn execute(c: &mut Criterion) {
             .unwrap();
 
         c.bench_function("Transaction::Execute(transfer_private) - verify", |b| {
-            b.iter(|| vm.check_transaction(&transaction, None, rng, false).unwrap())
+            b.iter(|| vm.check_transaction(&transaction, None, rng).unwrap())
         });
     }
 }
