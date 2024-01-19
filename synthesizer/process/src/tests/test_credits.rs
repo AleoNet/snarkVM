@@ -1520,7 +1520,7 @@ mod sanity_checks {
         let program_id = *program.id();
         // Retrieve the input types.
         let input_types = program.get_function(&function_name).unwrap().input_types();
-        // Sample is_root.
+        // Sample 'is_root'.
         let is_root = true;
         // Compute the request.
         let request =
