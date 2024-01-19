@@ -106,10 +106,6 @@ impl<N: Network> StackEvaluate<N> for Stack<N> {
         // Retrieve the next request, based on the call stack mode.
         let (request, call_stack) = match &call_stack {
             CallStack::Evaluate(authorization) => (authorization.next()?, call_stack),
-            CallStack::PackageRun(requests, _, _) => {
-                let last_request = requests.last().ok_or(anyhow!("CallStack does not contain request"))?.clone();
-                (last_request, call_stack)
-            }
             // If the evaluation is performed in the `Execute` mode, create a new `Evaluate` mode.
             // This is done to ensure that evaluation during execution is performed consistently.
             CallStack::Execute(authorization, _) => {
@@ -120,9 +116,7 @@ impl<N: Network> StackEvaluate<N> for Stack<N> {
                 let call_stack = CallStack::Evaluate(authorization);
                 (request, call_stack)
             }
-            _ => bail!(
-                "Illegal operation: call stack must be `PackageRun`, `Evaluate` or `Execute` in `evaluate_function`."
-            ),
+            _ => bail!("Illegal operation: call stack must be `Evaluate` or `Execute` in `evaluate_function`."),
         };
         lap!(timer, "Retrieve the next request");
 
@@ -138,11 +132,11 @@ impl<N: Network> StackEvaluate<N> for Stack<N> {
         let function = self.get_function(request.function_name())?;
         let inputs = request.inputs();
         let signer = *request.signer();
-        let caller = match caller {
+        let (is_root, caller) = match caller {
             // If a caller is provided, then this is an evaluation of a child function.
-            Some(caller) => caller.to_address()?,
+            Some(caller) => (false, caller.to_address()?),
             // If no caller is provided, then this is an evaluation of a top-level function.
-            None => signer,
+            None => (true, signer),
         };
         let tvk = *request.tvk();
 
@@ -169,7 +163,7 @@ impl<N: Network> StackEvaluate<N> for Stack<N> {
         lap!(timer, "Initialize the registers");
 
         // Ensure the request is well-formed.
-        ensure!(request.verify(&function.input_types()), "Request is invalid");
+        ensure!(request.verify(&function.input_types(), is_root), "Request is invalid");
         lap!(timer, "Verify the request");
 
         // Store the inputs.

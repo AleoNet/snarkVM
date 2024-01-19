@@ -32,6 +32,7 @@ use console::{
         Record,
         TransactionsPath,
         TransactionsTree,
+        FINALIZE_ID_DEPTH,
         FINALIZE_OPERATIONS_DEPTH,
         TRANSACTIONS_DEPTH,
     },
@@ -167,7 +168,7 @@ impl<N: Network> Transactions<N> {
 
 impl<N: Network> Transactions<N> {
     /// The maximum number of transactions allowed in a block.
-    pub const MAX_TRANSACTIONS: usize = usize::pow(2, TRANSACTIONS_DEPTH as u32);
+    pub const MAX_TRANSACTIONS: usize = usize::pow(2, TRANSACTIONS_DEPTH as u32).saturating_sub(1);
 
     /// Returns an iterator over all transactions, for all transactions in `self`.
     pub fn iter(&self) -> impl '_ + ExactSizeIterator<Item = &ConfirmedTransaction<N>> {
@@ -176,7 +177,7 @@ impl<N: Network> Transactions<N> {
 
     /// Returns a parallel iterator over all transactions, for all transactions in `self`.
     #[cfg(not(feature = "serial"))]
-    pub fn par_iter(&self) -> impl '_ + ParallelIterator<Item = &ConfirmedTransaction<N>> {
+    pub fn par_iter(&self) -> impl '_ + IndexedParallelIterator<Item = &ConfirmedTransaction<N>> {
         self.transactions.par_values()
     }
 
@@ -343,14 +344,23 @@ pub mod test_helpers {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ledger_narwhal_batch_header::BatchHeader;
 
     type CurrentNetwork = console::network::Testnet3;
 
     #[test]
-    fn test_max_transactions() {
-        assert_eq!(
-            Transactions::<CurrentNetwork>::MAX_TRANSACTIONS,
-            ledger_narwhal_batch_header::BatchHeader::<CurrentNetwork>::MAX_TRANSACTIONS
+    fn test_max_transmissions() {
+        // Determine the maximum number of transmissions in a block.
+        let max_transmissions_per_block = BatchHeader::<CurrentNetwork>::MAX_TRANSMISSIONS_PER_BATCH
+            * usize::try_from(BatchHeader::<CurrentNetwork>::MAX_GC_ROUNDS).unwrap()
+            * BatchHeader::<CurrentNetwork>::MAX_CERTIFICATES as usize;
+
+        // Note: The maximum number of *transmissions* in a block cannot exceed the maximum number of *transactions* in a block.
+        // If you intended to change the number of 'MAX_TRANSACTIONS', note that this will break the inclusion proof,
+        // and you will need to migrate all users to a new circuit for the inclusion proof.
+        assert!(
+            max_transmissions_per_block <= Transactions::<CurrentNetwork>::MAX_TRANSACTIONS,
+            "The maximum number of transmissions in a block is too large"
         );
     }
 }

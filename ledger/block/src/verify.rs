@@ -137,6 +137,7 @@ impl<N: Network> Block<N> {
         previous_height: u32,
         current_committee: &Committee<N>,
     ) -> Result<(u64, u32, i64)> {
+        // Note: Do not remove this. This ensures that all blocks after genesis are quorum blocks.
         #[cfg(not(any(test, feature = "test")))]
         ensure!(self.authority.is_quorum(), "The next block must be a quorum block");
 
@@ -208,8 +209,8 @@ impl<N: Network> Block<N> {
         let expected_timestamp = match &self.authority {
             // Beacon blocks do not have a timestamp check.
             Authority::Beacon(..) => self.timestamp(),
-            // Quorum blocks use the median timestamp from the subdag.
-            Authority::Quorum(subdag) => subdag.timestamp(),
+            // Quorum blocks use the weighted median timestamp from the subdag.
+            Authority::Quorum(subdag) => subdag.timestamp(current_committee),
         };
 
         // Return success.

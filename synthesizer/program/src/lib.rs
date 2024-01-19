@@ -575,6 +575,7 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Pro
         "u64",
         "u128",
         "scalar",
+        "signature",
         "string",
         // Boolean
         "true",
