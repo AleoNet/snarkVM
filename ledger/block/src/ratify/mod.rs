@@ -28,6 +28,7 @@ type PublicBalances<N> = IndexMap<Address<N>, u64>;
 type BondedBalances<N> = IndexMap<Address<N>, (Address<N>, u64)>;
 
 #[allow(clippy::large_enum_variant)]
+// Note: The size of the `Ratify` object is 240 bytes.
 #[derive(Clone, PartialEq, Eq)]
 pub enum Ratify<N: Network> {
     /// The genesis.
@@ -55,11 +56,11 @@ pub(crate) mod test_helpers {
     pub(crate) fn sample_ratifications(rng: &mut TestRng) -> Vec<Ratify<CurrentNetwork>> {
         let committee = ledger_committee::test_helpers::sample_committee(rng);
         let mut public_balances = PublicBalances::new();
-        let mut bonded_balances = BondedBalances::new();
         for (address, _) in committee.members().iter() {
             public_balances.insert(*address, rng.gen());
-            bonded_balances.insert(*address, rng.gen());
         }
+        let bonded_balances =
+            committee.members().iter().map(|(address, (amount, _))| (*address, (*address, *amount))).collect();
 
         vec![
             Ratify::Genesis(committee, public_balances, bonded_balances),

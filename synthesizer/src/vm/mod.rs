@@ -245,7 +245,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             Address::try_from(private_keys[3])? => remaining_supply / 4,
         };
         // Construct the bonded balances.
-        let bonded_balances = indexmap::indexmap! {};
+        let bonded_balances =
+            committee.members().iter().map(|(address, (amount, _))| (*address, (*address, *amount))).collect();
         // Return the genesis block.
         self.genesis_quorum(private_key, committee, public_balances, bonded_balances, rng)
     }

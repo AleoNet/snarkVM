@@ -13,6 +13,7 @@
 // limitations under the License.
 
 use super::*;
+use indexmap::indexmap;
 
 impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// Speculates on the given list of transactions in the VM.
@@ -730,17 +731,35 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     //     }
                     // }
 
-                    // Initialize the stakers.
-                    let mut stakers = IndexMap::with_capacity(committee.members().len());
-                    // Iterate over the committee members.
-                    for (validator, (microcredits, _)) in committee.members() {
-                        // Insert the validator into the stakers.
-                        stakers.insert(*validator, (*validator, *microcredits));
+                    // Check that the committee is consistent with the bonded balances.
+                    let mut stake_per_validator = IndexMap::with_capacity(committee.members().len());
+                    for (_, (validator_address, amount)) in bonded_balances {
+                        // Accumulate the stake per validator.
+                        let total = stake_per_validator.entry(validator_address).or_insert(0u64);
+                        *total = total.saturating_add(*amount);
+                    }
+                    // Ensure the stake per validator matches the committee.
+                    ensure!(
+                        stake_per_validator.len() == committee.members().len(),
+                        "Ratify::Genesis(..) found a validator not in the bonded balances"
+                    );
+                    // Ensure that staked amount per validator matches the committee.
+                    for (validator_address, amount) in stake_per_validator {
+                        // Retrieve the expected validator stake from the committee.
+                        let expected_amount = match committee.members().get(validator_address) {
+                            Some((amount, _)) => *amount,
+                            None => bail!("Raftify::Genesis(..) found a validator not in the committee"),
+                        };
+                        // Ensure the staked amount matches the committee.
+                        ensure!(
+                            expected_amount == amount,
+                            "Ratify::Genesis(..) inconsistent staked amount for validator {validator_address}",
+                        );
                     }
 
                     // Construct the next committee map and next bonded map.
                     let (next_committee_map, next_bonded_map) =
-                        to_next_commitee_map_and_bonded_map(committee, &stakers);
+                        to_next_commitee_map_and_bonded_map(committee, bonded_balances);
 
                     // Insert the next committee into storage.
                     store.committee_store().insert(state.block_height(), committee.clone())?;
@@ -768,25 +787,6 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                         })));
                         // Update the public balance in finalize storage.
                         let operation = store.update_key_value(program_id, account_mapping, key, next_value)?;
-                        finalize_operations.push(operation);
-                    }
-
-                    // Iterate over the bonded balances.
-                    for (address, (_validator_address, amount)) in bonded_balances {
-                        // Construct the key.
-                        let key = Plaintext::from(Literal::Address(*address));
-                        // Retrieve the current bonded balance.
-                        let value = store.get_value_speculative(program_id, bonded_mapping, &key)?;
-                        // Compute the next bonded balance.
-                        let next_value = Value::from(Literal::U64(U64::new(match value {
-                            Some(Value::Plaintext(Plaintext::Literal(Literal::U64(value), _))) => {
-                                (*value).saturating_add(*amount)
-                            }
-                            None => *amount,
-                            v => bail!("Critical bug in pre-ratify - Invalid bonded balance type ({v:?})"),
-                        })));
-                        // Update the bonded balance in finalize storage.
-                        let operation = store.update_key_value(program_id, bonded_mapping, key, next_value)?;
                         finalize_operations.push(operation);
                     }
 
