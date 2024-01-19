@@ -731,11 +731,27 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     //     }
                     // }
 
-                    // Check that `committee` is consistent with `bonded_balances`.
-
                     // Calculate the stake per validator using `bonded_balances`.
                     let mut stake_per_validator = IndexMap::with_capacity(committee.members().len());
-                    for (_, (validator_address, amount)) in bonded_balances {
+                    for (address, (validator_address, amount)) in bonded_balances {
+                        // Check that the amount meets the minimum requirement, depending on whether the address is a validator.
+                        if *address == *validator_address {
+                            ensure!(
+                                *amount >= 1_000_000_000_000_u64,
+                                "Ratify::Genesis(..) the validator {address} must stake at least 1_000_000_000_000",
+                            );
+                        } else {
+                            ensure!(
+                                *amount >= 10_000_000_u64,
+                                "Ratify::Genesis(..) the delegator {address} must stake at least 10_000_000",
+                            );
+                        }
+                        // Ensure that each staker has an entry in `public_balances`.
+                        ensure!(
+                            public_balances.contains_key(address),
+                            "Ratify::Genesis(..) the staker {address} is missing from the public balances",
+                        );
+                        // Accumulate the staked amount per validator.
                         let total = stake_per_validator.entry(validator_address).or_insert(0u64);
                         *total = total.saturating_add(*amount);
                     }
@@ -744,7 +760,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                         stake_per_validator.len() == committee.members().len(),
                         "Ratify::Genesis(..) the number of validators in the committee does not match the number of validators in the bonded balances",
                     );
-                    // Ensure that staked amount per validator matches the committee.
+
+                    // Check that `committee` is consistent with `stake_per_validator`.
                     for (validator_address, amount) in stake_per_validator {
                         // Retrieve the expected validator stake from the committee.
                         let expected_amount = match committee.members().get(validator_address) {
