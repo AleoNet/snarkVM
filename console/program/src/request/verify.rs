@@ -52,7 +52,7 @@ impl<N: Network> Request<N> {
             }
         };
 
-        // Compute the is_root field
+        // Compute the 'is_root' field.
         let is_root = if is_root { Field::<N>::one() } else { Field::<N>::zero() };
 
         // Construct the signature message as `[tvk, tcm, function ID, input IDs]`.
