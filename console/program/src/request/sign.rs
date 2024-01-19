@@ -24,6 +24,7 @@ impl<N: Network> Request<N> {
         function_name: Identifier<N>,
         inputs: impl ExactSizeIterator<Item = impl TryInto<Value<N>>>,
         input_types: &[ValueType<N>],
+        is_root: bool,
         rng: &mut R,
     ) -> Result<Self> {
         // Ensure the number of inputs matches the number of input types.
@@ -63,6 +64,8 @@ impl<N: Network> Request<N> {
         let tvk = (*signer * r).to_x_coordinate();
         // Compute the transition commitment `tcm` as `Hash(tvk)`.
         let tcm = N::hash_psd2(&[tvk])?;
+        // Compute 'is_root' as a field element.
+        let is_root = if is_root { Field::<N>::one() } else { Field::<N>::zero() };
 
         // Retrieve the network ID.
         let network_id = U16::new(N::ID);
@@ -72,7 +75,7 @@ impl<N: Network> Request<N> {
         // Construct the hash input as `(r * G, pk_sig, pr_sig, signer, [tvk, tcm, function ID, input IDs])`.
         let mut message = Vec::with_capacity(9 + 2 * inputs.len());
         message.extend([g_r, pk_sig, pr_sig, *signer].map(|point| point.to_x_coordinate()));
-        message.extend([tvk, tcm, function_id]);
+        message.extend([tvk, tcm, function_id, is_root]);
 
         // Initialize a vector to store the prepared inputs.
         let mut prepared_inputs = Vec::with_capacity(inputs.len());
