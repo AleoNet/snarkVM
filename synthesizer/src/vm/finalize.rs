@@ -731,24 +731,27 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     //     }
                     // }
 
-                    // Check that the committee is consistent with the bonded balances.
+                    // Check that `committee` is consistent with `bonded_balances`.
+
+                    // Calculate the stake per validator using `bonded_balances`.
                     let mut stake_per_validator = IndexMap::with_capacity(committee.members().len());
                     for (_, (validator_address, amount)) in bonded_balances {
-                        // Accumulate the stake per validator.
                         let total = stake_per_validator.entry(validator_address).or_insert(0u64);
                         *total = total.saturating_add(*amount);
                     }
                     // Ensure the stake per validator matches the committee.
                     ensure!(
                         stake_per_validator.len() == committee.members().len(),
-                        "Ratify::Genesis(..) found a validator not in the bonded balances"
+                        "Ratify::Genesis(..) the number of validators in the committee does not match the number of validators in the bonded balances",
                     );
                     // Ensure that staked amount per validator matches the committee.
                     for (validator_address, amount) in stake_per_validator {
                         // Retrieve the expected validator stake from the committee.
                         let expected_amount = match committee.members().get(validator_address) {
                             Some((amount, _)) => *amount,
-                            None => bail!("Raftify::Genesis(..) found a validator not in the committee"),
+                            None => bail!(
+                                "Ratify::Genesis(..) found a validator in the bonded balances that is not in the committee"
+                            ),
                         };
                         // Ensure the staked amount matches the committee.
                         ensure!(
