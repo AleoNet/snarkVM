@@ -177,7 +177,7 @@ impl<N: Network> Transactions<N> {
 
     /// Returns a parallel iterator over all transactions, for all transactions in `self`.
     #[cfg(not(feature = "serial"))]
-    pub fn par_iter(&self) -> impl '_ + ParallelIterator<Item = &ConfirmedTransaction<N>> {
+    pub fn par_iter(&self) -> impl '_ + IndexedParallelIterator<Item = &ConfirmedTransaction<N>> {
         self.transactions.par_values()
     }
 

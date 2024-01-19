@@ -26,10 +26,8 @@ impl<A: Aleo> Request<A> {
         tpk: &Group<A>,
         is_root: Boolean<A>,
     ) -> Boolean<A> {
-        // Compute the function ID as `Hash(network_id, program_id, function_name)`.
-        let function_id = A::hash_bhp1024(
-            &(&self.network_id, self.program_id.name(), self.program_id.network(), &self.function_name).to_bits_le(),
-        );
+        // Compute the function ID.
+        let function_id = compute_function_id(&self.network_id, &self.program_id, &self.function_name);
 
         // Compute the is_root field
         let is_root = Ternary::ternary(&is_root, &Field::<A>::one(), &Field::<A>::zero());
@@ -120,9 +118,8 @@ impl<A: Aleo> Request<A> {
             false => assert!(signature.is_none()),
         }
 
-        // Compute the function ID as `Hash(network_id, program_id, function_name)`.
-        let function_id =
-            A::hash_bhp1024(&(network_id, program_id.name(), program_id.network(), function_name).to_bits_le());
+        // Compute the function ID.
+        let function_id = compute_function_id(network_id, program_id, function_name);
 
         // Initialize a vector for a message.
         let mut message = Vec::new();
@@ -414,16 +411,16 @@ mod tests {
         // Note: This is correct. At this (high) level of a program, we override the default mode in the `Record` case,
         // based on the user-defined visibility in the record type. Thus, we have nonzero private and constraint values.
         // These bounds are determined experimentally.
-        check_verify(Mode::Constant, 42520, 0, 17494, 17518)
+        check_verify(Mode::Constant, 42629, 0, 17494, 17518)
     }
 
     #[test]
     fn test_sign_and_verify_public() -> Result<()> {
-        check_verify(Mode::Public, 40018, 0, 26401, 26429)
+        check_verify(Mode::Public, 40130, 0, 26401, 26429)
     }
 
     #[test]
     fn test_sign_and_verify_private() -> Result<()> {
-        check_verify(Mode::Private, 40018, 0, 26401, 26429)
+        check_verify(Mode::Private, 40130, 0, 26401, 26429)
     }
 }

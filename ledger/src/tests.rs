@@ -13,6 +13,7 @@
 // limitations under the License.
 
 use crate::{
+    advance::split_candidate_solutions,
     test_helpers::{CurrentLedger, CurrentNetwork},
     RecordsFilter,
 };
@@ -827,4 +828,21 @@ finalize foo2:
     assert_eq!(ledger.get_program(*program_1.id()).unwrap(), program_1);
     assert!(ledger.vm.transaction_store().contains_transaction_id(&deployment_1_id).unwrap());
     assert!(ledger.vm.block_store().contains_rejected_or_aborted_transaction_id(&deployment_2_id).unwrap());
+}
+
+#[test]
+fn test_split_candidate_solutions() {
+    let rng = &mut TestRng::default();
+
+    let max_solutions = CurrentNetwork::MAX_SOLUTIONS;
+
+    const ITERATIONS: usize = 1_000;
+
+    for _ in 0..ITERATIONS {
+        let num_candidates = rng.gen_range(0..max_solutions * 2);
+        let candidate_solutions: Vec<u8> = rng.sample_iter(Standard).take(num_candidates).collect();
+
+        let (_accepted, _aborted) =
+            split_candidate_solutions(candidate_solutions, max_solutions, |candidate| candidate % 2 == 0);
+    }
 }

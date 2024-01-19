@@ -18,7 +18,7 @@ use snarkvm_circuit_types::environment::assert_scope;
 mod to_tpk;
 mod verify;
 
-use crate::{Identifier, Plaintext, ProgramID, Record, Value};
+use crate::{compute_function_id, Identifier, Plaintext, ProgramID, Record, Value};
 use snarkvm_circuit_account::Signature;
 use snarkvm_circuit_network::Aleo;
 use snarkvm_circuit_types::{environment::prelude::*, Address, Boolean, Field, Group, U16};

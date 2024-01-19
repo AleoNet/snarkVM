@@ -67,10 +67,10 @@ impl<N: Network> Request<N> {
         // Compute the is_root field
         let is_root = if is_root { Field::<N>::one() } else { Field::<N>::zero() };
 
-        // Compute the function ID as `Hash(network_id, program_id, function_name)`.
-        let function_id = N::hash_bhp1024(
-            &(U16::<N>::new(N::ID), program_id.name(), program_id.network(), function_name).to_bits_le(),
-        )?;
+        // Retrieve the network ID.
+        let network_id = U16::new(N::ID);
+        // Compute the function ID.
+        let function_id = compute_function_id(&network_id, &program_id, &function_name)?;
 
         // Construct the hash input as `(r * G, pk_sig, pr_sig, signer, [tvk, tcm, function ID, input IDs])`.
         let mut message = Vec::with_capacity(9 + 2 * inputs.len());
@@ -225,7 +225,7 @@ impl<N: Network> Request<N> {
 
         Ok(Self {
             signer,
-            network_id: U16::new(N::ID),
+            network_id,
             program_id,
             function_name,
             input_ids,
