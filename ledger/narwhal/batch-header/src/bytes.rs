@@ -37,10 +37,10 @@ impl<N: Network> FromBytes for BatchHeader<N> {
         // Read the number of transmission IDs.
         let num_transmission_ids = u32::read_le(&mut reader)?;
         // Ensure the number of transmission IDs is within bounds.
-        if num_transmission_ids as usize > Self::MAX_TRANSMISSIONS {
+        if num_transmission_ids as usize > Self::MAX_TRANSMISSIONS_PER_BATCH {
             return Err(error(format!(
                 "Number of transmission IDs ({num_transmission_ids}) exceeds the maximum ({})",
-                Self::MAX_TRANSMISSIONS,
+                Self::MAX_TRANSMISSIONS_PER_BATCH,
             )));
         }
         // Read the transmission IDs.
@@ -51,9 +51,9 @@ impl<N: Network> FromBytes for BatchHeader<N> {
         }
 
         // Read the number of previous certificate IDs.
-        let num_previous_certificate_ids = u32::read_le(&mut reader)?;
+        let num_previous_certificate_ids = u16::read_le(&mut reader)?;
         // Ensure the number of previous certificate IDs is within bounds.
-        if num_previous_certificate_ids as usize > Self::MAX_CERTIFICATES {
+        if num_previous_certificate_ids > Self::MAX_CERTIFICATES {
             return Err(error(format!(
                 "Number of previous certificate IDs ({num_previous_certificate_ids}) exceeds the maximum ({})",
                 Self::MAX_CERTIFICATES
@@ -76,7 +76,7 @@ impl<N: Network> FromBytes for BatchHeader<N> {
             0
         };
         // Ensure the number of last election certificate IDs is within bounds.
-        if num_last_election_certificate_ids as usize > Self::MAX_CERTIFICATES {
+        if num_last_election_certificate_ids > Self::MAX_CERTIFICATES {
             return Err(error(format!(
                 "Number of last election certificate IDs ({num_last_election_certificate_ids}) exceeds the maximum ({})",
                 Self::MAX_CERTIFICATES
@@ -135,7 +135,7 @@ impl<N: Network> ToBytes for BatchHeader<N> {
             transmission_id.write_le(&mut writer)?;
         }
         // Write the number of previous certificate IDs.
-        u32::try_from(self.previous_certificate_ids.len()).map_err(|e| error(e.to_string()))?.write_le(&mut writer)?;
+        u16::try_from(self.previous_certificate_ids.len()).map_err(|e| error(e.to_string()))?.write_le(&mut writer)?;
         // Write the previous certificate IDs.
         for certificate_id in &self.previous_certificate_ids {
             // Write the certificate ID.

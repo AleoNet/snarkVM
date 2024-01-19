@@ -21,7 +21,7 @@ mod sign;
 mod string;
 mod verify;
 
-use crate::{Identifier, Plaintext, ProgramID, Record, Value, ValueType};
+use crate::{compute_function_id, Identifier, Plaintext, ProgramID, Record, Value, ValueType};
 use snarkvm_console_account::{Address, ComputeKey, GraphKey, PrivateKey, Signature, ViewKey};
 use snarkvm_console_network::Network;
 use snarkvm_console_types::prelude::*;
@@ -184,6 +184,9 @@ mod test_helpers {
                 let input_external_record = Value::from_str(&record_string).unwrap();
                 let inputs = vec![input_constant, input_public, input_private, input_record, input_external_record];
 
+                // Construct 'is_root'.
+                let is_root = false;
+
                 // Construct the input types.
                 let input_types = [
                     ValueType::from_str("amount.constant").unwrap(),
@@ -195,8 +198,8 @@ mod test_helpers {
 
                 // Compute the signed request.
                 let request =
-                    Request::sign(&private_key, program_id, function_name, inputs.into_iter(), &input_types, rng).unwrap();
-                assert!(request.verify(&input_types));
+                    Request::sign(&private_key, program_id, function_name, inputs.into_iter(), &input_types, is_root, rng).unwrap();
+                assert!(request.verify(&input_types, is_root));
                 request
             })
             .collect()

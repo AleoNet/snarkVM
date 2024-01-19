@@ -61,13 +61,19 @@ impl<N: Network> VerifyingKey<N> {
 
     /// Returns `true` if the batch proof is valid for the given public inputs.
     #[allow(clippy::type_complexity)]
-    pub fn verify_batch(locator: &str, inputs: Vec<(VerifyingKey<N>, Vec<Vec<N::Field>>)>, proof: &Proof<N>) -> bool {
+    pub fn verify_batch(
+        locator: &str,
+        inputs: Vec<(VerifyingKey<N>, Vec<Vec<N::Field>>)>,
+        proof: &Proof<N>,
+    ) -> Result<()> {
         #[cfg(feature = "aleo-cli")]
         let timer = std::time::Instant::now();
 
         // Convert the instances.
+        let num_expected_keys = inputs.len();
         let keys_to_inputs: BTreeMap<_, _> =
             inputs.iter().map(|(verifying_key, inputs)| (verifying_key.deref(), inputs.as_slice())).collect();
+        ensure!(keys_to_inputs.len() == num_expected_keys, "Incorrect number of verifying keys for batch proof");
 
         // Retrieve the verification parameters.
         let universal_verifier = N::varuna_universal_verifier();
@@ -77,13 +83,16 @@ impl<N: Network> VerifyingKey<N> {
         match Varuna::<N>::verify_batch(universal_verifier, fiat_shamir, &keys_to_inputs, proof) {
             Ok(is_valid) => {
                 #[cfg(feature = "aleo-cli")]
-                println!("{}", format!(" • Verified '{locator}' (in {} ms)", timer.elapsed().as_millis()).dimmed());
-                is_valid
+                println!(
+                    "{}",
+                    format!(" • Verified '{locator}': {is_valid} (in {} ms)", timer.elapsed().as_millis()).dimmed()
+                );
+                if is_valid { Ok(()) } else { bail!("'verify_batch' failed") }
             }
             Err(error) => {
                 #[cfg(feature = "aleo-cli")]
                 println!("{}", format!(" • Verifier failed: {error}").dimmed());
-                false
+                bail!(error)
             }
         }
     }

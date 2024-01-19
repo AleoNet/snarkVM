@@ -204,6 +204,9 @@ impl<N: Network> CallTrait<N> for Call<N> {
             // Retrieve the number of public variables in the circuit.
             let num_public = A::num_public();
 
+            // Indicate that external calls are never a root request.
+            let is_root = false;
+
             use circuit::Eject;
             // Eject the existing circuit.
             let r1cs = A::eject_r1cs_and_reset();
@@ -225,6 +228,7 @@ impl<N: Network> CallTrait<N> for Call<N> {
                             *function.name(),
                             inputs.iter(),
                             &function.input_types(),
+                            is_root,
                             rng,
                         )?;
 
@@ -250,6 +254,7 @@ impl<N: Network> CallTrait<N> for Call<N> {
                             *function.name(),
                             inputs.iter(),
                             &function.input_types(),
+                            is_root,
                             rng,
                         )?;
 
@@ -272,6 +277,7 @@ impl<N: Network> CallTrait<N> for Call<N> {
                             *function.name(),
                             inputs.iter(),
                             &function.input_types(),
+                            is_root,
                             rng,
                         )?;
 

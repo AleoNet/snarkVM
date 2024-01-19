@@ -193,7 +193,7 @@ impl<N: Network> StackExecute<N> for Stack<N> {
         lap!(timer, "Verify the input types");
 
         // Ensure the request is well-formed.
-        ensure!(console_request.verify(&input_types), "Request is invalid");
+        ensure!(console_request.verify(&input_types, console_is_root), "Request is invalid");
         lap!(timer, "Verify the console request");
 
         // Initialize the registers.
@@ -214,7 +214,7 @@ impl<N: Network> StackExecute<N> for Stack<N> {
         let caller = Ternary::ternary(&is_root, request.signer(), &parent);
 
         // Ensure the request has a valid signature, inputs, and transition view key.
-        A::assert(request.verify(&input_types, &tpk));
+        A::assert(request.verify(&input_types, &tpk, is_root));
         lap!(timer, "Verify the circuit request");
 
         // Set the transition signer.

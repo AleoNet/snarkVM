@@ -109,6 +109,8 @@ impl<N: Network> Stack<N> {
                 })
                 .collect::<Result<Vec<_>>>()?;
             lap!(timer, "Sample the inputs");
+            // Sample 'is_root'.
+            let is_root = true;
 
             // Compute the request, with a burner private key.
             let request = Request::sign(
@@ -117,6 +119,7 @@ impl<N: Network> Stack<N> {
                 *function.name(),
                 inputs.into_iter(),
                 &input_types,
+                is_root,
                 rng,
             )?;
             lap!(timer, "Compute the request for {}", function.name());
