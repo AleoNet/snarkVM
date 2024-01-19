@@ -49,7 +49,7 @@ impl<N: Network> Stack<N> {
                 _ => self.sample_value(&burner_address, input_type, rng),
             })
             .collect::<Result<Vec<_>>>()?;
-        // Sample is_root
+        // Sample 'is_root'.
         let is_root = true;
 
         // Compute the request, with a burner private key.
