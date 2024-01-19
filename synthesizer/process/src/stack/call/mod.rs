@@ -277,6 +277,7 @@ impl<N: Network> CallTrait<N> for Call<N> {
                             *function.name(),
                             inputs.iter(),
                             &function.input_types(),
+                            is_root,
                             rng,
                         )?;
 
