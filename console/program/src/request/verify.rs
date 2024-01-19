@@ -19,7 +19,7 @@ impl<N: Network> Request<N> {
     ///
     /// Verifies (challenge == challenge') && (address == address') && (serial_numbers == serial_numbers') where:
     ///     challenge' := HashToScalar(r * G, pk_sig, pr_sig, signer, \[tvk, tcm, function ID, input IDs\])
-    pub fn verify(&self, input_types: &[ValueType<N>]) -> bool {
+    pub fn verify(&self, input_types: &[ValueType<N>], is_root: bool) -> bool {
         // Verify the transition public key, transition view key, and transition commitment are well-formed.
         {
             // Compute the transition commitment `tcm` as `Hash(tvk)`.
@@ -52,11 +52,15 @@ impl<N: Network> Request<N> {
             }
         };
 
+        // Compute the 'is_root' field.
+        let is_root = if is_root { Field::<N>::one() } else { Field::<N>::zero() };
+
         // Construct the signature message as `[tvk, tcm, function ID, input IDs]`.
         let mut message = Vec::with_capacity(3 + self.input_ids.len());
         message.push(self.tvk);
         message.push(self.tcm);
         message.push(function_id);
+        message.push(is_root);
 
         if let Err(error) = self.input_ids.iter().zip_eq(&self.inputs).zip_eq(input_types).enumerate().try_for_each(
             |(index, ((input_id, input), input_type))| {
@@ -248,10 +252,13 @@ mod tests {
                 ValueType::from_str("token.aleo/token.record").unwrap(),
             ];
 
+            let is_root = Uniform::rand(rng);
+
             // Compute the signed request.
             let request =
-                Request::sign(&private_key, program_id, function_name, inputs.into_iter(), &input_types, rng).unwrap();
-            assert!(request.verify(&input_types));
+                Request::sign(&private_key, program_id, function_name, inputs.into_iter(), &input_types, is_root, rng)
+                    .unwrap();
+            assert!(request.verify(&input_types, is_root));
         }
     }
 }
