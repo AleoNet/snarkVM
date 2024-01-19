@@ -356,7 +356,7 @@ mod tests {
                 console::ValueType::from_str("token.aleo/token.record").unwrap(),
             ];
 
-            // Sample is_root.
+            // Sample 'is_root'.
             let is_root = true;
 
             // Compute the signed request.
