@@ -98,7 +98,7 @@ impl<N: Network> Stack<N> {
                 })
                 .collect::<Result<Vec<_>>>()?;
             lap!(timer, "Sample the inputs");
-            // Sample is_root
+            // Sample 'is_root'.
             let is_root = true;
 
             // Compute the request, with a burner private key.
