@@ -196,6 +196,10 @@ impl RocksDB {
     /// Toggles the atomic override; if it becomes disabled, the pending
     /// operations get executed.
     fn flip_atomic_override(&self) -> Result<bool> {
+        // The override is only intended to be toggled before or after
+        // atomic batches - never in the middle of them.
+        assert_eq!(self.atomic_depth.load(Ordering::SeqCst), 0);
+
         // https://github.com/rust-lang/rust/issues/98485
         let previous_value = self.atomic_override.load(Ordering::SeqCst);
 
