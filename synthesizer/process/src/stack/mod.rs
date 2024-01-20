@@ -63,7 +63,7 @@ use console::{
 };
 use ledger_block::{Deployment, Transition};
 use synthesizer_program::{traits::*, CallOperator, Closure, Function, Instruction, Operand, Program};
-use synthesizer_snark::{Certificate, ProvingKey, UniversalSRS, VerifyingKey};
+use synthesizer_snark::{Certificate, ProvingKey, UniversalProver, UniversalSRS, VerifyingKey};
 
 use aleo_std::prelude::{finish, lap, timer};
 use indexmap::IndexMap;
@@ -176,6 +176,8 @@ pub struct Stack<N: Network> {
     finalize_types: IndexMap<Identifier<N>, FinalizeTypes<N>>,
     /// The universal SRS.
     universal_srs: Arc<UniversalSRS<N>>,
+    /// The universal prover.
+    universal_prover: Arc<RwLock<UniversalProver<N>>>,
     /// The mapping of function name to proving key.
     proving_keys: Arc<RwLock<IndexMap<Identifier<N>, ProvingKey<N>>>>,
     /// The mapping of function name to verifying key.

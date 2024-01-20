@@ -44,6 +44,9 @@ pub enum SNARKError {
     #[error("Circuit not found")]
     CircuitNotFound,
 
+    #[error("FFT precomputation not found")]
+    FFTPrecompNotFound,
+
     #[error("terminated")]
     Terminated,
 }

@@ -32,6 +32,8 @@ impl<N: Network> Certificate<N> {
 
     /// Returns the certificate from the proving and verifying key.
     pub fn certify(
+        srs: &UniversalSRS<N>,
+        universal_prover: Arc<RwLock<UniversalProver<N>>>,
         function_name: &str,
         proving_key: &ProvingKey<N>,
         verifying_key: &VerifyingKey<N>,
@@ -41,11 +43,12 @@ impl<N: Network> Certificate<N> {
 
         // Retrieve the proving parameters.
         let degree_info = proving_key.circuit.index_info.degree_info::<N::Field, varuna::VarunaHidingMode>();
-        let universal_prover = N::varuna_universal_prover(degree_info);
         let fiat_shamir = N::varuna_fs_parameters();
 
+        universal_prover.write().update(srs, degree_info)?;
+
         // Compute the certificate.
-        let certificate = Varuna::<N>::prove_vk(&universal_prover, fiat_shamir, verifying_key, proving_key)?;
+        let certificate = Varuna::<N>::prove_vk(&universal_prover.read(), fiat_shamir, verifying_key, proving_key)?;
 
         #[cfg(feature = "aleo-cli")]
         println!("{}", format!(" • Certified '{function_name}': {} ms", timer.elapsed().as_millis()).dimmed());

@@ -35,7 +35,7 @@ use crate::{
 use snarkvm_curves::PairingEngine;
 use snarkvm_fields::{One, Zero};
 use snarkvm_utilities::rand::{TestRng, Uniform};
-use std::collections::HashSet;
+use std::collections::BTreeSet;
 
 use itertools::Itertools;
 use rand::{
@@ -79,7 +79,7 @@ pub fn bad_degree_bound_test<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>>() -
 
         let mut labels = Vec::new();
         let mut polynomials = Vec::new();
-        let mut degree_bounds = HashSet::new();
+        let mut degree_bounds = BTreeSet::new();
 
         for i in 0..10 {
             let label = format!("Test{i}");
@@ -91,11 +91,12 @@ pub fn bad_degree_bound_test<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>>() -
 
             polynomials.push(LabeledPolynomial::new(label, poly, Some(degree_bound), Some(hiding_bound)))
         }
+        let degree_bounds = (!degree_bounds.is_empty()).then_some(degree_bounds);
 
         let degree_info = DegreeInfo {
             max_degree,
             max_fft_size: supported_degree,
-            degree_bounds: Some(degree_bounds),
+            degree_bounds,
             hiding_bound,
             lagrange_sizes: None,
         };
@@ -141,8 +142,8 @@ pub fn lagrange_test_template<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>>()
         assert!(max_degree >= supported_degree, "max_degree < supported_degree");
         let mut polynomials = Vec::new();
         let mut lagrange_polynomials = Vec::new();
-        let mut supported_lagrange_sizes = HashSet::new();
-        let degree_bounds = HashSet::new();
+        let mut supported_lagrange_sizes = BTreeSet::new();
+        let degree_bounds = BTreeSet::new();
         let hiding_bound = 1;
 
         let mut labels = Vec::new();
@@ -168,12 +169,13 @@ pub fn lagrange_test_template<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>>()
             polynomials.push(LabeledPolynomial::new(label.clone(), poly, degree_bound, Some(hiding_bound)));
             lagrange_polynomials.push(LabeledPolynomialWithBasis::new_lagrange_basis(label, evals, Some(hiding_bound)))
         }
+        let degree_bounds = (!degree_bounds.is_empty()).then_some(degree_bounds);
         let supported_hiding_bound = polynomials.iter().map(|p| p.hiding_bound().unwrap_or(0)).max().unwrap_or(0);
         assert_eq!(supported_hiding_bound, 1);
         let degree_info = DegreeInfo {
             max_degree,
             max_fft_size: supported_degree,
-            degree_bounds: Some(degree_bounds),
+            degree_bounds,
             hiding_bound,
             lagrange_sizes: Some(supported_lagrange_sizes),
         };
@@ -249,10 +251,10 @@ where
     for _ in 0..num_iters {
         let universal_verifier = pp.to_universal_verifier().unwrap();
         let supported_degree =
-            supported_degree.unwrap_or_else(|| distributions::Uniform::from(4..=max_degree).sample(rng));
+            supported_degree.unwrap_or_else(|| distributions::Uniform::from(4..=max_degree - 1).sample(rng));
         assert!(max_degree >= supported_degree, "max_degree < supported_degree");
         let mut polynomials = Vec::new();
-        let mut degree_bounds = HashSet::new();
+        let mut degree_bounds = BTreeSet::new();
 
         let mut labels = Vec::new();
         println!("Sampled supported degree");
@@ -283,12 +285,13 @@ where
             }
             polynomials.push(LabeledPolynomial::new(label, poly, degree_bound, Some(hiding_bound)))
         }
+        let degree_bounds = (!degree_bounds.is_empty()).then_some(degree_bounds);
         let supported_hiding_bound = polynomials.iter().map(|p| p.hiding_bound().unwrap_or(0)).max().unwrap_or(0);
         assert_eq!(supported_hiding_bound, 1);
         let degree_info = DegreeInfo {
             max_degree,
             max_fft_size: supported_degree,
-            degree_bounds: Some(degree_bounds),
+            degree_bounds,
             hiding_bound,
             lagrange_sizes: None,
         };
@@ -363,10 +366,10 @@ fn equation_test_template<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>>(
     for _ in 0..num_iters {
         let universal_verifier = pp.to_universal_verifier().unwrap();
         let supported_degree =
-            supported_degree.unwrap_or_else(|| distributions::Uniform::from(4..=max_degree).sample(rng));
+            supported_degree.unwrap_or_else(|| distributions::Uniform::from(4..=max_degree - 1).sample(rng));
         assert!(max_degree >= supported_degree, "max_degree < supported_degree");
         let mut polynomials = Vec::new();
-        let mut degree_bounds = HashSet::new();
+        let mut degree_bounds = BTreeSet::new();
 
         let mut labels = Vec::new();
         println!("Sampled supported degree");
@@ -398,12 +401,13 @@ fn equation_test_template<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>>(
 
             polynomials.push(LabeledPolynomial::new(label, poly, degree_bound, Some(hiding_bound)))
         }
+        let degree_bounds = (!degree_bounds.is_empty()).then_some(degree_bounds);
         let supported_hiding_bound = polynomials.iter().map(|p| p.hiding_bound().unwrap_or(0)).max().unwrap_or(0);
         assert_eq!(supported_hiding_bound, 1);
         let degree_info = DegreeInfo {
             max_degree,
             max_fft_size: supported_degree,
-            degree_bounds: Some(degree_bounds),
+            degree_bounds,
             hiding_bound,
             lagrange_sizes: None,
         };

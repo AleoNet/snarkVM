@@ -60,7 +60,7 @@ use synthesizer_program::{
     RegistersStore,
     StackProgram,
 };
-use synthesizer_snark::{ProvingKey, UniversalSRS, VerifyingKey};
+use synthesizer_snark::{ProvingKey, UniversalProver, UniversalSRS, VerifyingKey};
 
 use aleo_std::prelude::{finish, lap, timer};
 use indexmap::IndexMap;
@@ -74,6 +74,8 @@ use colored::Colorize;
 pub struct Process<N: Network> {
     /// The universal SRS.
     universal_srs: Arc<UniversalSRS<N>>,
+    /// The universal prover.
+    universal_prover: Arc<RwLock<UniversalProver<N>>>,
     /// The mapping of program IDs to stacks.
     stacks: IndexMap<ProgramID<N>, Stack<N>>,
 }
@@ -85,7 +87,11 @@ impl<N: Network> Process<N> {
         let timer = timer!("Process:setup");
 
         // Initialize the process.
-        let mut process = Self { universal_srs: Arc::new(UniversalSRS::load()?), stacks: IndexMap::new() };
+        let mut process = Self {
+            universal_srs: Arc::new(UniversalSRS::load()?),
+            universal_prover: Arc::new(RwLock::new(UniversalProver::load()?)),
+            stacks: IndexMap::new(),
+        };
         lap!(timer, "Initialize process");
 
         // Initialize the 'credits.aleo' program.
@@ -136,7 +142,11 @@ impl<N: Network> Process<N> {
         let timer = timer!("Process::load");
 
         // Initialize the process.
-        let mut process = Self { universal_srs: Arc::new(UniversalSRS::load()?), stacks: IndexMap::new() };
+        let mut process = Self {
+            universal_srs: Arc::new(UniversalSRS::load()?),
+            universal_prover: Arc::new(RwLock::new(UniversalProver::load()?)),
+            stacks: IndexMap::new(),
+        };
         lap!(timer, "Initialize process");
 
         // Initialize the 'credits.aleo' program.
@@ -169,7 +179,11 @@ impl<N: Network> Process<N> {
     #[cfg(feature = "wasm")]
     pub fn load_web() -> Result<Self> {
         // Initialize the process.
-        let mut process = Self { universal_srs: Arc::new(UniversalSRS::load()?), stacks: IndexMap::new() };
+        let mut process = Self {
+            universal_srs: Arc::new(UniversalSRS::load()?),
+            universal_prover: Arc::new(RwLock::new(UniversalProver::load()?)),
+            stacks: IndexMap::new(),
+        };
 
         // Initialize the 'credits.aleo' program.
         let program = Program::credits()?;
@@ -188,6 +202,12 @@ impl<N: Network> Process<N> {
     #[inline]
     pub const fn universal_srs(&self) -> &Arc<UniversalSRS<N>> {
         &self.universal_srs
+    }
+
+    /// Returns the universal prover.
+    #[inline]
+    pub const fn universal_prover(&self) -> &Arc<RwLock<UniversalProver<N>>> {
+        &self.universal_prover
     }
 
     /// Returns `true` if the process contains the program with the given ID.

@@ -21,6 +21,7 @@ use console::network::{prelude::*, FiatShamir};
 use snarkvm_algorithms::{polycommit::kzg10::DegreeInfo, snark::varuna, traits::SNARK};
 
 use once_cell::sync::OnceCell;
+use parking_lot::RwLock;
 use std::sync::Arc;
 
 #[cfg(feature = "aleo-cli")]
@@ -38,13 +39,15 @@ mod proving_key;
 pub use proving_key::ProvingKey;
 
 mod universal_srs;
-pub use universal_srs::UniversalSRS;
+pub use universal_srs::{UniversalProver, UniversalSRS};
 
 mod verifying_key;
 pub use verifying_key::VerifyingKey;
 
 #[cfg(test)]
 pub(crate) mod test_helpers {
+    use crate::universal_srs::UniversalProver;
+
     use super::*;
     use circuit::{
         environment::{Assignment, Circuit, Eject, Environment, Inject, Mode, One},
@@ -103,7 +106,8 @@ pub(crate) mod test_helpers {
             .get_or_init(|| {
                 let assignment = sample_assignment();
                 let srs = UniversalSRS::load().unwrap();
-                let (proving_key, verifying_key) = srs.to_circuit_key("test", &assignment).unwrap();
+                let universal_prover = Arc::new(RwLock::new(UniversalProver::<CurrentNetwork>::load().unwrap()));
+                let (proving_key, verifying_key) = srs.to_circuit_key(universal_prover, "test", &assignment).unwrap();
                 (proving_key, verifying_key)
             })
             .clone()
@@ -116,7 +120,10 @@ pub(crate) mod test_helpers {
             .get_or_init(|| {
                 let assignment = sample_assignment();
                 let (proving_key, _) = sample_keys();
-                proving_key.prove("test", &assignment, &mut TestRng::default()).unwrap()
+                let srs = UniversalSRS::<CurrentNetwork>::load().unwrap();
+                let universal_prover = Arc::new(RwLock::new(UniversalProver::<CurrentNetwork>::load().unwrap()));
+
+                proving_key.prove(&srs, universal_prover, "test", &assignment, &mut TestRng::default()).unwrap()
             })
             .clone()
     }
@@ -127,8 +134,11 @@ pub(crate) mod test_helpers {
         INSTANCE
             .get_or_init(|| {
                 let (proving_key, verifying_key) = sample_keys();
+                let srs = UniversalSRS::<CurrentNetwork>::load().unwrap();
+                let universal_prover = Arc::new(RwLock::new(UniversalProver::<CurrentNetwork>::load().unwrap()));
+
                 // Return the certificate.
-                Certificate::certify("test", &proving_key, &verifying_key).unwrap()
+                Certificate::certify(&srs, universal_prover, "test", &proving_key, &verifying_key).unwrap()
             })
             .clone()
     }
@@ -136,6 +146,8 @@ pub(crate) mod test_helpers {
 
 #[cfg(test)]
 mod test {
+    use crate::universal_srs::UniversalProver;
+
     use super::*;
     use circuit::environment::{Circuit, Environment};
     use console::network::Testnet3;
@@ -148,10 +160,11 @@ mod test {
 
         // Varuna setup, prove, and verify.
         let srs = UniversalSRS::<CurrentNetwork>::load().unwrap();
-        let (proving_key, verifying_key) = srs.to_circuit_key("test", &assignment).unwrap();
+        let universal_prover = Arc::new(RwLock::new(UniversalProver::<CurrentNetwork>::load().unwrap()));
+        let (proving_key, verifying_key) = srs.to_circuit_key(universal_prover.clone(), "test", &assignment).unwrap();
         println!("Called circuit setup");
 
-        let proof = proving_key.prove("test", &assignment, &mut TestRng::default()).unwrap();
+        let proof = proving_key.prove(&srs, universal_prover, "test", &assignment, &mut TestRng::default()).unwrap();
         println!("Called prover");
 
         let one = <Circuit as Environment>::BaseField::one();
