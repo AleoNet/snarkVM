@@ -78,13 +78,22 @@ fn sanity_check_subdag_with_dfs<N: Network>(subdag: &BTreeMap<u64, IndexSet<Batc
     &commit == subdag
 }
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone)]
 pub struct Subdag<N: Network> {
     /// The subdag of round certificates.
     subdag: BTreeMap<u64, IndexSet<BatchCertificate<N>>>,
     /// The election certificate IDs.
     election_certificate_ids: IndexSet<Field<N>>,
 }
+
+impl<N: Network> PartialEq for Subdag<N> {
+    fn eq(&self, other: &Self) -> bool {
+        // Note: We do not check equality on `election_certificate_ids` as it would cause `Block::eq` to trigger false-positives.
+        self.subdag == other.subdag
+    }
+}
+
+impl<N: Network> Eq for Subdag<N> {}
 
 impl<N: Network> Subdag<N> {
     /// Initializes a new subdag.

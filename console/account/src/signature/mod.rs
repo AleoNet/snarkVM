@@ -18,6 +18,7 @@ mod from_bits;
 mod parse;
 mod serialize;
 mod size_in_bits;
+mod size_in_bytes;
 mod to_bits;
 mod to_fields;
 mod verify;

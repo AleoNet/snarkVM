@@ -26,9 +26,11 @@ impl<N: Network> Parser for Operand<N> {
             map(tag("self.signer"), |_| Self::Signer),
             map(tag("self.caller"), |_| Self::Caller),
             map(tag("block.height"), |_| Self::BlockHeight),
+            // Note that `Operand::ProgramID`s must be parsed before `Operand::Literal`s, since a program ID can be implicitly parsed as a literal address.
+            // This ensures that the string representation of a program uses the `Operand::ProgramID` variant.
+            map(ProgramID::parse, |program_id| Self::ProgramID(program_id)),
             map(Literal::parse, |literal| Self::Literal(literal)),
             map(Register::parse, |register| Self::Register(register)),
-            map(ProgramID::parse, |program_id| Self::ProgramID(program_id)),
         ))(string)
     }
 }

@@ -243,6 +243,13 @@ impl<
     type Values = core::iter::Map<btree_map::IntoValues<Vec<u8>, V>, fn(V) -> Cow<'a, V>>;
 
     ///
+    /// Returns the number of confirmed entries in the map.
+    ///
+    fn len_confirmed(&self) -> usize {
+        self.map.read().len()
+    }
+
+    ///
     /// Returns `true` if the given key exists in the map.
     ///
     fn contains_key_confirmed<Q>(&self, key: &Q) -> Result<bool>

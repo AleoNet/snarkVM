@@ -33,6 +33,9 @@ impl<N: Network, Command: CommandTrait<N>> FromBytes for FinalizeCore<N, Command
 
         // Read the commands.
         let num_commands = u16::read_le(&mut reader)?;
+        if num_commands.is_zero() {
+            return Err(error("Failed to deserialize finalize: needs at least one command".to_string()));
+        }
         if num_commands > u16::try_from(N::MAX_COMMANDS).map_err(error)? {
             return Err(error(format!("Failed to deserialize finalize: too many commands ({num_commands})")));
         }
@@ -71,7 +74,7 @@ impl<N: Network, Command: CommandTrait<N>> ToBytes for FinalizeCore<N, Command> 
 
         // Write the number of commands for the finalize.
         let num_commands = self.commands.len();
-        match num_commands <= N::MAX_COMMANDS {
+        match 0 < num_commands && num_commands <= N::MAX_COMMANDS {
             true => u16::try_from(num_commands).map_err(error)?.write_le(&mut writer)?,
             false => return Err(error(format!("Failed to write {num_commands} commands as bytes"))),
         }

@@ -288,7 +288,7 @@ pub mod test_helpers {
     /// Samples a random committee.
     #[allow(clippy::cast_possible_truncation)]
     pub fn sample_committee_custom(num_members: u16, rng: &mut TestRng) -> Committee<CurrentNetwork> {
-        assert!(num_members >= 4);
+        assert!(num_members >= 3);
         // Set the maximum amount staked in the node.
         const MAX_STAKE: u64 = 100_000_000_000_000;
         // Initialize the Exponential distribution.

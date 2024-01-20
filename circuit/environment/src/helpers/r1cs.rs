@@ -91,9 +91,37 @@ impl<F: PrimeField> R1CS<F> {
         self.counter.add_constraint(constraint);
     }
 
-    /// Returns `true` if all constraints in the environment are satisfied.
+    /// Returns `true` if all of the constraints are satisfied.
+    ///
+    /// In addition, when in debug mode, this function also checks that
+    /// all constraints use variables corresponding to the declared variables.
     pub fn is_satisfied(&self) -> bool {
-        self.constraints.iter().all(|constraint| constraint.is_satisfied())
+        // Ensure all constraints are satisfied.
+        let constraints_satisfied = self.constraints.iter().all(|constraint| constraint.is_satisfied());
+        if !constraints_satisfied {
+            return false;
+        }
+
+        // In debug mode, ensure all constraints use variables corresponding to the declared variables.
+        #[cfg(not(debug_assertions))]
+        return true;
+        #[cfg(debug_assertions)]
+        self.constraints.iter().all(|constraint| {
+            let (a, b, c) = constraint.to_terms();
+            [a, b, c].into_iter().all(|lc| {
+                lc.to_terms().iter().all(|(variable, _)| match variable {
+                    Variable::Constant(_value) => false, // terms should not contain Constants
+                    Variable::Private(private) => {
+                        let (index, value) = private.as_ref();
+                        self.private.get(*index as usize).map_or_else(|| false, |v| v.value() == *value)
+                    }
+                    Variable::Public(public) => {
+                        let (index, value) = public.as_ref();
+                        self.public.get(*index as usize).map_or_else(|| false, |v| v.value() == *value)
+                    }
+                })
+            })
+        })
     }
 
     /// Returns `true` if all constraints in the current scope are satisfied.

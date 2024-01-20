@@ -35,7 +35,8 @@ pub struct BatchHeader<N: Network> {
     /// TODO (howardwu): For mainnet - Remove this version from the struct, we only use it here for backwards compatibility.
     ///  NOTE: You must keep the version encoding in the byte serialization, just remove it from the struct in memory.
     version: u8,
-    /// The batch ID, defined as the hash of the round number, timestamp, transmission IDs, and previous batch certificate IDs.
+    /// The batch ID, defined as the hash of the author, round number, timestamp, transmission IDs,
+    /// previous batch certificate IDs, and last election certificate IDs.
     batch_id: Field<N>,
     /// The author of the batch.
     author: Address<N>,
@@ -62,6 +63,11 @@ impl<N: Network> BatchHeader<N> {
     pub const MAX_TRANSACTIONS: usize = usize::pow(2, console::program::TRANSACTIONS_DEPTH as u32);
     /// The maximum number of transmissions in a batch.
     pub const MAX_TRANSMISSIONS: usize = Self::MAX_SOLUTIONS + Self::MAX_TRANSACTIONS;
+    /// The maximum number of transmissions in a batch.
+    /// Note: This limit is set to 50 as part of safety measures to prevent DoS attacks.
+    /// This limit can be increased in the future as performance improves. Alternatively,
+    /// the rate of block production can be sped up to compensate for the limit set here.
+    pub const MAX_TRANSMISSIONS_PER_BATCH: usize = 50;
 }
 
 impl<N: Network> BatchHeader<N> {
@@ -90,6 +96,17 @@ impl<N: Network> BatchHeader<N> {
             // If the round is not zero and not one, then there should be at least one previous certificate ID.
             _ => ensure!(!previous_certificate_ids.is_empty(), "Invalid round number, must have certificates"),
         }
+
+        // Ensure that the number of transmissions is within bounds.
+        ensure!(transmission_ids.len() <= Self::MAX_TRANSMISSIONS, "Invalid number of transmission ids");
+        // Ensure that the number of previous certificate IDs is within bounds.
+        ensure!(previous_certificate_ids.len() <= Self::MAX_CERTIFICATES, "Invalid number of previous certificate IDs");
+        // Ensure the number of last election certificate IDs is within bounds.
+        ensure!(
+            last_election_certificate_ids.len() <= Self::MAX_CERTIFICATES,
+            "Invalid number of last election certificate IDs"
+        );
+
         // Retrieve the address.
         let author = Address::try_from(private_key)?;
         // Compute the batch ID.
@@ -139,6 +156,17 @@ impl<N: Network> BatchHeader<N> {
             // If the round is not zero and not one, then there should be at least one previous certificate ID.
             _ => ensure!(!previous_certificate_ids.is_empty(), "Invalid round number, must have certificates"),
         }
+
+        // Ensure that the number of transmissions is within bounds.
+        ensure!(transmission_ids.len() <= Self::MAX_TRANSMISSIONS, "Invalid number of transmission ids");
+        // Ensure that the number of previous certificate IDs is within bounds.
+        ensure!(previous_certificate_ids.len() <= Self::MAX_CERTIFICATES, "Invalid number of previous certificate IDs");
+        // Ensure the number of last election certificate IDs is within bounds.
+        ensure!(
+            last_election_certificate_ids.len() <= Self::MAX_CERTIFICATES,
+            "Invalid number of last election certificate IDs"
+        );
+
         // Compute the batch ID.
         let batch_id = Self::compute_batch_id(
             version,

@@ -107,7 +107,10 @@ fn check_number_of_operands(variant: u8, opcode: Opcode, num_operands: usize) ->
 fn is_valid_destination_type<N: Network>(destination_type: &PlaintextType<N>) -> bool {
     !matches!(
         destination_type,
-        PlaintextType::Literal(LiteralType::Boolean) | PlaintextType::Literal(LiteralType::String)
+        PlaintextType::Literal(LiteralType::Boolean)
+            | PlaintextType::Literal(LiteralType::String)
+            | PlaintextType::Struct(..)
+            | PlaintextType::Array(..)
     )
 }
 

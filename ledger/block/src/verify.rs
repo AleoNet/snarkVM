@@ -399,10 +399,10 @@ impl<N: Network> Block<N> {
         }
 
         // Ensure the number of aborted transaction IDs is within the allowed range.
-        if self.aborted_transaction_ids.len() > Transactions::<N>::MAX_TRANSACTIONS {
+        if self.aborted_transaction_ids.len() > Transactions::<N>::MAX_ABORTED_TRANSACTIONS {
             bail!(
                 "Cannot validate a block with more than {} aborted transaction IDs",
-                Transactions::<N>::MAX_TRANSACTIONS
+                Transactions::<N>::MAX_ABORTED_TRANSACTIONS
             );
         }
 
