@@ -159,7 +159,7 @@ impl<N: Network> Subdag<N> {
 
 impl<N: Network> Subdag<N> {
     /// The maximum number of rounds in a subdag (bounded up to GC depth).
-    pub const MAX_ROUNDS: u64 = BatchHeader::<N>::MAX_GC_ROUNDS;
+    pub const MAX_ROUNDS: u64 = BatchHeader::<N>::MAX_GC_ROUNDS as u64;
 }
 
 impl<N: Network> Subdag<N> {
@@ -335,8 +335,8 @@ mod tests {
     #[test]
     fn test_max_certificates() {
         // Determine the maximum number of certificates in a block.
-        let max_certificates_per_block = usize::try_from(BatchHeader::<CurrentNetwork>::MAX_GC_ROUNDS).unwrap()
-            * BatchHeader::<CurrentNetwork>::MAX_CERTIFICATES as usize;
+        let max_certificates_per_block =
+            BatchHeader::<CurrentNetwork>::MAX_GC_ROUNDS * BatchHeader::<CurrentNetwork>::MAX_CERTIFICATES as usize;
 
         // Note: The maximum number of certificates in a block must be able to be Merklized.
         assert!(
