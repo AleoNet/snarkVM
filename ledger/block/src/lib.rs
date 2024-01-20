@@ -29,6 +29,9 @@ pub use ratifications::*;
 pub mod ratify;
 pub use ratify::*;
 
+pub mod solutions;
+pub use solutions::*;
+
 pub mod transaction;
 pub use transaction::*;
 
