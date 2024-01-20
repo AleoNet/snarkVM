@@ -73,7 +73,7 @@ mod tests {
             assert_eq!(expected, candidate);
 
             // Add excess zero bits.
-            let candidate = vec![vec![false; i], given_bits].concat();
+            let candidate = [vec![false; i], given_bits].concat();
             assert!(Boolean::<CurrentEnvironment>::from_bits_be(&candidate).is_err());
         }
         Ok(())

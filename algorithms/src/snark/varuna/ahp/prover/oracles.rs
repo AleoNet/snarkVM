@@ -37,7 +37,7 @@ impl<F: PrimeField> FirstOracles<F> {
 
     /// Iterate over the polynomials output by the prover in the first round.
     pub fn into_iter(self) -> impl Iterator<Item = LabeledPolynomial<F>> {
-        self.batches.into_values().flat_map(|b| b.into_iter()).map(|b| b.0).chain(self.mask_poly.into_iter())
+        self.batches.into_values().flat_map(|b| b.into_iter()).map(|b| b.0).chain(self.mask_poly)
     }
 
     pub fn matches_info(&self, info: &BTreeMap<PolynomialLabel, PolynomialInfo>) -> bool {
