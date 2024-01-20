@@ -2978,6 +2978,8 @@ dependencies = [
 name = "snarkvm-console-types"
 version = "0.16.16"
 dependencies = [
+ "criterion",
+ "snarkvm-console-network",
  "snarkvm-console-network-environment",
  "snarkvm-console-types-address",
  "snarkvm-console-types-boolean",
