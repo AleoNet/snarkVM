@@ -681,10 +681,13 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
     }
 
     /// Returns the block height that contains the given `puzzle commitment`.
-    fn find_block_height_from_puzzle_commitment(&self, puzzle_commitment: &PuzzleCommitment<N>) -> Result<Option<u32>> {
-        match self.puzzle_commitments_map().get_confirmed(puzzle_commitment)? {
+    fn find_block_height_from_puzzle_commitment(&self, solution_id: &PuzzleCommitment<N>) -> Result<Option<u32>> {
+        match self.puzzle_commitments_map().get_confirmed(solution_id)? {
             Some(block_height) => Ok(Some(cow_to_copied!(block_height))),
-            None => Ok(None),
+            None => match self.aborted_solution_heights_map().get_confirmed(solution_id)? {
+                Some(block_height) => Ok(Some(cow_to_copied!(block_height))),
+                None => Ok(None),
+            },
         }
     }
 
@@ -876,10 +879,10 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
     }
 
     /// Returns the prover solution for the given solution ID.
-    fn get_solution(&self, puzzle_commitment: &PuzzleCommitment<N>) -> Result<ProverSolution<N>> {
-        // Retrieve the block height for the puzzle commitment.
-        let Some(block_height) = self.find_block_height_from_puzzle_commitment(puzzle_commitment)? else {
-            bail!("The block height for puzzle commitment '{puzzle_commitment}' is missing in block storage")
+    fn get_solution(&self, solution_id: &PuzzleCommitment<N>) -> Result<ProverSolution<N>> {
+        // Retrieve the block height for the solution ID.
+        let Some(block_height) = self.find_block_height_from_puzzle_commitment(solution_id)? else {
+            bail!("The block height for solution ID '{solution_id}' is missing in block storage")
         };
         // Retrieve the block hash.
         let Some(block_hash) = self.get_block_hash(block_height)? else {
@@ -892,13 +895,11 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         // Retrieve the prover solution.
         match solutions {
             Cow::Owned(Some(ref solutions)) | Cow::Borrowed(Some(ref solutions)) => {
-                solutions.get(puzzle_commitment).cloned().ok_or_else(|| {
-                    anyhow!(
-                        "The prover solution for puzzle commitment '{puzzle_commitment}' is missing in block storage"
-                    )
+                solutions.get(solution_id).cloned().ok_or_else(|| {
+                    anyhow!("The prover solution for solution ID '{solution_id}' is missing in block storage")
                 })
             }
-            _ => bail!("The prover solution for puzzle commitment '{puzzle_commitment}' is missing in block storage"),
+            _ => bail!("The prover solution for solution ID '{solution_id}' is missing in block storage"),
         }
     }
 
@@ -1365,10 +1366,10 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
         self.storage.certificate_map().contains_key_confirmed(certificate_id)
     }
 
-    /// Returns `true` if the given puzzle commitment exists.
-    pub fn contains_puzzle_commitment(&self, puzzle_commitment: &PuzzleCommitment<N>) -> Result<bool> {
-        Ok(self.storage.puzzle_commitments_map().contains_key_confirmed(puzzle_commitment)?
-            || self.contains_aborted_puzzle_commitment(puzzle_commitment)?)
+    /// Returns `true` if the given solution ID exists.
+    pub fn contains_puzzle_commitment(&self, solution_id: &PuzzleCommitment<N>) -> Result<bool> {
+        Ok(self.storage.puzzle_commitments_map().contains_key_confirmed(solution_id)?
+            || self.contains_aborted_puzzle_commitment(solution_id)?)
     }
 
     /// Returns `true` if the given aborted solution ID exists.
@@ -1393,8 +1394,8 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
         self.storage.reverse_id_map().keys_confirmed()
     }
 
-    /// Returns an iterator over the puzzle commitments, for all blocks in `self`.
-    pub fn puzzle_commitments(&self) -> impl '_ + Iterator<Item = Cow<'_, PuzzleCommitment<N>>> {
+    /// Returns an iterator over the solution IDs, for all blocks in `self`.
+    pub fn solution_ids(&self) -> impl '_ + Iterator<Item = Cow<'_, PuzzleCommitment<N>>> {
         self.storage.puzzle_commitments_map().keys_confirmed()
     }
 }
