@@ -394,6 +394,8 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
 
     /// Either enables or disables the atomic override.
     fn flip_atomic_override(&self) -> Result<bool> {
+        // Since the atomic override applies to the entire storage, any map
+        // can be used to toggle it.
         self.state_root_map().flip_atomic_override()
     }
 
@@ -1155,6 +1157,8 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
 
     /// Either enables or disables the atomic override.
     pub fn flip_atomic_override(&self) -> Result<bool> {
+        // Since the atomic override applies to the entire storage, any store
+        // can be used to toggle it.
         self.storage.flip_atomic_override()
     }
 }

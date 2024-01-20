@@ -204,9 +204,15 @@ impl RocksDB {
         let previous_value = self.atomic_override.load(Ordering::SeqCst);
 
         // A flip from enabled to disabled executes all pending operations
-        // as a single atomic batch.
+        // and makes the storage function in the usual fashion again.
         if previous_value {
             let batch = mem::take(&mut *self.atomic_batch.lock());
+            // In order to ensure that all the operations that are intended
+            // to be atomic via the usual macro approach are still performed
+            // atomically (just as a part of a larger batch), every atomic
+            // storage operation that has accumulated from the moment the
+            // override was enabled becomes executed as a single atomic batch
+            // when the override is disabled (i.e. `previous_value == true`).
             self.rocksdb.write(batch)?;
         }
 
