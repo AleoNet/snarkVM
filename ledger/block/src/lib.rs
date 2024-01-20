@@ -680,7 +680,7 @@ pub mod test_helpers {
         // Prepare the confirmed transaction.
         let confirmed = ConfirmedTransaction::accepted_execute(0, transaction.clone(), vec![]).unwrap();
         // Prepare the transactions.
-        let transactions = Transactions::from_iter([confirmed].into_iter());
+        let transactions = Transactions::from_iter([confirmed]);
 
         // Construct the ratifications.
         let ratifications = Ratifications::try_from(vec![]).unwrap();

@@ -105,7 +105,7 @@ impl<F: Field> SparsePolynomial<F> {
                     *cur_coeff += *self_coeff * other_coeff;
                 }
             }
-            SparsePolynomial::from_coefficients(result.into_iter())
+            SparsePolynomial::from_coefficients(result)
         }
     }
 }

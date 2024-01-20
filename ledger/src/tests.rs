@@ -111,8 +111,7 @@ fn test_insufficient_private_fees() {
     {
         // Prepare a `split` execution without a fee.
         let inputs = [Value::Record(record_1.clone()), Value::from_str("100u64").unwrap()];
-        let authorization =
-            ledger.vm.authorize(&private_key, "credits.aleo", "split", inputs.into_iter(), rng).unwrap();
+        let authorization = ledger.vm.authorize(&private_key, "credits.aleo", "split", inputs, rng).unwrap();
         let split_transaction_without_fee = ledger.vm.execute_authorization(authorization, None, None, rng).unwrap();
         assert!(ledger.check_transaction_basic(&split_transaction_without_fee, None, rng).is_ok());
     }
@@ -125,8 +124,7 @@ fn test_insufficient_private_fees() {
             Value::from_str(&format!("{address}")).unwrap(),
             Value::from_str("100u64").unwrap(),
         ];
-        let authorization =
-            ledger.vm.authorize(&private_key, "credits.aleo", "transfer_private", inputs.into_iter(), rng).unwrap();
+        let authorization = ledger.vm.authorize(&private_key, "credits.aleo", "transfer_private", inputs, rng).unwrap();
         let transaction_without_fee = ledger.vm.execute_authorization(authorization, None, None, rng).unwrap();
         let execution = transaction_without_fee.execution().unwrap();
 
