@@ -25,7 +25,37 @@ pub mod traits;
 pub use traits::*;
 
 pub mod prelude {
-    pub use crate::{environment::*, helpers::*, traits::*};
+    pub use crate::{
+        environment::*,
+        helpers::*,
+        traits::{
+            algorithms::*,
+            arithmetic::*,
+            bitwise::*,
+            from_bits::*,
+            from_field::*,
+            parse::*,
+            parse_string::*,
+            to_bits_le,
+            to_field::*,
+            type_name::*,
+            types::{
+                integer_magnitude::Magnitude,
+                integer_type::{
+                    CheckedPow,
+                    CheckedShl,
+                    IntegerProperties,
+                    IntegerType,
+                    WrappingDiv,
+                    WrappingPow,
+                    WrappingRem,
+                },
+                *,
+            },
+            visibility::*,
+            ToBits,
+        },
+    };
 
     pub use snarkvm_curves::{AffineCurve, MontgomeryParameters, ProjectiveCurve, TwistedEdwardsParameters};
     pub use snarkvm_fields::{Field as _, PrimeField as _, SquareRootField as _, Zero as _};

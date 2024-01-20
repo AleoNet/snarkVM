@@ -206,8 +206,7 @@ impl<N: Network> BatchCertificate<N> {
         match self {
             Self::V1 { batch_header, signatures, .. } => {
                 // Return the median timestamp.
-                let mut timestamps =
-                    signatures.values().copied().chain([batch_header.timestamp()].into_iter()).collect::<Vec<_>>();
+                let mut timestamps = signatures.values().copied().chain([batch_header.timestamp()]).collect::<Vec<_>>();
                 timestamps.sort_unstable();
                 timestamps[timestamps.len() / 2]
             }
