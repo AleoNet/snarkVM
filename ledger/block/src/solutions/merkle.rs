@@ -12,21 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-pub struct GenesisBytes;
+use super::*;
 
-impl GenesisBytes {
-    pub const fn load_bytes() -> &'static [u8] {
-        include_bytes!("./resources/block.genesis")
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_genesis_block() {
-        let bytes = GenesisBytes::load_bytes();
-        assert_eq!(13733, bytes.len() as u64, "Update me if serialization has changed");
+impl<N: Network> Solutions<N> {
+    /// Returns the solutions root.
+    pub fn to_solutions_root(&self) -> Result<Field<N>> {
+        match &self.solutions {
+            Some(solutions) => solutions.to_accumulator_point(),
+            None => Ok(Field::<N>::zero()),
+        }
     }
 }

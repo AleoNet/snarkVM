@@ -32,11 +32,9 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         }
 
         // Ensure the solutions do not already exist.
-        if let Some(solutions) = block.solutions() {
-            for puzzle_commitment in solutions.puzzle_commitments() {
-                if self.contains_puzzle_commitment(puzzle_commitment)? {
-                    bail!("Puzzle commitment {puzzle_commitment} already exists in the ledger");
-                }
+        for solution_id in block.solutions().solution_ids() {
+            if self.contains_puzzle_commitment(solution_id)? {
+                bail!("Solution ID {solution_id} already exists in the ledger");
             }
         }
 

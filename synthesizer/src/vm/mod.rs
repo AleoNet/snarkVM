@@ -38,10 +38,10 @@ use ledger_block::{
     Ratifications,
     Ratify,
     Rejected,
+    Solutions,
     Transaction,
     Transactions,
 };
-use ledger_coinbase::CoinbaseSolution;
 use ledger_committee::Committee;
 use ledger_query::Query;
 use ledger_store::{
@@ -277,7 +277,9 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         // Prepare the ratifications.
         let ratifications = vec![Ratify::Genesis(committee, public_balances)];
         // Prepare the solutions.
-        let solutions = None; // The genesis block does not require solutions.
+        let solutions = Solutions::<N>::from(None); // The genesis block does not require solutions.
+        // Prepare the aborted solution IDs.
+        let aborted_solution_ids = vec![];
         // Prepare the transactions.
         let transactions = (0..Block::<N>::NUM_GENESIS_TRANSACTIONS)
             .map(|_| self.execute(private_key, locator, inputs.iter(), None, 0, None, rng))
@@ -287,7 +289,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         let state = FinalizeGlobalState::new_genesis::<N>()?;
         // Speculate on the ratifications, solutions, and transactions.
         let (ratifications, transactions, aborted_transaction_ids, ratified_finalize_operations) =
-            self.speculate(state, None, ratifications, solutions.as_ref(), transactions.iter())?;
+            self.speculate(state, None, ratifications, &solutions, transactions.iter())?;
         ensure!(
             aborted_transaction_ids.is_empty(),
             "Failed to initialize a genesis block - found aborted transaction IDs"
@@ -305,6 +307,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             header,
             ratifications,
             solutions,
+            aborted_solution_ids,
             transactions,
             aborted_transaction_ids,
             rng,
@@ -649,7 +652,7 @@ function compute:
 
         // Construct the new block header.
         let (ratifications, transactions, aborted_transaction_ids, ratified_finalize_operations) =
-            vm.speculate(sample_finalize_state(1), None, vec![], None, transactions.iter())?;
+            vm.speculate(sample_finalize_state(1), None, vec![], &None.into(), transactions.iter())?;
         assert!(aborted_transaction_ids.is_empty());
 
         // Construct the metadata associated with the block.
@@ -682,7 +685,8 @@ function compute:
             previous_block.hash(),
             header,
             ratifications,
-            None,
+            None.into(),
+            vec![],
             transactions,
             aborted_transaction_ids,
             rng,
