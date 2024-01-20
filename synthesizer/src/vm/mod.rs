@@ -42,7 +42,6 @@ use ledger_block::{
     Transaction,
     Transactions,
 };
-use ledger_coinbase::CoinbaseSolution;
 use ledger_committee::Committee;
 use ledger_query::Query;
 use ledger_store::{

@@ -166,17 +166,18 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
         let timer = timer!("VM::atomic_speculate");
 
+        // Retrieve the number of solutions.
+        let num_solutions = solutions.len();
         // Retrieve the number of transactions.
         let num_transactions = transactions.len();
 
         // Perform the finalize operation on the preset finalize mode.
         atomic_finalize!(self.finalize_store(), FinalizeMode::DryRun, {
             // Ensure the number of solutions does not exceed the maximum.
-            if solutions.len() > Solutions::<N>::MAX_ABORTED_SOLUTIONS {
+            if num_solutions > Solutions::<N>::MAX_ABORTED_SOLUTIONS {
                 // Note: This will abort the entire atomic batch.
                 return Err(format!(
-                    "Too many solutions in the block - {} (max: {})",
-                    solutions.len(),
+                    "Too many solutions in the block - {num_solutions} (max: {})",
                     Solutions::<N>::MAX_ABORTED_SOLUTIONS
                 ));
             }
