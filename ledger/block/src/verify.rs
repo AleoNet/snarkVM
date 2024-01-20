@@ -532,13 +532,13 @@ impl<N: Network> Block<N> {
             .collect::<Result<Vec<_>>>()?;
         let mut unconfirmed_transaction_ids = unconfirmed_transaction_ids.iter().peekable();
 
-        // Initialize a list of already seen transmission IDs.
+        // Initialize a set of already seen transmission IDs.
         let mut seen_transmission_ids = HashSet::new();
 
-        // Initialize a list of aborted or already-existing solution IDs.
-        let mut aborted_or_existing_solution_ids = Vec::new();
-        // Initialize a list of aborted or already-existing transaction IDs.
-        let mut aborted_or_existing_transaction_ids = Vec::new();
+        // Initialize a set of aborted or already-existing solution IDs.
+        let mut aborted_or_existing_solution_ids = HashSet::new();
+        // Initialize a set of aborted or already-existing transaction IDs.
+        let mut aborted_or_existing_transaction_ids = HashSet::new();
 
         // Iterate over the transmission IDs.
         for transmission_id in subdag.transmission_ids() {
@@ -550,15 +550,19 @@ impl<N: Network> Block<N> {
             // Process the transmission ID.
             match transmission_id {
                 TransmissionID::Ratification => {}
-                TransmissionID::Solution(commitment) => {
+                TransmissionID::Solution(solution_id) => {
                     match solutions.peek() {
-                        // Check the next solution matches the expected commitment.
-                        Some((_, solution)) if solution.commitment() == *commitment => {
+                        // Check the next solution matches the expected solution ID.
+                        Some((_, solution)) if solution.commitment() == *solution_id => {
                             // Increment the solution iterator.
                             solutions.next();
                         }
                         // Otherwise, add the solution ID to the aborted or existing list.
-                        _ => aborted_or_existing_solution_ids.push(commitment),
+                        _ => {
+                            if !aborted_or_existing_solution_ids.insert(solution_id) {
+                                bail!("Block contains a duplicate aborted solution ID (found '{solution_id}')");
+                            }
+                        }
                     }
                 }
                 TransmissionID::Transaction(transaction_id) => {
@@ -569,7 +573,11 @@ impl<N: Network> Block<N> {
                             unconfirmed_transaction_ids.next();
                         }
                         // Otherwise, add the transaction ID to the aborted or existing list.
-                        _ => aborted_or_existing_transaction_ids.push(*transaction_id),
+                        _ => {
+                            if !aborted_or_existing_transaction_ids.insert(*transaction_id) {
+                                bail!("Block contains a duplicate aborted transaction ID (found '{transaction_id}')");
+                            }
+                        }
                     }
                 }
             }
