@@ -171,6 +171,18 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
         // Perform the finalize operation on the preset finalize mode.
         atomic_finalize!(self.finalize_store(), FinalizeMode::DryRun, {
+            // Ensure the number of solutions does not exceed the maximum.
+            if let Some(solutions) = solutions {
+                if solutions.len() > Solutions::<N>::MAX_ABORTED_SOLUTIONS {
+                    // Note: This will abort the entire atomic batch.
+                    return Err(format!(
+                        "Too many solutions in the block - {} (max: {})",
+                        solutions.len(),
+                        Solutions::<N>::MAX_ABORTED_SOLUTIONS
+                    ));
+                }
+            }
+
             // Ensure the number of transactions does not exceed the maximum.
             if num_transactions > Transactions::<N>::MAX_ABORTED_TRANSACTIONS {
                 // Note: This will abort the entire atomic batch.

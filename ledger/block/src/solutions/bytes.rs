@@ -21,7 +21,7 @@ impl<N: Network> FromBytes for Solutions<N> {
         let version: u8 = FromBytes::read_le(&mut reader)?;
         // Ensure the version is valid.
         if version != 1 {
-            return Err(error("Invalid solutions version"));
+            return Err(error(format!("Invalid solutions version ({version})")));
         }
 
         // Read the variant.
@@ -38,7 +38,7 @@ impl<N: Network> FromBytes for Solutions<N> {
                 // Return the solutions.
                 Self::new(solutions).map_err(error)
             }
-            _ => Err(error("Invalid solutions variant")),
+            _ => Err(error(format!("Invalid solutions variant ({variant})"))),
         }
     }
 }
@@ -47,7 +47,7 @@ impl<N: Network> ToBytes for Solutions<N> {
     /// Writes the solutions to the buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Write the version.
-        0u8.write_le(&mut writer)?;
+        1u8.write_le(&mut writer)?;
 
         match &self.solutions {
             None => {

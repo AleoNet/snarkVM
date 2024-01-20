@@ -263,8 +263,11 @@ impl<N: Network> Block<N> {
         let timestamp = self.timestamp();
 
         // Ensure the number of aborted solution IDs is within the allowed range.
-        if self.aborted_solution_ids.len() > N::MAX_SOLUTIONS {
-            bail!("Cannot validate a block with more than {} aborted solution IDs", N::MAX_SOLUTIONS);
+        if self.aborted_solution_ids.len() > Solutions::<N>::MAX_ABORTED_SOLUTIONS {
+            bail!(
+                "Cannot validate a block with more than {} aborted solution IDs",
+                Solutions::<N>::MAX_ABORTED_SOLUTIONS
+            );
         }
 
         // Ensure there are no duplicate solution IDs.

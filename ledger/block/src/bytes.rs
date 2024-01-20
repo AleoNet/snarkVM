@@ -48,10 +48,8 @@ impl<N: Network> FromBytes for Block<N> {
 
         // Read the number of aborted solution IDs.
         let num_aborted_solutions = u32::read_le(&mut reader)?;
-        // TODO (raychu86): Evaluate if this check is correct. It may be a valid case where there are more than
-        //  N::MAX_SOLUTIONS number of aborted solutions.
         // Ensure the number of aborted solutions IDs is within bounds (this is an early safety check).
-        if num_aborted_solutions as usize > N::MAX_SOLUTIONS {
+        if num_aborted_solutions as usize > Solutions::<N>::MAX_ABORTED_SOLUTIONS {
             return Err(error("Invalid number of aborted solutions IDs in the block"));
         }
         // Read the aborted solution IDs.

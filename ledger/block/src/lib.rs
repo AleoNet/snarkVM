@@ -151,6 +151,14 @@ impl<N: Network> Block<N> {
         transactions: Transactions<N>,
         aborted_transaction_ids: Vec<N::TransactionID>,
     ) -> Result<Self> {
+        // Ensure the number of aborted solutions IDs is within the allowed range.
+        if aborted_solution_ids.len() > Solutions::<N>::MAX_ABORTED_SOLUTIONS {
+            bail!(
+                "Cannot initialize a block with more than {} aborted solutions IDs",
+                Solutions::<N>::MAX_ABORTED_SOLUTIONS
+            );
+        }
+
         // Ensure the block contains transactions.
         ensure!(!transactions.is_empty(), "Cannot create a block with zero transactions");
 

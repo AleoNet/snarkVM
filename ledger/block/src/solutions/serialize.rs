@@ -19,7 +19,8 @@ impl<N: Network> Serialize for Solutions<N> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
             true => {
-                let mut solutions = serializer.serialize_struct("Solutions", self.solutions.is_some() as usize)?;
+                let mut solutions = serializer.serialize_struct("Solutions", 1 + self.solutions.is_some() as usize)?;
+                solutions.serialize_field("version", &1u8)?;
                 if let Some(s) = &self.solutions {
                     solutions.serialize_field("solutions", s)?;
                 }
@@ -35,10 +36,23 @@ impl<'de, N: Network> Deserialize<'de> for Solutions<N> {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         match deserializer.is_human_readable() {
             true => {
-                // Retrieve the solutions.
+                // Deserialize the solutions into a JSON value.
                 let mut solutions = serde_json::Value::deserialize(deserializer)?;
-                let solutions = solutions.get_mut("solutions").unwrap_or(&mut serde_json::Value::Null).take();
-                serde_json::from_value(solutions).map_err(de::Error::custom)
+
+                // Retrieve the version.
+                let version: u8 = DeserializeExt::take_from_value::<D>(&mut solutions, "version")?;
+                // Ensure the version is valid.
+                if version != 1 {
+                    return Err(de::Error::custom(format!("Invalid solutions version ({version})")));
+                }
+
+                // Retrieve the solutions, if it exists.
+                Ok(Self {
+                    solutions: serde_json::from_value(
+                        solutions.get_mut("solutions").unwrap_or(&mut serde_json::Value::Null).take(),
+                    )
+                    .map_err(de::Error::custom)?,
+                })
             }
             false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "solutions"),
         }
@@ -60,12 +74,10 @@ pub(super) mod tests {
             let private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
             let address = Address::try_from(private_key).unwrap();
 
-            let partial_solution =
-                PartialSolution::new(address, u64::rand(rng), PuzzleCommitment::from_g1_affine(rng.gen()));
-            prover_solutions.push(ProverSolution::new(partial_solution, PuzzleProof::<CurrentNetwork> {
-                w: rng.gen(),
-                random_v: None,
-            }));
+            let commitment = PuzzleCommitment::from_g1_affine(rng.gen());
+            let partial_solution = PartialSolution::new(address, u64::rand(rng), commitment);
+            let proof = PuzzleProof::<CurrentNetwork> { w: rng.gen(), random_v: None };
+            prover_solutions.push(ProverSolution::new(partial_solution, proof));
         }
         Solutions::new(CoinbaseSolution::new(prover_solutions).unwrap()).unwrap()
     }

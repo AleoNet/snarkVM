@@ -38,6 +38,7 @@ use ledger_block::{
     Ratifications,
     Ratify,
     Rejected,
+    Solutions,
     Transaction,
     Transactions,
 };
