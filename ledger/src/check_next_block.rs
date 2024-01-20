@@ -83,7 +83,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             self.vm.check_speculate(state, block.ratifications(), block.solutions(), block.transactions())?;
 
         // Ensure the block is correct.
-        let expected_existing_transaction_ids = block.verify(
+        let (expected_existing_solution_ids, expected_existing_transaction_ids) = block.verify(
             &self.latest_block(),
             self.latest_state_root(),
             &self.latest_committee()?,
@@ -92,6 +92,13 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             OffsetDateTime::now_utc().unix_timestamp(),
             ratified_finalize_operations,
         )?;
+
+        // Ensure that each existing solution id from the block exists in the ledger.
+        for existing_solution_id in expected_existing_solution_ids {
+            if !self.contains_puzzle_commitment(&existing_solution_id)? {
+                bail!("Solution ID '{existing_solution_id}' does not exist in the ledger");
+            }
+        }
 
         // Ensure that each existing transaction id from the block exists in the ledger.
         for existing_transaction_id in expected_existing_transaction_ids {

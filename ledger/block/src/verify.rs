@@ -35,13 +35,18 @@ impl<N: Network> Block<N> {
         current_epoch_challenge: &EpochChallenge<N>,
         current_timestamp: i64,
         ratified_finalize_operations: Vec<FinalizeOperation<N>>,
-    ) -> Result<Vec<N::TransactionID>> {
+    ) -> Result<(Vec<PuzzleCommitment<N>>, Vec<N::TransactionID>)> {
         // Ensure the block hash is correct.
         self.verify_hash(previous_block.height(), previous_block.hash())?;
 
         // Ensure the block authority is correct.
-        let (expected_round, expected_height, expected_timestamp, expected_existing_transaction_ids) =
-            self.verify_authority(previous_block.round(), previous_block.height(), current_committee)?;
+        let (
+            expected_round,
+            expected_height,
+            expected_timestamp,
+            expected_existing_solution_ids,
+            expected_existing_transaction_ids,
+        ) = self.verify_authority(previous_block.round(), previous_block.height(), current_committee)?;
 
         // Ensure the block solutions are correct.
         let (
@@ -94,8 +99,8 @@ impl<N: Network> Block<N> {
             current_timestamp,
         )?;
 
-        // Return the expected existing transaction ids.
-        Ok(expected_existing_transaction_ids)
+        // Return the expected existing transaction id and solution ids.
+        Ok((expected_existing_solution_ids, expected_existing_transaction_ids))
     }
 }
 
@@ -139,7 +144,7 @@ impl<N: Network> Block<N> {
         previous_round: u64,
         previous_height: u32,
         current_committee: &Committee<N>,
-    ) -> Result<(u64, u32, i64, Vec<N::TransactionID>)> {
+    ) -> Result<(u64, u32, i64, Vec<PuzzleCommitment<N>>, Vec<N::TransactionID>)> {
         // Note: Do not remove this. This ensures that all blocks after genesis are quorum blocks.
         #[cfg(not(any(test, feature = "test")))]
         ensure!(self.authority.is_quorum(), "The next block must be a quorum block");
@@ -174,8 +179,8 @@ impl<N: Network> Block<N> {
         );
 
         // Ensure the block authority is correct.
-        // Determine the transaction IDs expected to be in previous blocks.
-        let expected_existing_transaction_ids = match &self.authority {
+        // Determine the transaction ID and solution IDs expected to be in previous blocks.
+        let (expected_existing_solution_ids, expected_existing_transaction_ids) = match &self.authority {
             Authority::Beacon(signature) => {
                 // Retrieve the signer.
                 let signer = signature.to_address();
@@ -190,7 +195,7 @@ impl<N: Network> Block<N> {
                     "Signature is invalid in block {expected_height}"
                 );
 
-                vec![]
+                (vec![], vec![])
             }
             Authority::Quorum(subdag) => {
                 // Compute the expected leader.
@@ -221,7 +226,13 @@ impl<N: Network> Block<N> {
         };
 
         // Return success.
-        Ok((expected_round, expected_height, expected_timestamp, expected_existing_transaction_ids))
+        Ok((
+            expected_round,
+            expected_height,
+            expected_timestamp,
+            expected_existing_solution_ids,
+            expected_existing_transaction_ids,
+        ))
     }
 
     /// Ensures the block ratifications are correct.
@@ -523,13 +534,14 @@ impl<N: Network> Block<N> {
     }
 
     /// Checks that the transmission IDs in the given subdag matches the solutions and transactions in the block.
+    /// Returns the IDs of the transactions and solutions that should already exist in the ledger.
     pub(super) fn check_subdag_transmissions(
         subdag: &Subdag<N>,
         solutions: &Option<CoinbaseSolution<N>>,
         aborted_solution_ids: &[PuzzleCommitment<N>],
         transactions: &Transactions<N>,
         aborted_transaction_ids: &[N::TransactionID],
-    ) -> Result<Vec<N::TransactionID>> {
+    ) -> Result<(Vec<PuzzleCommitment<N>>, Vec<N::TransactionID>)> {
         // Prepare an iterator over the solution IDs.
         let mut solutions = solutions.as_ref().map(|s| s.deref()).into_iter().flatten().peekable();
         // Prepare an iterator over the unconfirmed transaction IDs.
@@ -565,7 +577,7 @@ impl<N: Network> Block<N> {
                         }
                         // Otherwise, add the solution ID to the aborted or existing list.
                         _ => {
-                            if !aborted_or_existing_solution_ids.insert(solution_id) {
+                            if !aborted_or_existing_solution_ids.insert(*solution_id) {
                                 bail!("Block contains a duplicate aborted solution ID (found '{solution_id}')");
                             }
                         }
@@ -594,11 +606,10 @@ impl<N: Network> Block<N> {
         // Ensure there are no more transactions in the block.
         ensure!(unconfirmed_transaction_ids.next().is_none(), "There exists more transactions than expected.");
 
-        // TODO: Move this check to be outside of this method, and check against the ledger for existence.
         // Ensure the aborted solution IDs match.
         for aborted_solution_id in aborted_solution_ids {
             // If the aborted transaction ID is not found, throw an error.
-            if !aborted_or_existing_solution_ids.contains(&aborted_solution_id) {
+            if !aborted_or_existing_solution_ids.contains(aborted_solution_id) {
                 bail!(
                     "Block contains an aborted solution ID that is not found in the subdag (found '{aborted_solution_id}')"
                 );
@@ -614,6 +625,10 @@ impl<N: Network> Block<N> {
             }
         }
 
+        // Retrieve the solution ids that should already exist in the ledger.
+        let existing_solution_ids: Vec<_> =
+            aborted_or_existing_solution_ids.iter().filter(|id| !aborted_solution_ids.contains(id)).copied().collect();
+
         // Retrieve the transaction ids that should already exist in the ledger.
         let existing_transaction_ids: Vec<_> = aborted_or_existing_transaction_ids
             .iter()
@@ -621,6 +636,6 @@ impl<N: Network> Block<N> {
             .copied()
             .collect();
 
-        Ok(existing_transaction_ids)
+        Ok((existing_solution_ids, existing_transaction_ids))
     }
 }
