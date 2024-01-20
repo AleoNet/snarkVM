@@ -172,11 +172,11 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         // Perform the finalize operation on the preset finalize mode.
         atomic_finalize!(self.finalize_store(), FinalizeMode::DryRun, {
             // Ensure the number of transactions does not exceed the maximum.
-            if num_transactions > 2 * Transactions::<N>::MAX_TRANSACTIONS {
+            if num_transactions > Transactions::<N>::MAX_ABORTED_TRANSACTIONS {
                 // Note: This will abort the entire atomic batch.
                 return Err(format!(
                     "Too many transactions in the block - {num_transactions} (max: {})",
-                    2 * Transactions::<N>::MAX_TRANSACTIONS
+                    Transactions::<N>::MAX_ABORTED_TRANSACTIONS
                 ));
             }
 

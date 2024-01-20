@@ -63,6 +63,11 @@ impl<N: Network> BatchHeader<N> {
     pub const MAX_TRANSACTIONS: usize = usize::pow(2, console::program::TRANSACTIONS_DEPTH as u32);
     /// The maximum number of transmissions in a batch.
     pub const MAX_TRANSMISSIONS: usize = Self::MAX_SOLUTIONS + Self::MAX_TRANSACTIONS;
+    /// The maximum number of transmissions in a batch.
+    /// Note: This limit is set to 50 as part of safety measures to prevent DoS attacks.
+    /// This limit can be increased in the future as performance improves. Alternatively,
+    /// the rate of block production can be sped up to compensate for the limit set here.
+    pub const MAX_TRANSMISSIONS_PER_BATCH: usize = 50;
 }
 
 impl<N: Network> BatchHeader<N> {
