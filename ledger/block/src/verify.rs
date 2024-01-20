@@ -393,10 +393,10 @@ impl<N: Network> Block<N> {
         }
 
         // Ensure the number of aborted transaction IDs is within the allowed range.
-        if self.aborted_transaction_ids.len() > Transactions::<N>::MAX_TRANSACTIONS {
+        if self.aborted_transaction_ids.len() > Transactions::<N>::MAX_ABORTED_TRANSACTIONS {
             bail!(
                 "Cannot validate a block with more than {} aborted transaction IDs",
-                Transactions::<N>::MAX_TRANSACTIONS
+                Transactions::<N>::MAX_ABORTED_TRANSACTIONS
             );
         }
 
@@ -408,6 +408,13 @@ impl<N: Network> Block<N> {
         // Ensure there are no duplicate transition IDs.
         if has_duplicates(self.transition_ids()) {
             bail!("Found a duplicate transition in block {height}");
+        }
+
+        // Ensure there are no duplicate program IDs.
+        if has_duplicates(
+            self.transactions().iter().filter_map(|tx| tx.transaction().deployment().map(|d| d.program_id())),
+        ) {
+            bail!("Found a duplicate program ID in block {height}");
         }
 
         /* Input */

@@ -52,16 +52,14 @@ impl<N: Network> Committee<N> {
 
     /// Initializes a new `Committee` instance.
     pub fn new_genesis(members: IndexMap<Address<N>, (u64, bool)>) -> Result<Self> {
-        // Ensure there are exactly 4 members.
-        ensure!(members.len() == 4, "Genesis committee must have 4 members");
         // Return the new committee.
         Self::new(0u64, members)
     }
 
     /// Initializes a new `Committee` instance.
     pub fn new(starting_round: u64, members: IndexMap<Address<N>, (u64, bool)>) -> Result<Self> {
-        // Ensure there are at least 4 members.
-        ensure!(members.len() >= 4, "Committee must have at least 4 members");
+        // Ensure there are at least 3 members.
+        ensure!(members.len() >= 3, "Committee must have at least 3 members");
         // Ensure there are no more than the maximum number of members.
         ensure!(
             members.len() <= Self::MAX_COMMITTEE_SIZE as usize,
@@ -290,7 +288,7 @@ pub mod test_helpers {
     /// Samples a random committee.
     #[allow(clippy::cast_possible_truncation)]
     pub fn sample_committee_custom(num_members: u16, rng: &mut TestRng) -> Committee<CurrentNetwork> {
-        assert!(num_members >= 4);
+        assert!(num_members >= 3);
         // Set the maximum amount staked in the node.
         const MAX_STAKE: u64 = 100_000_000_000_000;
         // Initialize the Exponential distribution.
@@ -382,7 +380,7 @@ mod tests {
         // Set the number of rounds.
         const NUM_ROUNDS: u64 = 256 * 2_000;
         // Sample the number of members.
-        let num_members = rng.gen_range(4..50);
+        let num_members = rng.gen_range(3..50);
         // Sample a committee.
         let committee = crate::test_helpers::sample_committee_custom(num_members, rng);
         // Check the leader distribution.

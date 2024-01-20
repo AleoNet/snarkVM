@@ -62,7 +62,7 @@ impl CircuitId {
 ///     public input
 /// 2) `{a,b,c}` are the matrices defining the R1CS instance
 /// 3) `{a,b,c}_arith` are structs containing information about the arithmetized matrices
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct Circuit<F: PrimeField, SM: SNARKMode> {
     /// Information about the indexed circuit.
     pub index_info: CircuitInfo,
@@ -139,12 +139,11 @@ impl<F: PrimeField, SM: SNARKMode> Circuit<F, SM> {
     }
 
     pub fn interpolate_matrix_evals(&self) -> Result<impl Iterator<Item = LabeledPolynomial<F>>> {
-        Ok([("a", &self.a_arith), ("b", &self.b_arith), ("c", &self.c_arith)]
-            .into_iter()
-            .map(|(label, evals)| MatrixArithmetization::new(&self.id, label, evals))
-            .collect::<Result<Vec<_>, _>>()?
-            .into_iter()
-            .flat_map(|arith| arith.into_iter()))
+        let mut iters = Vec::with_capacity(3);
+        for (label, evals) in [("a", &self.a_arith), ("b", &self.b_arith), ("c", &self.c_arith)] {
+            iters.push(MatrixArithmetization::new(&self.id, label, evals)?.into_iter());
+        }
+        Ok(iters.into_iter().flatten())
     }
 
     /// After indexing, we drop these evaluations to save space in the ProvingKey.

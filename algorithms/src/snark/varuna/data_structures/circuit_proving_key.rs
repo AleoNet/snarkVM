@@ -27,7 +27,7 @@ use snarkvm_utilities::{
 use std::{cmp::Ordering, sync::Arc};
 
 /// Proving key for a specific circuit (i.e., R1CS matrices).
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug)]
 pub struct CircuitProvingKey<E: PairingEngine, SM: SNARKMode> {
     /// The circuit verifying key.
     pub circuit_verifying_key: CircuitVerifyingKey<E>,
@@ -57,6 +57,14 @@ impl<E: PairingEngine, SM: SNARKMode> FromBytes for CircuitProvingKey<E, SM> {
         Ok(Self { circuit_verifying_key, circuit, committer_key })
     }
 }
+
+impl<E: PairingEngine, SM: SNARKMode> PartialEq for CircuitProvingKey<E, SM> {
+    fn eq(&self, other: &Self) -> bool {
+        self.circuit.id == other.circuit.id
+    }
+}
+
+impl<E: PairingEngine, SM: SNARKMode> Eq for CircuitProvingKey<E, SM> {}
 
 impl<E: PairingEngine, SM: SNARKMode> Ord for CircuitProvingKey<E, SM> {
     fn cmp(&self, other: &Self) -> Ordering {

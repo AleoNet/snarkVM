@@ -117,21 +117,25 @@ impl PoseidonGrainLFSR {
 
     pub fn get_field_elements_mod_p<F: PrimeField>(&mut self, num_elems: usize) -> Result<Vec<F>> {
         // Ensure the number of bits matches the modulus.
-        if self.field_size_in_bits != F::Parameters::MODULUS_BITS as u64 {
+        let num_bits = self.field_size_in_bits;
+        if num_bits != F::Parameters::MODULUS_BITS as u64 {
             bail!("The number of bits in the field must match the modulus");
         }
+
+        // Prepare reusable vectors for the intermediate bits and bytes.
+        let mut bits = Vec::with_capacity(num_bits as usize);
+        let mut bytes = Vec::with_capacity((num_bits as usize + 7) / 8);
 
         let mut output = Vec::with_capacity(num_elems);
         for _ in 0..num_elems {
             // Obtain `n` bits and make it most-significant-bit first.
-            let bits_iter = self.get_bits(self.field_size_in_bits as usize);
-            let mut bits = Vec::with_capacity(bits_iter.len());
+            let bits_iter = self.get_bits(num_bits as usize);
             for bit in bits_iter {
                 bits.push(bit);
             }
             bits.reverse();
 
-            let bytes = bits
+            for byte in bits
                 .chunks(8)
                 .map(|chunk| {
                     let mut sum = chunk[0] as u8;
@@ -143,9 +147,16 @@ impl PoseidonGrainLFSR {
                     sum
                 })
                 .rev()
-                .collect::<Vec<u8>>();
+            {
+                bytes.push(byte);
+            }
 
             output.push(F::from_bytes_be_mod_order(&bytes));
+
+            // Clear the vectors of bits and bytes so they can be reused
+            // in the next iteration.
+            bits.clear();
+            bytes.clear();
         }
         Ok(output)
     }

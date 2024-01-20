@@ -85,7 +85,7 @@ pub(crate) fn apply_randomized_selector<F: PrimeField>(
     // This removes a mul and div by v_H operation over each circuit's (target_domain - src_domain)
     // We have two scenario's: either we return a remainder witness or there is none.
     if !remainder_witness {
-        // Substituting in s_i, we get that poly_i * s_i / v_H = poly_i / v_H * (H_i.size() / H.size());
+        // Substituting in s_i, we get that poly_i * s_i / v_H = poly_i / v_H_i * (H_i.size() / H.size());
         let selector_time = start_timer!(|| "Compute selector without remainder witness");
 
         let (mut h_i, remainder) = poly.divide_by_vanishing_poly(*src_domain)?;

@@ -116,7 +116,7 @@ public:
             size_t pcur = 0;
             size_t ecur = 0;
 
-            // Set up the first polynomail / evaluation in dmem0
+            // Set up the first polynomial / evaluation in dmem0
             if (pcount > 0) {
                 mul_copy_poly(hmem0, dmem0, polynomials[0], plens[0], stream, lg_domain_size);
                 // Perform NTT on the input data

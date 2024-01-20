@@ -628,7 +628,11 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         match self.confirmed_transactions_map().get_confirmed(transaction_id)? {
             Some(Cow::Borrowed((block_hash, _, _))) => Ok(Some(*block_hash)),
             Some(Cow::Owned((block_hash, _, _))) => Ok(Some(block_hash)),
-            None => Ok(None),
+            None => match self.rejected_or_aborted_transaction_id_map().get_confirmed(transaction_id)? {
+                Some(Cow::Borrowed(block_hash)) => Ok(Some(*block_hash)),
+                Some(Cow::Owned(block_hash)) => Ok(Some(block_hash)),
+                None => Ok(None),
+            },
         }
     }
 
@@ -885,7 +889,15 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
                 Some(transactions) => {
                     match transactions.find_confirmed_transaction_for_unconfirmed_transaction_id(transaction_id) {
                         Some(confirmed) => Ok(Some(confirmed.transaction().clone())),
-                        None => bail!("Missing transaction '{transaction_id}' in block storage"),
+                        None => {
+                            // Check if the transaction was aborted.
+                            if let Some(aborted_ids) = self.get_block_aborted_transaction_ids(&block_hash)? {
+                                if aborted_ids.contains(transaction_id) {
+                                    bail!("Transaction '{transaction_id}' was aborted in block '{block_hash}'");
+                                }
+                            }
+                            bail!("Missing transaction '{transaction_id}' in block storage");
+                        }
                     }
                 }
                 None => bail!("Missing transactions for block '{block_hash}' in block storage"),

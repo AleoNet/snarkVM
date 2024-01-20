@@ -77,7 +77,7 @@ impl<F: Field> DensePolynomial<F> {
         while let Some(true) = coeffs.last().map(|c| c.is_zero()) {
             coeffs.pop();
         }
-        // Check that either the coefficients vec is empty or that the last coeff is non-zero.
+        // Check that either the coefficients vec are empty or that the last coeff is non-zero.
         assert!(coeffs.last().map_or(true, |coeff| !coeff.is_zero()));
 
         Self { coeffs }
@@ -700,7 +700,7 @@ mod tests {
         multiplier.add_polynomial(a.clone(), "a");
         assert_eq!(multiplier.multiply().unwrap(), a);
 
-        // Note PolyMultiplier doesn't support a evaluations with no polynomials
+        // Note PolyMultiplier doesn't support evaluations with no polynomials
     }
 
     #[test]

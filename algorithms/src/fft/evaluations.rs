@@ -38,7 +38,9 @@ pub struct Evaluations<F: PrimeField> {
 
 impl<F: PrimeField> Evaluations<F> {
     /// Construct `Self` from evaluations and a domain.
-    pub fn from_vec_and_domain(evaluations: Vec<F>, domain: EvaluationDomain<F>) -> Self {
+    pub fn from_vec_and_domain(mut evaluations: Vec<F>, domain: EvaluationDomain<F>) -> Self {
+        // Pad evaluations to ensure we can always evaluate
+        evaluations.resize(domain.size(), F::zero());
         Self { evaluations, domain }
     }
 

@@ -166,7 +166,7 @@ impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
     /// Public input should be unformatted.
     /// We construct the linear combinations as per section 5 of our protocol documentation.
     /// We can distinguish between:
-    /// (1) simple comitments: $\{\cm{g_A}, \cm{g_B}, \cm{g_C}\}$ and $\{\cm{\hat{z}_{B,i,j}}\}_{i \in {[\mathcal{D}]}}$, $\cm{g_1}$
+    /// (1) simple commitments: $\{\cm{g_A}, \cm{g_B}, \cm{g_C}\}$ and $\{\cm{\hat{z}_{B,i,j}}\}_{i \in {[\mathcal{D}]}}$, $\cm{g_1}$
     /// (2) virtual commitments for the lincheck_sumcheck and matrix_sumcheck. These are linear combinations of the simple commitments
     #[allow(non_snake_case)]
     pub fn construct_linear_combinations<E: EvaluationsProvider<F>>(
@@ -359,6 +359,9 @@ impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
             let non_zero_domains = [&state_i.non_zero_a_domain, &state_i.non_zero_b_domain, &state_i.non_zero_c_domain];
             let sums = sums_fourth_msg[i].iter();
 
+            ensure!(matrices.len() == sums.len());
+            ensure!(matrices.len() == deltas.len());
+            ensure!(matrices.len() == non_zero_domains.len());
             for (((m, sum), delta), non_zero_domain) in
                 matrices.into_iter().zip_eq(sums).zip_eq(deltas).zip_eq(non_zero_domains)
             {

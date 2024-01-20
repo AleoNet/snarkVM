@@ -27,7 +27,7 @@ pub struct MatrixSums<F: PrimeField> {
 
 impl<F: PrimeField> MatrixSums<F> {
     /// Iterate over the sums
-    pub fn iter(&self) -> impl Iterator<Item = F> {
+    pub fn iter(&self) -> impl ExactSizeIterator<Item = F> {
         [self.sum_a, self.sum_b, self.sum_c].into_iter()
     }
 }

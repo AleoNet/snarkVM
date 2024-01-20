@@ -20,7 +20,8 @@ impl<N: Network> FromBytes for BatchHeader<N> {
         // Read the version.
         let version = u8::read_le(&mut reader)?;
         // Ensure the version is valid.
-        if version != 1 {
+        // TODO (howardwu): For mainnet - Change the version back to 1.
+        if version != 1 && version != 2 {
             return Err(error("Invalid batch header version"));
         }
 
@@ -65,12 +66,44 @@ impl<N: Network> FromBytes for BatchHeader<N> {
             previous_certificate_ids.insert(Field::read_le(&mut reader)?);
         }
 
+        // TODO (howardwu): For mainnet - Change this to always encode the number of committed certificate IDs.
+        //  We currently only encode the size and certificates in the new version, for backwards compatibility.
+        let num_last_election_certificate_ids = if version == 2 {
+            // Read the number of last election certificate IDs.
+            u16::read_le(&mut reader)?
+        } else {
+            // Set the number of last election certificate IDs to zero.
+            0
+        };
+        // Ensure the number of last election certificate IDs is within bounds.
+        if num_last_election_certificate_ids as usize > Self::MAX_CERTIFICATES {
+            return Err(error(format!(
+                "Number of last election certificate IDs ({num_last_election_certificate_ids}) exceeds the maximum ({})",
+                Self::MAX_CERTIFICATES
+            )));
+        }
+        // Read the last election certificate IDs.
+        let mut last_election_certificate_ids = IndexSet::new();
+        for _ in 0..num_last_election_certificate_ids {
+            // Read the certificate ID.
+            last_election_certificate_ids.insert(Field::read_le(&mut reader)?);
+        }
+
         // Read the signature.
         let signature = Signature::read_le(&mut reader)?;
 
         // Construct the batch.
-        let batch = Self::from(author, round, timestamp, transmission_ids, previous_certificate_ids, signature)
-            .map_err(|e| error(e.to_string()))?;
+        let batch = Self::from(
+            version,
+            author,
+            round,
+            timestamp,
+            transmission_ids,
+            previous_certificate_ids,
+            last_election_certificate_ids,
+            signature,
+        )
+        .map_err(|e| error(e.to_string()))?;
 
         // Return the batch.
         match batch.batch_id == batch_id {
@@ -84,7 +117,8 @@ impl<N: Network> ToBytes for BatchHeader<N> {
     /// Writes the batch header to the buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Write the version.
-        1u8.write_le(&mut writer)?;
+        // TODO (howardwu): For mainnet - Change this back to '1u8.write_le(&mut writer)?';
+        self.version.write_le(&mut writer)?;
         // Write the batch ID.
         self.batch_id.write_le(&mut writer)?;
         // Write the author.
@@ -106,6 +140,19 @@ impl<N: Network> ToBytes for BatchHeader<N> {
         for certificate_id in &self.previous_certificate_ids {
             // Write the certificate ID.
             certificate_id.write_le(&mut writer)?;
+        }
+        // TODO (howardwu): For mainnet - Change this to always encode the number of committed certificate IDs.
+        //  We currently only encode the size and certificates in the new version, for backwards compatibility.
+        if self.version != 1 {
+            // Write the number of last election certificate IDs.
+            u16::try_from(self.last_election_certificate_ids.len())
+                .map_err(|e| error(e.to_string()))?
+                .write_le(&mut writer)?;
+            // Write the last election certificate IDs.
+            for certificate_id in &self.last_election_certificate_ids {
+                // Write the certificate ID.
+                certificate_id.write_le(&mut writer)?;
+            }
         }
         // Write the signature.
         self.signature.write_le(&mut writer)
