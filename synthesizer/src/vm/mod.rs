@@ -278,7 +278,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         // Prepare the ratifications.
         let ratifications = vec![Ratify::Genesis(committee, public_balances)];
         // Prepare the solutions.
-        let solutions = None; // The genesis block does not require solutions.
+        let solutions = Solutions::<N>::from(None); // The genesis block does not require solutions.
         // Prepare the aborted solution IDs.
         let aborted_solution_ids = vec![];
         // Prepare the transactions.
@@ -653,7 +653,7 @@ function compute:
 
         // Construct the new block header.
         let (ratifications, transactions, aborted_transaction_ids, ratified_finalize_operations) =
-            vm.speculate(sample_finalize_state(1), None, vec![], &None, transactions.iter())?;
+            vm.speculate(sample_finalize_state(1), None, vec![], &None.into(), transactions.iter())?;
         assert!(aborted_transaction_ids.is_empty());
 
         // Construct the metadata associated with the block.
@@ -686,7 +686,7 @@ function compute:
             previous_block.hash(),
             header,
             ratifications,
-            None,
+            None.into(),
             vec![],
             transactions,
             aborted_transaction_ids,

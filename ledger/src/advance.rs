@@ -178,7 +178,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
     ) -> Result<(
         Header<N>,
         Ratifications<N>,
-        Option<CoinbaseSolution<N>>,
+        Solutions<N>,
         Vec<PuzzleCommitment<N>>,
         Transactions<N>,
         Vec<N::TransactionID>,
@@ -216,6 +216,8 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                 }
             }
         };
+        // Prepare the solutions.
+        let solutions = Solutions::from(solutions);
 
         // Construct the aborted solution IDs.
         let aborted_solution_ids =

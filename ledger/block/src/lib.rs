@@ -89,7 +89,7 @@ impl<N: Network> Block<N> {
         previous_hash: N::BlockHash,
         header: Header<N>,
         ratifications: Ratifications<N>,
-        solutions: Option<CoinbaseSolution<N>>,
+        solutions: Solutions<N>,
         aborted_solution_ids: Vec<PuzzleCommitment<N>>,
         transactions: Transactions<N>,
         aborted_transaction_ids: Vec<N::TransactionID>,
@@ -99,8 +99,6 @@ impl<N: Network> Block<N> {
         let block_hash = N::hash_bhp1024(&to_bits_le![previous_hash, header.to_root()?])?;
         // Construct the beacon authority.
         let authority = Authority::new_beacon(private_key, block_hash, rng)?;
-        // Prepare the solutions.
-        let solutions = Solutions::<N>::from(solutions);
         // Construct the block.
         Self::from(
             previous_hash,
@@ -121,15 +119,13 @@ impl<N: Network> Block<N> {
         header: Header<N>,
         subdag: Subdag<N>,
         ratifications: Ratifications<N>,
-        solutions: Option<CoinbaseSolution<N>>,
+        solutions: Solutions<N>,
         aborted_solution_ids: Vec<PuzzleCommitment<N>>,
         transactions: Transactions<N>,
         aborted_transaction_ids: Vec<N::TransactionID>,
     ) -> Result<Self> {
         // Construct the beacon authority.
         let authority = Authority::new_quorum(subdag);
-        // Prepare the solutions.
-        let solutions = Solutions::<N>::from(solutions);
         // Construct the block.
         Self::from(
             previous_hash,
@@ -700,7 +696,7 @@ pub mod test_helpers {
             previous_hash,
             header,
             ratifications,
-            None,
+            None.into(),
             vec![],
             transactions,
             vec![],
