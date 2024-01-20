@@ -278,7 +278,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         let ratifications = vec![Ratify::Genesis(committee, public_balances)];
         // Prepare the solutions.
         let solutions = None; // The genesis block does not require solutions.
-        // Prepare teh aborted solution ids.
+        // Prepare the aborted solution IDs.
         let aborted_solution_ids = vec![];
         // Prepare the transactions.
         let transactions = (0..Block::<N>::NUM_GENESIS_TRANSACTIONS)
