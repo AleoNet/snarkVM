@@ -262,24 +262,9 @@ impl<N: Network> Block<N> {
         let height = self.height();
         let timestamp = self.timestamp();
 
-        // Ensure the number of aborted solution IDs is within the allowed range.
-        if self.aborted_solution_ids.len() > Solutions::<N>::MAX_ABORTED_SOLUTIONS {
-            bail!(
-                "Cannot validate a block with more than {} aborted solution IDs",
-                Solutions::<N>::MAX_ABORTED_SOLUTIONS
-            );
-        }
-
-        // Ensure there are no duplicate solution IDs.
-        if has_duplicates(
-            self.solutions
-                .as_ref()
-                .map(|solution| solution.puzzle_commitments())
-                .into_iter()
-                .flatten()
-                .chain(self.aborted_solution_ids().iter()),
-        ) {
-            bail!("Found a duplicate solution in block {height}");
+        // Ensure the solutions are not accepted after the block height at year 10.
+        if !self.solutions.is_empty() && height > block_height_at_year(N::BLOCK_TIME, 10) {
+            bail!("Solutions are no longer accepted after the block height at year 10.");
         }
 
         // Ensure the number of solutions is within the allowed range.
@@ -289,10 +274,24 @@ impl<N: Network> Block<N> {
             self.solutions.len(),
             N::MAX_SOLUTIONS
         );
+        // Ensure the number of aborted solution IDs is within the allowed range.
+        ensure!(
+            self.aborted_solution_ids.len() <= Solutions::<N>::MAX_ABORTED_SOLUTIONS,
+            "Block {height} contains too many aborted solution IDs (found '{}', expected '{}')",
+            self.aborted_solution_ids.len(),
+            Solutions::<N>::MAX_ABORTED_SOLUTIONS
+        );
 
-        // Ensure the solutions are not accepted after the block height at year 10.
-        if !self.solutions.is_empty() && height > block_height_at_year(N::BLOCK_TIME, 10) {
-            bail!("Solutions are no longer accepted after the block height at year 10.");
+        // Ensure there are no duplicate solution IDs.
+        if has_duplicates(
+            self.solutions
+                .as_ref()
+                .map(CoinbaseSolution::puzzle_commitments)
+                .into_iter()
+                .flatten()
+                .chain(self.aborted_solution_ids()),
+        ) {
+            bail!("Found a duplicate solution in block {height}");
         }
 
         // Compute the combined proof target.
