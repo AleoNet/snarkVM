@@ -217,7 +217,6 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             }
         };
 
-        // TODO (raychu86): Add bound checks for the number of aborted solution ids. This may need to be done in a higher level call.
         // Construct the aborted solution IDs.
         let aborted_solution_ids =
             aborted_solutions.into_iter().map(|solution| solution.commitment()).collect::<Vec<_>>();

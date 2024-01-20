@@ -295,10 +295,10 @@ impl<N: Network> Block<N> {
             bail!("Solutions are no longer accepted after the block height at year 10.");
         }
 
-        let (combined_proof_target, expected_cumulative_proof_target, is_coinbase_target_reached) = match self
-            .solutions
-            .deref()
-        {
+        // Compute the combined proof target.
+        let combined_proof_target = self.solutions.to_combined_proof_target()?;
+
+        let (expected_cumulative_proof_target, is_coinbase_target_reached) = match self.solutions.deref() {
             Some(coinbase) => {
                 // Ensure the puzzle proof is valid.
                 if let Err(e) =
@@ -306,9 +306,6 @@ impl<N: Network> Block<N> {
                 {
                     bail!("Block {height} contains an invalid puzzle proof - {e}");
                 }
-
-                // Compute the combined proof target.
-                let combined_proof_target = coinbase.to_combined_proof_target()?;
 
                 // Ensure that the block cumulative proof target is less than the previous block's coinbase target.
                 // Note: This is a sanity check, as the cumulative proof target resets to 0 if the
@@ -330,15 +327,13 @@ impl<N: Network> Block<N> {
                     false => cumulative_proof_target,
                 };
 
-                (combined_proof_target, expected_cumulative_proof_target, is_coinbase_target_reached)
+                (expected_cumulative_proof_target, is_coinbase_target_reached)
             }
             None => {
-                // Set the combined proof target.
-                let combined_proof_target = 0;
                 // Determine the cumulative proof target.
                 let expected_cumulative_proof_target = previous_block.cumulative_proof_target();
 
-                (combined_proof_target, expected_cumulative_proof_target, false)
+                (expected_cumulative_proof_target, false)
             }
         };
 

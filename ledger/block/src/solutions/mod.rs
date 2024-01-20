@@ -62,12 +62,24 @@ impl<N: Network> Solutions<N> {
             None => 0,
         }
     }
+}
 
+impl<N: Network> Solutions<N> {
     /// Returns an iterator over the solution IDs.
     pub fn solution_ids<'a>(&'a self) -> Box<dyn Iterator<Item = &'a PuzzleCommitment<N>> + 'a> {
         match &self.solutions {
             Some(solutions) => Box::new(solutions.keys()),
             None => Box::new(std::iter::empty::<&PuzzleCommitment<N>>()),
+        }
+    }
+}
+
+impl<N: Network> Solutions<N> {
+    /// Returns the combined sum of the prover solutions.
+    pub fn to_combined_proof_target(&self) -> Result<u128> {
+        match &self.solutions {
+            Some(solutions) => solutions.to_combined_proof_target(),
+            None => Ok(0),
         }
     }
 }
