@@ -143,9 +143,10 @@ mod tests {
         let expected = RecordType::<CurrentNetwork> {
             name: Identifier::from_str("message")?,
             owner: PublicOrPrivate::Private,
-            entries: IndexMap::from_iter(
-                vec![(Identifier::from_str("first")?, EntryType::from_str("field.constant")?)].into_iter(),
-            ),
+            entries: IndexMap::from_iter(vec![(
+                Identifier::from_str("first")?,
+                EntryType::from_str("field.constant")?,
+            )]),
         };
 
         let (remainder, candidate) = RecordType::<CurrentNetwork>::parse(
