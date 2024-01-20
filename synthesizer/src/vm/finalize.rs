@@ -221,12 +221,12 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             let mut deployments = IndexSet::new();
             // Initialize a counter for the confirmed transaction index.
             let mut counter = 0u32;
+            // Initialize a list of created transition IDs.
+            let mut transition_ids: IndexSet<N::TransitionID> = IndexSet::new();
             // Initialize a list of spent input IDs.
             let mut input_ids: IndexSet<Field<N>> = IndexSet::new();
             // Initialize a list of created output IDs.
             let mut output_ids: IndexSet<Field<N>> = IndexSet::new();
-            // Initialize a list of created transition IDs.
-            let mut transition_ids: IndexSet<N::TransitionID> = IndexSet::new();
 
             // Finalize the transactions.
             'outer: for transaction in transactions {
@@ -237,6 +237,19 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     aborted.push((transaction.clone(), "Exceeds block transaction limit".to_string()));
                     // Continue to the next transaction.
                     continue 'outer;
+                }
+
+                // Ensure that the transaction is not producing a duplicate transition.
+                for transition_id in transaction.transition_ids() {
+                    // If the transition ID is already produced in this block or previous blocks, abort the transaction.
+                    if transition_ids.contains(transition_id)
+                        || self.transition_store().contains_transition_id(transition_id).unwrap_or(true)
+                    {
+                        // Store the aborted transaction.
+                        aborted.push((transaction.clone(), format!("Duplicate transition {transition_id}")));
+                        // Continue to the next transaction.
+                        continue 'outer;
+                    }
                 }
 
                 // Ensure that the transaction is not double-spending an input.
@@ -260,19 +273,6 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     {
                         // Store the aborted transaction.
                         aborted.push((transaction.clone(), format!("Duplicate output {output_id}")));
-                        // Continue to the next transaction.
-                        continue 'outer;
-                    }
-                }
-
-                // Ensure that the transaction is not producing a duplicate transition.
-                for transition_id in transaction.transition_ids() {
-                    // If the transition ID is already produced in this block or previous blocks, abort the transaction.
-                    if transition_ids.contains(transition_id)
-                        || self.transition_store().contains_transition_id(transition_id).unwrap_or(true)
-                    {
-                        // Store the aborted transaction.
-                        aborted.push((transaction.clone(), format!("Duplicate transition {transition_id}")));
                         // Continue to the next transaction.
                         continue 'outer;
                     }
@@ -391,12 +391,12 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 match outcome {
                     // If the transaction succeeded, store it and continue to the next transaction.
                     Ok(confirmed_transaction) => {
+                        // Add the transition IDs to the set of produced transition IDs.
+                        transition_ids.extend(confirmed_transaction.transaction().transition_ids());
                         // Add the input IDs to the set of spent input IDs.
                         input_ids.extend(confirmed_transaction.transaction().input_ids());
                         // Add the output IDs to the set of produced output IDs.
                         output_ids.extend(confirmed_transaction.transaction().output_ids());
-                        // Add the transition IDs to the set of produced transition IDs.
-                        transition_ids.extend(confirmed_transaction.transaction().transition_ids());
                         // Store the confirmed transaction.
                         confirmed.push(confirmed_transaction);
                         // Increment the transaction index counter.
