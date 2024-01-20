@@ -55,7 +55,7 @@ pub enum BatchCertificate<N: Network> {
 
 impl<N: Network> BatchCertificate<N> {
     /// The maximum number of signatures in a batch certificate.
-    pub const MAX_SIGNATURES: usize = BatchHeader::<N>::MAX_CERTIFICATES;
+    pub const MAX_SIGNATURES: u16 = BatchHeader::<N>::MAX_CERTIFICATES;
 }
 
 impl<N: Network> BatchCertificate<N> {
@@ -85,7 +85,7 @@ impl<N: Network> BatchCertificate<N> {
             N::hash_bhp1024(&preimage.to_bits_le())
         }
         // Ensure that the number of signatures is within bounds.
-        ensure!(signatures.len() <= Self::MAX_SIGNATURES, "Invalid number of signatures");
+        ensure!(signatures.len() <= Self::MAX_SIGNATURES as usize, "Invalid number of signatures");
         // Compute the certificate ID.
         if certificate_id != compute_certificate_id(batch_header.batch_id(), &signatures)? {
             bail!("Invalid batch certificate ID")
@@ -104,7 +104,7 @@ impl<N: Network> BatchCertificate<N> {
     /// Initializes a new batch certificate.
     pub fn from(batch_header: BatchHeader<N>, signatures: IndexSet<Signature<N>>) -> Result<Self> {
         // Ensure that the number of signatures is within bounds.
-        ensure!(signatures.len() <= Self::MAX_SIGNATURES, "Invalid number of signatures");
+        ensure!(signatures.len() <= Self::MAX_SIGNATURES as usize, "Invalid number of signatures");
 
         // Ensure that the signature is from a unique signer and not from the author.
         let signature_authors = signatures.iter().map(|signature| signature.to_address()).collect::<HashSet<_>>();

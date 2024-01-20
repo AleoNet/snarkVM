@@ -49,10 +49,19 @@ impl<N: Network> Stack<N> {
                 _ => self.sample_value(&burner_address, input_type, rng),
             })
             .collect::<Result<Vec<_>>>()?;
+        // Sample 'is_root'.
+        let is_root = true;
 
         // Compute the request, with a burner private key.
-        let request =
-            Request::sign(&burner_private_key, *program_id, *function_name, inputs.into_iter(), &input_types, rng)?;
+        let request = Request::sign(
+            &burner_private_key,
+            *program_id,
+            *function_name,
+            inputs.into_iter(),
+            &input_types,
+            is_root,
+            rng,
+        )?;
         // Initialize the authorization.
         let authorization = Authorization::new(request.clone());
         // Initialize the call stack.
