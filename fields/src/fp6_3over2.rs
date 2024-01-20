@@ -28,11 +28,13 @@ use rand::{
 use serde::{Deserialize, Serialize};
 use std::{
     cmp::Ordering,
+    fmt::Debug,
+    hash::Hash,
     io::{Read, Result as IoResult, Write},
     ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign},
 };
 
-pub trait Fp6Parameters: 'static + Copy + Clone + Send + Sync {
+pub trait Fp6Parameters: 'static + Copy + Clone + Default + Debug + PartialEq + Eq + Hash + Send + Sync {
     type Fp2Params: Fp2Parameters;
 
     /// Coefficients for the Frobenius automorphism.
@@ -48,14 +50,7 @@ pub trait Fp6Parameters: 'static + Copy + Clone + Send + Sync {
 }
 
 /// An element of Fp6, represented by c0 + c1 * v + c2 * v^(2).
-#[derive(Derivative, Copy, Clone, Serialize, Deserialize)]
-#[derivative(
-    Default(bound = "P: Fp6Parameters"),
-    Hash(bound = "P: Fp6Parameters"),
-    Debug(bound = "P: Fp6Parameters"),
-    PartialEq(bound = "P: Fp6Parameters"),
-    Eq(bound = "P: Fp6Parameters")
-)]
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Fp6<P: Fp6Parameters> {
     pub c0: Fp2<P::Fp2Params>,
     pub c1: Fp2<P::Fp2Params>,
@@ -63,7 +58,8 @@ pub struct Fp6<P: Fp6Parameters> {
 }
 
 impl<P: Fp6Parameters> Fp6<P> {
-    pub fn new(c0: Fp2<P::Fp2Params>, c1: Fp2<P::Fp2Params>, c2: Fp2<P::Fp2Params>) -> Self {
+    /// Initializes an element of `Fp6` from 3 `Fp2` elements.
+    pub const fn new(c0: Fp2<P::Fp2Params>, c1: Fp2<P::Fp2Params>, c2: Fp2<P::Fp2Params>) -> Self {
         Self { c0, c1, c2 }
     }
 

@@ -47,14 +47,8 @@ use zeroize::Zeroize;
 
 pub trait Fp256Parameters: FieldParameters<BigInteger = BigInteger> {}
 
-#[derive(Derivative, Copy, Clone, Zeroize)]
-#[derivative(Default(bound = ""), Hash(bound = ""), PartialEq(bound = ""), Eq(bound = ""))]
-pub struct Fp256<P: Fp256Parameters>(
-    pub BigInteger,
-    #[derivative(Debug = "ignore")]
-    #[doc(hidden)]
-    pub PhantomData<P>,
-);
+#[derive(Copy, Clone, Default, PartialEq, Eq, Hash, Zeroize)]
+pub struct Fp256<P: Fp256Parameters>(pub BigInteger, #[doc(hidden)] pub PhantomData<P>);
 
 impl<P: Fp256Parameters> Fp256<P> {
     #[inline]

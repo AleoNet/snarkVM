@@ -47,19 +47,8 @@ use zeroize::Zeroize;
 
 pub trait Fp384Parameters: FieldParameters<BigInteger = BigInteger> {}
 
-#[derive(Derivative, Copy, Clone, Zeroize)]
-#[derivative(
-    Default(bound = "P: Fp384Parameters"),
-    Hash(bound = "P: Fp384Parameters"),
-    PartialEq(bound = "P: Fp384Parameters"),
-    Eq(bound = "P: Fp384Parameters")
-)]
-pub struct Fp384<P: Fp384Parameters>(
-    pub BigInteger,
-    #[derivative(Debug = "ignore")]
-    #[doc(hidden)]
-    pub PhantomData<P>,
-);
+#[derive(Copy, Clone, Default, PartialEq, Eq, Hash, Zeroize)]
+pub struct Fp384<P: Fp384Parameters>(pub BigInteger, #[doc(hidden)] pub PhantomData<P>);
 
 impl<P: Fp384Parameters> Fp384<P> {
     #[inline]
