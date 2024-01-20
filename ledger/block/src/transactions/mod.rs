@@ -37,12 +37,13 @@ use console::{
     },
     types::{Field, Group, U64},
 };
+use ledger_committee::Committee;
+use ledger_narwhal_batch_header::BatchHeader;
+use ledger_narwhal_subdag::Subdag;
 use synthesizer_program::FinalizeOperation;
 
 use indexmap::IndexMap;
 
-use ledger_committee::Committee;
-use ledger_narwhal_subdag::Subdag;
 #[cfg(not(feature = "serial"))]
 use rayon::prelude::*;
 
@@ -169,8 +170,9 @@ impl<N: Network> Transactions<N> {
 
 impl<N: Network> Transactions<N> {
     /// The maximum number of aborted transactions allowed in a block.
-    pub const MAX_ABORTED_TRANSACTIONS: usize =
-        Subdag::<N>::MAX_ROUNDS * Committee::<N>::MAX_COMMITTEE_SIZE as usize * N::MAX_TRANSMISSIONS_PER_BATCH;
+    pub const MAX_ABORTED_TRANSACTIONS: usize = Subdag::<N>::MAX_ROUNDS
+        * Committee::<N>::MAX_COMMITTEE_SIZE as usize
+        * BatchHeader::<N>::MAX_TRANSMISSIONS_PER_BATCH;
     /// The maximum number of transactions allowed in a block.
     pub const MAX_TRANSACTIONS: usize = usize::pow(2, TRANSACTIONS_DEPTH as u32);
 
