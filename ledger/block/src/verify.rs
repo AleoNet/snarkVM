@@ -626,13 +626,13 @@ impl<N: Network> Block<N> {
         }
 
         // Retrieve the solution ids that should already exist in the ledger.
-        let existing_solution_ids: Vec<_> =
-            aborted_or_existing_solution_ids.iter().filter(|id| !aborted_solution_ids.contains(id)).copied().collect();
-
+        let existing_solution_ids: Vec<_> = aborted_or_existing_solution_ids
+            .difference(&aborted_solution_ids.iter().copied().collect())
+            .copied()
+            .collect();
         // Retrieve the transaction ids that should already exist in the ledger.
         let existing_transaction_ids: Vec<_> = aborted_or_existing_transaction_ids
-            .iter()
-            .filter(|id| !aborted_transaction_ids.contains(id))
+            .difference(&aborted_transaction_ids.iter().copied().collect())
             .copied()
             .collect();
 
