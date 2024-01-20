@@ -350,13 +350,19 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 Ok(())
             }
             Err(finalize_error) => {
-                // Rewind the pending operations related to block insertion.
+                // Clear all the pending atomic operations so that disabling the atomic batch override
+                // doesn't execute any storage operation that has accumulated since it was enabled.
+                // This only applies to persistent storage - the in-memory one needs to roll back the
+                // latest block.
                 #[cfg(feature = "rocks")]
-                self.block_store().atomic_rewind();
+                self.block_store().atomic_abort();
+                #[cfg(feature = "rocks")]
+                self.finalize_store().atomic_abort();
                 // Disable the atomic batch override.
                 #[cfg(feature = "rocks")]
                 assert!(!self.block_store().flip_atomic_override()?);
-                // Rollback the block.
+                // Rollback the block (only applies to in-memory storage).
+                #[cfg(not(feature = "rocks"))]
                 self.block_store().remove_last_n(1).map_err(|removal_error| {
                     // Log the finalize error.
                     error!("Failed to finalize block {} - {finalize_error}", block.height());
