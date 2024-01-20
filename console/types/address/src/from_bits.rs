@@ -49,7 +49,7 @@ mod tests {
             assert_eq!(expected, candidate);
 
             // Add excess zero bits.
-            let candidate = vec![given_bits, vec![false; i]].concat();
+            let candidate = [given_bits, vec![false; i]].concat();
 
             let candidate = Address::<CurrentEnvironment>::from_bits_le(&candidate)?;
             assert_eq!(expected, candidate);

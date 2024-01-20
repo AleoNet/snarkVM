@@ -94,7 +94,7 @@ impl<N: Network> Parser for RecordType<N> {
         })(string)?;
 
         // Return the record type.
-        Ok((string, Self { name, owner, entries: IndexMap::from_iter(entries.into_iter()) }))
+        Ok((string, Self { name, owner, entries: IndexMap::from_iter(entries) }))
     }
 }
 

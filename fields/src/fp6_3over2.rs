@@ -32,7 +32,7 @@ use std::{
     ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign},
 };
 
-pub trait Fp6Parameters: 'static + Send + Sync + Copy {
+pub trait Fp6Parameters: 'static + Copy + Clone + Send + Sync {
     type Fp2Params: Fp2Parameters;
 
     /// Coefficients for the Frobenius automorphism.
@@ -48,12 +48,10 @@ pub trait Fp6Parameters: 'static + Send + Sync + Copy {
 }
 
 /// An element of Fp6, represented by c0 + c1 * v + c2 * v^(2).
-#[derive(Derivative, Serialize, Deserialize)]
+#[derive(Derivative, Copy, Clone, Serialize, Deserialize)]
 #[derivative(
     Default(bound = "P: Fp6Parameters"),
     Hash(bound = "P: Fp6Parameters"),
-    Clone(bound = "P: Fp6Parameters"),
-    Copy(bound = "P: Fp6Parameters"),
     Debug(bound = "P: Fp6Parameters"),
     PartialEq(bound = "P: Fp6Parameters"),
     Eq(bound = "P: Fp6Parameters")

@@ -102,7 +102,7 @@ impl<N: Network> Parser for Record<N, Plaintext<N>> {
         // Parse the '}' from the string.
         let (string, _) = tag("}")(string)?;
         // Output the record.
-        Ok((string, Record { owner, data: IndexMap::from_iter(entries.into_iter()), nonce }))
+        Ok((string, Record { owner, data: IndexMap::from_iter(entries), nonce }))
     }
 }
 

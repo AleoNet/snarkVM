@@ -32,7 +32,7 @@ use std::{
     ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign},
 };
 
-pub trait Fp2Parameters: 'static + Send + Sync + Serialize + for<'a> Deserialize<'a> {
+pub trait Fp2Parameters: 'static + Copy + Clone + Serialize + for<'a> Deserialize<'a> + Send + Sync {
     type Fp: PrimeField;
 
     /// Coefficients for the Frobenius automorphism.
@@ -48,12 +48,10 @@ pub trait Fp2Parameters: 'static + Send + Sync + Serialize + for<'a> Deserialize
     }
 }
 
-#[derive(Derivative, Serialize, Deserialize)]
+#[derive(Derivative, Copy, Clone, Serialize, Deserialize)]
 #[derivative(
     Default(bound = "P: Fp2Parameters"),
     Hash(bound = "P: Fp2Parameters"),
-    Clone(bound = "P: Fp2Parameters"),
-    Copy(bound = "P: Fp2Parameters"),
     Debug(bound = "P: Fp2Parameters"),
     PartialEq(bound = "P: Fp2Parameters"),
     Eq(bound = "P: Fp2Parameters")

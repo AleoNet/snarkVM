@@ -47,12 +47,10 @@ use zeroize::Zeroize;
 
 pub trait Fp384Parameters: FieldParameters<BigInteger = BigInteger> {}
 
-#[derive(Derivative, Zeroize)]
+#[derive(Derivative, Copy, Clone, Zeroize)]
 #[derivative(
     Default(bound = "P: Fp384Parameters"),
     Hash(bound = "P: Fp384Parameters"),
-    Clone(bound = "P: Fp384Parameters"),
-    Copy(bound = "P: Fp384Parameters"),
     PartialEq(bound = "P: Fp384Parameters"),
     Eq(bound = "P: Fp384Parameters")
 )]

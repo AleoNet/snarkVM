@@ -34,12 +34,10 @@ pub trait Fp12Parameters: 'static + Send + Sync + Copy {
 }
 
 /// An element of Fp12, represented by c0 + c1 * v
-#[derive(Derivative, Serialize, Deserialize)]
+#[derive(Derivative, Copy, Clone, Serialize, Deserialize)]
 #[derivative(
     Default(bound = "P: Fp12Parameters"),
     Hash(bound = "P: Fp12Parameters"),
-    Clone(bound = "P: Fp12Parameters"),
-    Copy(bound = "P: Fp12Parameters"),
     Debug(bound = "P: Fp12Parameters"),
     PartialEq(bound = "P: Fp12Parameters"),
     Eq(bound = "P: Fp12Parameters")

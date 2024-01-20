@@ -44,7 +44,7 @@ fn random_addition_test<G: ProjectiveCurve>(rng: &mut TestRng) {
             assert_eq!(aplusa, aplusamixed);
         }
 
-        let mut tmp = vec![G::zero(); 6];
+        let mut tmp = [G::zero(); 6];
 
         // (a + b) + c
         tmp[0] = (a + b) + c;

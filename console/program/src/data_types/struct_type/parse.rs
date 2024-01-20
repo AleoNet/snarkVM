@@ -70,7 +70,7 @@ impl<N: Network> Parser for StructType<N> {
             Ok(members)
         })(string)?;
         // Return the struct.
-        Ok((string, Self { name, members: IndexMap::from_iter(members.into_iter()) }))
+        Ok((string, Self { name, members: IndexMap::from_iter(members) }))
     }
 }
 

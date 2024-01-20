@@ -15,7 +15,7 @@
 use crate::traits::{FftParameters, PoseidonDefaultParameters};
 
 /// A trait that defines parameters for a prime field.
-pub trait FieldParameters: 'static + FftParameters + PoseidonDefaultParameters {
+pub trait FieldParameters: 'static + Copy + FftParameters + PoseidonDefaultParameters {
     /// The modulus of the field.
     const MODULUS: Self::BigInteger;
 
