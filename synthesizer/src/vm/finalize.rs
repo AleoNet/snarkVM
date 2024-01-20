@@ -172,11 +172,11 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         // Perform the finalize operation on the preset finalize mode.
         atomic_finalize!(self.finalize_store(), FinalizeMode::DryRun, {
             // Ensure the number of transactions does not exceed the maximum.
-            if num_transactions > 2 * Transactions::<N>::MAX_TRANSACTIONS {
+            if num_transactions > Transactions::<N>::MAX_ABORTED_TRANSACTIONS {
                 // Note: This will abort the entire atomic batch.
                 return Err(format!(
                     "Too many transactions in the block - {num_transactions} (max: {})",
-                    2 * Transactions::<N>::MAX_TRANSACTIONS
+                    Transactions::<N>::MAX_ABORTED_TRANSACTIONS
                 ));
             }
 
@@ -223,6 +223,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             let mut counter = 0u32;
             // Initialize a list of spent input IDs.
             let mut input_ids: IndexSet<Field<N>> = IndexSet::new();
+            // Initialize a list of spent output IDs.
+            let mut output_ids: IndexSet<Field<N>> = IndexSet::new();
 
             // Finalize the transactions.
             'outer: for transaction in transactions {
@@ -243,6 +245,19 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     {
                         // Store the aborted transaction.
                         aborted.push((transaction.clone(), format!("Double-spending input {input_id}")));
+                        // Continue to the next transaction.
+                        continue 'outer;
+                    }
+                }
+
+                // Ensure that the transaction is not producing a duplicate output.
+                for output_id in transaction.output_ids() {
+                    // If the output ID is already spent in this block or previous blocks, abort the transaction.
+                    if output_ids.contains(output_id)
+                        || self.transition_store().contains_output_id(output_id).unwrap_or(true)
+                    {
+                        // Store the aborted transaction.
+                        aborted.push((transaction.clone(), format!("Duplicate output {output_id}")));
                         // Continue to the next transaction.
                         continue 'outer;
                     }
@@ -363,6 +378,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     Ok(confirmed_transaction) => {
                         // Add the input IDs to the set of spent input IDs.
                         input_ids.extend(confirmed_transaction.transaction().input_ids());
+                        // Add the output IDs to the set of spent output IDs.
+                        output_ids.extend(confirmed_transaction.transaction().output_ids());
                         // Store the confirmed transaction.
                         confirmed.push(confirmed_transaction);
                         // Increment the transaction index counter.

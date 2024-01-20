@@ -210,8 +210,8 @@ impl<N: Network> Block<N> {
         let expected_timestamp = match &self.authority {
             // Beacon blocks do not have a timestamp check.
             Authority::Beacon(..) => self.timestamp(),
-            // Quorum blocks use the median timestamp from the subdag.
-            Authority::Quorum(subdag) => subdag.timestamp(),
+            // Quorum blocks use the weighted median timestamp from the subdag.
+            Authority::Quorum(subdag) => subdag.timestamp(current_committee),
         };
 
         // Return success.
@@ -412,10 +412,10 @@ impl<N: Network> Block<N> {
         }
 
         // Ensure the number of aborted transaction IDs is within the allowed range.
-        if self.aborted_transaction_ids.len() > Transactions::<N>::MAX_TRANSACTIONS {
+        if self.aborted_transaction_ids.len() > Transactions::<N>::MAX_ABORTED_TRANSACTIONS {
             bail!(
                 "Cannot validate a block with more than {} aborted transaction IDs",
-                Transactions::<N>::MAX_TRANSACTIONS
+                Transactions::<N>::MAX_ABORTED_TRANSACTIONS
             );
         }
 

@@ -238,7 +238,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         let next_height = previous_block.height().saturating_add(1);
         // Determine the timestamp for the next block.
         let next_timestamp = match subdag {
-            Some(subdag) => subdag.timestamp(),
+            Some(subdag) => subdag.timestamp(&self.latest_committee()?),
             None => OffsetDateTime::now_utc().unix_timestamp(),
         };
         // Compute the next cumulative weight.
