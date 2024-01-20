@@ -27,8 +27,8 @@ use crate::{
 };
 use console::{prelude::*, types::Field};
 use ledger_authority::Authority;
-use ledger_block::{Header, Ratifications, Rejected};
-use ledger_coinbase::{CoinbaseSolution, PuzzleCommitment};
+use ledger_block::{Header, Ratifications, Rejected, Solutions};
+use ledger_coinbase::PuzzleCommitment;
 
 /// A RocksDB block storage.
 #[derive(Clone)]
@@ -50,7 +50,7 @@ pub struct BlockDB<N: Network> {
     /// The ratifications map.
     ratifications_map: DataMap<N::BlockHash, Ratifications<N>>,
     /// The solutions map.
-    solutions_map: DataMap<N::BlockHash, Option<CoinbaseSolution<N>>>,
+    solutions_map: DataMap<N::BlockHash, Solutions<N>>,
     /// The puzzle commitments map.
     puzzle_commitments_map: DataMap<PuzzleCommitment<N>, u32>,
     /// The aborted solution IDs map.
@@ -81,7 +81,7 @@ impl<N: Network> BlockStorage<N> for BlockDB<N> {
     type AuthorityMap = DataMap<N::BlockHash, Authority<N>>;
     type CertificateMap = DataMap<Field<N>, (u32, u64)>;
     type RatificationsMap = DataMap<N::BlockHash, Ratifications<N>>;
-    type SolutionsMap = DataMap<N::BlockHash, Option<CoinbaseSolution<N>>>;
+    type SolutionsMap = DataMap<N::BlockHash, Solutions<N>>;
     type PuzzleCommitmentsMap = DataMap<PuzzleCommitment<N>, u32>;
     type AbortedSolutionIDsMap = DataMap<N::BlockHash, Vec<PuzzleCommitment<N>>>;
     type AbortedSolutionHeightsMap = DataMap<PuzzleCommitment<N>, u32>;

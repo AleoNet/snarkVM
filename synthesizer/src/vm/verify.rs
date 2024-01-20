@@ -471,7 +471,7 @@ mod tests {
 
         // Construct the new block header.
         let (ratifications, transactions, aborted_transaction_ids, ratified_finalize_operations) =
-            vm.speculate(sample_finalize_state(1), Some(0u64), vec![], None, [deployment_transaction].iter()).unwrap();
+            vm.speculate(sample_finalize_state(1), Some(0u64), vec![], &None, [deployment_transaction].iter()).unwrap();
         assert!(aborted_transaction_ids.is_empty());
 
         // Construct the metadata associated with the block.

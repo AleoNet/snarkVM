@@ -35,10 +35,11 @@ use ledger_block::{
     NumFinalizeSize,
     Ratifications,
     Rejected,
+    Solutions,
     Transaction,
     Transactions,
 };
-use ledger_coinbase::{CoinbaseSolution, ProverSolution, PuzzleCommitment};
+use ledger_coinbase::{ProverSolution, PuzzleCommitment};
 use ledger_narwhal_batch_certificate::BatchCertificate;
 use synthesizer_program::Program;
 
@@ -186,7 +187,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
     /// The mapping of `block hash` to `block ratifications`.
     type RatificationsMap: for<'a> Map<'a, N::BlockHash, Ratifications<N>>;
     /// The mapping of `block hash` to `block solutions`.
-    type SolutionsMap: for<'a> Map<'a, N::BlockHash, Option<CoinbaseSolution<N>>>;
+    type SolutionsMap: for<'a> Map<'a, N::BlockHash, Solutions<N>>;
     /// The mapping of `puzzle commitment` to `block height`.
     type PuzzleCommitmentsMap: for<'a> Map<'a, PuzzleCommitment<N>, u32>;
     /// The mapping of `block hash` to `[aborted solution ID]`.
@@ -465,13 +466,11 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
             self.ratifications_map().insert(block.hash(), block.ratifications().clone())?;
 
             // Store the block solutions.
-            self.solutions_map().insert(block.hash(), block.solutions().cloned())?;
+            self.solutions_map().insert(block.hash(), block.solutions().clone())?;
 
-            // Store the block puzzle commitments.
-            if let Some(solutions) = block.solutions() {
-                for puzzle_commitment in solutions.keys() {
-                    self.puzzle_commitments_map().insert(*puzzle_commitment, block.height())?;
-                }
+            // Store the block solution IDs.
+            for solution_id in block.solutions().solution_ids() {
+                self.puzzle_commitments_map().insert(*solution_id, block.height())?;
             }
 
             // Store the aborted solution IDs.
@@ -597,11 +596,9 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
             // Remove the block solutions.
             self.solutions_map().remove(block_hash)?;
 
-            // Remove the block puzzle commitments.
-            if let Some(solutions) = solutions {
-                for puzzle_commitment in solutions.keys() {
-                    self.puzzle_commitments_map().remove(puzzle_commitment)?;
-                }
+            // Remove the block solution IDs.
+            for solution_id in solutions.solution_ids() {
+                self.puzzle_commitments_map().remove(solution_id)?;
             }
 
             // Remove the aborted solution IDs.
@@ -871,7 +868,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
     }
 
     /// Returns the block solutions for the given `block hash`.
-    fn get_block_solutions(&self, block_hash: &N::BlockHash) -> Result<Option<CoinbaseSolution<N>>> {
+    fn get_block_solutions(&self, block_hash: &N::BlockHash) -> Result<Solutions<N>> {
         match self.solutions_map().get_confirmed(block_hash)? {
             Some(solutions) => Ok(cow_to_cloned!(solutions)),
             None => bail!("Missing solutions for block ('{block_hash}')"),
@@ -893,12 +890,10 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
             bail!("The solutions for block '{block_height}' are missing in block storage")
         };
         // Retrieve the prover solution.
-        match solutions {
-            Cow::Owned(Some(ref solutions)) | Cow::Borrowed(Some(ref solutions)) => {
-                solutions.get(solution_id).cloned().ok_or_else(|| {
-                    anyhow!("The prover solution for solution ID '{solution_id}' is missing in block storage")
-                })
-            }
+        match solutions.deref().deref() {
+            Some(ref solutions) => solutions.get(solution_id).cloned().ok_or_else(|| {
+                anyhow!("The prover solution for solution ID '{solution_id}' is missing in block storage")
+            }),
             _ => bail!("The prover solution for solution ID '{solution_id}' is missing in block storage"),
         }
     }
@@ -1274,7 +1269,7 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
     }
 
     /// Returns the block solutions for the given `block hash`.
-    pub fn get_block_solutions(&self, block_hash: &N::BlockHash) -> Result<Option<CoinbaseSolution<N>>> {
+    pub fn get_block_solutions(&self, block_hash: &N::BlockHash) -> Result<Solutions<N>> {
         self.storage.get_block_solutions(block_hash)
     }
 

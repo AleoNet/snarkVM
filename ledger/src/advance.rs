@@ -294,7 +294,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             state,
             Some(coinbase_reward),
             candidate_ratifications,
-            solutions.as_ref(),
+            &solutions,
             candidate_transactions.iter(),
         )?;
 

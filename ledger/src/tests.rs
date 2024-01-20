@@ -681,7 +681,7 @@ fn test_aborted_solution_ids() {
     ledger.advance_to_next_block(&block).unwrap();
 
     // Enforce that the block solution was aborted properly.
-    assert!(block.solutions().is_none());
+    assert!(block.solutions().is_empty());
     assert_eq!(block.aborted_solution_ids(), &vec![invalid_solution.commitment()]);
 }
 

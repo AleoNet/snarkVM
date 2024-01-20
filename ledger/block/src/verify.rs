@@ -282,22 +282,24 @@ impl<N: Network> Block<N> {
             bail!("Found a duplicate solution in block {height}");
         }
 
-        let (combined_proof_target, expected_cumulative_proof_target, is_coinbase_target_reached) = match &self
+        // Ensure the number of solutions is within the allowed range.
+        ensure!(
+            self.solutions.len() <= N::MAX_SOLUTIONS,
+            "Block {height} contains too many prover solutions (found '{}', expected '{}')",
+            self.solutions.len(),
+            N::MAX_SOLUTIONS
+        );
+
+        // Ensure the solutions are not accepted after the block height at year 10.
+        if !self.solutions.is_empty() && height > block_height_at_year(N::BLOCK_TIME, 10) {
+            bail!("Solutions are no longer accepted after the block height at year 10.");
+        }
+
+        let (combined_proof_target, expected_cumulative_proof_target, is_coinbase_target_reached) = match self
             .solutions
+            .deref()
         {
             Some(coinbase) => {
-                // Ensure the number of solutions is within the allowed range.
-                ensure!(
-                    coinbase.len() <= N::MAX_SOLUTIONS,
-                    "Block {height} contains too many prover solutions (found '{}', expected '{}')",
-                    coinbase.len(),
-                    N::MAX_SOLUTIONS
-                );
-                // Ensure the solutions are not accepted after the block height at year 10.
-                if height > block_height_at_year(N::BLOCK_TIME, 10) {
-                    bail!("Solutions are no longer accepted after the block height at year 10.");
-                }
-
                 // Ensure the puzzle proof is valid.
                 if let Err(e) =
                     current_puzzle.check_solutions(coinbase, current_epoch_challenge, previous_block.proof_target())
@@ -509,10 +511,7 @@ impl<N: Network> Block<N> {
 
     /// Computes the solutions root for the block.
     fn compute_solutions_root(&self) -> Result<Field<N>> {
-        match self.solutions {
-            Some(ref coinbase) => coinbase.to_accumulator_point(),
-            None => Ok(Field::zero()),
-        }
+        self.solutions.to_solutions_root()
     }
 
     /// Computes the subdag root for the block.

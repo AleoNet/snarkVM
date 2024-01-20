@@ -72,7 +72,7 @@ pub struct Block<N: Network> {
     /// The ratifications in this block.
     ratifications: Ratifications<N>,
     /// The solutions in the block.
-    solutions: Option<CoinbaseSolution<N>>,
+    solutions: Solutions<N>,
     /// The aborted solution IDs in this block.
     aborted_solution_ids: Vec<PuzzleCommitment<N>>,
     /// The transactions in this block.
@@ -99,6 +99,8 @@ impl<N: Network> Block<N> {
         let block_hash = N::hash_bhp1024(&to_bits_le![previous_hash, header.to_root()?])?;
         // Construct the beacon authority.
         let authority = Authority::new_beacon(private_key, block_hash, rng)?;
+        // Prepare the solutions.
+        let solutions = Solutions::<N>::from(solutions);
         // Construct the block.
         Self::from(
             previous_hash,
@@ -126,6 +128,8 @@ impl<N: Network> Block<N> {
     ) -> Result<Self> {
         // Construct the beacon authority.
         let authority = Authority::new_quorum(subdag);
+        // Prepare the solutions.
+        let solutions = Solutions::<N>::from(solutions);
         // Construct the block.
         Self::from(
             previous_hash,
@@ -146,7 +150,7 @@ impl<N: Network> Block<N> {
         header: Header<N>,
         authority: Authority<N>,
         ratifications: Ratifications<N>,
-        solutions: Option<CoinbaseSolution<N>>,
+        solutions: Solutions<N>,
         aborted_solution_ids: Vec<PuzzleCommitment<N>>,
         transactions: Transactions<N>,
         aborted_transaction_ids: Vec<N::TransactionID>,
@@ -202,11 +206,7 @@ impl<N: Network> Block<N> {
         }
 
         // Ensure that coinbase accumulator matches the solutions.
-        let solutions_root = match &solutions {
-            Some(coinbase_solution) => coinbase_solution.to_accumulator_point()?,
-            None => Field::<N>::zero(),
-        };
-        if header.solutions_root() != solutions_root {
+        if header.solutions_root() != solutions.to_solutions_root()? {
             bail!("The solutions root in the block does not correspond to the solutions");
         }
 
@@ -241,7 +241,7 @@ impl<N: Network> Block<N> {
         header: Header<N>,
         authority: Authority<N>,
         ratifications: Ratifications<N>,
-        solutions: Option<CoinbaseSolution<N>>,
+        solutions: Solutions<N>,
         aborted_solution_ids: Vec<PuzzleCommitment<N>>,
         transactions: Transactions<N>,
         aborted_transaction_ids: Vec<N::TransactionID>,
@@ -283,8 +283,8 @@ impl<N: Network> Block<N> {
     }
 
     /// Returns the solutions in the block.
-    pub const fn solutions(&self) -> Option<&CoinbaseSolution<N>> {
-        self.solutions.as_ref()
+    pub const fn solutions(&self) -> &Solutions<N> {
+        &self.solutions
     }
 
     /// Returns the aborted solution IDs in this block.

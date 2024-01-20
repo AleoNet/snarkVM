@@ -39,12 +39,7 @@ impl<N: Network> FromBytes for Block<N> {
         let ratifications = Ratifications::read_le(&mut reader)?;
 
         // Read the solutions.
-        let solutions_variant = u8::read_le(&mut reader)?;
-        let solutions = match solutions_variant {
-            0 => None,
-            1 => Some(FromBytes::read_le(&mut reader)?),
-            _ => return Err(error("Invalid solutions variant in the block")),
-        };
+        let solutions: Solutions<N> = FromBytes::read_le(&mut reader)?;
 
         // Read the number of aborted solution IDs.
         let num_aborted_solutions = u32::read_le(&mut reader)?;
@@ -115,13 +110,7 @@ impl<N: Network> ToBytes for Block<N> {
         self.ratifications.write_le(&mut writer)?;
 
         // Write the solutions.
-        match self.solutions {
-            None => 0u8.write_le(&mut writer)?,
-            Some(ref solutions) => {
-                1u8.write_le(&mut writer)?;
-                solutions.write_le(&mut writer)?;
-            }
-        }
+        self.solutions.write_le(&mut writer)?;
 
         // Write the aborted solution IDs.
         (u32::try_from(self.aborted_solution_ids.len()).map_err(error))?.write_le(&mut writer)?;

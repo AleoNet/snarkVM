@@ -13,11 +13,12 @@
 // limitations under the License.
 
 mod bytes;
+mod merkle;
 mod serialize;
 mod string;
 
-use console::network::prelude::*;
-use ledger_coinbase::CoinbaseSolution;
+use console::{network::prelude::*, types::Field};
+use ledger_coinbase::{CoinbaseSolution, PuzzleCommitment};
 use ledger_committee::Committee;
 use ledger_narwhal_batch_header::BatchHeader;
 
@@ -34,10 +35,48 @@ impl<N: Network> Solutions<N> {
         * Committee::<N>::MAX_COMMITTEE_SIZE as usize;
 }
 
+impl<N: Network> From<Option<CoinbaseSolution<N>>> for Solutions<N> {
+    /// Initializes a new instance of the solutions.
+    fn from(solutions: Option<CoinbaseSolution<N>>) -> Self {
+        // Return the solutions.
+        Self { solutions }
+    }
+}
+
 impl<N: Network> Solutions<N> {
     /// Initializes a new instance of the solutions.
     pub fn new(solutions: CoinbaseSolution<N>) -> Result<Self> {
         // Return the solutions.
         Ok(Self { solutions: Some(solutions) })
+    }
+
+    /// Returns `true` if the solutions are empty.
+    pub fn is_empty(&self) -> bool {
+        self.solutions.is_none()
+    }
+
+    /// Returns the number of solutions.
+    pub fn len(&self) -> usize {
+        match &self.solutions {
+            Some(solutions) => solutions.len(),
+            None => 0,
+        }
+    }
+
+    /// Returns an iterator over the solution IDs.
+    pub fn solution_ids<'a>(&'a self) -> Box<dyn Iterator<Item = &'a PuzzleCommitment<N>> + 'a> {
+        match &self.solutions {
+            Some(solutions) => Box::new(solutions.keys()),
+            None => Box::new(std::iter::empty::<&PuzzleCommitment<N>>()),
+        }
+    }
+}
+
+impl<N: Network> Deref for Solutions<N> {
+    type Target = Option<CoinbaseSolution<N>>;
+
+    /// Returns the solutions.
+    fn deref(&self) -> &Self::Target {
+        &self.solutions
     }
 }
