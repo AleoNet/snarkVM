@@ -177,7 +177,7 @@ impl<
 
         if !operations.is_empty() {
             // Insert the operations into an index map to remove any operations that would have been overwritten anyways.
-            let operations: IndexMap<_, _> = IndexMap::from_iter(operations.into_iter());
+            let operations: IndexMap<_, _> = IndexMap::from_iter(operations);
 
             // Prepare the key and value for each queued operation.
             //
@@ -346,7 +346,7 @@ impl<
     /// Returns an iterator visiting each key-value pair in the atomic batch.
     ///
     fn iter_pending(&'a self) -> Self::PendingIterator {
-        let filtered_atomic_batch: IndexMap<_, _> = IndexMap::from_iter(self.atomic_batch.lock().clone().into_iter());
+        let filtered_atomic_batch: IndexMap<_, _> = IndexMap::from_iter(self.atomic_batch.lock().clone());
         filtered_atomic_batch.into_iter().map(|(k, v)| (Cow::Owned(k), v.map(|v| Cow::Owned(v))))
     }
 

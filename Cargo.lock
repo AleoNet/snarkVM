@@ -739,17 +739,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "derivative"
-version = "2.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fcc3dd5e9e9c0b295d6e1e4d811fb6f157d5ffd784b8d202fc62eac8035a770b"
-dependencies = [
- "proc-macro2",
- "quote 1.0.33",
- "syn 1.0.109",
-]
-
-[[package]]
 name = "digest"
 version = "0.10.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3091,7 +3080,6 @@ version = "0.16.16"
 dependencies = [
  "aleo-std",
  "anyhow",
- "derivative",
  "itertools 0.11.0",
  "num-traits",
  "rand",

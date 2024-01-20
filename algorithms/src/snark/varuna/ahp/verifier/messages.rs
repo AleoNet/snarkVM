@@ -62,11 +62,7 @@ pub struct FourthMessage<F> {
 
 impl<F: PrimeField> FourthMessage<F> {
     pub fn into_iter(self) -> impl Iterator<Item = F> {
-        self.delta_a
-            .into_iter()
-            .zip_eq(self.delta_b.into_iter())
-            .zip_eq(self.delta_c.into_iter())
-            .flat_map(|((r_a, r_b), r_c)| [r_a, r_b, r_c])
+        self.delta_a.into_iter().zip_eq(self.delta_b).zip_eq(self.delta_c).flat_map(|((r_a, r_b), r_c)| [r_a, r_b, r_c])
     }
 }
 

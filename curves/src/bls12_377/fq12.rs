@@ -19,7 +19,7 @@ use crate::bls12_377::{Fq, Fq2, Fq6Parameters};
 
 pub type Fq12 = Fp12<Fq12Parameters>;
 
-#[derive(Clone, Copy)]
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct Fq12Parameters;
 
 impl Fp12Parameters for Fq12Parameters {
