@@ -1109,10 +1109,10 @@ function do:
         )
         .unwrap();
 
-        // Create the Deployment Transaction
+        // Create the deployment transaction.
         let deployment = vm.deploy(&private_key, &program, None, 0, None, rng).unwrap();
 
-        // Verify the Deployment Transaction. It should fail because there are too many constraints.
+        // Verify the deployment transaction. It should fail because there are too many constraints.
         assert!(vm.check_transaction(&deployment, None, rng).is_err());
     }
 

@@ -146,7 +146,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     bail!("Failed to compute the Merkle root for deployment transaction '{id}'")
                 };
                 // Compute the deployment cost.
-                let cost = deployment_cost(deployment)?;
+                let (cost, _) = deployment_cost(deployment)?;
                 // Ensure the fee is sufficient to cover the cost.
                 if *fee.base_amount()? < cost {
                     bail!("Transaction '{id}' has an insufficient base fee (deployment) - requires {cost} microcredits")
