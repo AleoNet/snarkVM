@@ -142,9 +142,9 @@ impl<N: Network> StackExecute<N> for Stack<N> {
         // Ensure the circuit environment is clean.
         A::reset();
 
-        // If the circuit is in CheckDeployment mode, set a constraint maximum.
-        if let CallStack::CheckDeployment(_, _, _, num_constraints) = &call_stack {
-            A::set_constraint_limit(*num_constraints);
+        // If in 'CheckDeployment' mode, set the constraint limit.
+        if let CallStack::CheckDeployment(_, _, _, constraint_limit) = &call_stack {
+            A::set_constraint_limit(*constraint_limit);
         }
 
         // Retrieve the next request.

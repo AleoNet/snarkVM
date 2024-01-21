@@ -109,12 +109,12 @@ impl<N: Network> CallStack<N> {
             CallStack::Synthesize(requests, private_key, authorization) => {
                 CallStack::Synthesize(requests.clone(), *private_key, authorization.replicate())
             }
-            CallStack::CheckDeployment(requests, private_key, assignments, num_constraints) => {
+            CallStack::CheckDeployment(requests, private_key, assignments, constraint_limit) => {
                 CallStack::CheckDeployment(
                     requests.clone(),
                     *private_key,
                     Arc::new(RwLock::new(assignments.read().clone())),
-                    *num_constraints,
+                    *constraint_limit,
                 )
             }
             CallStack::Evaluate(authorization) => CallStack::Evaluate(authorization.replicate()),
