@@ -421,7 +421,15 @@ impl<N: Network> StackExecute<N> for Stack<N> {
             lap!(timer, "Save the transition");
         }
         // If the circuit is in `CheckDeployment` mode, then save the assignment.
-        else if let CallStack::CheckDeployment(_, _, ref assignments, _) = registers.call_stack() {
+        else if let CallStack::CheckDeployment(_, _, ref assignments, constraint_limit) = registers.call_stack() {
+            // Ensure the assignment matches the constraint limit.
+            if let Some(constraint_limit) = constraint_limit {
+                ensure!(
+                    assignment.num_constraints() == constraint_limit,
+                    "The synthesized number of constraints ({}) does not match the declared limit in the verifying key ({constraint_limit})",
+                    assignment.num_constraints(),
+                );
+            }
             // Construct the call metrics.
             let metrics = CallMetrics {
                 program_id: *self.program_id(),
