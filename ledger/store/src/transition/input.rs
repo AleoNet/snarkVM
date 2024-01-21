@@ -23,6 +23,7 @@ use console::{
 };
 use ledger_block::Input;
 
+use aleo_std::StorageMode;
 use anyhow::Result;
 use std::borrow::Cow;
 
@@ -46,7 +47,7 @@ pub trait InputStorage<N: Network>: Clone + Send + Sync {
     type ExternalRecordMap: for<'a> Map<'a, Field<N>, ()>;
 
     /// Initializes the transition input storage.
-    fn open(dev: Option<u16>) -> Result<Self>;
+    fn open<S: Clone + Into<StorageMode>>(storage: S) -> Result<Self>;
 
     /// Returns the ID map.
     fn id_map(&self) -> &Self::IDMap;
@@ -305,9 +306,9 @@ pub struct InputStore<N: Network, I: InputStorage<N>> {
 
 impl<N: Network, I: InputStorage<N>> InputStore<N, I> {
     /// Initializes the transition input store.
-    pub fn open(dev: Option<u16>) -> Result<Self> {
+    pub fn open<S: Clone + Into<StorageMode>>(storage: S) -> Result<Self> {
         // Initialize a new transition input storage.
-        let storage = I::open(dev)?;
+        let storage = I::open(storage)?;
         // Return the transition input store.
         Ok(Self {
             constant: storage.constant_map().clone(),

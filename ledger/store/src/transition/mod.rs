@@ -31,6 +31,7 @@ use console::{
 };
 use ledger_block::{Input, Output, Transition};
 
+use aleo_std::StorageMode;
 use anyhow::Result;
 use std::borrow::Cow;
 
@@ -52,7 +53,7 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
     type ReverseTCMMap: for<'a> Map<'a, Field<N>, N::TransitionID>;
 
     /// Initializes the transition storage.
-    fn open(dev: Option<u16>) -> Result<Self>;
+    fn open<S: Clone + Into<StorageMode>>(storage: S) -> Result<Self>;
 
     /// Returns the transition program IDs and function names.
     fn locator_map(&self) -> &Self::LocatorMap;
@@ -270,9 +271,9 @@ pub struct TransitionStore<N: Network, T: TransitionStorage<N>> {
 
 impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
     /// Initializes the transition store.
-    pub fn open(dev: Option<u16>) -> Result<Self> {
+    pub fn open<S: Clone + Into<StorageMode>>(storage: S) -> Result<Self> {
         // Initialize the transition storage.
-        let storage = T::open(dev)?;
+        let storage = T::open(storage)?;
         // Return the transition store.
         Ok(Self {
             locator: storage.locator_map().clone(),

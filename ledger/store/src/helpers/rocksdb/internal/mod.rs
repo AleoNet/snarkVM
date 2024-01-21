@@ -24,6 +24,7 @@ pub use nested_map::*;
 #[cfg(test)]
 mod tests;
 
+use aleo_std::StorageMode;
 use anyhow::{bail, Result};
 use once_cell::sync::OnceCell;
 use parking_lot::Mutex;
@@ -42,26 +43,32 @@ pub const PREFIX_LEN: usize = 4; // N::ID (u16) + DataID (u16)
 
 pub trait Database {
     /// Opens the database.
-    fn open(network_id: u16, dev: Option<u16>) -> Result<Self>
+    fn open<S: Clone + Into<StorageMode>>(network_id: u16, storage: S) -> Result<Self>
     where
         Self: Sized;
 
     /// Opens the map with the given `network_id`, `(optional) development ID`, and `map_id` from storage.
-    fn open_map<K: Serialize + DeserializeOwned, V: Serialize + DeserializeOwned, T: Into<u16>>(
+    fn open_map<
+        S: Clone + Into<StorageMode>,
+        K: Serialize + DeserializeOwned,
+        V: Serialize + DeserializeOwned,
+        T: Into<u16>,
+    >(
         network_id: u16,
-        dev: Option<u16>,
+        storage: S,
         map_id: T,
     ) -> Result<DataMap<K, V>>;
 
     /// Opens the nested map with the given `network_id`, `(optional) development ID`, and `map_id` from storage.
     fn open_nested_map<
+        S: Clone + Into<StorageMode>,
         M: Serialize + DeserializeOwned,
         K: Serialize + DeserializeOwned,
         V: Serialize + DeserializeOwned,
         T: Into<u16>,
     >(
         network_id: u16,
-        dev: Option<u16>,
+        storage: S,
         map_id: T,
     ) -> Result<NestedDataMap<M, K, V>>;
 }
@@ -96,8 +103,11 @@ impl Database for RocksDB {
     ///
     /// In production mode, the database opens directory `~/.aleo/storage/ledger-{network}`.
     /// In development mode, the database opens directory `/path/to/repo/.ledger-{network}-{id}`.
-    fn open(network_id: u16, dev: Option<u16>) -> Result<Self> {
+    fn open<S: Clone + Into<StorageMode>>(network_id: u16, storage: S) -> Result<Self> {
         static DB: OnceCell<RocksDB> = OnceCell::new();
+
+        // Retrieve the development ID.
+        let dev = storage.clone().into().dev();
 
         // Retrieve the database.
         let database = DB
@@ -110,7 +120,7 @@ impl Database for RocksDB {
                 let prefix_extractor = rocksdb::SliceTransform::create_fixed_prefix(PREFIX_LEN);
                 options.set_prefix_extractor(prefix_extractor);
 
-                let primary = aleo_std::aleo_ledger_dir(network_id, dev);
+                let primary = aleo_std::aleo_ledger_dir(network_id, storage.into());
                 let rocksdb = {
                     options.increase_parallelism(2);
                     options.set_max_background_jobs(4);
@@ -137,13 +147,18 @@ impl Database for RocksDB {
     }
 
     /// Opens the map with the given `network_id`, `(optional) development ID`, and `map_id` from storage.
-    fn open_map<K: Serialize + DeserializeOwned, V: Serialize + DeserializeOwned, T: Into<u16>>(
+    fn open_map<
+        S: Clone + Into<StorageMode>,
+        K: Serialize + DeserializeOwned,
+        V: Serialize + DeserializeOwned,
+        T: Into<u16>,
+    >(
         network_id: u16,
-        dev: Option<u16>,
+        storage: S,
         map_id: T,
     ) -> Result<DataMap<K, V>> {
         // Open the RocksDB database.
-        let database = Self::open(network_id, dev)?;
+        let database = Self::open(network_id, storage)?;
 
         // Combine contexts to create a new scope.
         let mut context = database.network_id.to_le_bytes().to_vec();
@@ -161,17 +176,18 @@ impl Database for RocksDB {
 
     /// Opens the nested map with the given `network_id`, `(optional) development ID`, and `map_id` from storage.
     fn open_nested_map<
+        S: Clone + Into<StorageMode>,
         M: Serialize + DeserializeOwned,
         K: Serialize + DeserializeOwned,
         V: Serialize + DeserializeOwned,
         T: Into<u16>,
     >(
         network_id: u16,
-        dev: Option<u16>,
+        storage: S,
         map_id: T,
     ) -> Result<NestedDataMap<M, K, V>> {
         // Open the RocksDB database.
-        let database = Self::open(network_id, dev)?;
+        let database = Self::open(network_id, storage)?;
 
         // Combine contexts to create a new scope.
         let mut context = database.network_id.to_le_bytes().to_vec();

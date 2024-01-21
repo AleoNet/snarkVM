@@ -21,6 +21,7 @@ use crate::{
 use console::network::prelude::*;
 use ledger_committee::Committee;
 
+use aleo_std::StorageMode;
 use anyhow::Result;
 use core::marker::PhantomData;
 
@@ -36,7 +37,7 @@ pub trait CommitteeStorage<N: Network>: 'static + Clone + Send + Sync {
     type CommitteeMap: for<'a> Map<'a, u32, Committee<N>>;
 
     /// Initializes the committee storage.
-    fn open(dev: Option<u16>) -> Result<Self>;
+    fn open<S: Clone + Into<StorageMode>>(storage: S) -> Result<Self>;
 
     /// Initializes the test-variant of the storage.
     #[cfg(any(test, feature = "test"))]
@@ -299,9 +300,9 @@ pub struct CommitteeStore<N: Network, C: CommitteeStorage<N>> {
 
 impl<N: Network, C: CommitteeStorage<N>> CommitteeStore<N, C> {
     /// Initializes the committee store.
-    pub fn open(dev: Option<u16>) -> Result<Self> {
+    pub fn open<S: Clone + Into<StorageMode>>(storage: S) -> Result<Self> {
         // Initialize the committee storage.
-        let storage = C::open(dev)?;
+        let storage = C::open(storage.clone())?;
         // Return the committee store.
         Ok(Self { storage, _phantom: PhantomData })
     }

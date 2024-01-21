@@ -23,6 +23,7 @@ use console::{
 };
 use ledger_block::Output;
 
+use aleo_std::StorageMode;
 use anyhow::Result;
 use std::borrow::Cow;
 
@@ -48,7 +49,7 @@ pub trait OutputStorage<N: Network>: Clone + Send + Sync {
     type FutureMap: for<'a> Map<'a, Field<N>, Option<Future<N>>>;
 
     /// Initializes the transition output storage.
-    fn open(dev: Option<u16>) -> Result<Self>;
+    fn open<S: Clone + Into<StorageMode>>(storage: S) -> Result<Self>;
 
     /// Returns the ID map.
     fn id_map(&self) -> &Self::IDMap;
@@ -326,9 +327,9 @@ pub struct OutputStore<N: Network, O: OutputStorage<N>> {
 
 impl<N: Network, O: OutputStorage<N>> OutputStore<N, O> {
     /// Initializes the transition output store.
-    pub fn open(dev: Option<u16>) -> Result<Self> {
+    pub fn open<S: Clone + Into<StorageMode>>(storage: S) -> Result<Self> {
         // Initialize a new transition output storage.
-        let storage = O::open(dev)?;
+        let storage = O::open(storage)?;
         // Return the transition output store.
         Ok(Self {
             constant: storage.constant_map().clone(),

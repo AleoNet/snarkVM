@@ -24,6 +24,7 @@ use crate::{
 };
 use console::network::prelude::*;
 
+use aleo_std::StorageMode;
 use anyhow::Result;
 use core::marker::PhantomData;
 
@@ -39,7 +40,7 @@ pub trait ConsensusStorage<N: Network>: 'static + Clone + Send + Sync {
     type TransitionStorage: TransitionStorage<N>;
 
     /// Initializes the consensus storage.
-    fn open(dev: Option<u16>) -> Result<Self>;
+    fn open<S: Clone + Into<StorageMode>>(storage: S) -> Result<Self>;
 
     /// Returns the finalize storage.
     fn finalize_store(&self) -> &FinalizeStore<N, Self::FinalizeStorage>;
@@ -113,9 +114,9 @@ pub struct ConsensusStore<N: Network, C: ConsensusStorage<N>> {
 
 impl<N: Network, C: ConsensusStorage<N>> ConsensusStore<N, C> {
     /// Initializes the consensus store.
-    pub fn open(dev: Option<u16>) -> Result<Self> {
+    pub fn open<S: Clone + Into<StorageMode>>(storage: S) -> Result<Self> {
         // Initialize the consensus storage.
-        let storage = C::open(dev)?;
+        let storage = C::open(storage.clone())?;
         // Return the consensus store.
         Ok(Self { storage, _phantom: PhantomData })
     }

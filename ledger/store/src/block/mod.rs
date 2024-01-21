@@ -42,6 +42,7 @@ use ledger_coinbase::{CoinbaseSolution, ProverSolution, PuzzleCommitment};
 use ledger_narwhal_batch_certificate::BatchCertificate;
 use synthesizer_program::Program;
 
+use aleo_std::StorageMode;
 use anyhow::Result;
 use parking_lot::RwLock;
 use std::{borrow::Cow, io::Cursor, sync::Arc};
@@ -207,7 +208,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
     type TransitionStorage: TransitionStorage<N>;
 
     /// Initializes the block storage.
-    fn open(dev: Option<u16>) -> Result<Self>;
+    fn open<S: Clone + Into<StorageMode>>(storage: S) -> Result<Self>;
 
     /// Returns the state root map.
     fn state_root_map(&self) -> &Self::StateRootMap;
@@ -1004,9 +1005,9 @@ pub struct BlockStore<N: Network, B: BlockStorage<N>> {
 
 impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
     /// Initializes the block store.
-    pub fn open(dev: Option<u16>) -> Result<Self> {
+    pub fn open<S: Clone + Into<StorageMode>>(storage: S) -> Result<Self> {
         // Initialize the block storage.
-        let storage = B::open(dev)?;
+        let storage = B::open(storage)?;
 
         // Compute the block tree.
         let tree = {

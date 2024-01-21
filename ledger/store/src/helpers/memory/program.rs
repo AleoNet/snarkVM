@@ -26,6 +26,7 @@ use console::{
 };
 use ledger_committee::Committee;
 
+use aleo_std::StorageMode;
 use indexmap::IndexSet;
 
 /// An in-memory finalize storage.
@@ -48,9 +49,11 @@ impl<N: Network> FinalizeStorage<N> for FinalizeMemory<N> {
     type KeyValueMap = NestedMemoryMap<(ProgramID<N>, Identifier<N>), Plaintext<N>, Value<N>>;
 
     /// Initializes the finalize storage.
-    fn open(dev: Option<u16>) -> Result<Self> {
+    fn open<S: Clone + Into<StorageMode>>(storage: S) -> Result<Self> {
+        // Retrieve the development ID.
+        let dev = storage.clone().into().dev();
         // Initialize the committee store.
-        let committee_store = CommitteeStore::<N, CommitteeMemory<N>>::open(dev)?;
+        let committee_store = CommitteeStore::<N, CommitteeMemory<N>>::open(storage)?;
         // Return the finalize store.
         Ok(Self {
             committee_store,
@@ -107,7 +110,10 @@ impl<N: Network> CommitteeStorage<N> for CommitteeMemory<N> {
     type CommitteeMap = MemoryMap<u32, Committee<N>>;
 
     /// Initializes the committee storage.
-    fn open(dev: Option<u16>) -> Result<Self> {
+    fn open<S: Clone + Into<StorageMode>>(storage: S) -> Result<Self> {
+        // Retrieve the development ID.
+        let dev = storage.into().dev();
+
         Ok(Self {
             current_round_map: MemoryMap::default(),
             round_to_height_map: MemoryMap::default(),
