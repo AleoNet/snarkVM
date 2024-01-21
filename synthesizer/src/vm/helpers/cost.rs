@@ -32,7 +32,7 @@ pub fn deployment_cost<N: Network>(deployment: &Deployment<N>) -> Result<u64> {
     // Determine the number of characters in the program ID.
     let num_characters = u32::try_from(program_id.name().to_string().len())?;
     // Determine the number of constraints in the program
-    let num_constraints = deployment.num_constraints();
+    let num_constraints = deployment.num_combined_constraints()?;
 
     // Compute the storage cost in microcredits.
     let storage_cost = size_in_bytes

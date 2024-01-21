@@ -22,9 +22,9 @@ use core::{
 type Field = <console::Testnet3 as console::Environment>::Field;
 
 thread_local! {
+    pub(super) static CONSTRAINT_LIMIT: Cell<Option<u64>> = Cell::new(None);
     pub(super) static CIRCUIT: RefCell<R1CS<Field>> = RefCell::new(R1CS::new());
     pub(super) static IN_WITNESS: Cell<bool> = Cell::new(false);
-    pub(super) static MAX_NUM_CONSTRAINTS: Cell<u64> = Cell::new(u64::MAX);
     pub(super) static ZERO: LinearCombination<Field> = LinearCombination::zero();
     pub(super) static ONE: LinearCombination<Field> = LinearCombination::one();
 }
@@ -147,10 +147,12 @@ impl Environment for Circuit {
             // Ensure we are not in witness mode.
             if !in_witness.get() {
                 CIRCUIT.with(|circuit| {
-                    // Ensure we do not surpass maximum allowed number of constraints
-                    MAX_NUM_CONSTRAINTS.with(|max_constraints| {
-                        if circuit.borrow().num_constraints() >= max_constraints.get() {
-                            Self::halt("Surpassing maximum allowed number of constraints")
+                    // Ensure that we do not surpass the constraint limit for the circuit.
+                    CONSTRAINT_LIMIT.with(|constraint_limit| {
+                        if let Some(limit) = constraint_limit.get() {
+                            if circuit.borrow().num_constraints() >= limit {
+                                Self::halt(format!("Surpassed the constraint limit ({limit})"))
+                            }
                         }
                     });
 
@@ -256,8 +258,11 @@ impl Environment for Circuit {
         panic!("{}", &error)
     }
 
-    /// TODO (howardwu): Abstraction - Refactor this into an appropriate design.
-    ///  Circuits should not have easy access to this during synthesis.
+    /// Sets the constraint limit for the circuit.
+    fn set_constraint_limit(limit: Option<u64>) {
+        CONSTRAINT_LIMIT.with(|current_limit| current_limit.replace(limit));
+    }
+
     /// Returns the R1CS circuit, resetting the circuit.
     fn inject_r1cs(r1cs: R1CS<Self::BaseField>) {
         CIRCUIT.with(|circuit| {
@@ -276,15 +281,13 @@ impl Environment for Circuit {
         })
     }
 
-    /// TODO (howardwu): Abstraction - Refactor this into an appropriate design.
-    ///  Circuits should not have easy access to this during synthesis.
     /// Returns the R1CS circuit, resetting the circuit.
     fn eject_r1cs_and_reset() -> R1CS<Self::BaseField> {
         CIRCUIT.with(|circuit| {
             // Reset the witness mode.
             IN_WITNESS.with(|in_witness| in_witness.replace(false));
-            // Reset the max num constraints.
-            Self::set_constraint_maximum(u64::MAX);
+            // Reset the constraint limit.
+            Self::set_constraint_limit(None);
             // Eject the R1CS instance.
             let r1cs = circuit.replace(R1CS::<<Self as Environment>::BaseField>::new());
             // Ensure the circuit is now empty.
@@ -297,15 +300,13 @@ impl Environment for Circuit {
         })
     }
 
-    /// TODO (howardwu): Abstraction - Refactor this into an appropriate design.
-    ///  Circuits should not have easy access to this during synthesis.
     /// Returns the R1CS assignment of the circuit, resetting the circuit.
     fn eject_assignment_and_reset() -> Assignment<<Self::Network as console::Environment>::Field> {
         CIRCUIT.with(|circuit| {
             // Reset the witness mode.
             IN_WITNESS.with(|in_witness| in_witness.replace(false));
-            // Reset the num constraints.
-            Self::set_constraint_maximum(u64::MAX);
+            // Reset the constraint limit.
+            Self::set_constraint_limit(None);
             // Eject the R1CS instance.
             let r1cs = circuit.replace(R1CS::<<Self as Environment>::BaseField>::new());
             assert_eq!(0, circuit.borrow().num_constants());
@@ -317,18 +318,14 @@ impl Environment for Circuit {
         })
     }
 
-    /// Sets a maximum number of allowed constraints.
-    fn set_constraint_maximum(new_max_num_constraints: u64) {
-        MAX_NUM_CONSTRAINTS.with(|max_num_constraints| max_num_constraints.replace(new_max_num_constraints));
-    }
-
     /// Clears the circuit and initializes an empty environment.
     fn reset() {
         CIRCUIT.with(|circuit| {
             // Reset the witness mode.
             IN_WITNESS.with(|in_witness| in_witness.replace(false));
-            // Reset the max num constraints.
-            Self::set_constraint_maximum(u64::MAX);
+            // Reset the constraint limit.
+            Self::set_constraint_limit(None);
+            // Reset the circuit.
             *circuit.borrow_mut() = R1CS::<<Self as Environment>::BaseField>::new();
             assert_eq!(0, circuit.borrow().num_constants());
             assert_eq!(1, circuit.borrow().num_public());

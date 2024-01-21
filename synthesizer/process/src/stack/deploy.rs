@@ -74,7 +74,7 @@ impl<N: Network> Stack<N> {
         let program_id = self.program.id();
 
         // Check that the deployment does not require too many constraints
-        let total_num_constraints = deployment.num_constraints();
+        let total_num_constraints = deployment.num_combined_constraints()?;
         ensure!(total_num_constraints <= N::MAX_DEPLOYMENT_CONSTRAINTS);
 
         // Construct the call stacks and assignments used to verify the certificates.

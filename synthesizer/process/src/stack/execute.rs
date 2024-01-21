@@ -144,7 +144,7 @@ impl<N: Network> StackExecute<N> for Stack<N> {
 
         // If the circuit is in CheckDeployment mode, set a constraint maximum.
         if let CallStack::CheckDeployment(_, _, _, num_constraints) = &call_stack {
-            A::set_constraint_maximum(*num_constraints);
+            A::set_constraint_limit(Some(*num_constraints));
         }
 
         // Retrieve the next request.

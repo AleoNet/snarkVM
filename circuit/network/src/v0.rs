@@ -466,6 +466,11 @@ impl Environment for AleoV0 {
         E::halt(message)
     }
 
+    /// Sets the constraint limit for the circuit.
+    fn set_constraint_limit(limit: Option<u64>) {
+        E::set_constraint_limit(limit)
+    }
+
     /// Returns the R1CS circuit, resetting the circuit.
     fn inject_r1cs(r1cs: R1CS<Self::BaseField>) {
         E::inject_r1cs(r1cs)
@@ -479,11 +484,6 @@ impl Environment for AleoV0 {
     /// Returns the R1CS assignment of the circuit, resetting the circuit.
     fn eject_assignment_and_reset() -> Assignment<<Self::Network as console::Environment>::Field> {
         E::eject_assignment_and_reset()
-    }
-
-    /// Sets a maximum amount of allowed constraints
-    fn set_constraint_maximum(new_max_num_constraints: u64) {
-        E::set_constraint_maximum(new_max_num_constraints)
     }
 
     /// Clears the circuit and initializes an empty environment.
