@@ -47,7 +47,7 @@ pub trait Database {
     where
         Self: Sized;
 
-    /// Opens the map with the given `network_id`, `(optional) development ID`, and `map_id` from storage.
+    /// Opens the map with the given `network_id`, `storage mode`, and `map_id` from storage.
     fn open_map<
         S: Clone + Into<StorageMode>,
         K: Serialize + DeserializeOwned,
@@ -59,7 +59,7 @@ pub trait Database {
         map_id: T,
     ) -> Result<DataMap<K, V>>;
 
-    /// Opens the nested map with the given `network_id`, `(optional) development ID`, and `map_id` from storage.
+    /// Opens the nested map with the given `network_id`, `storage mode`, and `map_id` from storage.
     fn open_nested_map<
         S: Clone + Into<StorageMode>,
         M: Serialize + DeserializeOwned,
@@ -146,7 +146,7 @@ impl Database for RocksDB {
         }
     }
 
-    /// Opens the map with the given `network_id`, `(optional) development ID`, and `map_id` from storage.
+    /// Opens the map with the given `network_id`, `storage mode`, and `map_id` from storage.
     fn open_map<
         S: Clone + Into<StorageMode>,
         K: Serialize + DeserializeOwned,
@@ -174,7 +174,7 @@ impl Database for RocksDB {
         })))
     }
 
-    /// Opens the nested map with the given `network_id`, `(optional) development ID`, and `map_id` from storage.
+    /// Opens the nested map with the given `network_id`, `storage mode`, and `map_id` from storage.
     fn open_nested_map<
         S: Clone + Into<StorageMode>,
         M: Serialize + DeserializeOwned,
