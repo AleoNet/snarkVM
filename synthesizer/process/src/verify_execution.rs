@@ -132,13 +132,15 @@ impl<N: Network> Process<N> {
         // Ensure the number of instances matches the number of transitions.
         ensure!(num_instances == execution.transitions().len(), "The number of verifier instances is incorrect");
         // Ensure the same signer is used for all transitions.
-        if let Some(first_transition) = execution.transitions().next() {
-            let signer_commitment = first_transition.scm();
-            ensure!(
-                execution.transitions().all(|t| t.scm() == signer_commitment),
-                "The transitions did not use the same signer"
-            );
-        }
+        execution.transitions().try_fold(None, |signer, transition| {
+            Ok(match signer {
+                None => Some(transition.scm()),
+                Some(signer) => {
+                    ensure!(signer == transition.scm(), "The transitions did not use the same signer");
+                    Some(signer)
+                }
+            })
+        })?;
 
         // Construct the list of verifier inputs.
         let verifier_inputs: Vec<_> = verifier_inputs.values().cloned().collect();
