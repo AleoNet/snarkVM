@@ -24,6 +24,8 @@ use ledger_authority::Authority;
 use ledger_block::{Header, Ratifications, Rejected};
 use ledger_coinbase::{CoinbaseSolution, PuzzleCommitment};
 
+use aleo_std_storage::StorageMode;
+
 /// An in-memory block storage.
 #[derive(Clone)]
 pub struct BlockMemory<N: Network> {
@@ -82,9 +84,9 @@ impl<N: Network> BlockStorage<N> for BlockMemory<N> {
     type TransitionStorage = TransitionMemory<N>;
 
     /// Initializes the block storage.
-    fn open(dev: Option<u16>) -> Result<Self> {
+    fn open<S: Clone + Into<StorageMode>>(storage: S) -> Result<Self> {
         // Initialize the transition store.
-        let transition_store = TransitionStore::<N, TransitionMemory<N>>::open(dev)?;
+        let transition_store = TransitionStore::<N, TransitionMemory<N>>::open(storage)?;
         // Initialize the transaction store.
         let transaction_store = TransactionStore::<N, TransactionMemory<N>>::open(transition_store)?;
         // Return the block storage.

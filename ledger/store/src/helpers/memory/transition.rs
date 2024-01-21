@@ -19,6 +19,8 @@ use console::{
     types::{Field, Group},
 };
 
+use aleo_std_storage::StorageMode;
+
 /// An in-memory transition storage.
 #[derive(Clone)]
 pub struct TransitionMemory<N: Network> {
@@ -49,11 +51,11 @@ impl<N: Network> TransitionStorage<N> for TransitionMemory<N> {
     type ReverseTCMMap = MemoryMap<Field<N>, N::TransitionID>;
 
     /// Initializes the transition storage.
-    fn open(dev: Option<u16>) -> Result<Self> {
+    fn open<S: Clone + Into<StorageMode>>(storage: S) -> Result<Self> {
         Ok(Self {
             locator_map: MemoryMap::default(),
-            input_store: InputStore::open(dev)?,
-            output_store: OutputStore::open(dev)?,
+            input_store: InputStore::open(storage.clone())?,
+            output_store: OutputStore::open(storage)?,
             tpk_map: MemoryMap::default(),
             reverse_tpk_map: MemoryMap::default(),
             tcm_map: MemoryMap::default(),
@@ -116,8 +118,8 @@ pub struct InputMemory<N: Network> {
     record_tag: MemoryMap<Field<N>, Field<N>>,
     /// The mapping of `external hash` to `()`. Note: This is **not** the record commitment.
     external_record: MemoryMap<Field<N>, ()>,
-    /// The optional development ID.
-    dev: Option<u16>,
+    /// The storage mode.
+    storage_mode: StorageMode,
 }
 
 #[rustfmt::skip]
@@ -132,7 +134,7 @@ impl<N: Network> InputStorage<N> for InputMemory<N> {
     type ExternalRecordMap = MemoryMap<Field<N>, ()>;
 
     /// Initializes the transition input storage.
-    fn open(dev: Option<u16>) -> Result<Self> {
+    fn open<S: Clone + Into<StorageMode>>(storage: S) -> Result<Self> {
         Ok(Self {
             id_map: MemoryMap::default(),
             reverse_id_map: MemoryMap::default(),
@@ -142,7 +144,7 @@ impl<N: Network> InputStorage<N> for InputMemory<N> {
             record: MemoryMap::default(),
             record_tag: MemoryMap::default(),
             external_record: MemoryMap::default(),
-            dev,
+            storage_mode: storage.into(),
         })
     }
 
@@ -186,9 +188,9 @@ impl<N: Network> InputStorage<N> for InputMemory<N> {
         &self.external_record
     }
 
-    /// Returns the optional development ID.
-    fn dev(&self) -> Option<u16> {
-        self.dev
+    /// Returns the storage mode.
+    fn storage_mode(&self) -> &StorageMode {
+        &self.storage_mode
     }
 }
 
@@ -214,8 +216,8 @@ pub struct OutputMemory<N: Network> {
     external_record: MemoryMap<Field<N>, ()>,
     /// The mapping of `future hash` to `(optional) future`.
     future: MemoryMap<Field<N>, Option<Future<N>>>,
-    /// The optional development ID.
-    dev: Option<u16>,
+    /// The storage mode.
+    storage_mode: StorageMode,
 }
 
 #[rustfmt::skip]
@@ -231,7 +233,7 @@ impl<N: Network> OutputStorage<N> for OutputMemory<N> {
     type FutureMap = MemoryMap<Field<N>, Option<Future<N>>>;
 
     /// Initializes the transition output storage.
-    fn open(dev: Option<u16>) -> Result<Self> {
+    fn open<S: Clone + Into<StorageMode>>(storage: S) -> Result<Self> {
         Ok(Self {
             id_map: Default::default(),
             reverse_id_map: Default::default(),
@@ -242,7 +244,7 @@ impl<N: Network> OutputStorage<N> for OutputMemory<N> {
             record_nonce: Default::default(),
             external_record: Default::default(),
             future: Default::default(),
-            dev,
+            storage_mode: storage.into(),
         })
     }
 
@@ -291,8 +293,8 @@ impl<N: Network> OutputStorage<N> for OutputMemory<N> {
         &self.future
     }
 
-    /// Returns the optional development ID.
-    fn dev(&self) -> Option<u16> {
-        self.dev
+    /// Returns the storage mode.
+    fn storage_mode(&self) -> &StorageMode {
+        &self.storage_mode
     }
 }
