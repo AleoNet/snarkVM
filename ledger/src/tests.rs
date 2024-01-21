@@ -972,7 +972,7 @@ function empty_function:
     // Add the block to the ledger.
     ledger.advance_to_next_block(&block).unwrap();
 
-    // Create a transaction with different transaction ids, but with a fixed transition id.
+    // Create a transaction with different transaction IDs, but with a fixed transition ID.
     let mut create_transaction_with_duplicate_transition_id = || -> Transaction<CurrentNetwork> {
         // Use a fixed seed RNG.
         let fixed_rng = &mut TestRng::from_seed(1);

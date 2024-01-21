@@ -107,7 +107,7 @@ path = "../synthesizer"
 version = "=0.16.17"
 
 [dependencies.aleo-std]
-version = "0.1.18"
+version = "0.1.24"
 default-features = false
 
 [dependencies.anyhow]

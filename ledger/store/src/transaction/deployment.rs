@@ -28,6 +28,7 @@ use ledger_block::{Deployment, Fee, Transaction};
 use synthesizer_program::Program;
 use synthesizer_snark::{Certificate, VerifyingKey};
 
+use aleo_std_storage::StorageMode;
 use anyhow::Result;
 use core::marker::PhantomData;
 use std::borrow::Cow;
@@ -71,9 +72,9 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
     /// Returns the fee storage.
     fn fee_store(&self) -> &FeeStore<N, Self::FeeStorage>;
 
-    /// Returns the optional development ID.
-    fn dev(&self) -> Option<u16> {
-        self.fee_store().dev()
+    /// Returns the storage mode.
+    fn storage_mode(&self) -> &StorageMode {
+        self.fee_store().storage_mode()
     }
 
     /// Starts an atomic batch write operation.
@@ -547,9 +548,9 @@ impl<N: Network, D: DeploymentStorage<N>> DeploymentStore<N, D> {
         self.storage.finish_atomic()
     }
 
-    /// Returns the optional development ID.
-    pub fn dev(&self) -> Option<u16> {
-        self.storage.dev()
+    /// Returns the storage mode.
+    pub fn storage_mode(&self) -> &StorageMode {
+        self.storage.storage_mode()
     }
 }
 

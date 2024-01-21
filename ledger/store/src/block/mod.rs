@@ -43,6 +43,7 @@ use ledger_coinbase::{ProverSolution, PuzzleCommitment};
 use ledger_narwhal_batch_certificate::BatchCertificate;
 use synthesizer_program::Program;
 
+use aleo_std_storage::StorageMode;
 use anyhow::Result;
 use parking_lot::RwLock;
 use std::{borrow::Cow, io::Cursor, sync::Arc};
@@ -212,7 +213,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
     type TransitionStorage: TransitionStorage<N>;
 
     /// Initializes the block storage.
-    fn open(dev: Option<u16>) -> Result<Self>;
+    fn open<S: Clone + Into<StorageMode>>(storage: S) -> Result<Self>;
 
     /// Returns the state root map.
     fn state_root_map(&self) -> &Self::StateRootMap;
@@ -255,10 +256,10 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
     fn transition_store(&self) -> &TransitionStore<N, Self::TransitionStorage> {
         self.transaction_store().transition_store()
     }
-    /// Returns the optional development ID.
-    fn dev(&self) -> Option<u16> {
-        debug_assert!(self.transaction_store().dev() == self.transition_store().dev());
-        self.transition_store().dev()
+    /// Returns the storage mode.
+    fn storage_mode(&self) -> &StorageMode {
+        debug_assert!(self.transaction_store().storage_mode() == self.transition_store().storage_mode());
+        self.transition_store().storage_mode()
     }
 
     /// Starts an atomic batch write operation.
@@ -1057,9 +1058,9 @@ pub struct BlockStore<N: Network, B: BlockStorage<N>> {
 
 impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
     /// Initializes the block store.
-    pub fn open(dev: Option<u16>) -> Result<Self> {
+    pub fn open<S: Clone + Into<StorageMode>>(storage: S) -> Result<Self> {
         // Initialize the block storage.
-        let storage = B::open(dev)?;
+        let storage = B::open(storage)?;
 
         // Compute the block tree.
         let tree = {
@@ -1196,9 +1197,9 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
         self.storage.finish_atomic()
     }
 
-    /// Returns the optional development ID.
-    pub fn dev(&self) -> Option<u16> {
-        self.storage.dev()
+    /// Returns the storage mode.
+    pub fn storage_mode(&self) -> &StorageMode {
+        self.storage.storage_mode()
     }
 }
 
