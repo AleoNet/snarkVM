@@ -15,8 +15,9 @@
 use super::*;
 
 impl LiteralType {
-    /// Returns the number of bits of this literal. In the case of a string literal this will return
-    /// the maximum number of bits that can be stored in a string.
+    /// Returns the number of bits of this literal type.
+    ///
+    /// For string literals, this method returns the maximum number of bits that can be stored in the string.
     pub fn size_in_bits<N: Network>(&self) -> u16 {
         let size = match self {
             Self::Address => Address::<N>::size_in_bits(),
@@ -38,11 +39,5 @@ impl LiteralType {
             Self::String => N::MAX_STRING_BYTES.saturating_mul(8) as usize,
         };
         u16::try_from(size).or_halt_with::<N>("Literal exceeds u16::MAX bits.")
-    }
-
-    /// Returns the number of bytes of this literal. In the case of a string literal this will return
-    /// the maximum number of bytes that can be stored in a string.
-    pub fn size_in_bytes<N: Network>(&self) -> u16 {
-        self.size_in_bits::<N>().saturating_add(7).saturating_div(8)
     }
 }

@@ -15,7 +15,8 @@
 mod bytes;
 mod parse;
 mod serialize;
-mod size;
+mod size_in_bits;
+mod size_in_bytes;
 
 use snarkvm_console_account::Signature;
 use snarkvm_console_network::prelude::*;
