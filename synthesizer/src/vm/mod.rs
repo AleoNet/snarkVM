@@ -38,10 +38,10 @@ use ledger_block::{
     Ratifications,
     Ratify,
     Rejected,
+    Solutions,
     Transaction,
     Transactions,
 };
-use ledger_coinbase::CoinbaseSolution;
 use ledger_committee::Committee;
 use ledger_query::Query;
 use ledger_store::{
@@ -101,7 +101,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             transaction_store: &TransactionStore<N, T>,
             transaction_id: N::TransactionID,
         ) -> Result<Vec<(ProgramID<N>, Deployment<N>)>> {
-            // Retrieve the deployment from the transaction id.
+            // Retrieve the deployment from the transaction ID.
             let deployment = match transaction_store.get_deployment(&transaction_id)? {
                 Some(deployment) => deployment,
                 None => bail!("Deployment transaction '{transaction_id}' is not found in storage."),
@@ -123,11 +123,11 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             for import_program_id in program.imports().keys() {
                 // Add the imports to the process if does not exist yet.
                 if !process.contains_program(import_program_id) {
-                    // Fetch the deployment transaction id.
+                    // Fetch the deployment transaction ID.
                     let Some(transaction_id) =
                         transaction_store.deployment_store().find_transaction_id_from_program_id(import_program_id)?
                     else {
-                        bail!("Transaction id for '{program_id}' is not found in storage.");
+                        bail!("Transaction ID for '{program_id}' is not found in storage.");
                     };
 
                     // Add the deployment and its imports found recursively.
@@ -277,7 +277,9 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         // Prepare the ratifications.
         let ratifications = vec![Ratify::Genesis(committee, public_balances)];
         // Prepare the solutions.
-        let solutions = None; // The genesis block does not require solutions.
+        let solutions = Solutions::<N>::from(None); // The genesis block does not require solutions.
+        // Prepare the aborted solution IDs.
+        let aborted_solution_ids = vec![];
         // Prepare the transactions.
         let transactions = (0..Block::<N>::NUM_GENESIS_TRANSACTIONS)
             .map(|_| self.execute(private_key, locator, inputs.iter(), None, 0, None, rng))
@@ -287,7 +289,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         let state = FinalizeGlobalState::new_genesis::<N>()?;
         // Speculate on the ratifications, solutions, and transactions.
         let (ratifications, transactions, aborted_transaction_ids, ratified_finalize_operations) =
-            self.speculate(state, None, ratifications, solutions.as_ref(), transactions.iter())?;
+            self.speculate(state, None, ratifications, &solutions, transactions.iter())?;
         ensure!(
             aborted_transaction_ids.is_empty(),
             "Failed to initialize a genesis block - found aborted transaction IDs"
@@ -305,6 +307,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             header,
             ratifications,
             solutions,
+            aborted_solution_ids,
             transactions,
             aborted_transaction_ids,
             rng,
@@ -649,7 +652,7 @@ function compute:
 
         // Construct the new block header.
         let (ratifications, transactions, aborted_transaction_ids, ratified_finalize_operations) =
-            vm.speculate(sample_finalize_state(1), None, vec![], None, transactions.iter())?;
+            vm.speculate(sample_finalize_state(1), None, vec![], &None.into(), transactions.iter())?;
         assert!(aborted_transaction_ids.is_empty());
 
         // Construct the metadata associated with the block.
@@ -682,7 +685,8 @@ function compute:
             previous_block.hash(),
             header,
             ratifications,
-            None,
+            None.into(),
+            vec![],
             transactions,
             aborted_transaction_ids,
             rng,
@@ -943,7 +947,7 @@ function a:
             let deployment_transaction_ids =
                 vm.transaction_store().deployment_transaction_ids().map(|id| *id).collect::<Vec<_>>();
             // This assert check is here to ensure that we are properly loading imports even though any order will work for `VM::from`.
-            // Note: `deployment_transaction_ids` is sorted lexicographically by transaction id, so the order may change if we update internal methods.
+            // Note: `deployment_transaction_ids` is sorted lexicographically by transaction ID, so the order may change if we update internal methods.
             assert_eq!(
                 deployment_transaction_ids,
                 vec![deployment_4.id(), deployment_1.id(), deployment_2.id(), deployment_3.id()],

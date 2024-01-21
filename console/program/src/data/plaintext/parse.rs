@@ -59,7 +59,7 @@ impl<N: Network> Parser for Plaintext<N> {
             // Parse the '}' from the string.
             let (string, _) = tag("}")(string)?;
             // Output the plaintext.
-            Ok((string, Plaintext::Struct(IndexMap::from_iter(members.into_iter()), Default::default())))
+            Ok((string, Plaintext::Struct(IndexMap::from_iter(members), Default::default())))
         }
 
         /// Parses a plaintext as an array: `[plaintext_0, ..., plaintext_n]`.

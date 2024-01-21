@@ -302,7 +302,7 @@ where
         // (since the first coeff is 1), and so we squeeze out `num_polynomials` points.
         let mut challenges = sponge.squeeze_nonnative_field_elements(verifying_key.circuit_commitments.len());
         let point = challenges.pop().ok_or(anyhow!("Failed to squeeze random element"))?;
-        let combiners = core::iter::once(E::Fr::one()).chain(challenges.into_iter());
+        let combiners = core::iter::once(E::Fr::one()).chain(challenges);
 
         // We will construct a linear combination and provide a proof of evaluation of the lc at `point`.
         let (lc, evaluation) =

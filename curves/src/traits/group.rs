@@ -164,6 +164,15 @@ pub trait AffineCurve:
     /// largest y-coordinate be selected.
     fn from_x_coordinate(x: Self::BaseField, greatest: bool) -> Option<Self>;
 
+    /// Attempts to construct both possible affine points given an x-coordinate.
+    /// Points are not guaranteed to be in the prime order subgroup.
+    ///
+    /// The affine points returned should be in lexicographically growing order.
+    ///
+    /// Calling this should be equivalent (but likely more performant) to
+    /// `(AffineCurve::from_x_coordinate(x, false), AffineCurve::from_x_coordinate(x, true))`.
+    fn pair_from_x_coordinate(x: Self::BaseField) -> Option<(Self, Self)>;
+
     /// Attempts to construct an affine point given a y-coordinate. The
     /// point is not guaranteed to be in the prime order subgroup.
     ///
