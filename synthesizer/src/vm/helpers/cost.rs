@@ -46,7 +46,7 @@ pub fn deployment_cost<N: Network>(deployment: &Deployment<N>) -> Result<(u64, (
         .saturating_mul(1_000_000); // 1 microcredit = 1e-6 credits.
 
     // Compute the synthesis cost in microcredits.
-    let synthesis_cost = num_constraints * N::SYNTH_FEE_MULTIPLIER;
+    let synthesis_cost = num_constraints * N::SYNTHESIS_FEE_MULTIPLIER;
 
     // Compute the total cost in microcredits.
     let total_cost = storage_cost
