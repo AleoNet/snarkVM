@@ -47,7 +47,7 @@ version = "=0.16.17"
 [dependencies.ledger-committee]
 package = "snarkvm-ledger-committee"
 path = "../../committee"
-version = "=0.16.16"
+version = "=0.16.17"
 
 [dependencies.narwhal-transmission-id]
 package = "snarkvm-ledger-narwhal-transmission-id"
