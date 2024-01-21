@@ -145,7 +145,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 let Ok(deployment_id) = deployment.to_deployment_id() else {
                     bail!("Failed to compute the Merkle root for deployment transaction '{id}'")
                 };
-                // Compute the deployment cost.
+                // Compute the minimum deployment cost.
                 let (cost, _) = deployment_cost(deployment)?;
                 // Ensure the fee is sufficient to cover the cost.
                 if *fee.base_amount()? < cost {

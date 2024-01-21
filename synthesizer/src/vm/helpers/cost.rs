@@ -23,8 +23,8 @@ use synthesizer_program::{Command, Finalize, Instruction};
 
 use std::collections::HashMap;
 
-/// Returns the *minimum* cost in microcredits to publish the given deployment (total cost, (storage cost, namespace cost)).
-pub fn deployment_cost<N: Network>(deployment: &Deployment<N>) -> Result<(u64, (u64, u64))> {
+/// Returns the *minimum* cost in microcredits to publish the given deployment (total cost, (storage cost, synthesis cost, namespace cost)).
+pub fn deployment_cost<N: Network>(deployment: &Deployment<N>) -> Result<(u64, (u64, u64, u64))> {
     // Determine the number of bytes in the deployment.
     let size_in_bytes = deployment.size_in_bytes()?;
     // Retrieve the program ID.
@@ -32,12 +32,15 @@ pub fn deployment_cost<N: Network>(deployment: &Deployment<N>) -> Result<(u64, (
     // Determine the number of characters in the program ID.
     let num_characters = u32::try_from(program_id.name().to_string().len())?;
     // Compute the number of combined constraints in the program.
-    let num_constraints = deployment.num_combined_constraints()?;
+    let num_combined_constraints = deployment.num_combined_constraints()?;
 
     // Compute the storage cost in microcredits.
     let storage_cost = size_in_bytes
         .checked_mul(N::DEPLOYMENT_FEE_MULTIPLIER)
         .ok_or(anyhow!("The storage cost computation overflowed for a deployment"))?;
+
+    // Compute the synthesis cost in microcredits.
+    let synthesis_cost = num_combined_constraints * N::SYNTHESIS_FEE_MULTIPLIER;
 
     // Compute the namespace cost in credits: 10^(10 - num_characters).
     let namespace_cost = 10u64
@@ -45,19 +48,16 @@ pub fn deployment_cost<N: Network>(deployment: &Deployment<N>) -> Result<(u64, (
         .ok_or(anyhow!("The namespace cost computation overflowed for a deployment"))?
         .saturating_mul(1_000_000); // 1 microcredit = 1e-6 credits.
 
-    // Compute the synthesis cost in microcredits.
-    let synthesis_cost = num_constraints * N::SYNTHESIS_FEE_MULTIPLIER;
-
     // Compute the total cost in microcredits.
     let total_cost = storage_cost
-        .checked_add(namespace_cost)
-        .and_then(|x| x.checked_add(synthesis_cost))
+        .checked_add(synthesis_cost)
+        .and_then(|x| x.checked_add(namespace_cost))
         .ok_or(anyhow!("The total cost computation overflowed for a deployment"))?;
 
-    Ok((total_cost, (storage_cost, namespace_cost)))
+    Ok((total_cost, (storage_cost, synthesis_cost, namespace_cost)))
 }
 
-/// Returns the *minimum* cost in microcredits to publish the given execution (total cost, (storage cost, namespace cost)).
+/// Returns the *minimum* cost in microcredits to publish the given execution (total cost, (storage cost, finalize cost)).
 pub fn execution_cost<N: Network, C: ConsensusStorage<N>>(
     vm: &VM<N, C>,
     execution: &Execution<N>,
