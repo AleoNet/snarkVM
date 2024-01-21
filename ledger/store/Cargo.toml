@@ -18,7 +18,7 @@ edition = "2021"
 
 [features]
 default = [ "indexmap/rayon", "rayon" ]
-rocks = [ "aleo-std", "once_cell", "rocksdb", "tracing" ]
+rocks = [ "once_cell", "rocksdb", "tracing" ]
 serial = [
   "console/serial",
   "ledger-block/serial",
@@ -79,10 +79,9 @@ package = "snarkvm-synthesizer-snark"
 path = "../../synthesizer/snark"
 version = "=0.16.17"
 
-[dependencies.aleo-std]
-version = "0.1.18"
+[dependencies.aleo-std-storage]
+version = "0.1.7"
 default-features = false
-optional = true
 
 [dependencies.anyhow]
 version = "1.0.73"
