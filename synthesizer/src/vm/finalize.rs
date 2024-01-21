@@ -1249,7 +1249,7 @@ finalize transfer_public:
         assert!(matches!(candidate_transactions[0], ConfirmedTransaction::RejectedDeploy(..)));
         assert!(aborted_transaction_ids.is_empty());
 
-        // Check that the unconfirmed transaction id of the rejected deployment is correct.
+        // Check that the unconfirmed transaction ID of the rejected deployment is correct.
         assert_eq!(candidate_transactions[0].to_unconfirmed_transaction_id().unwrap(), deployment_transaction_id);
     }
 

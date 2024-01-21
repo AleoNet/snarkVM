@@ -101,7 +101,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             transaction_store: &TransactionStore<N, T>,
             transaction_id: N::TransactionID,
         ) -> Result<Vec<(ProgramID<N>, Deployment<N>)>> {
-            // Retrieve the deployment from the transaction id.
+            // Retrieve the deployment from the transaction ID.
             let deployment = match transaction_store.get_deployment(&transaction_id)? {
                 Some(deployment) => deployment,
                 None => bail!("Deployment transaction '{transaction_id}' is not found in storage."),
@@ -123,11 +123,11 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             for import_program_id in program.imports().keys() {
                 // Add the imports to the process if does not exist yet.
                 if !process.contains_program(import_program_id) {
-                    // Fetch the deployment transaction id.
+                    // Fetch the deployment transaction ID.
                     let Some(transaction_id) =
                         transaction_store.deployment_store().find_transaction_id_from_program_id(import_program_id)?
                     else {
-                        bail!("Transaction id for '{program_id}' is not found in storage.");
+                        bail!("Transaction ID for '{program_id}' is not found in storage.");
                     };
 
                     // Add the deployment and its imports found recursively.
@@ -947,7 +947,7 @@ function a:
             let deployment_transaction_ids =
                 vm.transaction_store().deployment_transaction_ids().map(|id| *id).collect::<Vec<_>>();
             // This assert check is here to ensure that we are properly loading imports even though any order will work for `VM::from`.
-            // Note: `deployment_transaction_ids` is sorted lexicographically by transaction id, so the order may change if we update internal methods.
+            // Note: `deployment_transaction_ids` is sorted lexicographically by transaction ID, so the order may change if we update internal methods.
             assert_eq!(
                 deployment_transaction_ids,
                 vec![deployment_4.id(), deployment_1.id(), deployment_2.id(), deployment_3.id()],

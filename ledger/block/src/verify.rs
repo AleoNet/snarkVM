@@ -99,7 +99,7 @@ impl<N: Network> Block<N> {
             current_timestamp,
         )?;
 
-        // Return the expected existing transaction id and solution ids.
+        // Return the expected existing solution IDs and transaction IDs.
         Ok((expected_existing_solution_ids, expected_existing_transaction_ids))
     }
 }
@@ -625,12 +625,12 @@ impl<N: Network> Block<N> {
             }
         }
 
-        // Retrieve the solution ids that should already exist in the ledger.
+        // Retrieve the solution IDs that should already exist in the ledger.
         let existing_solution_ids: Vec<_> = aborted_or_existing_solution_ids
             .difference(&aborted_solution_ids.iter().copied().collect())
             .copied()
             .collect();
-        // Retrieve the transaction ids that should already exist in the ledger.
+        // Retrieve the transaction IDs that should already exist in the ledger.
         let existing_transaction_ids: Vec<_> = aborted_or_existing_transaction_ids
             .difference(&aborted_transaction_ids.iter().copied().collect())
             .copied()
