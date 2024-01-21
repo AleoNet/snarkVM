@@ -41,9 +41,4 @@ impl<N: Network> Literal<N> {
         };
         u16::try_from(size).or_halt_with::<N>("Literal exceeds u16::MAX bits.")
     }
-
-    /// Return the size in bytes of this literal.
-    pub fn size_in_bytes(&self) -> u16 {
-        self.size_in_bits().saturating_add(7).saturating_div(8)
-    }
 }
