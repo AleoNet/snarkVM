@@ -96,7 +96,7 @@ impl<N: Network> BatchHeader<N> {
         // Ensure that the number of transmissions is within bounds.
         ensure!(
             transmission_ids.len() <= Self::MAX_TRANSMISSIONS_PER_BATCH,
-            "Invalid number of transmission ids ({})",
+            "Invalid number of transmission IDs ({})",
             transmission_ids.len()
         );
         // Ensure that the number of previous certificate IDs is within bounds.
@@ -165,7 +165,7 @@ impl<N: Network> BatchHeader<N> {
         // Ensure that the number of transmissions is within bounds.
         ensure!(
             transmission_ids.len() <= Self::MAX_TRANSMISSIONS_PER_BATCH,
-            "Invalid number of transmission ids ({})",
+            "Invalid number of transmission IDs ({})",
             transmission_ids.len()
         );
         // Ensure that the number of previous certificate IDs is within bounds.
