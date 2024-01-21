@@ -201,12 +201,10 @@ impl<N: Network> StackExecute<N> for Stack<N> {
         // inject the `root_tvk` as `Mode::Private`.
         if let Some(root_tvk) = root_tvk {
             registers.set_root_tvk(root_tvk);
-            let root_tvk_circuit = circuit::Field::<A>::new(circuit::Mode::Private, root_tvk);
-            registers.set_root_tvk_circuit(root_tvk_circuit);
+            registers.set_root_tvk_circuit(circuit::Field::<A>::new(circuit::Mode::Private, root_tvk));
         } else {
             registers.set_root_tvk(*console_request.tvk());
-            let root_tvk_circuit = circuit::Field::<A>::new(circuit::Mode::Private, *console_request.tvk());
-            registers.set_root_tvk_circuit(root_tvk_circuit);
+            registers.set_root_tvk_circuit(circuit::Field::<A>::new(circuit::Mode::Private, *console_request.tvk()));
         }
 
         let root_tvk = Some(registers.root_tvk_circuit()?);
