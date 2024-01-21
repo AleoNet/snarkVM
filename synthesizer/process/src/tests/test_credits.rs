@@ -1527,11 +1527,8 @@ mod sanity_checks {
             Request::sign(private_key, program_id, function_name, inputs.iter(), &input_types, is_root, rng).unwrap();
         // Initialize the assignments.
         let assignments = Assignments::<N>::default();
-        // Set max num constraints
-        let max_num_constraints = u64::MAX;
         // Initialize the call stack.
-        let call_stack =
-            CallStack::CheckDeployment(vec![request], *private_key, assignments.clone(), max_num_constraints);
+        let call_stack = CallStack::CheckDeployment(vec![request], *private_key, assignments.clone(), None);
         // Synthesize the circuit.
         let _response = stack.execute_function::<A, _>(call_stack, None, rng).unwrap();
         // Retrieve the assignment.

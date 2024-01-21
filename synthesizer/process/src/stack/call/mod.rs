@@ -353,7 +353,7 @@ impl<N: Network> CallTrait<N> for Call<N> {
 
             // If the circuit is in CheckDeployment mode, set a constraint maximum.
             if let CallStack::CheckDeployment(_, _, _, num_constraints) = &registers.call_stack() {
-                A::set_constraint_limit(Some(*num_constraints));
+                A::set_constraint_limit(*num_constraints);
             }
 
             use circuit::Inject;

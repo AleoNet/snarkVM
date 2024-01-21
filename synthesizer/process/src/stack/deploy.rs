@@ -123,8 +123,6 @@ impl<N: Network> Stack<N> {
                 rng,
             )?;
             lap!(timer, "Compute the request for {}", function.name());
-            // Get the expected number of constraints
-            let expected_num_constraints = verifying_key.circuit_info.num_constraints as u64;
             // Initialize the assignments.
             let assignments = Assignments::<N>::default();
             // Initialize the call stack.
@@ -132,7 +130,7 @@ impl<N: Network> Stack<N> {
                 vec![request],
                 burner_private_key,
                 assignments.clone(),
-                expected_num_constraints,
+                Some(verifying_key.circuit_info.num_constraints as u64),
             );
             // Append the function name, callstack, and assignments.
             call_stacks.push((function.name(), call_stack, assignments));
