@@ -179,7 +179,7 @@ impl<N: Network> Block<N> {
         );
 
         // Ensure the block authority is correct.
-        // Determine the transaction ID and solution IDs expected to be in previous blocks.
+        // Determine the solution IDs and transaction IDs that are expected to be in previous blocks.
         let (expected_existing_solution_ids, expected_existing_transaction_ids) = match &self.authority {
             Authority::Beacon(signature) => {
                 // Retrieve the signer.
