@@ -67,7 +67,7 @@ impl<A: Aleo> Request<A> {
             // Compute the transition commitment as `Hash(tvk)`.
             let tcm = A::hash_psd2(&[self.tvk.clone()]);
             // Compute the signer commitment as `Hash(signer || root_tvk)`.
-            let scm = A::hash_psd2(&[self.signer.to_x_coordinate(), root_tvk]);
+            let scm = A::hash_psd2(&[self.signer.to_field(), root_tvk]);
 
             // Ensure the transition public key matches with the saved one from the signature.
             tpk.is_equal(&self.to_tpk())

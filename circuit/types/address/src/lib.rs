@@ -45,12 +45,6 @@ impl<E: Environment> Address<E> {
     pub fn zero() -> Self {
         Self(Group::zero())
     }
-
-    /// Outputs the x coordinate of the address
-    #[inline]
-    pub fn to_x_coordinate(&self) -> Field<E> {
-        self.0.to_x_coordinate()
-    }
 }
 
 #[cfg(console)]
