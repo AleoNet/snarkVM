@@ -31,6 +31,7 @@ use console::{
 };
 use ledger_block::{Input, Output, Transition};
 
+use aleo_std_storage::StorageMode;
 use anyhow::Result;
 use std::borrow::Cow;
 
@@ -52,7 +53,7 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
     type ReverseTCMMap: for<'a> Map<'a, Field<N>, N::TransitionID>;
 
     /// Initializes the transition storage.
-    fn open(dev: Option<u16>) -> Result<Self>;
+    fn open<S: Clone + Into<StorageMode>>(storage: S) -> Result<Self>;
 
     /// Returns the transition program IDs and function names.
     fn locator_map(&self) -> &Self::LocatorMap;
@@ -69,10 +70,10 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
     /// Returns the reverse `tcm` map.
     fn reverse_tcm_map(&self) -> &Self::ReverseTCMMap;
 
-    /// Returns the optional development ID.
-    fn dev(&self) -> Option<u16> {
-        debug_assert!(self.input_store().dev() == self.output_store().dev());
-        self.input_store().dev()
+    /// Returns the storage mode.
+    fn storage_mode(&self) -> &StorageMode {
+        debug_assert!(self.input_store().storage_mode() == self.output_store().storage_mode());
+        self.input_store().storage_mode()
     }
 
     /// Starts an atomic batch write operation.
@@ -270,9 +271,9 @@ pub struct TransitionStore<N: Network, T: TransitionStorage<N>> {
 
 impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
     /// Initializes the transition store.
-    pub fn open(dev: Option<u16>) -> Result<Self> {
+    pub fn open<S: Clone + Into<StorageMode>>(storage: S) -> Result<Self> {
         // Initialize the transition storage.
-        let storage = T::open(dev)?;
+        let storage = T::open(storage)?;
         // Return the transition store.
         Ok(Self {
             locator: storage.locator_map().clone(),
@@ -345,9 +346,9 @@ impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
         self.storage.finish_atomic()
     }
 
-    /// Returns the optional development ID.
-    pub fn dev(&self) -> Option<u16> {
-        self.storage.dev()
+    /// Returns the storage mode.
+    pub fn storage_mode(&self) -> &StorageMode {
+        self.storage.storage_mode()
     }
 }
 
