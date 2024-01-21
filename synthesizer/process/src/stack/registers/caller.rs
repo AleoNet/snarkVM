@@ -27,13 +27,13 @@ impl<N: Network, A: circuit::Aleo<Network = N>> RegistersSigner<N> for Registers
         self.signer = Some(signer);
     }
 
-    /// Returns the root transition viewkey.
+    /// Returns the root transition view key.
     #[inline]
     fn root_tvk(&self) -> Result<Field<N>> {
-        self.root_tvk.ok_or_else(|| anyhow!("root tvk (console) is not set in the registers."))
+        self.root_tvk.ok_or_else(|| anyhow!("Root tvk (console) is not set in the registers."))
     }
 
-    /// Sets the root transition viewkey.
+    /// Sets the root transition view key.
     #[inline]
     fn set_root_tvk(&mut self, root_tvk: Field<N>) {
         self.root_tvk = Some(root_tvk);
@@ -77,13 +77,13 @@ impl<N: Network, A: circuit::Aleo<Network = N>> RegistersSignerCircuit<N, A> for
         self.signer_circuit = Some(signer_circuit);
     }
 
-    /// Returns the root transition viewkey, as a circuit.
+    /// Returns the root transition view key, as a circuit.
     #[inline]
     fn root_tvk_circuit(&self) -> Result<circuit::Field<A>> {
         self.root_tvk_circuit.clone().ok_or_else(|| anyhow!("Root tvk (circuit) is not set in the registers."))
     }
 
-    /// Sets the root transition viewkey, as a circuit.
+    /// Sets the root transition view key, as a circuit.
     #[inline]
     fn set_root_tvk_circuit(&mut self, root_tvk_circuit: circuit::Field<A>) {
         self.root_tvk_circuit = Some(root_tvk_circuit);

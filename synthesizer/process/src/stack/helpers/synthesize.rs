@@ -52,10 +52,10 @@ impl<N: Network> Stack<N> {
         // Sample 'is_root'.
         let is_root = true;
 
-        // No root_tvk when deploying an individual circuit.
+        // The `root_tvk` is `None` when deploying an individual circuit.
         let root_tvk = None;
 
-        // No caller when deploying an individual circuit.
+        // The caller is `None` when deploying an individual circuit.
         let caller = None;
 
         // Compute the request, with a burner private key.

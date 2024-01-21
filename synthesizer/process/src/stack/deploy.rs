@@ -76,10 +76,10 @@ impl<N: Network> Stack<N> {
         // Construct the call stacks and assignments used to verify the certificates.
         let mut call_stacks = Vec::with_capacity(deployment.verifying_keys().len());
 
-        // No root_tvk when verifying deployment of an individual circuit.
+        // The `root_tvk` is `None` when verifying the deployment of an individual circuit.
         let root_tvk = None;
 
-        // No caller when verifying deployment of an individual circuit.
+        // The `caller` is `None` when verifying the deployment of an individual circuit.
         let caller = None;
 
         // Iterate through the program functions and construct the callstacks and corresponding assignments.

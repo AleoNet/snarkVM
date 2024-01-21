@@ -112,10 +112,10 @@ pub trait RegistersSigner<N: Network> {
     /// Sets the transition signer.
     fn set_signer(&mut self, signer: Address<N>);
 
-    /// Returns the root transition viewkey.
+    /// Returns the root transition view key.
     fn root_tvk(&self) -> Result<Field<N>>;
 
-    /// Sets the root transition viewkey.
+    /// Sets the root transition view key.
     fn set_root_tvk(&mut self, root_tvk: Field<N>);
 
     /// Returns the transition caller.
@@ -138,10 +138,10 @@ pub trait RegistersSignerCircuit<N: Network, A: circuit::Aleo<Network = N>> {
     /// Sets the transition signer, as a circuit.
     fn set_signer_circuit(&mut self, signer_circuit: circuit::Address<A>);
 
-    /// Returns the root transition viewkey, as a circuit.
+    /// Returns the root transition view key, as a circuit.
     fn root_tvk_circuit(&self) -> Result<circuit::Field<A>>;
 
-    /// Sets the root transition viewkey, as a circuit.
+    /// Sets the root transition view key, as a circuit.
     fn set_root_tvk_circuit(&mut self, root_tvk_circuit: circuit::Field<A>);
 
     /// Returns the transition caller, as a circuit.

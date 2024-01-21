@@ -51,9 +51,9 @@ pub struct Registers<N: Network, A: circuit::Aleo<Network = N>> {
     signer: Option<Address<N>>,
     /// The transition signer, as a circuit.
     signer_circuit: Option<circuit::Address<A>>,
-    /// The root transition viewkey.
+    /// The root transition view key.
     root_tvk: Option<Field<N>>,
-    /// The root transition viewkey, as a circuit.
+    /// The root transition view key, as a circuit.
     root_tvk_circuit: Option<circuit::Field<A>>,
     /// The transition caller.
     caller: Option<Address<N>>,
