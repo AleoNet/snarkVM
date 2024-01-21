@@ -4,14 +4,14 @@ outputs:
   execute:
     public_wallet.aleo/init:
       outputs:
-      - '{"type":"future","id":"2740109864087873652477151933781698204925175410187376817867987810696050546048field","value":"{\n  program_id: public_wallet.aleo,\n  function_name: init,\n  arguments: [\n    {\n      program_id: token.aleo,\n      function_name: mint_public,\n      arguments: [\n        aleo1sry3pke49ykrf0aeshf889tr98r4c86p5f4ms766795ssdwfdyqq9jdg0j,\n        10u64\n      ]\n    }\n  \n  ]\n}"}'
+      - '{"type":"future","id":"4464942226841699051231230836770437274733784749720398875079497729457972358531field","value":"{\n  program_id: public_wallet.aleo,\n  function_name: init,\n  arguments: [\n    {\n      program_id: token.aleo,\n      function_name: mint_public,\n      arguments: [\n        aleo1sry3pke49ykrf0aeshf889tr98r4c86p5f4ms766795ssdwfdyqq9jdg0j,\n        10u64\n      ]\n    }\n  \n  ]\n}"}'
   speculate: the execution was accepted
   add_next_block: succeeded.
 additional:
 - child_outputs:
     token.aleo/mint_public:
       outputs:
-      - '{"type":"future","id":"2095235103073153862497986952383880687050623273703041876358116424903602929020field","value":"{\n  program_id: token.aleo,\n  function_name: mint_public,\n  arguments: [\n    aleo1sry3pke49ykrf0aeshf889tr98r4c86p5f4ms766795ssdwfdyqq9jdg0j,\n    10u64\n  ]\n}"}'
+      - '{"type":"future","id":"6870476253411913047431672168259118946802015453568356666196082705096404310887field","value":"{\n  program_id: token.aleo,\n  function_name: mint_public,\n  arguments: [\n    aleo1sry3pke49ykrf0aeshf889tr98r4c86p5f4ms766795ssdwfdyqq9jdg0j,\n    10u64\n  ]\n}"}'
     credits.aleo/fee_public:
       outputs:
-      - '{"type":"future","id":"3915217986926257864389601618212435120703604627473164299376404290548778752774field","value":"{\n  program_id: credits.aleo,\n  function_name: fee_public,\n  arguments: [\n    aleo1d3e2je2m2hsxwdsvntvf4jnnlj459ywfry6ch2qwrpy6l6r6yvpq8e88h5,\n    131265u64\n  ]\n}"}'
+      - '{"type":"future","id":"5525308133544540763757385329943115018858161100889529786580724367369238892field","value":"{\n  program_id: credits.aleo,\n  function_name: fee_public,\n  arguments: [\n    aleo1d3e2je2m2hsxwdsvntvf4jnnlj459ywfry6ch2qwrpy6l6r6yvpq8e88h5,\n    131265u64\n  ]\n}"}'

@@ -263,7 +263,7 @@ where
     let max_degree = max_degree.unwrap_or_else(|| distributions::Uniform::from(8..=64).sample(rng));
     let pp = SonicKZG10::<E, S>::load_srs(max_degree)?;
     let universal_prover = &pp.to_universal_prover().unwrap();
-    let supported_degree_bounds = vec![1 << 10, 1 << 15, 1 << 20, 1 << 25, 1 << 30];
+    let supported_degree_bounds = [1 << 10, 1 << 15, 1 << 20, 1 << 25, 1 << 30];
 
     for _ in 0..num_iters {
         let supported_degree =
@@ -391,7 +391,7 @@ fn equation_test_template<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>>(
     let max_degree = max_degree.unwrap_or_else(|| distributions::Uniform::from(8..=64).sample(rng));
     let pp = SonicKZG10::<E, S>::load_srs(max_degree)?;
     let universal_prover = &pp.to_universal_prover().unwrap();
-    let supported_degree_bounds = vec![1 << 10, 1 << 15, 1 << 20, 1 << 25, 1 << 30];
+    let supported_degree_bounds = [1 << 10, 1 << 15, 1 << 20, 1 << 25, 1 << 30];
 
     for _ in 0..num_iters {
         let supported_degree =

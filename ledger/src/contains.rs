@@ -44,14 +44,14 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
     pub fn contains_transmission(&self, transmission_id: &TransmissionID<N>) -> Result<bool> {
         match transmission_id {
             TransmissionID::Ratification => Ok(false),
-            TransmissionID::Solution(puzzle_commitment) => self.contains_puzzle_commitment(puzzle_commitment),
+            TransmissionID::Solution(solution_id) => self.contains_puzzle_commitment(solution_id),
             TransmissionID::Transaction(transaction_id) => self.contains_transaction_id(transaction_id),
         }
     }
 
     /// Returns `true` if the given puzzle commitment exists.
-    pub fn contains_puzzle_commitment(&self, puzzle_commitment: &PuzzleCommitment<N>) -> Result<bool> {
-        self.vm.block_store().contains_puzzle_commitment(puzzle_commitment)
+    pub fn contains_puzzle_commitment(&self, solution_id: &PuzzleCommitment<N>) -> Result<bool> {
+        self.vm.block_store().contains_puzzle_commitment(solution_id)
     }
 
     /* Transaction */

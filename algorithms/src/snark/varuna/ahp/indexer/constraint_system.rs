@@ -12,10 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::{
-    r1cs::{errors::SynthesisError, ConstraintSystem as CS, Index as VarIndex, LinearCombination, Variable},
-    snark::varuna::ahp::matrices::to_matrix_helper,
-};
+use crate::r1cs::{errors::SynthesisError, ConstraintSystem as CS, Index as VarIndex, LinearCombination, Variable};
 use snarkvm_fields::Field;
 use snarkvm_utilities::serialize::*;
 
@@ -42,24 +39,6 @@ impl<F: Field> ConstraintSystem<F> {
             num_private_variables: 0,
             num_constraints: 0,
         }
-    }
-
-    #[inline]
-    /// Returns the sparse A matrix as Vec of rows, where each row is a Vec of assigned value and variable index
-    pub(crate) fn a_matrix(&self) -> Result<Vec<Vec<(F, usize)>>> {
-        to_matrix_helper(&self.a, self.num_public_variables)
-    }
-
-    #[inline]
-    /// Returns the sparse B matrix as Vec of rows, where each row is a Vec of assigned value and variable index
-    pub(crate) fn b_matrix(&self) -> Result<Vec<Vec<(F, usize)>>> {
-        to_matrix_helper(&self.b, self.num_public_variables)
-    }
-
-    #[inline]
-    /// Returns the sparse C matrix as Vec of rows, where each row is a Vec of assigned value and variable index
-    pub(crate) fn c_matrix(&self) -> Result<Vec<Vec<(F, usize)>>> {
-        to_matrix_helper(&self.c, self.num_public_variables)
     }
 
     #[inline]

@@ -13,6 +13,7 @@
 // limitations under the License.
 
 use crate::{
+    advance::split_candidate_solutions,
     test_helpers::{CurrentLedger, CurrentNetwork},
     RecordsFilter,
 };
@@ -110,8 +111,7 @@ fn test_insufficient_private_fees() {
     {
         // Prepare a `split` execution without a fee.
         let inputs = [Value::Record(record_1.clone()), Value::from_str("100u64").unwrap()];
-        let authorization =
-            ledger.vm.authorize(&private_key, "credits.aleo", "split", inputs.into_iter(), rng).unwrap();
+        let authorization = ledger.vm.authorize(&private_key, "credits.aleo", "split", inputs, rng).unwrap();
         let split_transaction_without_fee = ledger.vm.execute_authorization(authorization, None, None, rng).unwrap();
         assert!(ledger.check_transaction_basic(&split_transaction_without_fee, None, rng).is_ok());
     }
@@ -124,8 +124,7 @@ fn test_insufficient_private_fees() {
             Value::from_str(&format!("{address}")).unwrap(),
             Value::from_str("100u64").unwrap(),
         ];
-        let authorization =
-            ledger.vm.authorize(&private_key, "credits.aleo", "transfer_private", inputs.into_iter(), rng).unwrap();
+        let authorization = ledger.vm.authorize(&private_key, "credits.aleo", "transfer_private", inputs, rng).unwrap();
         let transaction_without_fee = ledger.vm.execute_authorization(authorization, None, None, rng).unwrap();
         let execution = transaction_without_fee.execution().unwrap();
 
@@ -638,6 +637,53 @@ fn test_aborted_transaction_indexing() {
 }
 
 #[test]
+fn test_aborted_solution_ids() {
+    let rng = &mut TestRng::default();
+
+    // Initialize the test environment.
+    let crate::test_helpers::TestEnv { ledger, private_key, address, .. } = crate::test_helpers::sample_test_env(rng);
+
+    // Retrieve the coinbase puzzle parameters.
+    let coinbase_puzzle = ledger.coinbase_puzzle();
+    let epoch_challenge = ledger.latest_epoch_challenge().unwrap();
+    let minimum_proof_target = ledger.latest_proof_target();
+
+    // Create a solution that is less than the minimum proof target.
+    let mut invalid_solution = coinbase_puzzle.prove(&epoch_challenge, address, rng.gen(), None).unwrap();
+    while invalid_solution.to_target().unwrap() >= minimum_proof_target {
+        invalid_solution = coinbase_puzzle.prove(&epoch_challenge, address, rng.gen(), None).unwrap();
+    }
+
+    // Create a valid transaction for the block.
+    let inputs = [Value::from_str(&format!("{address}")).unwrap(), Value::from_str("10u64").unwrap()];
+    let transfer_transaction = ledger
+        .vm
+        .execute(&private_key, ("credits.aleo", "transfer_public"), inputs.iter(), None, 0, None, rng)
+        .unwrap();
+
+    // Create a block.
+    let block = ledger
+        .prepare_advance_to_next_beacon_block(
+            &private_key,
+            vec![],
+            vec![invalid_solution],
+            vec![transfer_transaction],
+            rng,
+        )
+        .unwrap();
+
+    // Check that the next block is valid.
+    ledger.check_next_block(&block, rng).unwrap();
+
+    // Add the deployment block to the ledger.
+    ledger.advance_to_next_block(&block).unwrap();
+
+    // Enforce that the block solution was aborted properly.
+    assert!(block.solutions().is_empty());
+    assert_eq!(block.aborted_solution_ids(), &vec![invalid_solution.commitment()]);
+}
+
+#[test]
 fn test_execute_duplicate_input_ids() {
     let rng = &mut TestRng::default();
 
@@ -759,6 +805,278 @@ fn test_execute_duplicate_input_ids() {
 }
 
 #[test]
+fn test_execute_duplicate_output_ids() {
+    let rng = &mut TestRng::default();
+
+    // Initialize the test environment.
+    let crate::test_helpers::TestEnv { ledger, private_key, address, .. } = crate::test_helpers::sample_test_env(rng);
+
+    // Deploy a test program to the ledger.
+    let program = Program::<CurrentNetwork>::from_str(
+        "
+program dummy_program.aleo;
+
+record dummy_program:
+    owner as address.private;
+    rand_var as u64.private;
+
+function create_duplicate_record:
+    input r0 as u64.private;
+    cast self.caller 1u64 into r1 as dummy_program.record;
+    output r1 as dummy_program.record;",
+    )
+    .unwrap();
+
+    // Deploy.
+    let deployment_transaction = ledger.vm.deploy(&private_key, &program, None, 0, None, rng).unwrap();
+    // Verify.
+    ledger.vm().check_transaction(&deployment_transaction, None, rng).unwrap();
+
+    // Construct the next block.
+    let block = ledger
+        .prepare_advance_to_next_beacon_block(&private_key, vec![], vec![], vec![deployment_transaction], rng)
+        .unwrap();
+
+    // Check that the next block is valid.
+    ledger.check_next_block(&block, rng).unwrap();
+    // Add the block to the ledger.
+    ledger.advance_to_next_block(&block).unwrap();
+
+    // Create a transaction with different transition ids, but with a fixed output record (output ID).
+    let mut create_transaction_with_duplicate_output_id = |x: u64| -> Transaction<CurrentNetwork> {
+        // Use a fixed seed RNG.
+        let fixed_rng = &mut TestRng::from_seed(1);
+
+        // Create a transaction with a fixed rng.
+        let inputs = [Value::from_str(&format!("{x}u64")).unwrap()];
+        let transaction = ledger
+            .vm
+            .execute(
+                &private_key,
+                ("dummy_program.aleo", "create_duplicate_record"),
+                inputs.into_iter(),
+                None,
+                0,
+                None,
+                fixed_rng,
+            )
+            .unwrap();
+        // Extract the execution.
+        let execution = transaction.execution().unwrap().clone();
+
+        // Create a new fee for the execution.
+        let fee_authorization = ledger
+            .vm
+            .authorize_fee_public(
+                &private_key,
+                *transaction.fee_amount().unwrap(),
+                0,
+                execution.to_execution_id().unwrap(),
+                rng,
+            )
+            .unwrap();
+        let fee = ledger.vm.execute_fee_authorization(fee_authorization, None, rng).unwrap();
+
+        Transaction::from_execution(execution, Some(fee)).unwrap()
+    };
+
+    // Create the first transfer.
+    let transfer_1 = create_transaction_with_duplicate_output_id(1);
+    let transfer_1_id = transfer_1.id();
+
+    // Create a second transfer with the same output id.
+    let transfer_2 = create_transaction_with_duplicate_output_id(2);
+    let transfer_2_id = transfer_2.id();
+
+    // Create a third transfer with the same output id.
+    let transfer_3 = create_transaction_with_duplicate_output_id(3);
+    let transfer_3_id = transfer_3.id();
+
+    // Ensure that each transaction has a duplicate output id.
+    let tx_1_output_id = transfer_1.output_ids().next().unwrap();
+    let tx_2_output_id = transfer_2.output_ids().next().unwrap();
+    let tx_3_output_id = transfer_3.output_ids().next().unwrap();
+    assert_eq!(tx_1_output_id, tx_2_output_id);
+    assert_eq!(tx_1_output_id, tx_3_output_id);
+
+    // Create a block.
+    let block = ledger
+        .prepare_advance_to_next_beacon_block(&private_key, vec![], vec![], vec![transfer_1, transfer_2], rng)
+        .unwrap();
+
+    // Check that the next block is valid.
+    ledger.check_next_block(&block, rng).unwrap();
+
+    // Add the block to the ledger.
+    ledger.advance_to_next_block(&block).unwrap();
+
+    // Enforce that the block transactions were correct.
+    assert_eq!(block.transactions().num_accepted(), 1);
+    assert_eq!(block.transactions().transaction_ids().collect::<Vec<_>>(), vec![&transfer_1_id]);
+    assert_eq!(block.aborted_transaction_ids(), &vec![transfer_2_id]);
+
+    // Prepare a transfer that will succeed for the subsequent block.
+    let inputs = [Value::from_str(&format!("{address}")).unwrap(), Value::from_str("1000u64").unwrap()];
+    let transfer_4 = ledger
+        .vm
+        .execute(&private_key, ("credits.aleo", "transfer_public"), inputs.into_iter(), None, 0, None, rng)
+        .unwrap();
+    let transfer_4_id = transfer_4.id();
+
+    // Create a block.
+    let block = ledger
+        .prepare_advance_to_next_beacon_block(&private_key, vec![], vec![], vec![transfer_3, transfer_4], rng)
+        .unwrap();
+
+    // Check that the next block is valid.
+    ledger.check_next_block(&block, rng).unwrap();
+
+    // Add the block to the ledger.
+    ledger.advance_to_next_block(&block).unwrap();
+
+    // Enforce that the block transactions were correct.
+    assert_eq!(block.transactions().num_accepted(), 1);
+    assert_eq!(block.transactions().transaction_ids().collect::<Vec<_>>(), vec![&transfer_4_id]);
+    assert_eq!(block.aborted_transaction_ids(), &vec![transfer_3_id]);
+}
+
+#[test]
+fn test_execute_duplicate_transition_ids() {
+    let rng = &mut TestRng::default();
+
+    // Initialize the test environment.
+    let crate::test_helpers::TestEnv { ledger, private_key, address, .. } = crate::test_helpers::sample_test_env(rng);
+
+    // Deploy a test program to the ledger.
+    let program = Program::<CurrentNetwork>::from_str(
+        "
+program dummy_program.aleo;
+
+function empty_function:
+    ",
+    )
+    .unwrap();
+
+    // Deploy.
+    let deployment_transaction = ledger.vm.deploy(&private_key, &program, None, 0, None, rng).unwrap();
+    // Verify.
+    ledger.vm().check_transaction(&deployment_transaction, None, rng).unwrap();
+
+    // Construct the next block.
+    let block = ledger
+        .prepare_advance_to_next_beacon_block(&private_key, vec![], vec![], vec![deployment_transaction], rng)
+        .unwrap();
+
+    // Check that the next block is valid.
+    ledger.check_next_block(&block, rng).unwrap();
+    // Add the block to the ledger.
+    ledger.advance_to_next_block(&block).unwrap();
+
+    // Create a transaction with different transaction ids, but with a fixed transition id.
+    let mut create_transaction_with_duplicate_transition_id = || -> Transaction<CurrentNetwork> {
+        // Use a fixed seed RNG.
+        let fixed_rng = &mut TestRng::from_seed(1);
+
+        // Create a transaction with a fixed rng.
+        let inputs: [Value<_>; 0] = [];
+        let transaction = ledger
+            .vm
+            .execute(
+                &private_key,
+                ("dummy_program.aleo", "empty_function"),
+                inputs.into_iter(),
+                None,
+                0,
+                None,
+                fixed_rng,
+            )
+            .unwrap();
+        // Extract the execution.
+        let execution = transaction.execution().unwrap().clone();
+
+        // Create a new fee for the execution.
+        let fee_authorization = ledger
+            .vm
+            .authorize_fee_public(
+                &private_key,
+                *transaction.fee_amount().unwrap(),
+                0,
+                execution.to_execution_id().unwrap(),
+                rng,
+            )
+            .unwrap();
+        let fee = ledger.vm.execute_fee_authorization(fee_authorization, None, rng).unwrap();
+
+        Transaction::from_execution(execution, Some(fee)).unwrap()
+    };
+
+    // Create the first transaction.
+    let transaction_1 = create_transaction_with_duplicate_transition_id();
+    let transaction_1_id = transaction_1.id();
+
+    // Create a second transaction with the same transition id.
+    let transaction_2 = create_transaction_with_duplicate_transition_id();
+    let transaction_2_id = transaction_2.id();
+
+    // Create a third transaction with the same transition_id
+    let transaction_3 = create_transaction_with_duplicate_transition_id();
+    let transaction_3_id = transaction_3.id();
+
+    // Ensure that each transaction has a duplicate transition id.
+    let tx_1_transition_id = transaction_1.transition_ids().next().unwrap();
+    let tx_2_transition_id = transaction_2.transition_ids().next().unwrap();
+    let tx_3_transition_id = transaction_3.transition_ids().next().unwrap();
+    assert_eq!(tx_1_transition_id, tx_2_transition_id);
+    assert_eq!(tx_1_transition_id, tx_3_transition_id);
+
+    // Create a block.
+    let block = ledger
+        .prepare_advance_to_next_beacon_block(&private_key, vec![], vec![], vec![transaction_1, transaction_2], rng)
+        .unwrap();
+
+    // Check that the next block is valid.
+    ledger.check_next_block(&block, rng).unwrap();
+
+    // Add the block to the ledger.
+    ledger.advance_to_next_block(&block).unwrap();
+
+    // Enforce that the block transactions were correct.
+    assert_eq!(block.transactions().num_accepted(), 1);
+    assert_eq!(block.transactions().transaction_ids().collect::<Vec<_>>(), vec![&transaction_1_id]);
+    assert_eq!(block.aborted_transaction_ids(), &vec![transaction_2_id]);
+
+    // Prepare a transfer that will succeed for the subsequent block.
+    let inputs = [Value::from_str(&format!("{address}")).unwrap(), Value::from_str("1000u64").unwrap()];
+    let transfer_transaction = ledger
+        .vm
+        .execute(&private_key, ("credits.aleo", "transfer_public"), inputs.into_iter(), None, 0, None, rng)
+        .unwrap();
+    let transfer_transaction_id = transfer_transaction.id();
+
+    // Create a block.
+    let block = ledger
+        .prepare_advance_to_next_beacon_block(
+            &private_key,
+            vec![],
+            vec![],
+            vec![transaction_3, transfer_transaction],
+            rng,
+        )
+        .unwrap();
+
+    // Check that the next block is valid.
+    ledger.check_next_block(&block, rng).unwrap();
+
+    // Add the block to the ledger.
+    ledger.advance_to_next_block(&block).unwrap();
+
+    // Enforce that the block transactions were correct.
+    assert_eq!(block.transactions().num_accepted(), 1);
+    assert_eq!(block.transactions().transaction_ids().collect::<Vec<_>>(), vec![&transfer_transaction_id]);
+    assert_eq!(block.aborted_transaction_ids(), &vec![transaction_3_id]);
+}
+
+#[test]
 fn test_deployment_duplicate_program_id() {
     let rng = &mut TestRng::default();
 
@@ -827,4 +1145,21 @@ finalize foo2:
     assert_eq!(ledger.get_program(*program_1.id()).unwrap(), program_1);
     assert!(ledger.vm.transaction_store().contains_transaction_id(&deployment_1_id).unwrap());
     assert!(ledger.vm.block_store().contains_rejected_or_aborted_transaction_id(&deployment_2_id).unwrap());
+}
+
+#[test]
+fn test_split_candidate_solutions() {
+    let rng = &mut TestRng::default();
+
+    let max_solutions = CurrentNetwork::MAX_SOLUTIONS;
+
+    const ITERATIONS: usize = 1_000;
+
+    for _ in 0..ITERATIONS {
+        let num_candidates = rng.gen_range(0..max_solutions * 2);
+        let candidate_solutions: Vec<u8> = rng.sample_iter(Standard).take(num_candidates).collect();
+
+        let (_accepted, _aborted) =
+            split_candidate_solutions(candidate_solutions, max_solutions, |candidate| candidate % 2 == 0);
+    }
 }

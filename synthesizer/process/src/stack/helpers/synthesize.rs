@@ -49,6 +49,8 @@ impl<N: Network> Stack<N> {
                 _ => self.sample_value(&burner_address, input_type, rng),
             })
             .collect::<Result<Vec<_>>>()?;
+        // Sample 'is_root'.
+        let is_root = true;
 
         // No root_tvk when deploying an individual circuit.
         let root_tvk = None;
@@ -64,6 +66,7 @@ impl<N: Network> Stack<N> {
             inputs.into_iter(),
             &input_types,
             root_tvk,
+            is_root,
             rng,
         )?;
         // Initialize the authorization.

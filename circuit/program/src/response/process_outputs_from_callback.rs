@@ -26,9 +26,8 @@ impl<A: Aleo> Response<A> {
         outputs: Vec<console::Value<A::Network>>,        // Note: Console type
         output_types: &[console::ValueType<A::Network>], // Note: Console type
     ) -> Vec<Value<A>> {
-        // Compute the function ID as `Hash(network_id, program_id, function_name)`.
-        let function_id =
-            A::hash_bhp1024(&(network_id, program_id.name(), program_id.network(), function_name).to_bits_le());
+        // Compute the function ID.
+        let function_id = compute_function_id(network_id, program_id, function_name);
 
         match outputs
             .iter()
@@ -326,16 +325,16 @@ mod tests {
 
     #[test]
     fn test_from_callback_constant() -> Result<()> {
-        check_from_callback(Mode::Constant, 20788, 5, 4922, 4931)
+        check_from_callback(Mode::Constant, 20844, 5, 4922, 4931)
     }
 
     #[test]
     fn test_from_callback_public() -> Result<()> {
-        check_from_callback(Mode::Public, 20788, 5, 6217, 6226)
+        check_from_callback(Mode::Public, 20844, 5, 6217, 6226)
     }
 
     #[test]
     fn test_from_callback_private() -> Result<()> {
-        check_from_callback(Mode::Private, 20788, 5, 6217, 6226)
+        check_from_callback(Mode::Private, 20844, 5, 6217, 6226)
     }
 }

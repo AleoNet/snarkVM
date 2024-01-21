@@ -177,7 +177,7 @@ impl<
 
         if !operations.is_empty() {
             // Insert the operations into an index map to remove any operations that would have been overwritten anyways.
-            let operations: IndexMap<_, _> = IndexMap::from_iter(operations.into_iter());
+            let operations: IndexMap<_, _> = IndexMap::from_iter(operations);
 
             // Prepare the key and value for each queued operation.
             //
@@ -242,6 +242,33 @@ impl<
     type PendingIterator =
         core::iter::Map<indexmap::map::IntoIter<K, Option<V>>, fn((K, Option<V>)) -> (Cow<'a, K>, Option<Cow<'a, V>>)>;
     type Values = Values<'a, V>;
+
+    ///
+    /// Returns the number of confirmed entries in the map.
+    ///
+    fn len_confirmed(&self) -> usize {
+        // A raw iterator doesn't allocate.
+        let mut iter = self.database.raw_iterator();
+        // Find the first key with the map prefix.
+        iter.seek(&self.context);
+
+        // Count the number of keys belonging to the map.
+        let mut len = 0usize;
+        while let Some(key) = iter.key() {
+            // Only compare the map ID - the network ID is guaranteed to
+            // remain the same as long as there is more than a single map.
+            if key[2..][..2] != self.context[2..][..2] {
+                // If the map ID is different, it's the end of iteration.
+                break;
+            }
+
+            // Increment the length and go to the next record.
+            len += 1;
+            iter.next();
+        }
+
+        len
+    }
 
     ///
     /// Returns `true` if the given key exists in the map.
@@ -319,7 +346,7 @@ impl<
     /// Returns an iterator visiting each key-value pair in the atomic batch.
     ///
     fn iter_pending(&'a self) -> Self::PendingIterator {
-        let filtered_atomic_batch: IndexMap<_, _> = IndexMap::from_iter(self.atomic_batch.lock().clone().into_iter());
+        let filtered_atomic_batch: IndexMap<_, _> = IndexMap::from_iter(self.atomic_batch.lock().clone());
         filtered_atomic_batch.into_iter().map(|(k, v)| (Cow::Owned(k), v.map(|v| Cow::Owned(v))))
     }
 
@@ -1387,9 +1414,13 @@ mod tests {
 
         // Ensure that all the items are present.
         assert_eq!(test_storage.own_map.iter_confirmed().count(), 1);
+        assert_eq!(test_storage.own_map.len_confirmed(), 1);
         assert_eq!(test_storage.extra_maps.own_map1.iter_confirmed().count(), 1);
+        assert_eq!(test_storage.extra_maps.own_map1.len_confirmed(), 1);
         assert_eq!(test_storage.extra_maps.own_map2.iter_confirmed().count(), 1);
+        assert_eq!(test_storage.extra_maps.own_map2.len_confirmed(), 1);
         assert_eq!(test_storage.extra_maps.extra_maps.own_map.iter_confirmed().count(), 1);
+        assert_eq!(test_storage.extra_maps.extra_maps.own_map.len_confirmed(), 1);
 
         // The atomic_write_batch macro uses ?, so the test returns a Result for simplicity.
         Ok(())

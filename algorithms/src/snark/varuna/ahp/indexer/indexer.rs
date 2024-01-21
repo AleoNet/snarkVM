@@ -15,13 +15,13 @@
 use crate::{
     fft::EvaluationDomain,
     polycommit::sonic_pc::{LinearCombination, PolynomialInfo, PolynomialLabel},
-    r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSystem},
+    r1cs::{errors::SynthesisError, ConstraintSynthesizer},
     snark::varuna::{
         ahp::{
             indexer::{Circuit, CircuitId, CircuitInfo, ConstraintSystem as IndexerConstraintSystem},
             AHPForR1CS,
         },
-        matrices::{matrix_evals, MatrixEvals},
+        matrices::{into_matrix_helper, matrix_evals, MatrixEvals},
         num_non_zero,
         SNARKMode,
     },
@@ -140,15 +140,15 @@ impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
 
         crate::snark::varuna::ahp::matrices::pad_input_for_indexer_and_prover(&mut ics)?;
 
-        let a = ics.a_matrix()?;
-        let b = ics.b_matrix()?;
-        let c = ics.c_matrix()?;
+        let IndexerConstraintSystem { a, b, c, num_public_variables, num_private_variables, num_constraints } = ics;
+
+        let a = into_matrix_helper(a, num_public_variables)?;
+        let b = into_matrix_helper(b, num_public_variables)?;
+        let c = into_matrix_helper(c, num_public_variables)?;
 
         end_timer!(padding_time);
 
-        let num_padded_public_variables = ics.num_public_variables();
-        let num_private_variables = ics.num_private_variables();
-        let num_constraints = ics.num_constraints();
+        let num_padded_public_variables = num_public_variables;
         let num_non_zero_a = num_non_zero(&a);
         let num_non_zero_b = num_non_zero(&b);
         let num_non_zero_c = num_non_zero(&c);

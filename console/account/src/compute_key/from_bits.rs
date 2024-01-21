@@ -73,7 +73,7 @@ mod tests {
             assert_eq!(expected, candidate);
 
             // Add excess zero bits.
-            let candidate = vec![given_bits, vec![false; i]].concat();
+            let candidate = [given_bits, vec![false; i]].concat();
 
             let candidate = ComputeKey::<CurrentNetwork>::from_bits_le(&candidate)?;
             assert_eq!(expected, candidate);
@@ -96,7 +96,7 @@ mod tests {
             assert_eq!(expected, candidate);
 
             // Add excess zero bits.
-            let candidate = vec![given_bits, vec![false; i]].concat();
+            let candidate = [given_bits, vec![false; i]].concat();
 
             let candidate = ComputeKey::<CurrentNetwork>::from_bits_be(&candidate)?;
             assert_eq!(expected, candidate);

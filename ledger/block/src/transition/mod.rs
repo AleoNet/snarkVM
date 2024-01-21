@@ -26,6 +26,7 @@ mod string;
 use console::{
     network::prelude::*,
     program::{
+        compute_function_id,
         Ciphertext,
         Identifier,
         InputID,
@@ -96,9 +97,8 @@ impl<N: Network> Transition<N> {
         let function_name = *request.function_name();
         let num_inputs = request.inputs().len();
 
-        // Compute the function ID as `Hash(network_id, program_id, function_name)`.
-        let function_id =
-            N::hash_bhp1024(&(network_id, program_id.name(), program_id.network(), function_name).to_bits_le())?;
+        // Compute the function ID.
+        let function_id = compute_function_id(&network_id, &program_id, &function_name)?;
 
         let inputs = request
             .input_ids()

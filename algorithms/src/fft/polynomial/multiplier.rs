@@ -105,7 +105,7 @@ impl<'a, F: PrimeField> PolyMultiplier<'a, F> {
                 let mut pool = ExecutionPool::with_capacity(self.polynomials.len() + self.evaluations.len());
                 for (_, p) in self.polynomials {
                     pool.add_job(move || {
-                        let mut p = p.clone().into_owned().coeffs;
+                        let mut p = p.into_owned().coeffs;
                         p.resize(domain.size(), F::zero());
                         domain.out_order_fft_in_place_with_pc(&mut p, fft_pc);
                         p
@@ -113,7 +113,7 @@ impl<'a, F: PrimeField> PolyMultiplier<'a, F> {
                 }
                 for (_, e) in self.evaluations {
                     pool.add_job(move || {
-                        let mut e = e.clone().into_owned().evaluations;
+                        let mut e = e.into_owned().evaluations;
                         e.resize(domain.size(), F::zero());
                         crate::fft::domain::derange(&mut e);
                         e

@@ -33,13 +33,16 @@ impl<N: Network> Stack<N> {
         // Retrieve the input types.
         let input_types = self.get_function(&function_name)?.input_types();
         lap!(timer, "Retrieve the input types");
+        // Set is_root to true.
+        let is_root = true;
 
         // This is the root request and does not have a caller.
         let caller = None;
         // This is the root request and we do not have a root_tvk to pass on.
         let root_tvk = None;
         // Compute the request.
-        let request = Request::sign(private_key, program_id, function_name, inputs, &input_types, root_tvk, rng)?;
+        let request =
+            Request::sign(private_key, program_id, function_name, inputs, &input_types, root_tvk, is_root, rng)?;
         lap!(timer, "Compute the request");
         // Initialize the authorization.
         let authorization = Authorization::new(request.clone());

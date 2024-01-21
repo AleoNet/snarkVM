@@ -148,6 +148,18 @@ impl<P: Parameters> AffineCurve for Affine<P> {
         })
     }
 
+    /// Attempts to construct both possible affine points given an x-coordinate.
+    /// Points are not guaranteed to be in the prime order subgroup.
+    ///
+    /// The affine points returned should be in lexicographically growing order.
+    ///
+    /// Calling this should be equivalent (but likely more performant) to
+    /// `(AffineCurve::from_x_coordinate(x, false), AffineCurve::from_x_coordinate(x, true))`.
+    #[inline]
+    fn pair_from_x_coordinate(x: Self::BaseField) -> Option<(Self, Self)> {
+        Self::from_x_coordinate(x, false).map(|p1| (p1, Self::new(p1.x, -p1.y, false)))
+    }
+
     /// Attempts to construct an affine point given a y-coordinate. The
     /// point is not guaranteed to be in the prime order subgroup.
     ///
