@@ -160,6 +160,9 @@ pub trait Environment: 'static + Copy + Clone + fmt::Debug + fmt::Display + Eq +
         <Self::Network as console::Environment>::halt(message)
     }
 
+    /// Returns the constraint limit for the circuit, if one exists.
+    fn get_constraint_limit() -> Option<u64>;
+
     /// Sets the constraint limit for the circuit.
     fn set_constraint_limit(limit: Option<u64>);
 

@@ -258,6 +258,11 @@ impl Environment for Circuit {
         panic!("{}", &error)
     }
 
+    /// Returns the constraint limit for the circuit, if one exists.
+    fn get_constraint_limit() -> Option<u64> {
+        CONSTRAINT_LIMIT.with(|current_limit| current_limit.get())
+    }
+
     /// Sets the constraint limit for the circuit.
     fn set_constraint_limit(limit: Option<u64>) {
         CONSTRAINT_LIMIT.with(|current_limit| current_limit.replace(limit));
