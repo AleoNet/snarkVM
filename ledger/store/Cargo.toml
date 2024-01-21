@@ -79,8 +79,8 @@ package = "snarkvm-synthesizer-snark"
 path = "../../synthesizer/snark"
 version = "=0.16.17"
 
-[dependencies.aleo-std]
-version = "0.1.24"
+[dependencies.aleo-std-storage]
+version = "0.1.7"
 default-features = false
 
 [dependencies.anyhow]

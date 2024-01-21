@@ -23,7 +23,7 @@ use console::{
 };
 use ledger_block::Output;
 
-use aleo_std::StorageMode;
+use aleo_std_storage::StorageMode;
 use anyhow::Result;
 use std::borrow::Cow;
 
@@ -70,8 +70,8 @@ pub trait OutputStorage<N: Network>: Clone + Send + Sync {
     /// Returns the future map.
     fn future_map(&self) -> &Self::FutureMap;
 
-    /// Returns the optional development ID.
-    fn dev(&self) -> Option<u16>;
+    /// Returns the storage mode.
+    fn storage_mode(&self) -> &StorageMode;
 
     /// Starts an atomic batch write operation.
     fn start_atomic(&self) {
@@ -402,9 +402,9 @@ impl<N: Network, O: OutputStorage<N>> OutputStore<N, O> {
         self.storage.finish_atomic()
     }
 
-    /// Returns the optional development ID.
-    pub fn dev(&self) -> Option<u16> {
-        self.storage.dev()
+    /// Returns the storage mode.
+    pub fn storage_mode(&self) -> &StorageMode {
+        self.storage.storage_mode()
     }
 }
 

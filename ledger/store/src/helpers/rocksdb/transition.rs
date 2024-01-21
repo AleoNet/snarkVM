@@ -26,7 +26,7 @@ use console::{
     types::{Field, Group},
 };
 
-use aleo_std::StorageMode;
+use aleo_std_storage::StorageMode;
 
 /// A database transition storage.
 #[derive(Clone)]
@@ -125,8 +125,8 @@ pub struct InputDB<N: Network> {
     record_tag: DataMap<Field<N>, Field<N>>,
     /// The mapping of `external commitment` to `()`. Note: This is **not** the record commitment.
     external_record: DataMap<Field<N>, ()>,
-    /// The optional development ID.
-    dev: Option<u16>,
+    /// The storage mode.
+    storage_mode: StorageMode,
 }
 
 #[rustfmt::skip]
@@ -142,9 +142,6 @@ impl<N: Network> InputStorage<N> for InputDB<N> {
 
     /// Initializes the transition input storage.
     fn open<S: Clone + Into<StorageMode>>(storage: S) -> Result<Self> {
-        // Retrieve the development ID.
-        let dev = storage.clone().into().dev();
-
         Ok(Self {
             id_map: rocksdb::RocksDB::open_map(N::ID, storage.clone(), MapID::TransitionInput(TransitionInputMap::ID))?,
             reverse_id_map: rocksdb::RocksDB::open_map(N::ID, storage.clone(), MapID::TransitionInput(TransitionInputMap::ReverseID))?,
@@ -153,8 +150,8 @@ impl<N: Network> InputStorage<N> for InputDB<N> {
             private: rocksdb::RocksDB::open_map(N::ID, storage.clone(), MapID::TransitionInput(TransitionInputMap::Private))?,
             record: rocksdb::RocksDB::open_map(N::ID, storage.clone(), MapID::TransitionInput(TransitionInputMap::Record))?,
             record_tag: rocksdb::RocksDB::open_map(N::ID, storage.clone(), MapID::TransitionInput(TransitionInputMap::RecordTag))?,
-            external_record: rocksdb::RocksDB::open_map(N::ID, storage, MapID::TransitionInput(TransitionInputMap::ExternalRecord))?,
-            dev,
+            external_record: rocksdb::RocksDB::open_map(N::ID, storage.clone(), MapID::TransitionInput(TransitionInputMap::ExternalRecord))?,
+            storage_mode: storage.into(),
         })
     }
 
@@ -198,9 +195,9 @@ impl<N: Network> InputStorage<N> for InputDB<N> {
         &self.external_record
     }
 
-    /// Returns the optional development ID.
-    fn dev(&self) -> Option<u16> {
-        self.dev
+    /// Returns the storage mode.
+    fn storage_mode(&self) -> &StorageMode {
+        &self.storage_mode
     }
 }
 
@@ -226,8 +223,8 @@ pub struct OutputDB<N: Network> {
     external_record: DataMap<Field<N>, ()>,
     /// The mapping of `future hash` to `(optional) future`.
     future: DataMap<Field<N>, Option<Future<N>>>,
-    /// The optional development ID.
-    dev: Option<u16>,
+    /// The storage mode.
+    storage_mode: StorageMode,
 }
 
 #[rustfmt::skip]
@@ -244,9 +241,6 @@ impl<N: Network> OutputStorage<N> for OutputDB<N> {
 
     /// Initializes the transition output storage.
     fn open<S: Clone + Into<StorageMode>>(storage: S) -> Result<Self> {
-        // Retrieve the development ID.
-        let dev = storage.clone().into().dev();
-
         Ok(Self {
             id_map: rocksdb::RocksDB::open_map(N::ID, storage.clone(), MapID::TransitionOutput(TransitionOutputMap::ID))?,
             reverse_id_map: rocksdb::RocksDB::open_map(N::ID, storage.clone(), MapID::TransitionOutput(TransitionOutputMap::ReverseID))?,
@@ -256,8 +250,8 @@ impl<N: Network> OutputStorage<N> for OutputDB<N> {
             record: rocksdb::RocksDB::open_map(N::ID, storage.clone(), MapID::TransitionOutput(TransitionOutputMap::Record))?,
             record_nonce: rocksdb::RocksDB::open_map(N::ID, storage.clone(), MapID::TransitionOutput(TransitionOutputMap::RecordNonce))?,
             external_record: rocksdb::RocksDB::open_map(N::ID, storage.clone(), MapID::TransitionOutput(TransitionOutputMap::ExternalRecord))?,
-            future: rocksdb::RocksDB::open_map(N::ID, storage, MapID::TransitionOutput(TransitionOutputMap::Future))?,
-            dev,
+            future: rocksdb::RocksDB::open_map(N::ID, storage.clone(), MapID::TransitionOutput(TransitionOutputMap::Future))?,
+            storage_mode: storage.into(),
         })
     }
 
@@ -306,8 +300,8 @@ impl<N: Network> OutputStorage<N> for OutputDB<N> {
         &self.future
     }
 
-    /// Returns the optional development ID.
-    fn dev(&self) -> Option<u16> {
-        self.dev
+    /// Returns the storage mode.
+    fn storage_mode(&self) -> &StorageMode {
+        &self.storage_mode
     }
 }

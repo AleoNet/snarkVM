@@ -20,7 +20,7 @@ use crate::{
 };
 use console::prelude::*;
 
-use aleo_std::StorageMode;
+use aleo_std_storage::StorageMode;
 
 /// An in-memory consensus storage.
 #[derive(Clone)]

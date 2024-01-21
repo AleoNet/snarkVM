@@ -30,7 +30,7 @@ use ledger_authority::Authority;
 use ledger_block::{Header, Ratifications, Rejected};
 use ledger_coinbase::{CoinbaseSolution, PuzzleCommitment};
 
-use aleo_std::StorageMode;
+use aleo_std_storage::StorageMode;
 
 /// A RocksDB block storage.
 #[derive(Clone)]

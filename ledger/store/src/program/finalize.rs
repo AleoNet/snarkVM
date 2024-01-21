@@ -26,7 +26,7 @@ use console::{
 };
 use synthesizer_program::{FinalizeOperation, FinalizeStoreTrait};
 
-use aleo_std::StorageMode;
+use aleo_std_storage::StorageMode;
 use anyhow::Result;
 use core::marker::PhantomData;
 use indexmap::IndexSet;
@@ -92,8 +92,8 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
     /// Returns the key-value map.
     fn key_value_map(&self) -> &Self::KeyValueMap;
 
-    /// Returns the optional development ID.
-    fn dev(&self) -> Option<u16>;
+    /// Returns the storage mode.
+    fn storage_mode(&self) -> &StorageMode;
 
     /// Starts an atomic batch write operation.
     fn start_atomic(&self) {
@@ -582,9 +582,9 @@ impl<N: Network, P: FinalizeStorage<N>> FinalizeStore<N, P> {
         self.storage.finish_atomic()
     }
 
-    /// Returns the optional development ID.
-    pub fn dev(&self) -> Option<u16> {
-        self.storage.dev()
+    /// Returns the storage mode.
+    pub fn storage_mode(&self) -> &StorageMode {
+        self.storage.storage_mode()
     }
 }
 

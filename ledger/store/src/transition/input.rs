@@ -23,7 +23,7 @@ use console::{
 };
 use ledger_block::Input;
 
-use aleo_std::StorageMode;
+use aleo_std_storage::StorageMode;
 use anyhow::Result;
 use std::borrow::Cow;
 
@@ -66,8 +66,8 @@ pub trait InputStorage<N: Network>: Clone + Send + Sync {
     /// Returns the external record map.
     fn external_record_map(&self) -> &Self::ExternalRecordMap;
 
-    /// Returns the optional development ID.
-    fn dev(&self) -> Option<u16>;
+    /// Returns the storage mode.
+    fn storage_mode(&self) -> &StorageMode;
 
     /// Starts an atomic batch write operation.
     fn start_atomic(&self) {
@@ -379,9 +379,9 @@ impl<N: Network, I: InputStorage<N>> InputStore<N, I> {
         self.storage.finish_atomic()
     }
 
-    /// Returns the optional development ID.
-    pub fn dev(&self) -> Option<u16> {
-        self.storage.dev()
+    /// Returns the storage mode.
+    pub fn storage_mode(&self) -> &StorageMode {
+        self.storage.storage_mode()
     }
 }
 

@@ -31,7 +31,7 @@ use console::{
 };
 use ledger_block::{Input, Output, Transition};
 
-use aleo_std::StorageMode;
+use aleo_std_storage::StorageMode;
 use anyhow::Result;
 use std::borrow::Cow;
 
@@ -70,10 +70,10 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
     /// Returns the reverse `tcm` map.
     fn reverse_tcm_map(&self) -> &Self::ReverseTCMMap;
 
-    /// Returns the optional development ID.
-    fn dev(&self) -> Option<u16> {
-        debug_assert!(self.input_store().dev() == self.output_store().dev());
-        self.input_store().dev()
+    /// Returns the storage mode.
+    fn storage_mode(&self) -> &StorageMode {
+        debug_assert!(self.input_store().storage_mode() == self.output_store().storage_mode());
+        self.input_store().storage_mode()
     }
 
     /// Starts an atomic batch write operation.
@@ -346,9 +346,9 @@ impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
         self.storage.finish_atomic()
     }
 
-    /// Returns the optional development ID.
-    pub fn dev(&self) -> Option<u16> {
-        self.storage.dev()
+    /// Returns the storage mode.
+    pub fn storage_mode(&self) -> &StorageMode {
+        self.storage.storage_mode()
     }
 }
 
