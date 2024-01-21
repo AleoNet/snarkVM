@@ -33,9 +33,11 @@ impl<N: Network> Stack<N> {
         // Retrieve the input types.
         let input_types = self.get_function(&function_name)?.input_types();
         lap!(timer, "Retrieve the input types");
+        // Set is_root to true.
+        let is_root = true;
 
         // Compute the request.
-        let request = Request::sign(private_key, program_id, function_name, inputs, &input_types, rng)?;
+        let request = Request::sign(private_key, program_id, function_name, inputs, &input_types, is_root, rng)?;
         lap!(timer, "Compute the request");
         // Initialize the authorization.
         let authorization = Authorization::new(request.clone());

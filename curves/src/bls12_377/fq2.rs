@@ -21,7 +21,7 @@ use crate::bls12_377::Fq;
 
 pub type Fq2 = Fp2<Fq2Parameters>;
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Fq2Parameters;
 
 impl Fp2Parameters for Fq2Parameters {

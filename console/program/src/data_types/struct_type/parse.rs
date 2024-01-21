@@ -70,7 +70,7 @@ impl<N: Network> Parser for StructType<N> {
             Ok(members)
         })(string)?;
         // Return the struct.
-        Ok((string, Self { name, members: IndexMap::from_iter(members.into_iter()) }))
+        Ok((string, Self { name, members: IndexMap::from_iter(members) }))
     }
 }
 
@@ -122,13 +122,10 @@ mod tests {
     fn test_parse() -> Result<()> {
         let expected = StructType::<CurrentNetwork> {
             name: Identifier::from_str("message")?,
-            members: IndexMap::from_iter(
-                vec![
-                    (Identifier::from_str("sender")?, PlaintextType::from_str("address")?),
-                    (Identifier::from_str("amount")?, PlaintextType::from_str("u64")?),
-                ]
-                .into_iter(),
-            ),
+            members: IndexMap::from_iter(vec![
+                (Identifier::from_str("sender")?, PlaintextType::from_str("address")?),
+                (Identifier::from_str("amount")?, PlaintextType::from_str("u64")?),
+            ]),
         };
 
         let (remainder, candidate) = StructType::<CurrentNetwork>::parse(

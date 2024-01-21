@@ -22,48 +22,38 @@ use rand::{
 use serde::{Deserialize, Serialize};
 use std::{
     cmp::Ordering,
+    fmt::Debug,
+    hash::Hash,
     io::{Read, Result as IoResult, Write},
     ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign},
 };
 
-pub trait Fp12Parameters: 'static + Send + Sync + Copy {
+pub trait Fp12Parameters: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + Hash + Send + Sync {
     type Fp6Params: Fp6Parameters;
 
     /// Coefficients for the Frobenius automorphism.
     const FROBENIUS_COEFF_FP12_C1: [Fp2<Fp2Params<Self>>; 12];
 }
 
+type Fp2Params<P> = <<P as Fp12Parameters>::Fp6Params as Fp6Parameters>::Fp2Params;
+
 /// An element of Fp12, represented by c0 + c1 * v
-#[derive(Derivative, Serialize, Deserialize)]
-#[derivative(
-    Default(bound = "P: Fp12Parameters"),
-    Hash(bound = "P: Fp12Parameters"),
-    Clone(bound = "P: Fp12Parameters"),
-    Copy(bound = "P: Fp12Parameters"),
-    Debug(bound = "P: Fp12Parameters"),
-    PartialEq(bound = "P: Fp12Parameters"),
-    Eq(bound = "P: Fp12Parameters")
-)]
-#[must_use]
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Fp12<P: Fp12Parameters> {
     pub c0: Fp6<P::Fp6Params>,
     pub c1: Fp6<P::Fp6Params>,
 }
 
-type Fp2Params<P> = <<P as Fp12Parameters>::Fp6Params as Fp6Parameters>::Fp2Params;
+impl<P: Fp12Parameters> Fp12<P> {
+    /// Initializes an element of `Fp12` from two `Fp6` elements.
+    pub const fn new(c0: Fp6<P::Fp6Params>, c1: Fp6<P::Fp6Params>) -> Self {
+        Self { c0, c1 }
+    }
+}
 
 impl<P: Fp12Parameters> Fp12<P> {
-    /// Multiply by quadratic nonresidue v.
-    #[inline(always)]
-    pub(crate) fn mul_fp6_by_nonresidue(fe: &Fp6<P::Fp6Params>) -> Fp6<P::Fp6Params> {
-        let new_c0 = P::Fp6Params::mul_fp2_by_nonresidue(&fe.c2);
-        let new_c1 = fe.c0;
-        let new_c2 = fe.c1;
-        Fp6::new(new_c0, new_c1, new_c2)
-    }
-
-    pub fn new(c0: Fp6<P::Fp6Params>, c1: Fp6<P::Fp6Params>) -> Self {
-        Self { c0, c1 }
+    pub fn conjugate(&mut self) {
+        self.c1 = self.c1.neg();
     }
 
     pub fn mul_by_fp(&mut self, element: &<<P::Fp6Params as Fp6Parameters>::Fp2Params as Fp2Parameters>::Fp) {
@@ -71,8 +61,13 @@ impl<P: Fp12Parameters> Fp12<P> {
         self.c1.mul_by_fp(element);
     }
 
-    pub fn conjugate(&mut self) {
-        self.c1 = self.c1.neg();
+    /// Multiply by quadratic nonresidue v.
+    #[inline(always)]
+    pub(crate) fn mul_fp6_by_nonresidue(fe: &Fp6<P::Fp6Params>) -> Fp6<P::Fp6Params> {
+        let new_c0 = P::Fp6Params::mul_fp2_by_nonresidue(&fe.c2);
+        let new_c1 = fe.c0;
+        let new_c2 = fe.c1;
+        Fp6::new(new_c0, new_c1, new_c2)
     }
 
     pub fn mul_by_034(&mut self, c0: &Fp2<Fp2Params<P>>, c3: &Fp2<Fp2Params<P>>, c4: &Fp2<Fp2Params<P>>) {

@@ -58,7 +58,7 @@ impl<N: Network> BatchHeader<N> {
     /// The maximum number of certificates in a batch.
     pub const MAX_CERTIFICATES: u16 = 200;
     /// The maximum number of rounds to store before garbage collecting.
-    pub const MAX_GC_ROUNDS: u64 = 100;
+    pub const MAX_GC_ROUNDS: usize = 100;
     /// The maximum number of transmissions in a batch.
     /// Note: This limit is set to 50 as part of safety measures to prevent DoS attacks.
     /// This limit can be increased in the future as performance improves. Alternatively,
@@ -96,7 +96,7 @@ impl<N: Network> BatchHeader<N> {
         // Ensure that the number of transmissions is within bounds.
         ensure!(
             transmission_ids.len() <= Self::MAX_TRANSMISSIONS_PER_BATCH,
-            "Invalid number of transmission ids ({})",
+            "Invalid number of transmission IDs ({})",
             transmission_ids.len()
         );
         // Ensure that the number of previous certificate IDs is within bounds.
@@ -165,7 +165,7 @@ impl<N: Network> BatchHeader<N> {
         // Ensure that the number of transmissions is within bounds.
         ensure!(
             transmission_ids.len() <= Self::MAX_TRANSMISSIONS_PER_BATCH,
-            "Invalid number of transmission ids ({})",
+            "Invalid number of transmission IDs ({})",
             transmission_ids.len()
         );
         // Ensure that the number of previous certificate IDs is within bounds.

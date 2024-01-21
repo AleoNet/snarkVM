@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-utilities"
-version = "0.16.15"
+version = "0.16.17"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Utilities for a decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -25,11 +25,11 @@ edition = "2021"
 
 [dependencies.snarkvm-utilities-derives]
 path = "./derives"
-version = "=0.16.15"
+version = "=0.16.17"
 optional = true
 
 [dependencies.aleo-std]
-version = "0.1.18"
+version = "0.1.24"
 optional = true
 default-features = false
 

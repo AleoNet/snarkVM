@@ -91,7 +91,9 @@ impl<F: Field> TestCircuit<F> {
         num_variables: usize,
         rng: &mut R,
     ) -> (Self, Vec<F>) {
-        let mut public_inputs: Vec<F> = Vec::with_capacity(mul_depth);
+        let mut public_inputs: Vec<F> = Vec::with_capacity(1 + mul_depth);
+        public_inputs.push(F::one());
+
         let a = F::rand(rng);
         let b = F::rand(rng);
 
@@ -114,7 +116,8 @@ impl<F: Field> TestCircuit<F> {
         num_constraints: usize,
         num_variables: usize,
     ) -> (Self, Vec<F>) {
-        let mut public_inputs: Vec<F> = Vec::with_capacity(mul_depth);
+        let mut public_inputs: Vec<F> = Vec::with_capacity(1 + mul_depth);
+        public_inputs.push(F::one());
         let a = F::from(a);
         let b = F::from(b);
         for j in 1..(mul_depth + 1) {

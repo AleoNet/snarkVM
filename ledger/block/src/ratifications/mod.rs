@@ -51,7 +51,7 @@ impl<N: Network> TryFrom<Vec<Ratify<N>>> for Ratifications<N> {
 
     /// Initializes from a given ratifications list.
     fn try_from(ratifications: Vec<Ratify<N>>) -> Result<Self> {
-        Self::try_from_iter(ratifications.into_iter())
+        Self::try_from_iter(ratifications)
     }
 }
 

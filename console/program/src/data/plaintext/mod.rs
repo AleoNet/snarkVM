@@ -93,102 +93,84 @@ mod tests {
 
         // Test a random struct with literal members.
         run_test(Plaintext::<CurrentNetwork>::Struct(
-            IndexMap::from_iter(
-                vec![
-                    (Identifier::from_str("a")?, Plaintext::<CurrentNetwork>::from_str("true")?),
-                    (
-                        Identifier::from_str("b")?,
-                        Plaintext::<CurrentNetwork>::Literal(
-                            Literal::Field(Field::new(Uniform::rand(&mut rng))),
-                            OnceCell::new(),
-                        ),
+            IndexMap::from_iter(vec![
+                (Identifier::from_str("a")?, Plaintext::<CurrentNetwork>::from_str("true")?),
+                (
+                    Identifier::from_str("b")?,
+                    Plaintext::<CurrentNetwork>::Literal(
+                        Literal::Field(Field::new(Uniform::rand(&mut rng))),
+                        OnceCell::new(),
                     ),
-                ]
-                .into_iter(),
-            ),
+                ),
+            ]),
             OnceCell::new(),
         ));
 
         // Test a random struct with array members.
         run_test(Plaintext::<CurrentNetwork>::Struct(
-            IndexMap::from_iter(
-                vec![
-                    (Identifier::from_str("a")?, Plaintext::<CurrentNetwork>::from_str("true")?),
-                    (
-                        Identifier::from_str("b")?,
-                        Plaintext::<CurrentNetwork>::Array(
-                            vec![
-                                Plaintext::<CurrentNetwork>::from_str("true")?,
-                                Plaintext::<CurrentNetwork>::from_str("false")?,
-                            ],
-                            OnceCell::new(),
-                        ),
+            IndexMap::from_iter(vec![
+                (Identifier::from_str("a")?, Plaintext::<CurrentNetwork>::from_str("true")?),
+                (
+                    Identifier::from_str("b")?,
+                    Plaintext::<CurrentNetwork>::Array(
+                        vec![
+                            Plaintext::<CurrentNetwork>::from_str("true")?,
+                            Plaintext::<CurrentNetwork>::from_str("false")?,
+                        ],
+                        OnceCell::new(),
                     ),
-                ]
-                .into_iter(),
-            ),
+                ),
+            ]),
             OnceCell::new(),
         ));
 
         // Test random deeply-nested struct.
         run_test(Plaintext::<CurrentNetwork>::Struct(
-            IndexMap::from_iter(
-                vec![
-                    (Identifier::from_str("a")?, Plaintext::<CurrentNetwork>::from_str("true")?),
-                    (
-                        Identifier::from_str("b")?,
-                        Plaintext::<CurrentNetwork>::Struct(
-                            IndexMap::from_iter(
-                                vec![
-                                    (Identifier::from_str("c")?, Plaintext::<CurrentNetwork>::from_str("true")?),
-                                    (
-                                        Identifier::from_str("d")?,
-                                        Plaintext::<CurrentNetwork>::Struct(
-                                            IndexMap::from_iter(
-                                                vec![
-                                                    (
-                                                        Identifier::from_str("e")?,
-                                                        Plaintext::<CurrentNetwork>::from_str("true")?,
-                                                    ),
-                                                    (
-                                                        Identifier::from_str("f")?,
-                                                        Plaintext::<CurrentNetwork>::Literal(
-                                                            Literal::Field(Field::new(Uniform::rand(&mut rng))),
-                                                            OnceCell::new(),
-                                                        ),
-                                                    ),
-                                                ]
-                                                .into_iter(),
+            IndexMap::from_iter(vec![
+                (Identifier::from_str("a")?, Plaintext::<CurrentNetwork>::from_str("true")?),
+                (
+                    Identifier::from_str("b")?,
+                    Plaintext::<CurrentNetwork>::Struct(
+                        IndexMap::from_iter(vec![
+                            (Identifier::from_str("c")?, Plaintext::<CurrentNetwork>::from_str("true")?),
+                            (
+                                Identifier::from_str("d")?,
+                                Plaintext::<CurrentNetwork>::Struct(
+                                    IndexMap::from_iter(vec![
+                                        (Identifier::from_str("e")?, Plaintext::<CurrentNetwork>::from_str("true")?),
+                                        (
+                                            Identifier::from_str("f")?,
+                                            Plaintext::<CurrentNetwork>::Literal(
+                                                Literal::Field(Field::new(Uniform::rand(&mut rng))),
+                                                OnceCell::new(),
                                             ),
-                                            OnceCell::new(),
                                         ),
-                                    ),
-                                    (
-                                        Identifier::from_str("g")?,
-                                        Plaintext::Array(
-                                            vec![
-                                                Plaintext::<CurrentNetwork>::from_str("true")?,
-                                                Plaintext::<CurrentNetwork>::from_str("false")?,
-                                            ],
-                                            OnceCell::new(),
-                                        ),
-                                    ),
-                                ]
-                                .into_iter(),
+                                    ]),
+                                    OnceCell::new(),
+                                ),
                             ),
-                            OnceCell::new(),
-                        ),
+                            (
+                                Identifier::from_str("g")?,
+                                Plaintext::Array(
+                                    vec![
+                                        Plaintext::<CurrentNetwork>::from_str("true")?,
+                                        Plaintext::<CurrentNetwork>::from_str("false")?,
+                                    ],
+                                    OnceCell::new(),
+                                ),
+                            ),
+                        ]),
+                        OnceCell::new(),
                     ),
-                    (
-                        Identifier::from_str("h")?,
-                        Plaintext::<CurrentNetwork>::Literal(
-                            Literal::Field(Field::new(Uniform::rand(&mut rng))),
-                            OnceCell::new(),
-                        ),
+                ),
+                (
+                    Identifier::from_str("h")?,
+                    Plaintext::<CurrentNetwork>::Literal(
+                        Literal::Field(Field::new(Uniform::rand(&mut rng))),
+                        OnceCell::new(),
                     ),
-                ]
-                .into_iter(),
-            ),
+                ),
+            ]),
             OnceCell::new(),
         ));
 
