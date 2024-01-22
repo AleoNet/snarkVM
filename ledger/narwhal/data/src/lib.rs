@@ -135,9 +135,9 @@ impl<T: FromBytes + ToBytes + Send + 'static> ToBytes for Data<T> {
         // Write the data.
         match self {
             Self::Object(object) => {
-                // FIXME(ljedrz): see if we can omit this intermediate allocation.
-                let mut buffer = Vec::new();
-                object.write_le(&mut buffer)?;
+                // Serialize the object.
+                let buffer =
+                    object.to_bytes_le().map_err(|err| error(format!("Failed to serialize a Data::Object: {err}")))?;
                 // Write the object.
                 u32::try_from(buffer.len()).map_err(error)?.write_le(&mut writer)?;
                 // Write the object.
