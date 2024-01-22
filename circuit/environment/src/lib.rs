@@ -29,6 +29,7 @@ pub mod helpers;
 pub use helpers::*;
 
 pub mod macros;
+#[allow(unused_imports)]
 pub use macros::*;
 
 pub mod traits;

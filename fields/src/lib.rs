@@ -42,6 +42,7 @@ mod legendre;
 pub use legendre::*;
 
 mod to_field_vec;
+#[allow(unused_imports)]
 pub use to_field_vec::*;
 
 pub mod traits;
