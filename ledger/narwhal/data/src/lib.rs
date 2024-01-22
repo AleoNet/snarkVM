@@ -119,7 +119,8 @@ impl<T: FromBytes + ToBytes + Send + 'static> FromBytes for Data<T> {
             return Err(error(format!("Failed to deserialize data ({num_bytes} bytes)")));
         }
         // Read the bytes.
-        let bytes = (0..num_bytes).map(|_| u8::read_le(&mut reader)).collect::<IoResult<Vec<u8>>>()?;
+        let mut bytes = Vec::new();
+        (&mut reader).take(num_bytes as u64).read_to_end(&mut bytes)?;
         // Return the data.
         Ok(Self::Buffer(Bytes::from(bytes)))
     }
