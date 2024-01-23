@@ -1105,7 +1105,9 @@ function transfer:
     input r3 as [address; 10u32].private;
     call credits.aleo/transfer_private r0 r3[0u32] r1 into r4 r5;
     call credits.aleo/transfer_private r5 r3[0u32] r2 into r6 r7;
-").unwrap();
+",
+        )
+        .unwrap();
 
         let deployment = vm.deploy(&private_key, &program, None, 0, None, rng).unwrap();
         assert!(vm.check_transaction(&deployment, None, rng).is_ok());
