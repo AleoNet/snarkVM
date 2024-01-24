@@ -1843,11 +1843,11 @@ finalize compute:
 
         // Construct the public balances.
         let mut public_balances = IndexMap::new();
-        for (private_key, (amount, _)) in &validators {
+        for (private_key, (_amount, _)) in &validators {
             let address = Address::try_from(private_key).unwrap();
             public_balances.insert(address, 0);
         }
-        for (private_key, (validator, amount)) in &delegators {
+        for (private_key, (_validator, _amount)) in &delegators {
             let address = Address::try_from(private_key).unwrap();
             public_balances.insert(address, 10_000_000u64);
         }
@@ -1864,7 +1864,7 @@ finalize compute:
         println!("[VM1] Generating the genesis block.");
 
         let genesis_1 = vm_1
-            .genesis_quorum(&validators.keys().nth(0).unwrap(), committee, public_balances, bonded_balances, rng)
+            .genesis_quorum(validators.keys().next().unwrap(), committee, public_balances, bonded_balances, rng)
             .unwrap();
 
         println!("[VM1] Adding the genesis block to the VM.");
@@ -1897,7 +1897,7 @@ finalize compute:
 
         println!("[VM1] Generating the next block.");
         let next_block =
-            sample_next_block(&vm_1, &validators.keys().nth(0).unwrap(), &transactions, &genesis_1, &mut vec![], rng)
+            sample_next_block(&vm_1, validators.keys().next().unwrap(), &transactions, &genesis_1, &mut vec![], rng)
                 .unwrap();
 
         println!("[VM1] Adding the next block to the VM.");
@@ -1919,7 +1919,7 @@ finalize compute:
             committee_map.insert(address, *amount);
         }
         for (private_key, (validator, amount)) in &delegators {
-            let address = Address::try_from(private_key).unwrap();
+            let _address = Address::try_from(private_key).unwrap();
             let total_amount = committee_map.get(validator).unwrap() + amount;
             committee_map.insert(*validator, total_amount);
         }
@@ -1929,11 +1929,11 @@ finalize compute:
 
         // Construct the public balances.
         let mut public_balances = IndexMap::new();
-        for (private_key, (amount, _)) in &validators {
+        for (private_key, (_amount, _)) in &validators {
             let address = Address::try_from(private_key).unwrap();
             public_balances.insert(address, 0);
         }
-        for (private_key, (validator, amount)) in &delegators {
+        for (private_key, (_validator, _amount)) in &delegators {
             let address = Address::try_from(private_key).unwrap();
             public_balances.insert(address, 0);
         }
@@ -1955,7 +1955,7 @@ finalize compute:
 
         // Construct the genesis block.
         let genesis_2 = vm_2
-            .genesis_quorum(&validators.keys().next().unwrap(), committee, public_balances, bonded_balances, rng)
+            .genesis_quorum(validators.keys().next().unwrap(), committee, public_balances, bonded_balances, rng)
             .unwrap();
 
         println!("[VM2] Adding the genesis block to the VM.");
