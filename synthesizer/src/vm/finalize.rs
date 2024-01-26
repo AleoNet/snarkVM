@@ -1807,7 +1807,7 @@ finalize compute:
         let validators: IndexMap<_, _> = (0..NUM_VALIDATORS)
             .map(|_| {
                 let private_key = PrivateKey::new(rng).unwrap();
-                let amount = 1_000_000_000_000u64;
+                let amount = MIN_VALIDATOR_STAKE;
                 let is_open = true;
                 (private_key, (amount, is_open))
             })
@@ -1818,7 +1818,7 @@ finalize compute:
             .map(|i| {
                 let private_key = PrivateKey::new(rng).unwrap();
                 let validator = Address::try_from(validators.keys().nth(i % NUM_VALIDATORS).unwrap()).unwrap();
-                let amount = 10_000_000u64;
+                let amount = MIN_DELEGATOR_STAKE;
                 (private_key, (validator, amount))
             })
             .collect();
@@ -1850,7 +1850,7 @@ finalize compute:
         let mut public_balances = IndexMap::new();
         for (private_key, (_validator, _amount)) in &delegators {
             let address = Address::try_from(private_key).unwrap();
-            let amount = 10_000_000u64 + 20_000_000u64;
+            let amount = MIN_DELEGATOR_STAKE * 2;
             public_balances.insert(address, amount);
             allocated_supply += amount;
         }
@@ -2025,5 +2025,223 @@ finalize compute:
             .map(|(k, _)| k.to_string())
             .collect::<std::collections::HashSet<_>>();
         assert_eq!(account_1, account_2);
+    }
+
+    #[test]
+    fn test_genesis_ratify_with_insufficient_validator_balance() {
+        // Sample an RNG.
+        let rng = &mut TestRng::default();
+
+        // Initialize the VM.
+        let vm =
+            VM::from(ConsensusStore::<CurrentNetwork, ConsensusMemory<CurrentNetwork>>::open(None).unwrap()).unwrap();
+
+        // Attempt to construct a genesis quorum, with a validator with an insufficient amount.
+        let mut validators = (0..3)
+            .map(|_| {
+                let private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+                let address = Address::try_from(&private_key).unwrap();
+                let amount = MIN_VALIDATOR_STAKE;
+                let is_open = true;
+                (address, (amount, is_open))
+            })
+            .collect::<IndexMap<_, _>>();
+        validators.insert(Address::try_from(PrivateKey::new(rng).unwrap()).unwrap(), (MIN_VALIDATOR_STAKE - 1, true));
+
+        // Construct the committee.
+        let result = Committee::new_genesis(validators);
+        assert!(result.is_err());
+
+        // Track the allocated amount.
+        let mut allocated_amount = 0;
+
+        // Reset the validators.
+        let validators = (0..4)
+            .map(|_| {
+                let private_key = PrivateKey::new(rng).unwrap();
+                let amount = MIN_VALIDATOR_STAKE;
+                let is_open = true;
+                (private_key, (amount, is_open))
+            })
+            .collect::<IndexMap<_, _>>();
+
+        // Construct the committee.
+        let committee = Committee::new_genesis(
+            validators
+                .iter()
+                .map(|(private_key, (amount, _))| {
+                    let address = Address::try_from(private_key).unwrap();
+                    allocated_amount += *amount;
+                    (address, (*amount, true))
+                })
+                .collect(),
+        )
+        .unwrap();
+
+        // Construct the public balances, allocating the remaining supply to rest of the validators.
+        let mut public_balances = IndexMap::new();
+        let remaining_supply = <CurrentNetwork as Network>::STARTING_SUPPLY - allocated_amount;
+        for (private_key, _) in &validators {
+            let address = Address::try_from(private_key).unwrap();
+            let amount = remaining_supply / validators.len() as u64;
+            allocated_amount += amount;
+            public_balances.insert(address, amount);
+        }
+        let address = Address::try_from(validators.keys().next().unwrap()).unwrap();
+        let amount = <CurrentNetwork as Network>::STARTING_SUPPLY - allocated_amount;
+        public_balances.entry(address).and_modify(|balance| *balance += amount).or_insert(amount);
+
+        // Construct the bonded balances.
+        let bonded_balances = validators
+            .iter()
+            .map(|(private_key, (amount, _))| {
+                let address = Address::try_from(private_key).unwrap();
+                (address, (address, *amount))
+            })
+            .collect();
+
+        // Construct the genesis block, which should pass.
+        let block = vm
+            .genesis_quorum(validators.keys().next().unwrap(), committee, public_balances, bonded_balances, rng)
+            .unwrap();
+
+        // Add the block.
+        vm.add_next_block(&block).unwrap();
+    }
+
+    #[test]
+    fn test_genesis_ratify_with_insufficient_delegator_balance() {
+        // Sample an RNG.
+        let rng = &mut TestRng::default();
+
+        // Initialize the VM.
+        let vm =
+            VM::from(ConsensusStore::<CurrentNetwork, ConsensusMemory<CurrentNetwork>>::open(None).unwrap()).unwrap();
+
+        // Track the allocated amount.
+        let mut allocated_amount = 0;
+
+        // Attempt to construct a genesis quorum, with a delegator with an insufficient amount.
+        let validators = (0..4)
+            .map(|_| {
+                let private_key = PrivateKey::new(rng).unwrap();
+                let amount = MIN_VALIDATOR_STAKE;
+                let is_open = true;
+                (private_key, (amount, is_open))
+            })
+            .collect::<IndexMap<_, _>>();
+
+        let mut delegators = IndexMap::new();
+        delegators.insert(
+            PrivateKey::new(rng).unwrap(),
+            (Address::try_from(validators.keys().next().unwrap()).unwrap(), MIN_DELEGATOR_STAKE - 1),
+        );
+
+        // Construct the committee.
+        let mut committee_map = IndexMap::new();
+        for (private_key, (amount, _)) in &validators {
+            let address = Address::try_from(private_key).unwrap();
+            let amount = if address == Address::try_from(validators.keys().next().unwrap()).unwrap() {
+                *amount + MIN_DELEGATOR_STAKE - 1
+            } else {
+                *amount
+            };
+            committee_map.insert(address, (amount, true));
+            allocated_amount += amount;
+        }
+        let committee = Committee::new_genesis(committee_map).unwrap();
+
+        // Construct the public balances, allocating the remaining supply to rest of the validators.
+        let mut public_balances = IndexMap::new();
+        let remaining_supply = <CurrentNetwork as Network>::STARTING_SUPPLY - allocated_amount;
+        for (private_key, _) in &validators {
+            let address = Address::try_from(private_key).unwrap();
+            let amount = remaining_supply / validators.len() as u64;
+            allocated_amount += amount;
+            public_balances.insert(address, amount);
+        }
+        let address = Address::try_from(validators.keys().next().unwrap()).unwrap();
+        let amount = <CurrentNetwork as Network>::STARTING_SUPPLY - allocated_amount;
+        public_balances.entry(address).and_modify(|balance| *balance += amount).or_insert(amount);
+        let address = Address::try_from(delegators.keys().next().unwrap()).unwrap();
+        public_balances.insert(address, 0);
+
+        // Construct the bonded balances.
+        let bonded_balances = validators
+            .iter()
+            .map(|(private_key, (amount, _))| {
+                let address = Address::try_from(private_key).unwrap();
+                (address, (address, *amount))
+            })
+            .chain(delegators.iter().map(|(private_key, (validator, amount))| {
+                let address = Address::try_from(private_key).unwrap();
+                (address, (*validator, *amount))
+            }))
+            .collect();
+
+        // Construct the genesis block, which should fail.
+        let result =
+            vm.genesis_quorum(validators.keys().next().unwrap(), committee, public_balances, bonded_balances, rng);
+        assert!(result.is_err());
+
+        // Reset the delegators.
+        let mut delegators = IndexMap::new();
+        delegators.insert(
+            PrivateKey::new(rng).unwrap(),
+            (Address::try_from(validators.keys().next().unwrap()).unwrap(), MIN_DELEGATOR_STAKE),
+        );
+
+        // Track the allocated amount.
+        let mut allocated_amount = 0;
+
+        // Construct the committee.
+        let mut committee_map = IndexMap::new();
+        for (private_key, (amount, _)) in &validators {
+            let address = Address::try_from(private_key).unwrap();
+            let amount = if address == Address::try_from(validators.keys().next().unwrap()).unwrap() {
+                *amount + MIN_DELEGATOR_STAKE
+            } else {
+                *amount
+            };
+            committee_map.insert(address, (amount, true));
+            allocated_amount += amount;
+        }
+        let committee = Committee::new_genesis(committee_map).unwrap();
+
+        // Construct the public balances, allocating the remaining supply to rest of the validators.
+        let mut public_balances = IndexMap::new();
+        let remaining_supply = <CurrentNetwork as Network>::STARTING_SUPPLY - allocated_amount;
+        for (private_key, _) in &validators {
+            let address = Address::try_from(private_key).unwrap();
+            let amount = remaining_supply / validators.len() as u64;
+            allocated_amount += amount;
+            public_balances.insert(address, amount);
+        }
+        let address = Address::try_from(validators.keys().next().unwrap()).unwrap();
+        let amount = <CurrentNetwork as Network>::STARTING_SUPPLY - allocated_amount;
+        public_balances.entry(address).and_modify(|balance| *balance += amount).or_insert(amount);
+        let address = Address::try_from(delegators.keys().next().unwrap()).unwrap();
+        public_balances.insert(address, 0);
+
+        // Construct the bonded balances.
+        let bonded_balances = validators
+            .iter()
+            .map(|(private_key, (amount, _))| {
+                let address = Address::try_from(private_key).unwrap();
+                (address, (address, *amount))
+            })
+            .chain(delegators.iter().map(|(private_key, (validator, amount))| {
+                let address = Address::try_from(private_key).unwrap();
+                (address, (*validator, *amount))
+            }))
+            .collect();
+
+        // Construct the genesis block, which should pass.
+        let block = vm
+            .genesis_quorum(validators.keys().next().unwrap(), committee, public_balances, bonded_balances, rng)
+            .unwrap();
+
+        // Add the block.
+        vm.add_next_block(&block).unwrap();
     }
 }
