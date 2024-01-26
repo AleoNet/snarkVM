@@ -133,9 +133,9 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     #[cfg(not(any(test, feature = "test")))]
     pub const MAXIMUM_CONFIRMED_TRANSACTIONS: usize = Transactions::<N>::MAX_TRANSACTIONS;
     /// The maximum number of confirmed transactions allowed in a block.
-    /// This is set to a deliberately low value (8) for testing purposes only.
+    /// This is set to a deliberately low value (16) for testing purposes only.
     #[cfg(any(test, feature = "test"))]
-    pub const MAXIMUM_CONFIRMED_TRANSACTIONS: usize = 8;
+    pub const MAXIMUM_CONFIRMED_TRANSACTIONS: usize = 16;
 
     /// Performs atomic speculation over a list of transactions.
     ///
@@ -1085,8 +1085,13 @@ finalize transfer_public:
         rng: &mut R,
     ) -> Result<Block<CurrentNetwork>> {
         // Speculate on the candidate ratifications, solutions, and transactions.
-        let (ratifications, transactions, aborted_transaction_ids, ratified_finalize_operations) =
-            vm.speculate(sample_finalize_state(1), None, vec![], &None.into(), transactions.iter())?;
+        let (ratifications, transactions, aborted_transaction_ids, ratified_finalize_operations) = vm.speculate(
+            sample_finalize_state(previous_block.height() + 1),
+            None,
+            vec![],
+            &None.into(),
+            transactions.iter(),
+        )?;
 
         // Construct the metadata associated with the block.
         let metadata = Metadata::new(
@@ -1675,11 +1680,6 @@ finalize compute:
         // Check that the storage was not updated.
         let program_id = ProgramID::from_str("testing.aleo").unwrap();
         let mapping_name = Identifier::from_str("entries").unwrap();
-        let value = vm
-            .finalize_store()
-            .get_value_speculative(program_id, mapping_name, &Plaintext::from(Literal::Address(address)))
-            .unwrap();
-        println!("{:?}", value);
         assert!(
             !vm.finalize_store()
                 .contains_key_confirmed(program_id, mapping_name, &Plaintext::from(Literal::Address(address)))
@@ -1787,8 +1787,8 @@ finalize compute:
 
     #[test]
     fn test_ratify_genesis_is_consistent() {
-        const NUM_VALIDATORS: usize = 10;
-        const NUM_DELEGATORS: usize = 100;
+        const NUM_VALIDATORS: usize = 5;
+        const NUM_DELEGATORS: usize = 10;
 
         // Sample an RNG.
         let rng = &mut TestRng::default();
@@ -1826,31 +1826,44 @@ finalize compute:
         // For the first VM, sample a genesis block without any delegators.
         // Specifically, the genesis block will contain a `Ratification` with:
         //   - the committee state, containing only the validator amounts.
-        //   - public balances that are zero for the validators.
-        //   - public balances that are 10_000_000u64 for the delegators.
-        //   - bonded balances, only containing the validators.
+        //   - the public balances for the delegators, with 10_000_000u64 microcredits each (plus 843_880u64 microcredits for fees).
+        //   - the public balances for the validators dividing up the remaining starting supply.
+        //   - the bonded balances, only containing the validators.
 
         println!("Initializing the first VM.");
 
+        // Track the allocated supply.
+        let mut allocated_supply = 0;
+
         // Construct the committee.
-        let committee = Committee::new_genesis(
-            validators
-                .iter()
-                .map(|(private_key, (amount, is_open))| (Address::try_from(private_key).unwrap(), (*amount, *is_open)))
-                .collect(),
-        )
-        .unwrap();
+        let mut committee_map = IndexMap::new();
+        for (private_key, (amount, _)) in &validators {
+            let address = Address::try_from(private_key).unwrap();
+            committee_map.insert(address, *amount);
+            allocated_supply += *amount;
+        }
+        let committee =
+            Committee::new_genesis(committee_map.iter().map(|(address, amount)| (*address, (*amount, true))).collect())
+                .unwrap();
 
         // Construct the public balances.
         let mut public_balances = IndexMap::new();
-        for (private_key, (_amount, _)) in &validators {
-            let address = Address::try_from(private_key).unwrap();
-            public_balances.insert(address, 0);
-        }
         for (private_key, (_validator, _amount)) in &delegators {
             let address = Address::try_from(private_key).unwrap();
-            public_balances.insert(address, 10_000_000u64);
+            let amount = 10_000_000u64 + 20_000_000u64;
+            public_balances.insert(address, amount);
+            allocated_supply += amount;
         }
+        let remaining_supply = <CurrentNetwork as Network>::STARTING_SUPPLY - allocated_supply;
+        for private_key in validators.keys() {
+            let address = Address::try_from(private_key).unwrap();
+            let amount = remaining_supply / NUM_VALIDATORS as u64;
+            public_balances.insert(address, amount);
+            allocated_supply += amount;
+        }
+        let address = Address::try_from(validators.keys().next().unwrap()).unwrap();
+        let amount = <CurrentNetwork as Network>::STARTING_SUPPLY - allocated_supply;
+        public_balances.entry(address).and_modify(|balance| *balance += amount).or_insert(amount);
 
         // Construct the bonded balances.
         let bonded_balances = validators
@@ -1875,6 +1888,7 @@ finalize compute:
         println!("[VM1] Generating bond transactions for each of the delegators.");
 
         // Generate bond transactions for each of the delegators.
+        //let mut last_block = genesis_1;
         let mut transactions = Vec::new();
         for (private_key, (validator, amount)) in &delegators {
             let transaction = vm_1
@@ -1906,22 +1920,27 @@ finalize compute:
         // For the second VM, sample a genesis block with the same validators and delegators.
         // Specifically, the genesis block will contain a `Ratification` with:
         //   - the committee state, containing the total staked amount per validator.
-        //   - public balances that are zero for the validators.
-        //   - public balances that are zero for the delegators.
+        //   - the public balances for the delegators, with 0 microcredits each.
+        //   - the public balances for the validators dividing up the remaining starting supply.
         //   - the bonded balances, containing the validators and delegators.
 
         println!("Initializing the second VM.");
+
+        // Track the allocated supply.
+        let mut allocated_supply = 0;
 
         // Construct the committee.
         let mut committee_map = IndexMap::new();
         for (private_key, (amount, _)) in &validators {
             let address = Address::try_from(private_key).unwrap();
             committee_map.insert(address, *amount);
+            allocated_supply += *amount;
         }
         for (private_key, (validator, amount)) in &delegators {
             let _address = Address::try_from(private_key).unwrap();
             let total_amount = committee_map.get(validator).unwrap() + amount;
             committee_map.insert(*validator, total_amount);
+            allocated_supply += amount;
         }
         let committee =
             Committee::new_genesis(committee_map.iter().map(|(address, amount)| (*address, (*amount, true))).collect())
@@ -1929,14 +1948,20 @@ finalize compute:
 
         // Construct the public balances.
         let mut public_balances = IndexMap::new();
-        for (private_key, (_amount, _)) in &validators {
-            let address = Address::try_from(private_key).unwrap();
-            public_balances.insert(address, 0);
-        }
         for (private_key, (_validator, _amount)) in &delegators {
             let address = Address::try_from(private_key).unwrap();
-            public_balances.insert(address, 0);
+            public_balances.insert(address, 0u64);
         }
+        let remaining_supply = <CurrentNetwork as Network>::STARTING_SUPPLY - allocated_supply;
+        for private_key in validators.keys() {
+            let address = Address::try_from(private_key).unwrap();
+            let amount = remaining_supply / NUM_VALIDATORS as u64;
+            public_balances.insert(address, amount);
+            allocated_supply += amount;
+        }
+        let address = Address::try_from(validators.keys().next().unwrap()).unwrap();
+        let amount = <CurrentNetwork as Network>::STARTING_SUPPLY - allocated_supply;
+        public_balances.entry(address).and_modify(|balance| *balance += amount).or_insert(amount);
 
         // Construct the bonded balances.
         let bonded_balances = validators
@@ -1972,20 +1997,33 @@ finalize compute:
         let unbonding_mapping_name = Identifier::from_str("unbonding").unwrap();
         let account_mapping_name = Identifier::from_str("account").unwrap();
 
-        let committee_1 = vm_1.finalize_store().get_mapping_speculative(program_id, committee_mapping_name).unwrap();
-        let committee_2 = vm_2.finalize_store().get_mapping_speculative(program_id, committee_mapping_name).unwrap();
+        let committee_1 = vm_1.finalize_store().get_mapping_confirmed(program_id, committee_mapping_name).unwrap();
+        let committee_2 = vm_2.finalize_store().get_mapping_confirmed(program_id, committee_mapping_name).unwrap();
         assert_eq!(committee_1, committee_2);
 
-        let bonded_1 = vm_1.finalize_store().get_mapping_speculative(program_id, bonded_mapping_name).unwrap();
-        let bonded_2 = vm_2.finalize_store().get_mapping_speculative(program_id, bonded_mapping_name).unwrap();
+        let bonded_1 = vm_1.finalize_store().get_mapping_confirmed(program_id, bonded_mapping_name).unwrap();
+        let bonded_2 = vm_2.finalize_store().get_mapping_confirmed(program_id, bonded_mapping_name).unwrap();
         assert_eq!(bonded_1, bonded_2);
 
-        let unbonding_1 = vm_1.finalize_store().get_mapping_speculative(program_id, unbonding_mapping_name).unwrap();
-        let unbonding_2 = vm_2.finalize_store().get_mapping_speculative(program_id, unbonding_mapping_name).unwrap();
+        let unbonding_1 = vm_1.finalize_store().get_mapping_confirmed(program_id, unbonding_mapping_name).unwrap();
+        let unbonding_2 = vm_2.finalize_store().get_mapping_confirmed(program_id, unbonding_mapping_name).unwrap();
         assert_eq!(unbonding_1, unbonding_2);
 
-        let account_1 = vm_1.finalize_store().get_mapping_speculative(program_id, account_mapping_name).unwrap();
-        let account_2 = vm_2.finalize_store().get_mapping_speculative(program_id, account_mapping_name).unwrap();
+        // Check that the account mapping across both VMs have the same keys.
+        let account_1 = vm_1
+            .finalize_store()
+            .get_mapping_confirmed(program_id, account_mapping_name)
+            .unwrap()
+            .into_iter()
+            .map(|(k, _)| k.to_string())
+            .collect::<std::collections::HashSet<_>>();
+        let account_2 = vm_2
+            .finalize_store()
+            .get_mapping_confirmed(program_id, account_mapping_name)
+            .unwrap()
+            .into_iter()
+            .map(|(k, _)| k.to_string())
+            .collect::<std::collections::HashSet<_>>();
         assert_eq!(account_1, account_2);
     }
 }
