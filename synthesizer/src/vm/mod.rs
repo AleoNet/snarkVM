@@ -26,7 +26,7 @@ use console::{
     account::{Address, PrivateKey},
     network::prelude::*,
     program::{Identifier, Literal, Locator, Plaintext, ProgramID, ProgramOwner, Record, Value},
-    types::{Field, U64},
+    types::{Field, Group, U64},
 };
 use ledger_block::{
     Block,
