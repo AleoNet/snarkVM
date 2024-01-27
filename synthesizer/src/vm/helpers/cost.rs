@@ -182,32 +182,22 @@ pub fn cost_in_microcredits<N: Network>(stack: &Stack<N>, function_name: &Identi
         Command::Instruction(Instruction::And(_)) => Ok(500),
         Command::Instruction(Instruction::AssertEq(_)) => Ok(500),
         Command::Instruction(Instruction::AssertNeq(_)) => Ok(500),
-        Command::Instruction(Instruction::Async(_)) => bail!("`async` is not supported in finalize."),
-        Command::Instruction(Instruction::Call(_)) => bail!("`call` is not supported in finalize."),
-        Command::Instruction(Instruction::Cast(cast)) => {
-            let cast_type = cast.cast_type();
-
-            // Get the price by operand type.
-            match cast_type {
-                CastType::Plaintext(PlaintextType::Literal(_)) => Ok(500),
-                CastType::Plaintext(plaintext_type) => Ok(plaintext_size_in_bytes(stack, plaintext_type)?
-                    .saturating_mul(CAST_PER_BYTE_COST)
-                    .saturating_add(CAST_BASE_COST)),
-                _ => Ok(500),
-            }
-        }
-        Command::Instruction(Instruction::CastLossy(cast_lossy)) => {
-            let cast_type = cast_lossy.cast_type();
-
-            // Get the price by operand type.
-            match cast_type {
-                CastType::Plaintext(PlaintextType::Literal(_)) => Ok(500),
-                CastType::Plaintext(plaintext_type) => Ok(plaintext_size_in_bytes(stack, plaintext_type)?
-                    .saturating_mul(CAST_PER_BYTE_COST)
-                    .saturating_add(CAST_BASE_COST)),
-                _ => Ok(500),
-            }
-        }
+        Command::Instruction(Instruction::Async(_)) => bail!("'async' is not supported in finalize"),
+        Command::Instruction(Instruction::Call(_)) => bail!("'call' is not supported in finalize"),
+        Command::Instruction(Instruction::Cast(cast)) => match cast.cast_type() {
+            CastType::Plaintext(PlaintextType::Literal(_)) => Ok(500),
+            CastType::Plaintext(plaintext_type) => Ok(plaintext_size_in_bytes(stack, plaintext_type)?
+                .saturating_mul(CAST_PER_BYTE_COST)
+                .saturating_add(CAST_BASE_COST)),
+            _ => Ok(500),
+        },
+        Command::Instruction(Instruction::CastLossy(cast_lossy)) => match cast_lossy.cast_type() {
+            CastType::Plaintext(PlaintextType::Literal(_)) => Ok(500),
+            CastType::Plaintext(plaintext_type) => Ok(plaintext_size_in_bytes(stack, plaintext_type)?
+                .saturating_mul(CAST_PER_BYTE_COST)
+                .saturating_add(CAST_BASE_COST)),
+            _ => Ok(500),
+        },
         Command::Instruction(Instruction::CommitBHP256(commit)) => {
             cost_in_size(stack, finalize, commit.operands(), HASH_BHP_PER_BYTE_COST, HASH_BHP_BASE_COST)
         }
@@ -227,19 +217,17 @@ pub fn cost_in_microcredits<N: Network>(stack: &Stack<N>, function_name: &Identi
             cost_in_size(stack, finalize, commit.operands(), HASH_PER_BYTE_COST, HASH_BASE_COST)
         }
         Command::Instruction(Instruction::Div(div)) => {
-            let operands = div.operands();
-            ensure!(operands.len() == 2, "div opcode must have exactly two operands.");
-
+            // Ensure `div` has exactly two operands.
+            ensure!(div.operands().len() == 2, "'div' must contain exactly 2 operands");
             // Retrieve the finalize types.
             let finalize_types = stack.get_finalize_types(finalize.name())?;
-            // Get the price by operand type.
-            let operand_type = finalize_types.get_type_from_operand(stack, &operands[0])?;
-            match operand_type {
+            // Retrieve the price by the operand type.
+            match finalize_types.get_type_from_operand(stack, &div.operands()[0])? {
                 FinalizeType::Plaintext(PlaintextType::Literal(LiteralType::Field)) => Ok(1_500),
                 FinalizeType::Plaintext(PlaintextType::Literal(_)) => Ok(500),
-                FinalizeType::Plaintext(PlaintextType::Array(_)) => bail!("div opcode does not support arrays."),
-                FinalizeType::Plaintext(PlaintextType::Struct(_)) => bail!("div opcode does not support structs."),
-                _ => bail!("div opcode does not support futures."),
+                FinalizeType::Plaintext(PlaintextType::Array(_)) => bail!("'div' does not support arrays"),
+                FinalizeType::Plaintext(PlaintextType::Struct(_)) => bail!("'div' does not support structs"),
+                FinalizeType::Future(_) => bail!("'div' does not support futures"),
             }
         }
         Command::Instruction(Instruction::DivWrapped(_)) => Ok(500),
@@ -292,13 +280,13 @@ pub fn cost_in_microcredits<N: Network>(stack: &Stack<N>, function_name: &Identi
             cost_in_size(stack, finalize, hash.operands(), HASH_PER_BYTE_COST, HASH_BASE_COST)
         }
         Command::Instruction(Instruction::HashManyPSD2(_)) => {
-            bail!("`hash_many.psd2` is not supported in finalize.")
+            bail!("`hash_many.psd2` is not supported in finalize")
         }
         Command::Instruction(Instruction::HashManyPSD4(_)) => {
-            bail!("`hash_many.psd4` is not supported in finalize.")
+            bail!("`hash_many.psd4` is not supported in finalize")
         }
         Command::Instruction(Instruction::HashManyPSD8(_)) => {
-            bail!("`hash_many.psd8` is not supported in finalize.")
+            bail!("`hash_many.psd8` is not supported in finalize")
         }
         Command::Instruction(Instruction::Inv(_)) => Ok(1_000),
         Command::Instruction(Instruction::IsEq(_)) => Ok(500),
@@ -307,20 +295,18 @@ pub fn cost_in_microcredits<N: Network>(stack: &Stack<N>, function_name: &Identi
         Command::Instruction(Instruction::LessThanOrEqual(_)) => Ok(500),
         Command::Instruction(Instruction::Modulo(_)) => Ok(500),
         Command::Instruction(Instruction::Mul(mul)) => {
-            let operands = mul.operands();
-            ensure!(operands.len() == 2, "mul opcode must have exactly two operands.");
-
+            // Ensure `mul` has exactly two operands.
+            ensure!(mul.operands().len() == 2, "'mul' must contain exactly 2 operands");
             // Retrieve the finalize types.
             let finalize_types = stack.get_finalize_types(finalize.name())?;
-            // Get the price by operand type.
-            let operand_type = finalize_types.get_type_from_operand(stack, &operands[0])?;
-            match operand_type {
+            // Retrieve the price by operand type.
+            match finalize_types.get_type_from_operand(stack, &mul.operands()[0])? {
                 FinalizeType::Plaintext(PlaintextType::Literal(LiteralType::Group)) => Ok(10_000),
                 FinalizeType::Plaintext(PlaintextType::Literal(LiteralType::Scalar)) => Ok(10_000),
                 FinalizeType::Plaintext(PlaintextType::Literal(_)) => Ok(500),
-                FinalizeType::Plaintext(PlaintextType::Array(_)) => bail!("mul opcode does not support arrays."),
-                FinalizeType::Plaintext(PlaintextType::Struct(_)) => bail!("mul opcode does not support structs."),
-                _ => bail!("mul opcode does not support futures."),
+                FinalizeType::Plaintext(PlaintextType::Array(_)) => bail!("'mul' does not support arrays"),
+                FinalizeType::Plaintext(PlaintextType::Struct(_)) => bail!("'mul' does not support structs"),
+                FinalizeType::Future(_) => bail!("'mul' does not support futures"),
             }
         }
         Command::Instruction(Instruction::MulWrapped(_)) => Ok(500),
@@ -330,19 +316,17 @@ pub fn cost_in_microcredits<N: Network>(stack: &Stack<N>, function_name: &Identi
         Command::Instruction(Instruction::Not(_)) => Ok(500),
         Command::Instruction(Instruction::Or(_)) => Ok(500),
         Command::Instruction(Instruction::Pow(pow)) => {
-            let operands = pow.operands();
-            ensure!(!operands.is_empty(), "pow opcode must have at least one operand.");
-
+            // Ensure `pow` has at least one operand.
+            ensure!(!pow.operands().is_empty(), "'pow' must contain at least 1 operand");
             // Retrieve the finalize types.
             let finalize_types = stack.get_finalize_types(finalize.name())?;
-            // Get the price by operand type.
-            let operand_type = finalize_types.get_type_from_operand(stack, &operands[0])?;
-            match operand_type {
+            // Retrieve the price by operand type.
+            match finalize_types.get_type_from_operand(stack, &pow.operands()[0])? {
                 FinalizeType::Plaintext(PlaintextType::Literal(LiteralType::Field)) => Ok(1_500),
                 FinalizeType::Plaintext(PlaintextType::Literal(_)) => Ok(500),
-                FinalizeType::Plaintext(PlaintextType::Array(_)) => bail!("pow opcode does not support arrays."),
-                FinalizeType::Plaintext(PlaintextType::Struct(_)) => bail!("pow opcode does not support structs."),
-                _ => bail!("pow opcode does not support futures."),
+                FinalizeType::Plaintext(PlaintextType::Array(_)) => bail!("'pow' does not support arrays"),
+                FinalizeType::Plaintext(PlaintextType::Struct(_)) => bail!("'pow' does not support structs"),
+                FinalizeType::Future(_) => bail!("'pow' does not support futures"),
             }
         }
         Command::Instruction(Instruction::PowWrapped(_)) => Ok(500),
