@@ -15,21 +15,6 @@
 use super::*;
 
 impl<N: Network> Stack<N> {
-    /// Returns a record for the given record name, with the given burner address.
-    pub fn sample_record<R: Rng + CryptoRng>(
-        &self,
-        burner_address: &Address<N>,
-        record_name: &Identifier<N>,
-        rng: &mut R,
-    ) -> Result<Record<N, Plaintext<N>>> {
-        // Sample a record.
-        let record = self.sample_record_internal(burner_address, record_name, 0, rng)?;
-        // Ensure the record matches the value type.
-        self.matches_record(&record, record_name)?;
-        // Return the record.
-        Ok(record)
-    }
-
     /// Samples a plaintext value according to the given plaintext type.
     pub fn sample_plaintext<R: Rng + CryptoRng>(
         &self,
@@ -53,14 +38,13 @@ impl<N: Network> Stack<N> {
         // Return the future value.
         Ok(future)
     }
-}
 
-impl<N: Network> Stack<N> {
     /// Returns a record for the given record name.
-    fn sample_record_internal<R: Rng + CryptoRng>(
+    pub(crate) fn sample_record_internal<R: Rng + CryptoRng>(
         &self,
         burner_address: &Address<N>,
         record_name: &Identifier<N>,
+        nonce: Group<N>,
         depth: usize,
         rng: &mut R,
     ) -> Result<Record<N, Plaintext<N>>> {
@@ -87,9 +71,6 @@ impl<N: Network> Stack<N> {
                 Ok((*entry_name, entry))
             })
             .collect::<Result<IndexMap<_, _>>>()?;
-
-        // Initialize the nonce.
-        let nonce = Group::rand(rng);
 
         // Return the record.
         Record::<N, Plaintext<N>>::from_plaintext(owner, data, nonce)
