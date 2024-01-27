@@ -172,11 +172,11 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         // Perform the finalize operation on the preset finalize mode.
         atomic_finalize!(self.finalize_store(), FinalizeMode::DryRun, {
             // Ensure the number of transactions does not exceed the maximum.
-            if num_transactions > 2 * Transactions::<N>::MAX_TRANSACTIONS {
+            if num_transactions > Transactions::<N>::MAX_ABORTED_TRANSACTIONS {
                 // Note: This will abort the entire atomic batch.
                 return Err(format!(
                     "Too many transactions in the block - {num_transactions} (max: {})",
-                    2 * Transactions::<N>::MAX_TRANSACTIONS
+                    Transactions::<N>::MAX_ABORTED_TRANSACTIONS
                 ));
             }
 
@@ -221,8 +221,14 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             let mut deployments = IndexSet::new();
             // Initialize a counter for the confirmed transaction index.
             let mut counter = 0u32;
+            // Initialize a list of created transition IDs.
+            let mut transition_ids: IndexSet<N::TransitionID> = IndexSet::new();
             // Initialize a list of spent input IDs.
             let mut input_ids: IndexSet<Field<N>> = IndexSet::new();
+            // Initialize a list of created output IDs.
+            let mut output_ids: IndexSet<Field<N>> = IndexSet::new();
+            // Initialize the list of created transition public keys.
+            let mut tpks: IndexSet<Group<N>> = IndexSet::new();
 
             // Finalize the transactions.
             'outer: for transaction in transactions {
@@ -235,6 +241,19 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     continue 'outer;
                 }
 
+                // Ensure that the transaction is not producing a duplicate transition.
+                for transition_id in transaction.transition_ids() {
+                    // If the transition ID is already produced in this block or previous blocks, abort the transaction.
+                    if transition_ids.contains(transition_id)
+                        || self.transition_store().contains_transition_id(transition_id).unwrap_or(true)
+                    {
+                        // Store the aborted transaction.
+                        aborted.push((transaction.clone(), format!("Duplicate transition {transition_id}")));
+                        // Continue to the next transaction.
+                        continue 'outer;
+                    }
+                }
+
                 // Ensure that the transaction is not double-spending an input.
                 for input_id in transaction.input_ids() {
                     // If the input ID is already spent in this block or previous blocks, abort the transaction.
@@ -243,6 +262,31 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     {
                         // Store the aborted transaction.
                         aborted.push((transaction.clone(), format!("Double-spending input {input_id}")));
+                        // Continue to the next transaction.
+                        continue 'outer;
+                    }
+                }
+
+                // Ensure that the transaction is not producing a duplicate output.
+                for output_id in transaction.output_ids() {
+                    // If the output ID is already produced in this block or previous blocks, abort the transaction.
+                    if output_ids.contains(output_id)
+                        || self.transition_store().contains_output_id(output_id).unwrap_or(true)
+                    {
+                        // Store the aborted transaction.
+                        aborted.push((transaction.clone(), format!("Duplicate output {output_id}")));
+                        // Continue to the next transaction.
+                        continue 'outer;
+                    }
+                }
+
+                // // Ensure that the transaction is not producing a duplicate transition public key.
+                // // Note that the tpk and tcm are corresponding, so a uniqueness check for just the tpk is sufficient.
+                for tpk in transaction.transition_public_keys() {
+                    // If the transition public key is already produced in this block or previous blocks, abort the transaction.
+                    if tpks.contains(tpk) || self.transition_store().contains_tpk(tpk).unwrap_or(true) {
+                        // Store the aborted transaction.
+                        aborted.push((transaction.clone(), format!("Duplicate transition public key {tpk}")));
                         // Continue to the next transaction.
                         continue 'outer;
                     }
@@ -361,8 +405,14 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 match outcome {
                     // If the transaction succeeded, store it and continue to the next transaction.
                     Ok(confirmed_transaction) => {
+                        // Add the transition IDs to the set of produced transition IDs.
+                        transition_ids.extend(confirmed_transaction.transaction().transition_ids());
                         // Add the input IDs to the set of spent input IDs.
                         input_ids.extend(confirmed_transaction.transaction().input_ids());
+                        // Add the output IDs to the set of produced output IDs.
+                        output_ids.extend(confirmed_transaction.transaction().output_ids());
+                        // Add the transition public keys to the set of produced transition public keys.
+                        tpks.extend(confirmed_transaction.transaction().transition_public_keys());
                         // Store the confirmed transaction.
                         confirmed.push(confirmed_transaction);
                         // Increment the transaction index counter.

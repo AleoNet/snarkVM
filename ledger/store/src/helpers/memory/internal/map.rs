@@ -194,7 +194,7 @@ impl<
         let operations = core::mem::take(&mut *self.atomic_batch.lock());
 
         // Insert the operations into an index map to remove any operations that would have been overwritten anyways.
-        let operations: IndexMap<_, _> = IndexMap::from_iter(operations.into_iter());
+        let operations: IndexMap<_, _> = IndexMap::from_iter(operations);
 
         if !operations.is_empty() {
             // Acquire a write lock on the map.
@@ -321,7 +321,7 @@ impl<
     /// Returns an iterator visiting each key-value pair in the atomic batch.
     ///
     fn iter_pending(&'a self) -> Self::PendingIterator {
-        let filtered_atomic_batch: IndexMap<_, _> = IndexMap::from_iter(self.atomic_batch.lock().clone().into_iter());
+        let filtered_atomic_batch: IndexMap<_, _> = IndexMap::from_iter(self.atomic_batch.lock().clone());
         filtered_atomic_batch.into_iter().map(|(k, v)| (Cow::Owned(k), v.map(|v| Cow::Owned(v))))
     }
 

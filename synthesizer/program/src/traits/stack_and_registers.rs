@@ -16,6 +16,7 @@ use std::sync::Arc;
 
 use crate::{FinalizeGlobalState, Function, Operand, Program};
 use console::{
+    account::Group,
     network::Network,
     prelude::{bail, Result},
     program::{
@@ -35,6 +36,7 @@ use console::{
     },
     types::{Address, Field},
 };
+use rand::{CryptoRng, Rng};
 
 pub trait StackMatches<N: Network> {
     /// Checks that the given value matches the layout of the value type.
@@ -83,6 +85,23 @@ pub trait StackProgram<N: Network> {
 
     /// Returns the expected number of calls for the given function name.
     fn get_number_of_calls(&self, function_name: &Identifier<N>) -> Result<usize>;
+
+    /// Samples a value for the given value_type.
+    fn sample_value<R: Rng + CryptoRng>(
+        &self,
+        burner_address: &Address<N>,
+        value_type: &ValueType<N>,
+        rng: &mut R,
+    ) -> Result<Value<N>>;
+
+    /// Returns a record for the given record name, with the given burner address and nonce.
+    fn sample_record<R: Rng + CryptoRng>(
+        &self,
+        burner_address: &Address<N>,
+        record_name: &Identifier<N>,
+        record_nonce: Group<N>,
+        rng: &mut R,
+    ) -> Result<Record<N, Plaintext<N>>>;
 }
 
 pub trait FinalizeRegistersState<N: Network> {

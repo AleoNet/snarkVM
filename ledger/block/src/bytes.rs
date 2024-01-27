@@ -52,7 +52,7 @@ impl<N: Network> FromBytes for Block<N> {
         // Read the number of aborted transaction IDs.
         let num_aborted = u32::read_le(&mut reader)?;
         // Ensure the number of aborted transaction IDs is within bounds (this is an early safety check).
-        if num_aborted as usize > Transactions::<N>::MAX_TRANSACTIONS {
+        if num_aborted as usize > Transactions::<N>::MAX_ABORTED_TRANSACTIONS {
             return Err(error("Invalid number of aborted transaction IDs in the block"));
         }
         // Read the aborted transaction IDs.

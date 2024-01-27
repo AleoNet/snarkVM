@@ -29,6 +29,7 @@ use narwhal_transmission_id::TransmissionID;
 
 use core::hash::{Hash, Hasher};
 use indexmap::{IndexMap, IndexSet};
+use std::collections::HashSet;
 
 #[cfg(not(feature = "serial"))]
 use rayon::prelude::*;
@@ -104,6 +105,14 @@ impl<N: Network> BatchCertificate<N> {
     pub fn from(batch_header: BatchHeader<N>, signatures: IndexSet<Signature<N>>) -> Result<Self> {
         // Ensure that the number of signatures is within bounds.
         ensure!(signatures.len() <= Self::MAX_SIGNATURES, "Invalid number of signatures");
+
+        // Ensure that the signature is from a unique signer and not from the author.
+        let signature_authors = signatures.iter().map(|signature| signature.to_address()).collect::<HashSet<_>>();
+        ensure!(
+            !signature_authors.contains(&batch_header.author()),
+            "The author's signature was included in the signers"
+        );
+        ensure!(signature_authors.len() == signatures.len(), "A duplicate author was found in the set of signatures");
 
         // Verify the signatures are valid.
         cfg_iter!(signatures).try_for_each(|signature| {
@@ -197,8 +206,7 @@ impl<N: Network> BatchCertificate<N> {
         match self {
             Self::V1 { batch_header, signatures, .. } => {
                 // Return the median timestamp.
-                let mut timestamps =
-                    signatures.values().copied().chain([batch_header.timestamp()].into_iter()).collect::<Vec<_>>();
+                let mut timestamps = signatures.values().copied().chain([batch_header.timestamp()]).collect::<Vec<_>>();
                 timestamps.sort_unstable();
                 timestamps[timestamps.len() / 2]
             }

@@ -137,10 +137,10 @@ impl<N: Network> Block<N> {
         }
 
         // Ensure the number of aborted transaction IDs is within the allowed range.
-        if aborted_transaction_ids.len() > Transactions::<N>::MAX_TRANSACTIONS {
+        if aborted_transaction_ids.len() > Transactions::<N>::MAX_ABORTED_TRANSACTIONS {
             bail!(
                 "Cannot initialize a block with more than {} aborted transaction IDs",
-                Transactions::<N>::MAX_TRANSACTIONS
+                Transactions::<N>::MAX_ABORTED_TRANSACTIONS
             );
         }
 
@@ -636,7 +636,7 @@ pub mod test_helpers {
         // Prepare the confirmed transaction.
         let confirmed = ConfirmedTransaction::accepted_execute(0, transaction.clone(), vec![]).unwrap();
         // Prepare the transactions.
-        let transactions = Transactions::from_iter([confirmed].into_iter());
+        let transactions = Transactions::from_iter([confirmed]);
 
         // Construct the ratifications.
         let ratifications = Ratifications::try_from(vec![]).unwrap();
