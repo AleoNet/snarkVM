@@ -24,9 +24,8 @@ use ledger_block::{Deployment, Execution};
 use ledger_store::ConsensusStorage;
 use synthesizer_program::{CastType, Command, Instruction, Operand, StackProgram};
 
-use std::collections::HashMap;
+// Finalize costs for compute heavy operations. Used as BASE_COST + PER_BYTE_COST * SIZE_IN_BYTES.
 
-// Finalize Costs for compute heavy operations. Used as BASE_COST + PER_BYTE_COST * SIZE_IN_BYTES.
 const CAST_COMMAND_BASE_COST: u64 = 500;
 const CAST_PER_BYTE_COST: u64 = 30;
 
