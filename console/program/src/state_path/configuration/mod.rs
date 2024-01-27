@@ -19,8 +19,10 @@ use snarkvm_console_network::BHPMerkleTree;
 pub const BLOCKS_DEPTH: u8 = 32;
 /// The depth of the Merkle tree for the block header.
 pub const HEADER_DEPTH: u8 = 3;
+/// The depth of the Merkle tree for finalize operations in a transaction.
+pub const FINALIZE_ID_DEPTH: u8 = TRANSACTION_DEPTH + 4; // '+ 4' is to support 16 finalize operations per transition.
 /// The depth of the Merkle tree for finalize operations in a block.
-pub const FINALIZE_OPERATIONS_DEPTH: u8 = 20;
+pub const FINALIZE_OPERATIONS_DEPTH: u8 = TRANSACTIONS_DEPTH;
 /// The depth of the Merkle tree for the ratifications in a block.
 pub const RATIFICATIONS_DEPTH: u8 = 16;
 /// The depth the Merkle tree for the subdag certificates in a block.
