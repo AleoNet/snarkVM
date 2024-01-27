@@ -4,11 +4,11 @@ outputs:
   execute:
     unused_position.aleo/foo:
       outputs:
-      - '{"type":"future","id":"4435915382452600913825742955271157728527943603774006701552876898718102875463field","value":"{\n  program_id: unused_position.aleo,\n  function_name: foo,\n  arguments: []\n}"}'
+      - '{"type":"future","id":"5049235690692170805152663732952500738215296477247651613244805919801146018013field","value":"{\n  program_id: unused_position.aleo,\n  function_name: foo,\n  arguments: []\n}"}'
   speculate: the execution was accepted
   add_next_block: succeeded.
 additional:
 - child_outputs:
     credits.aleo/fee_public:
       outputs:
-      - '{"type":"future","id":"5765710012732865202158420681023672143187750047446838880498023753307398349592field","value":"{\n  program_id: credits.aleo,\n  function_name: fee_public,\n  arguments: [\n    aleo12tksdptp7hvxly8tkm3um08fvf53qpehsgdgqfvy9pe3sewcq5ysjg5myy,\n    1276u64\n  ]\n}"}'
+      - '{"type":"future","id":"4500648057971642536326023581723419344508470174070904810378001320229962188845field","value":"{\n  program_id: credits.aleo,\n  function_name: fee_public,\n  arguments: [\n    aleo12tksdptp7hvxly8tkm3um08fvf53qpehsgdgqfvy9pe3sewcq5ysjg5myy,\n    1308u64\n  ]\n}"}'

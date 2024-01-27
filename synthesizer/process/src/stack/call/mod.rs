@@ -47,6 +47,7 @@ pub trait CallTrait<N: Network> {
         stack: &(impl StackEvaluate<N> + StackExecute<N> + StackMatches<N> + StackProgram<N>),
         registers: &mut (
                  impl RegistersCall<N>
+                 + RegistersSigner<N>
                  + RegistersSignerCircuit<N, A>
                  + RegistersLoadCircuit<N, A>
                  + RegistersStoreCircuit<N, A>
@@ -140,6 +141,7 @@ impl<N: Network> CallTrait<N> for Call<N> {
         stack: &(impl StackEvaluate<N> + StackExecute<N> + StackMatches<N> + StackProgram<N>),
         registers: &mut (
                  impl RegistersCall<N>
+                 + RegistersSigner<N>
                  + RegistersSignerCircuit<N, A>
                  + RegistersLoadCircuit<N, A>
                  + RegistersStoreCircuit<N, A>
@@ -182,6 +184,9 @@ impl<N: Network> CallTrait<N> for Call<N> {
         };
         lap!(timer, "Retrieve the substack and resource");
 
+        // If we are not handling the root request, retrieve the root request's tvk
+        let root_tvk = registers.root_tvk().ok();
+
         // If the operator is a closure, retrieve the closure and compute the output.
         let outputs = if let Ok(closure) = substack.program().get_closure(resource) {
             lap!(timer, "Execute the closure");
@@ -208,6 +213,9 @@ impl<N: Network> CallTrait<N> for Call<N> {
             // Retrieve the number of public variables in the circuit.
             let num_public = A::num_public();
 
+            // Indicate that external calls are never a root request.
+            let is_root = false;
+
             use circuit::Eject;
             // Eject the existing circuit.
             let r1cs = A::eject_r1cs_and_reset();
@@ -229,6 +237,8 @@ impl<N: Network> CallTrait<N> for Call<N> {
                             *function.name(),
                             inputs.iter(),
                             &function.input_types(),
+                            root_tvk,
+                            is_root,
                             rng,
                         )?;
 
@@ -241,7 +251,7 @@ impl<N: Network> CallTrait<N> for Call<N> {
                         authorization.push(request.clone());
 
                         // Execute the request.
-                        let response = substack.execute_function::<A, R>(call_stack, console_caller, rng)?;
+                        let response = substack.execute_function::<A, R>(call_stack, console_caller, root_tvk, rng)?;
 
                         // Return the request and response.
                         (request, response)
@@ -254,6 +264,8 @@ impl<N: Network> CallTrait<N> for Call<N> {
                             *function.name(),
                             inputs.iter(),
                             &function.input_types(),
+                            root_tvk,
+                            is_root,
                             rng,
                         )?;
 
@@ -263,7 +275,7 @@ impl<N: Network> CallTrait<N> for Call<N> {
                         call_stack.push(request.clone())?;
 
                         // Evaluate the request.
-                        let response = substack.execute_function::<A, _>(call_stack, console_caller, rng)?;
+                        let response = substack.execute_function::<A, _>(call_stack, console_caller, root_tvk, rng)?;
 
                         // Return the request and response.
                         (request, response)
@@ -276,6 +288,8 @@ impl<N: Network> CallTrait<N> for Call<N> {
                             *function.name(),
                             inputs.iter(),
                             &function.input_types(),
+                            root_tvk,
+                            is_root,
                             rng,
                         )?;
 
@@ -351,7 +365,7 @@ impl<N: Network> CallTrait<N> for Call<N> {
                             substack.evaluate_function::<A>(registers.call_stack().replicate(), console_caller)?;
                         // Execute the request.
                         let response =
-                            substack.execute_function::<A, R>(registers.call_stack(), console_caller, rng)?;
+                            substack.execute_function::<A, R>(registers.call_stack(), console_caller, root_tvk, rng)?;
                         // Ensure the values are equal.
                         if console_response.outputs() != response.outputs() {
                             #[cfg(debug_assertions)]

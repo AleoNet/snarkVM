@@ -42,7 +42,7 @@ mod tests;
 use console::{
     account::PrivateKey,
     network::prelude::*,
-    program::{Identifier, Literal, Locator, Plaintext, ProgramID, Record, Response, Value},
+    program::{compute_function_id, Identifier, Literal, Locator, Plaintext, ProgramID, Record, Response, Value},
     types::{Field, U16, U64},
 };
 use ledger_block::{Deployment, Execution, Fee, Input, Transition};

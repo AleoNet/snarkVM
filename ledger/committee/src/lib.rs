@@ -29,6 +29,7 @@ use console::{
 };
 
 use indexmap::IndexMap;
+use ledger_narwhal_batch_header::BatchHeader;
 use std::collections::HashSet;
 
 /// The minimum amount of stake required for a validator to bond.
@@ -48,7 +49,7 @@ pub struct Committee<N: Network> {
 
 impl<N: Network> Committee<N> {
     /// The maximum number of members that may be in a committee.
-    pub const MAX_COMMITTEE_SIZE: u16 = 200;
+    pub const MAX_COMMITTEE_SIZE: u16 = BatchHeader::<N>::MAX_CERTIFICATES;
 
     /// Initializes a new `Committee` instance.
     pub fn new_genesis(members: IndexMap<Address<N>, (u64, bool)>) -> Result<Self> {
@@ -285,6 +286,22 @@ pub mod test_helpers {
         Committee::<CurrentNetwork>::new(round, committee_members).unwrap()
     }
 
+    /// Samples a committee where all validators have the same stake.
+    pub fn sample_committee_equal_stake_committee(num_members: u16, rng: &mut TestRng) -> Committee<CurrentNetwork> {
+        assert!(num_members >= 4);
+        // Sample the members.
+        let mut members = IndexMap::new();
+        // Add in the minimum and maximum staked nodes.
+        members.insert(Address::<CurrentNetwork>::new(rng.gen()), (MIN_VALIDATOR_STAKE, false));
+        while members.len() < num_members as usize - 1 {
+            let stake = MIN_VALIDATOR_STAKE;
+            let is_open = rng.gen();
+            members.insert(Address::<CurrentNetwork>::new(rng.gen()), (stake, is_open));
+        }
+        // Return the committee.
+        Committee::<CurrentNetwork>::new(1, members).unwrap()
+    }
+
     /// Samples a random committee.
     #[allow(clippy::cast_possible_truncation)]
     pub fn sample_committee_custom(num_members: u16, rng: &mut TestRng) -> Committee<CurrentNetwork> {
@@ -412,9 +429,6 @@ mod tests {
 
     #[test]
     fn test_maximum_committee_size() {
-        assert_eq!(
-            Committee::<CurrentNetwork>::MAX_COMMITTEE_SIZE as usize,
-            ledger_narwhal_batch_header::BatchHeader::<CurrentNetwork>::MAX_CERTIFICATES
-        );
+        assert_eq!(Committee::<CurrentNetwork>::MAX_COMMITTEE_SIZE, BatchHeader::<CurrentNetwork>::MAX_CERTIFICATES);
     }
 }

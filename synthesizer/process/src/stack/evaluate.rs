@@ -132,11 +132,11 @@ impl<N: Network> StackEvaluate<N> for Stack<N> {
         let function = self.get_function(request.function_name())?;
         let inputs = request.inputs();
         let signer = *request.signer();
-        let caller = match caller {
+        let (is_root, caller) = match caller {
             // If a caller is provided, then this is an evaluation of a child function.
-            Some(caller) => caller.to_address()?,
+            Some(caller) => (false, caller.to_address()?),
             // If no caller is provided, then this is an evaluation of a top-level function.
-            None => signer,
+            None => (true, signer),
         };
         let tvk = *request.tvk();
 
@@ -163,7 +163,7 @@ impl<N: Network> StackEvaluate<N> for Stack<N> {
         lap!(timer, "Initialize the registers");
 
         // Ensure the request is well-formed.
-        ensure!(request.verify(&function.input_types()), "Request is invalid");
+        ensure!(request.verify(&function.input_types(), is_root), "Request is invalid");
         lap!(timer, "Verify the request");
 
         // Store the inputs.
