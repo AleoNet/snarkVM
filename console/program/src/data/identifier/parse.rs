@@ -52,6 +52,12 @@ impl<N: Network> FromStr for Identifier<N> {
             bail!("Identifier is too large. Identifiers must be <= {max_bytes} bytes long")
         }
 
+        // Ensure that the identifier is not a literal.
+        ensure!(
+            crate::LiteralType::from_str(identifier).is_err(),
+            "Identifier '{identifier}' is a reserved literal type"
+        );
+
         // Note: The string bytes themselves are **not** little-endian. Rather, they are order-preserving
         // for reconstructing the string when recovering the field element back into bytes.
         Ok(Self(
