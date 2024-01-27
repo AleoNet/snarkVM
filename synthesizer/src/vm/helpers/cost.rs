@@ -18,11 +18,11 @@ use crate::{
 };
 use console::{
     prelude::*,
-    program::{FinalizeType, LiteralType, PlaintextType},
+    program::{FinalizeType, Identifier, LiteralType, PlaintextType},
 };
 use ledger_block::{Deployment, Execution};
 use ledger_store::ConsensusStorage;
-use synthesizer_program::{CastType, Command, Finalize, Instruction, Operand, StackProgram};
+use synthesizer_program::{CastType, Command, Instruction, Operand, StackProgram};
 
 use std::collections::HashMap;
 
@@ -81,34 +81,20 @@ pub fn execution_cost<N: Network, C: ConsensusStorage<N>>(
     // Compute the storage cost in microcredits.
     let storage_cost = execution.size_in_bytes()?;
 
-    // Prepare the program lookup.
-    let lookup = execution
-        .transitions()
-        .map(|transition| {
-            let program_id = transition.program_id();
-            Ok((*program_id, vm.process().read().get_program(program_id)?.clone()))
-        })
-        .collect::<Result<HashMap<_, _>>>()?;
-
     // Compute the finalize cost in microcredits.
     let mut finalize_cost = 0u64;
     // Iterate over the transitions to accumulate the finalize cost.
     for transition in execution.transitions() {
-        // Retrieve the program ID.
-        let program_id = transition.program_id();
-        // Retrieve the function name.
-        let function_name = transition.function_name();
-        // Retrieve the program.
-        let program = lookup.get(program_id).ok_or(anyhow!("Program '{program_id}' is missing"))?;
+        // Retrieve the program ID and function name.
+        let (program_id, function_name) = (transition.program_id(), transition.function_name());
         // Retrieve the finalize cost.
-        let cost = match program.get_function(function_name)?.finalize_logic() {
-            Some(finalize) => cost_in_microcredits(vm.process().read().get_stack(program.id())?, finalize)?,
-            None => continue,
-        };
+        let cost = cost_in_microcredits(vm.process().read().get_stack(program_id)?, function_name)?;
         // Accumulate the finalize cost.
-        finalize_cost = finalize_cost
-            .checked_add(cost)
-            .ok_or(anyhow!("The finalize cost computation overflowed for an execution"))?;
+        if cost > 0 {
+            finalize_cost = finalize_cost
+                .checked_add(cost)
+                .ok_or(anyhow!("The finalize cost computation overflowed on '{program_id}/{function_name}'"))?;
+        }
     }
 
     // Compute the total cost in microcredits.
@@ -120,7 +106,13 @@ pub fn execution_cost<N: Network, C: ConsensusStorage<N>>(
 }
 
 /// Returns the minimum number of microcredits required to run the finalize.
-pub fn cost_in_microcredits<N: Network>(stack: &Stack<N>, finalize: &Finalize<N>) -> Result<u64> {
+pub fn cost_in_microcredits<N: Network>(stack: &Stack<N>, function_name: &Identifier<N>) -> Result<u64> {
+    // Retrieve the finalize logic.
+    let Some(finalize) = stack.get_function_ref(function_name)?.finalize_logic() else {
+        // Return a finalize cost of 0, if the function does not have a finalize scope.
+        return Ok(0);
+    };
+
     // Retrieve the finalize types.
     let finalize_types = stack.get_finalize_types(finalize.name())?;
 
