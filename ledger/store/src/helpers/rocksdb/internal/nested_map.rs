@@ -16,11 +16,14 @@
 
 use super::*;
 use crate::helpers::{NestedMap, NestedMapRead};
-use console::prelude::{anyhow, FromBytes};
+use console::prelude::{anyhow, cfg_into_iter, FromBytes};
 
 use core::{fmt, fmt::Debug, hash::Hash, mem};
 use std::{borrow::Cow, sync::atomic::Ordering};
 use tracing::error;
+
+#[cfg(not(feature = "serial"))]
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
 
 #[derive(Clone)]
 pub struct NestedDataMap<
@@ -441,12 +444,8 @@ impl<
 
             // If the 'entry_map' matches 'serialized_map', deserialize the key and value.
             if entry_map == serialized_map {
-                // Deserialize the key.
-                let key = bincode::deserialize(entry_key)?;
-                // Deserialize the value.
-                let value = bincode::deserialize(&value)?;
                 // Push the key-value pair to the vector.
-                entries.push((key, value));
+                entries.push((entry_key.to_owned(), value));
             } else {
                 // If the 'entry_map' no longer matches the 'serialized_map',
                 // we've moved past the relevant keys and can break the loop.
@@ -454,7 +453,15 @@ impl<
             }
         }
 
-        Ok(entries)
+        // Possibly deserialize the entries in parallel.
+        Ok(cfg_into_iter!(entries)
+            .map(|(k, v)| {
+                let k = bincode::deserialize::<K>(&k);
+                let v = bincode::deserialize::<V>(&v);
+
+                k.and_then(|k| v.map(|v| (k, v)))
+            })
+            .collect::<Result<_, bincode::Error>>()?)
     }
 
     ///
@@ -468,14 +475,14 @@ impl<
         let operations = self.atomic_batch.lock().clone();
 
         if !operations.is_empty() {
-            // Perform all the queued operations.
+            // Traverse the queued operations.
             for (m, k, v) in operations {
                 // If the map does not match the given map, then continue.
                 if &m != map {
                     continue;
                 }
 
-                // Perform the operation.
+                // Update the confirmed pairs based on the pending operations.
                 match (k, v) {
                     // Insert or update the key-value pair for the key.
                     (Some(k), Some(v)) => {

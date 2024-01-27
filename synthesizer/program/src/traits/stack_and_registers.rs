@@ -16,6 +16,7 @@ use std::sync::Arc;
 
 use crate::{FinalizeGlobalState, Function, Operand, Program};
 use console::{
+    account::Group,
     network::Network,
     prelude::{bail, Result},
     program::{
@@ -92,6 +93,15 @@ pub trait StackProgram<N: Network> {
         value_type: &ValueType<N>,
         rng: &mut R,
     ) -> Result<Value<N>>;
+
+    /// Returns a record for the given record name, with the given burner address and nonce.
+    fn sample_record<R: Rng + CryptoRng>(
+        &self,
+        burner_address: &Address<N>,
+        record_name: &Identifier<N>,
+        record_nonce: Group<N>,
+        rng: &mut R,
+    ) -> Result<Record<N, Plaintext<N>>>;
 }
 
 pub trait FinalizeRegistersState<N: Network> {
