@@ -24,6 +24,7 @@ impl<N: Network> Request<N> {
         function_name: Identifier<N>,
         inputs: impl ExactSizeIterator<Item = impl TryInto<Value<N>>>,
         input_types: &[ValueType<N>],
+        root_tvk: Option<Field<N>>,
         is_root: bool,
         rng: &mut R,
     ) -> Result<Self> {
@@ -64,6 +65,9 @@ impl<N: Network> Request<N> {
         let tvk = (*signer * r).to_x_coordinate();
         // Compute the transition commitment `tcm` as `Hash(tvk)`.
         let tcm = N::hash_psd2(&[tvk])?;
+        // Compute the signer commitment `scm` as `Hash(signer || root_tvk)`.
+        let root_tvk = root_tvk.unwrap_or(tvk);
+        let scm = N::hash_psd2(&[signer.deref().to_x_coordinate(), root_tvk])?;
         // Compute 'is_root' as a field element.
         let is_root = if is_root { Field::<N>::one() } else { Field::<N>::zero() };
 
@@ -234,6 +238,7 @@ impl<N: Network> Request<N> {
             sk_tag,
             tvk,
             tcm,
+            scm,
         })
     }
 }

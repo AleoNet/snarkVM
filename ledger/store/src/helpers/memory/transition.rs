@@ -38,6 +38,8 @@ pub struct TransitionMemory<N: Network> {
     tcm_map: MemoryMap<N::TransitionID, Field<N>>,
     /// The reverse `tcm` map.
     reverse_tcm_map: MemoryMap<Field<N>, N::TransitionID>,
+    /// The signer commitments.
+    scm_map: MemoryMap<N::TransitionID, Field<N>>,
 }
 
 #[rustfmt::skip]
@@ -49,6 +51,7 @@ impl<N: Network> TransitionStorage<N> for TransitionMemory<N> {
     type ReverseTPKMap = MemoryMap<Group<N>, N::TransitionID>;
     type TCMMap = MemoryMap<N::TransitionID, Field<N>>;
     type ReverseTCMMap = MemoryMap<Field<N>, N::TransitionID>;
+    type SCMMap = MemoryMap<N::TransitionID, Field<N>>;
 
     /// Initializes the transition storage.
     fn open<S: Clone + Into<StorageMode>>(storage: S) -> Result<Self> {
@@ -60,6 +63,7 @@ impl<N: Network> TransitionStorage<N> for TransitionMemory<N> {
             reverse_tpk_map: MemoryMap::default(),
             tcm_map: MemoryMap::default(),
             reverse_tcm_map: MemoryMap::default(),
+            scm_map: MemoryMap::default(),
         })
     }
 
@@ -96,6 +100,11 @@ impl<N: Network> TransitionStorage<N> for TransitionMemory<N> {
     /// Returns the reverse `tcm` map.
     fn reverse_tcm_map(&self) -> &Self::ReverseTCMMap {
         &self.reverse_tcm_map
+    }
+
+    /// Returns the signer commitments.
+    fn scm_map(&self) -> &Self::SCMMap {
+        &self.scm_map
     }
 }
 
