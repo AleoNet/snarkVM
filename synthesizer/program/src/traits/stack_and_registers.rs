@@ -94,7 +94,7 @@ pub trait StackProgram<N: Network> {
         rng: &mut R,
     ) -> Result<Value<N>>;
 
-    /// Returns a record for the given record name, with the given burner address.
+    /// Returns a record for the given record name, with the given burner address and nonce.
     fn sample_record<R: Rng + CryptoRng>(
         &self,
         burner_address: &Address<N>,
