@@ -180,6 +180,7 @@ impl<P: Parameters> AffineCurve for Affine<P> {
         })
     }
 
+    #[inline]
     fn mul_bits(&self, bits: impl Iterator<Item = bool>) -> Projective<P> {
         let mut res = Projective::zero();
         for i in bits {
