@@ -24,27 +24,6 @@ use ledger_block::{Deployment, Execution};
 use ledger_store::ConsensusStorage;
 use synthesizer_program::{CastType, Command, Finalize, Instruction, Operand, StackProgram};
 
-// Finalize costs for compute heavy operations, derived as:
-// `BASE_COST + (PER_BYTE_COST * SIZE_IN_BYTES)`.
-
-const CAST_BASE_COST: u64 = 500;
-const CAST_PER_BYTE_COST: u64 = 30;
-
-const MAPPING_BASE_COST: u64 = 10_000;
-const MAPPING_PER_BYTE_COST: u64 = 10;
-
-const HASH_BASE_COST: u64 = 10_000;
-const HASH_PER_BYTE_COST: u64 = 30;
-
-const HASH_BHP_BASE_COST: u64 = 50_000;
-const HASH_BHP_PER_BYTE_COST: u64 = 300;
-
-const HASH_PSD_BASE_COST: u64 = 40_000;
-const HASH_PSD_PER_BYTE_COST: u64 = 75;
-
-const SET_BASE_COST: u64 = 10_000;
-const SET_PER_BYTE_COST: u64 = 100;
-
 /// Returns the *minimum* cost in microcredits to publish the given deployment (total cost, (storage cost, namespace cost)).
 pub fn deployment_cost<N: Network>(deployment: &Deployment<N>) -> Result<(u64, (u64, u64))> {
     // Determine the number of bytes in the deployment.
@@ -167,6 +146,27 @@ pub fn cost_in_microcredits<N: Network>(stack: &Stack<N>, function_name: &Identi
         Ok(base_cost.saturating_add(byte_multiplier.saturating_mul(size_of_operands)))
     }
 
+    // Finalize costs for compute heavy operations, derived as:
+    // `BASE_COST + (PER_BYTE_COST * SIZE_IN_BYTES)`.
+
+    const CAST_BASE_COST: u64 = 500;
+    const CAST_PER_BYTE_COST: u64 = 30;
+
+    const HASH_BASE_COST: u64 = 10_000;
+    const HASH_PER_BYTE_COST: u64 = 30;
+
+    const HASH_BHP_BASE_COST: u64 = 50_000;
+    const HASH_BHP_PER_BYTE_COST: u64 = 300;
+
+    const HASH_PSD_BASE_COST: u64 = 40_000;
+    const HASH_PSD_PER_BYTE_COST: u64 = 75;
+
+    const MAPPING_BASE_COST: u64 = 10_000;
+    const MAPPING_PER_BYTE_COST: u64 = 10;
+
+    const SET_BASE_COST: u64 = 10_000;
+    const SET_PER_BYTE_COST: u64 = 100;
+
     // Retrieve the finalize logic.
     let Some(finalize) = stack.get_function_ref(function_name)?.finalize_logic() else {
         // Return a finalize cost of 0, if the function does not have a finalize scope.
@@ -189,14 +189,20 @@ pub fn cost_in_microcredits<N: Network>(stack: &Stack<N>, function_name: &Identi
             CastType::Plaintext(plaintext_type) => Ok(plaintext_size_in_bytes(stack, plaintext_type)?
                 .saturating_mul(CAST_PER_BYTE_COST)
                 .saturating_add(CAST_BASE_COST)),
-            _ => Ok(500),
+            CastType::GroupXCoordinate
+            | CastType::GroupYCoordinate
+            | CastType::Record(_)
+            | CastType::ExternalRecord(_) => Ok(500),
         },
         Command::Instruction(Instruction::CastLossy(cast_lossy)) => match cast_lossy.cast_type() {
             CastType::Plaintext(PlaintextType::Literal(_)) => Ok(500),
             CastType::Plaintext(plaintext_type) => Ok(plaintext_size_in_bytes(stack, plaintext_type)?
                 .saturating_mul(CAST_PER_BYTE_COST)
                 .saturating_add(CAST_BASE_COST)),
-            _ => Ok(500),
+            CastType::GroupXCoordinate
+            | CastType::GroupYCoordinate
+            | CastType::Record(_)
+            | CastType::ExternalRecord(_) => Ok(500),
         },
         Command::Instruction(Instruction::CommitBHP256(commit)) => {
             cost_in_size(stack, finalize, commit.operands(), HASH_BHP_PER_BYTE_COST, HASH_BHP_BASE_COST)
