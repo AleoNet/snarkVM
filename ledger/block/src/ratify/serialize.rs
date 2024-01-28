@@ -20,7 +20,7 @@ impl<N: Network> Serialize for Ratify<N> {
         match serializer.is_human_readable() {
             true => match self {
                 Self::Genesis(committee, public_balances, bonded_balances) => {
-                    let mut input = serializer.serialize_struct("Ratify", 3)?;
+                    let mut input = serializer.serialize_struct("Ratify", 4)?;
                     input.serialize_field("type", "genesis")?;
                     input.serialize_field("committee", &committee)?;
                     input.serialize_field("public_balances", &public_balances)?;
