@@ -27,12 +27,11 @@ type PublicBalances<N> = IndexMap<Address<N>, u64>;
 /// A helper type to represent the bonded balances.
 type BondedBalances<N> = IndexMap<Address<N>, (Address<N>, u64)>;
 
-#[allow(clippy::large_enum_variant)]
-// Note: The size of the `Ratify` object is 240 bytes.
+// Note: The size of the `Ratify` object is 32 bytes.
 #[derive(Clone, PartialEq, Eq)]
 pub enum Ratify<N: Network> {
     /// The genesis.
-    Genesis(Committee<N>, PublicBalances<N>, BondedBalances<N>),
+    Genesis(Box<Committee<N>>, Box<PublicBalances<N>>, Box<BondedBalances<N>>),
     /// The block reward.
     BlockReward(u64),
     /// The puzzle reward.
@@ -63,9 +62,19 @@ pub(crate) mod test_helpers {
             committee.members().iter().map(|(address, (amount, _))| (*address, (*address, *amount))).collect();
 
         vec![
-            Ratify::Genesis(committee, public_balances, bonded_balances),
+            Ratify::Genesis(Box::new(committee), Box::new(public_balances), Box::new(bonded_balances)),
             Ratify::BlockReward(rng.gen()),
             Ratify::PuzzleReward(rng.gen()),
         ]
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn check_ratify_size() {
+        assert_eq!(std::mem::size_of::<Ratify<console::network::Testnet3>>(), 32);
     }
 }

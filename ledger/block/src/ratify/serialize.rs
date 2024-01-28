@@ -65,7 +65,7 @@ impl<'de, N: Network> Deserialize<'de> for Ratify<N> {
                         let bonded_balances: BondedBalances<N> =
                             DeserializeExt::take_from_value::<D>(&mut object, "bonded_balances")?;
                         // Construct the ratify object.
-                        Ratify::Genesis(committee, public_balances, bonded_balances)
+                        Ratify::Genesis(Box::new(committee), Box::new(public_balances), Box::new(bonded_balances))
                     }
                     Some("block_reward") => {
                         // Retrieve the amount.

@@ -283,7 +283,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         let inputs = [caller.to_string(), format!("{amount}_u64")];
 
         // Prepare the ratifications.
-        let ratifications = vec![Ratify::Genesis(committee, public_balances, bonded_balances)];
+        let ratifications =
+            vec![Ratify::Genesis(Box::new(committee), Box::new(public_balances), Box::new(bonded_balances))];
         // Prepare the solutions.
         let solutions = Solutions::<N>::from(None); // The genesis block does not require solutions.
         // Prepare the aborted solution IDs.

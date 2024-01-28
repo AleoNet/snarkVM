@@ -800,7 +800,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
                     // Calculate the stake per validator using `bonded_balances`.
                     let mut stake_per_validator = IndexMap::with_capacity(committee.members().len());
-                    for (address, (validator_address, amount)) in bonded_balances {
+                    for (address, (validator_address, amount)) in bonded_balances.iter() {
                         // Check that the amount meets the minimum requirement, depending on whether the address is a validator.
                         if *address == *validator_address {
                             ensure!(
@@ -853,7 +853,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                         to_next_commitee_map_and_bonded_map(committee, bonded_balances);
 
                     // Insert the next committee into storage.
-                    store.committee_store().insert(state.block_height(), committee.clone())?;
+                    store.committee_store().insert(state.block_height(), *(committee.clone()))?;
                     // Store the finalize operations for updating the committee and bonded mapping.
                     finalize_operations.extend(&[
                         // Replace the committee mapping in storage.
@@ -863,7 +863,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     ]);
 
                     // Iterate over the public balances.
-                    for (address, amount) in public_balances {
+                    for (address, amount) in public_balances.iter() {
                         // Construct the key.
                         let key = Plaintext::from(Literal::Address(*address));
                         // Retrieve the current public balance.
