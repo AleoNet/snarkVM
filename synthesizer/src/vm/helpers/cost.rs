@@ -288,7 +288,7 @@ pub fn cost_in_microcredits<N: Network>(stack: &Stack<N>, function_name: &Identi
         Command::Instruction(Instruction::HashManyPSD8(_)) => {
             bail!("`hash_many.psd8` is not supported in finalize")
         }
-        Command::Instruction(Instruction::Inv(_)) => Ok(1_000),
+        Command::Instruction(Instruction::Inv(_)) => Ok(2_500),
         Command::Instruction(Instruction::IsEq(_)) => Ok(500),
         Command::Instruction(Instruction::IsNeq(_)) => Ok(500),
         Command::Instruction(Instruction::LessThan(_)) => Ok(500),
@@ -332,7 +332,9 @@ pub fn cost_in_microcredits<N: Network>(stack: &Stack<N>, function_name: &Identi
         Command::Instruction(Instruction::PowWrapped(_)) => Ok(500),
         Command::Instruction(Instruction::Rem(_)) => Ok(500),
         Command::Instruction(Instruction::RemWrapped(_)) => Ok(500),
-        Command::Instruction(Instruction::SignVerify(_)) => Ok(HASH_PSD_BASE_COST),
+        Command::Instruction(Instruction::SignVerify(sign)) => {
+            cost_in_size(stack, finalize, sign.operands(), HASH_PSD_PER_BYTE_COST, HASH_PSD_BASE_COST)
+        }
         Command::Instruction(Instruction::Shl(_)) => Ok(500),
         Command::Instruction(Instruction::ShlWrapped(_)) => Ok(500),
         Command::Instruction(Instruction::Shr(_)) => Ok(500),
