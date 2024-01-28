@@ -88,6 +88,10 @@ mod tests {
             Ok(("", RegisterType::<CurrentNetwork>::Plaintext(PlaintextType::from_str("signature")?))),
             RegisterType::<CurrentNetwork>::parse("signature")
         );
+        assert_eq!(
+            Ok(("", RegisterType::<CurrentNetwork>::Plaintext(PlaintextType::from_str("u8kldsafj")?))),
+            RegisterType::<CurrentNetwork>::parse("u8kldsafj")
+        );
 
         // Record type.
         assert_eq!(

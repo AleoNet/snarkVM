@@ -395,7 +395,7 @@ output r4 as field.private;",
     // Re-run to ensure state continues to work.
     let trace = Arc::new(RwLock::new(Trace::new()));
     let call_stack = CallStack::execute(authorization, trace).unwrap();
-    let response = stack.execute_function::<CurrentAleo, _>(call_stack, None, rng).unwrap();
+    let response = stack.execute_function::<CurrentAleo, _>(call_stack, None, None, rng).unwrap();
     let candidate = response.outputs();
     assert_eq!(3, candidate.len());
     assert_eq!(r2, candidate[0]);

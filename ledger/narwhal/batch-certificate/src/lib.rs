@@ -305,7 +305,7 @@ pub mod test_helpers {
         // Sample the leader certificate.
         let certificate = sample_batch_certificate_for_round_with_previous_certificate_ids(
             current_round,
-            previous_certificate_ids.clone(),
+            previous_certificate_ids,
             rng,
         );
 

@@ -50,24 +50,24 @@ additional:
 - child_outputs:
     credits.aleo/fee_public:
       outputs:
-      - '{"type":"future","id":"287714326547065147632386041381462772277143739683750779413781861533324542908field","value":"{\n  program_id: credits.aleo,\n  function_name: fee_public,\n  arguments: [\n    aleo1xe2fps8f9xpdas2q0fqy22uraenk84tvvzetrsyxgnwy6445h59s6wv78x,\n    28479u64\n  ]\n}"}'
+      - '{"type":"future","id":"2460846645005462366786666390638662805054402091600049454074156831399214194828field","value":"{\n  program_id: credits.aleo,\n  function_name: fee_public,\n  arguments: [\n    aleo1xe2fps8f9xpdas2q0fqy22uraenk84tvvzetrsyxgnwy6445h59s6wv78x,\n    12331u64\n  ]\n}"}'
 - child_outputs:
     credits.aleo/fee_public:
       outputs:
-      - '{"type":"future","id":"6649629637207372964857345430403866145654153614971187041628192785611251123180field","value":"{\n  program_id: credits.aleo,\n  function_name: fee_public,\n  arguments: [\n    aleo1xe2fps8f9xpdas2q0fqy22uraenk84tvvzetrsyxgnwy6445h59s6wv78x,\n    28507u64\n  ]\n}"}'
+      - '{"type":"future","id":"6275256556950672117831015896650227423786495892079094886222239210235424203607field","value":"{\n  program_id: credits.aleo,\n  function_name: fee_public,\n  arguments: [\n    aleo1xe2fps8f9xpdas2q0fqy22uraenk84tvvzetrsyxgnwy6445h59s6wv78x,\n    12359u64\n  ]\n}"}'
 - child_outputs:
     credits.aleo/fee_public:
       outputs:
-      - '{"type":"future","id":"6313149385997960507862814561552986754297687946640717773734483139258266930884field","value":"{\n  program_id: credits.aleo,\n  function_name: fee_public,\n  arguments: [\n    aleo1f6eg623knp66cwx0926w3plgdgzcmfpgyrzgnjz90mucgs3z7s9qls4upm,\n    101210u64\n  ]\n}"}'
+      - '{"type":"future","id":"8372199321635126203021619457748641319234355407813689190122379673577134950885field","value":"{\n  program_id: credits.aleo,\n  function_name: fee_public,\n  arguments: [\n    aleo1f6eg623knp66cwx0926w3plgdgzcmfpgyrzgnjz90mucgs3z7s9qls4upm,\n    14542u64\n  ]\n}"}'
 - child_outputs:
     credits.aleo/fee_public:
       outputs:
-      - '{"type":"future","id":"4275231109424124634535800322540895777297870484284382855497078926857012238518field","value":"{\n  program_id: credits.aleo,\n  function_name: fee_public,\n  arguments: [\n    aleo1xe2fps8f9xpdas2q0fqy22uraenk84tvvzetrsyxgnwy6445h59s6wv78x,\n    28479u64\n  ]\n}"}'
+      - '{"type":"future","id":"610670209921538255900619170127761975836076634836989613464070279109494487943field","value":"{\n  program_id: credits.aleo,\n  function_name: fee_public,\n  arguments: [\n    aleo1xe2fps8f9xpdas2q0fqy22uraenk84tvvzetrsyxgnwy6445h59s6wv78x,\n    12331u64\n  ]\n}"}'
 - child_outputs:
     credits.aleo/fee_public:
       outputs:
-      - '{"type":"future","id":"4672593758915782759444776821290902637872156268641425969525459952369605821638field","value":"{\n  program_id: credits.aleo,\n  function_name: fee_public,\n  arguments: [\n    aleo1f6eg623knp66cwx0926w3plgdgzcmfpgyrzgnjz90mucgs3z7s9qls4upm,\n    101214u64\n  ]\n}"}'
+      - '{"type":"future","id":"7567328850021607310717103237149585492311011209064307935458393135932696315699field","value":"{\n  program_id: credits.aleo,\n  function_name: fee_public,\n  arguments: [\n    aleo1f6eg623knp66cwx0926w3plgdgzcmfpgyrzgnjz90mucgs3z7s9qls4upm,\n    14546u64\n  ]\n}"}'
 - child_outputs:
     credits.aleo/fee_public:
       outputs:
-      - '{"type":"future","id":"4563984273654878917898732677226757277037946841102836189913527591453113921149field","value":"{\n  program_id: credits.aleo,\n  function_name: fee_public,\n  arguments: [\n    aleo1xe2fps8f9xpdas2q0fqy22uraenk84tvvzetrsyxgnwy6445h59s6wv78x,\n    28479u64\n  ]\n}"}'
+      - '{"type":"future","id":"1006453709257039404896819728350834886286831571018854714236513706501168842517field","value":"{\n  program_id: credits.aleo,\n  function_name: fee_public,\n  arguments: [\n    aleo1xe2fps8f9xpdas2q0fqy22uraenk84tvvzetrsyxgnwy6445h59s6wv78x,\n    12331u64\n  ]\n}"}'

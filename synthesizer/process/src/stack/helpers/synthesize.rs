@@ -52,6 +52,12 @@ impl<N: Network> Stack<N> {
         // Sample 'is_root'.
         let is_root = true;
 
+        // The `root_tvk` is `None` when deploying an individual circuit.
+        let root_tvk = None;
+
+        // The caller is `None` when deploying an individual circuit.
+        let caller = None;
+
         // Compute the request, with a burner private key.
         let request = Request::sign(
             &burner_private_key,
@@ -59,6 +65,7 @@ impl<N: Network> Stack<N> {
             *function_name,
             inputs.into_iter(),
             &input_types,
+            root_tvk,
             is_root,
             rng,
         )?;
@@ -67,7 +74,7 @@ impl<N: Network> Stack<N> {
         // Initialize the call stack.
         let call_stack = CallStack::Synthesize(vec![request], burner_private_key, authorization);
         // Synthesize the circuit.
-        let _response = self.execute_function::<A, R>(call_stack, None, rng)?;
+        let _response = self.execute_function::<A, R>(call_stack, caller, root_tvk, rng)?;
 
         // Ensure the proving key exists.
         ensure!(self.contains_proving_key(function_name), "Function '{function_name}' is missing a proving key.");

@@ -186,6 +186,7 @@ pub enum TransitionMap {
     ReverseTPK = DataID::TransitionReverseTPKMap as u16,
     TCM = DataID::TransitionTCMMap as u16,
     ReverseTCM = DataID::TransitionReverseTCMMap as u16,
+    SCM = DataID::TransitionSCMMap as u16,
 }
 
 /// The RocksDB map prefix for program-related entries.
@@ -282,6 +283,7 @@ enum DataID {
     TransitionReverseTPKMap,
     TransitionTCMMap,
     TransitionReverseTCMMap,
+    TransitionSCMMap,
     // Program
     ProgramIDMap,
     KeyValueMap,

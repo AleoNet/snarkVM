@@ -76,6 +76,12 @@ impl<N: Network> Stack<N> {
         // Construct the call stacks and assignments used to verify the certificates.
         let mut call_stacks = Vec::with_capacity(deployment.verifying_keys().len());
 
+        // The `root_tvk` is `None` when verifying the deployment of an individual circuit.
+        let root_tvk = None;
+
+        // The `caller` is `None` when verifying the deployment of an individual circuit.
+        let caller = None;
+
         // Iterate through the program functions and construct the callstacks and corresponding assignments.
         for function in deployment.program().functions().values() {
             // Initialize a burner private key.
@@ -108,6 +114,7 @@ impl<N: Network> Stack<N> {
                 *function.name(),
                 inputs.into_iter(),
                 &input_types,
+                root_tvk,
                 is_root,
                 rng,
             )?;
@@ -125,7 +132,7 @@ impl<N: Network> Stack<N> {
         cfg_iter!(call_stacks).zip_eq(deployment.verifying_keys()).zip_eq(rngs).try_for_each(
             |(((function_name, call_stack, assignments), (_, (verifying_key, certificate))), mut rng)| {
                 // Synthesize the circuit.
-                if let Err(err) = self.execute_function::<A, _>(call_stack.clone(), None, &mut rng) {
+                if let Err(err) = self.execute_function::<A, _>(call_stack.clone(), caller, root_tvk, &mut rng) {
                     bail!("Failed to synthesize the circuit for '{function_name}': {err}")
                 }
                 // Check the certificate.

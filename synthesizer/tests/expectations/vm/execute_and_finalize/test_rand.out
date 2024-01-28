@@ -32,16 +32,16 @@ additional:
 - child_outputs:
     credits.aleo/fee_public:
       outputs:
-      - '{"type":"future","id":"5434435027697006436788114543338997352452472129161114538117990254445136075185field","value":"{\n  program_id: credits.aleo,\n  function_name: fee_public,\n  arguments: [\n    aleo1uchf7kruskpp8thlnfeya9qeklcjss27j6rtu74zz7ch559neqystgslsp,\n    601806u64\n  ]\n}"}'
+      - '{"type":"future","id":"688232565550074479957237991079250189610291259825289272252652272917330731838field","value":"{\n  program_id: credits.aleo,\n  function_name: fee_public,\n  arguments: [\n    aleo1uchf7kruskpp8thlnfeya9qeklcjss27j6rtu74zz7ch559neqystgslsp,\n    601838u64\n  ]\n}"}'
 - child_outputs:
     credits.aleo/fee_public:
       outputs:
-      - '{"type":"future","id":"1455465546409944304007956260384028107498636362872802223193183597053222860412field","value":"{\n  program_id: credits.aleo,\n  function_name: fee_public,\n  arguments: [\n    aleo1uchf7kruskpp8thlnfeya9qeklcjss27j6rtu74zz7ch559neqystgslsp,\n    26679u64\n  ]\n}"}'
+      - '{"type":"future","id":"4312563321279759209886042118500602385599041356791262942076841476719411110110field","value":"{\n  program_id: credits.aleo,\n  function_name: fee_public,\n  arguments: [\n    aleo1uchf7kruskpp8thlnfeya9qeklcjss27j6rtu74zz7ch559neqystgslsp,\n    26711u64\n  ]\n}"}'
 - child_outputs:
     credits.aleo/fee_public:
       outputs:
-      - '{"type":"future","id":"3897237322641678007226763707031207042005562444025847421658930358169707454055field","value":"{\n  program_id: credits.aleo,\n  function_name: fee_public,\n  arguments: [\n    aleo1uchf7kruskpp8thlnfeya9qeklcjss27j6rtu74zz7ch559neqystgslsp,\n    28344u64\n  ]\n}"}'
+      - '{"type":"future","id":"1282129350700700594940680024596897867110148414308708700842921386046440366011field","value":"{\n  program_id: credits.aleo,\n  function_name: fee_public,\n  arguments: [\n    aleo1uchf7kruskpp8thlnfeya9qeklcjss27j6rtu74zz7ch559neqystgslsp,\n    26876u64\n  ]\n}"}'
 - child_outputs:
     credits.aleo/fee_public:
       outputs:
-      - '{"type":"future","id":"3612589588414986325528303980793223423887868113647957048451367367231068740385field","value":"{\n  program_id: credits.aleo,\n  function_name: fee_public,\n  arguments: [\n    aleo1uchf7kruskpp8thlnfeya9qeklcjss27j6rtu74zz7ch559neqystgslsp,\n    28344u64\n  ]\n}"}'
+      - '{"type":"future","id":"2838401481340464124610411329302176081664394080829994051209644145406827373864field","value":"{\n  program_id: credits.aleo,\n  function_name: fee_public,\n  arguments: [\n    aleo1uchf7kruskpp8thlnfeya9qeklcjss27j6rtu74zz7ch559neqystgslsp,\n    26876u64\n  ]\n}"}'

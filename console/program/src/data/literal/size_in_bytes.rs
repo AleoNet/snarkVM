@@ -12,21 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-pub struct GenesisBytes;
+use super::*;
 
-impl GenesisBytes {
-    pub const fn load_bytes() -> &'static [u8] {
-        include_bytes!("./resources/block.genesis")
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_genesis_block() {
-        let bytes = GenesisBytes::load_bytes();
-        assert_eq!(13989, bytes.len() as u64, "Update me if serialization has changed");
+impl<N: Network> Literal<N> {
+    /// Returns the size in bytes of this literal.
+    #[allow(clippy::cast_possible_truncation)]
+    pub fn size_in_bytes(&self) -> u16 {
+        // Note: This upcast to u32 and downcast to u16 is safe because the size of a literal is
+        // always less than or equal to u16::MAX bits, and we are dividing by 8, so the result will
+        // always fit in a u16.
+        (((self.size_in_bits() as u32) + 7) / 8) as u16
     }
 }

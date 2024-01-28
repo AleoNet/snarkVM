@@ -239,6 +239,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             let mut input_ids: IndexSet<Field<N>> = IndexSet::new();
             // Initialize a list of created output IDs.
             let mut output_ids: IndexSet<Field<N>> = IndexSet::new();
+            // Initialize the list of created transition public keys.
+            let mut tpks: IndexSet<Group<N>> = IndexSet::new();
 
             // Finalize the transactions.
             'outer: for transaction in transactions {
@@ -285,6 +287,18 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     {
                         // Store the aborted transaction.
                         aborted.push((transaction.clone(), format!("Duplicate output {output_id}")));
+                        // Continue to the next transaction.
+                        continue 'outer;
+                    }
+                }
+
+                // // Ensure that the transaction is not producing a duplicate transition public key.
+                // // Note that the tpk and tcm are corresponding, so a uniqueness check for just the tpk is sufficient.
+                for tpk in transaction.transition_public_keys() {
+                    // If the transition public key is already produced in this block or previous blocks, abort the transaction.
+                    if tpks.contains(tpk) || self.transition_store().contains_tpk(tpk).unwrap_or(true) {
+                        // Store the aborted transaction.
+                        aborted.push((transaction.clone(), format!("Duplicate transition public key {tpk}")));
                         // Continue to the next transaction.
                         continue 'outer;
                     }
@@ -409,6 +423,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                         input_ids.extend(confirmed_transaction.transaction().input_ids());
                         // Add the output IDs to the set of produced output IDs.
                         output_ids.extend(confirmed_transaction.transaction().output_ids());
+                        // Add the transition public keys to the set of produced transition public keys.
+                        tpks.extend(confirmed_transaction.transaction().transition_public_keys());
                         // Store the confirmed transaction.
                         confirmed.push(confirmed_transaction);
                         // Increment the transaction index counter.

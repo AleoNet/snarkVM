@@ -14,7 +14,11 @@
 
 use crate::{stack::Address, CallStack, Registers, RegistersCall, StackEvaluate, StackExecute};
 use aleo_std::prelude::{finish, lap, timer};
-use console::{network::prelude::*, program::Request};
+use console::{
+    account::Field,
+    network::prelude::*,
+    program::{Register, Request, Value, ValueType},
+};
 use synthesizer_program::{
     Call,
     CallOperator,
@@ -43,6 +47,7 @@ pub trait CallTrait<N: Network> {
         stack: &(impl StackEvaluate<N> + StackExecute<N> + StackMatches<N> + StackProgram<N>),
         registers: &mut (
                  impl RegistersCall<N>
+                 + RegistersSigner<N>
                  + RegistersSignerCircuit<N, A>
                  + RegistersLoadCircuit<N, A>
                  + RegistersStoreCircuit<N, A>
@@ -136,6 +141,7 @@ impl<N: Network> CallTrait<N> for Call<N> {
         stack: &(impl StackEvaluate<N> + StackExecute<N> + StackMatches<N> + StackProgram<N>),
         registers: &mut (
                  impl RegistersCall<N>
+                 + RegistersSigner<N>
                  + RegistersSignerCircuit<N, A>
                  + RegistersLoadCircuit<N, A>
                  + RegistersStoreCircuit<N, A>
@@ -177,6 +183,9 @@ impl<N: Network> CallTrait<N> for Call<N> {
             }
         };
         lap!(timer, "Retrieve the substack and resource");
+
+        // If we are not handling the root request, retrieve the root request's tvk
+        let root_tvk = registers.root_tvk().ok();
 
         // If the operator is a closure, retrieve the closure and compute the output.
         let outputs = if let Ok(closure) = substack.program().get_closure(resource) {
@@ -228,6 +237,7 @@ impl<N: Network> CallTrait<N> for Call<N> {
                             *function.name(),
                             inputs.iter(),
                             &function.input_types(),
+                            root_tvk,
                             is_root,
                             rng,
                         )?;
@@ -241,7 +251,7 @@ impl<N: Network> CallTrait<N> for Call<N> {
                         authorization.push(request.clone());
 
                         // Execute the request.
-                        let response = substack.execute_function::<A, R>(call_stack, console_caller, rng)?;
+                        let response = substack.execute_function::<A, R>(call_stack, console_caller, root_tvk, rng)?;
 
                         // Return the request and response.
                         (request, response)
@@ -254,6 +264,7 @@ impl<N: Network> CallTrait<N> for Call<N> {
                             *function.name(),
                             inputs.iter(),
                             &function.input_types(),
+                            root_tvk,
                             is_root,
                             rng,
                         )?;
@@ -264,7 +275,7 @@ impl<N: Network> CallTrait<N> for Call<N> {
                         call_stack.push(request.clone())?;
 
                         // Evaluate the request.
-                        let response = substack.execute_function::<A, _>(call_stack, console_caller, rng)?;
+                        let response = substack.execute_function::<A, _>(call_stack, console_caller, root_tvk, rng)?;
 
                         // Return the request and response.
                         (request, response)
@@ -277,6 +288,7 @@ impl<N: Network> CallTrait<N> for Call<N> {
                             *function.name(),
                             inputs.iter(),
                             &function.input_types(),
+                            root_tvk,
                             is_root,
                             rng,
                         )?;
@@ -287,7 +299,26 @@ impl<N: Network> CallTrait<N> for Call<N> {
                         let outputs = function
                             .outputs()
                             .iter()
-                            .map(|output| substack.sample_value(&address, output.value_type(), rng))
+                            .map(|output| match output.value_type() {
+                                ValueType::Record(record_name) => {
+                                    // Get the register index containing the record.
+                                    let index = match output.operand() {
+                                        Operand::Register(Register::Locator(index)) => Field::from_u64(*index),
+                                        _ => bail!("Expected a `Register::Locator` operand for a record output."),
+                                    };
+                                    // Compute the encryption randomizer as `HashToScalar(tvk || index)`.
+                                    let randomizer = N::hash_to_scalar_psd2(&[*request.tvk(), index])?;
+                                    // Construct the record nonce.
+                                    let record_nonce = N::g_scalar_multiply(&randomizer);
+                                    Ok(Value::Record(substack.sample_record(
+                                        &address,
+                                        record_name,
+                                        record_nonce,
+                                        rng,
+                                    )?))
+                                }
+                                _ => substack.sample_value(&address, output.value_type(), rng),
+                            })
                             .collect::<Result<Vec<_>>>()?;
                         // Map the output operands to registers.
                         let output_registers = function
@@ -334,7 +365,7 @@ impl<N: Network> CallTrait<N> for Call<N> {
                             substack.evaluate_function::<A>(registers.call_stack().replicate(), console_caller)?;
                         // Execute the request.
                         let response =
-                            substack.execute_function::<A, R>(registers.call_stack(), console_caller, rng)?;
+                            substack.execute_function::<A, R>(registers.call_stack(), console_caller, root_tvk, rng)?;
                         // Ensure the values are equal.
                         if console_response.outputs() != response.outputs() {
                             #[cfg(debug_assertions)]

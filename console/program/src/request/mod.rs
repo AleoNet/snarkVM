@@ -48,6 +48,8 @@ pub struct Request<N: Network> {
     tvk: Field<N>,
     /// The transition commitment.
     tcm: Field<N>,
+    /// The signer commitment.
+    scm: Field<N>,
 }
 
 impl<N: Network>
@@ -62,11 +64,12 @@ impl<N: Network>
         Field<N>,
         Field<N>,
         Field<N>,
+        Field<N>,
     )> for Request<N>
 {
     /// Note: See `Request::sign` to create the request. This method is used to eject from a circuit.
     fn from(
-        (signer, network_id, program_id, function_name, input_ids, inputs, signature, sk_tag, tvk, tcm): (
+        (signer, network_id, program_id, function_name, input_ids, inputs, signature, sk_tag, tvk, tcm, scm): (
             Address<N>,
             U16<N>,
             ProgramID<N>,
@@ -77,13 +80,14 @@ impl<N: Network>
             Field<N>,
             Field<N>,
             Field<N>,
+            Field<N>,
         ),
     ) -> Self {
         // Ensure the network ID is correct.
         if *network_id != N::ID {
             N::halt(format!("Invalid network ID. Expected {}, found {}", N::ID, *network_id))
         } else {
-            Self { signer, network_id, program_id, function_name, input_ids, inputs, signature, sk_tag, tvk, tcm }
+            Self { signer, network_id, program_id, function_name, input_ids, inputs, signature, sk_tag, tvk, tcm, scm }
         }
     }
 }
@@ -150,6 +154,11 @@ impl<N: Network> Request<N> {
     pub const fn tcm(&self) -> &Field<N> {
         &self.tcm
     }
+
+    /// Returns the signer commitment `scm`.
+    pub const fn scm(&self) -> &Field<N> {
+        &self.scm
+    }
 }
 
 #[cfg(test)]
@@ -196,9 +205,12 @@ mod test_helpers {
                     ValueType::from_str("token.aleo/token.record").unwrap(),
                 ];
 
+                // Sample root_tvk.
+                let root_tvk = None;
+
                 // Compute the signed request.
                 let request =
-                    Request::sign(&private_key, program_id, function_name, inputs.into_iter(), &input_types, is_root, rng).unwrap();
+                    Request::sign(&private_key, program_id, function_name, inputs.into_iter(), &input_types, root_tvk, is_root, rng).unwrap();
                 assert!(request.verify(&input_types, is_root));
                 request
             })
