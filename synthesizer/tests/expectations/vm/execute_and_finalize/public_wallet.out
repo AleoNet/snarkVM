@@ -14,4 +14,4 @@ additional:
       - '{"type":"future","id":"6870476253411913047431672168259118946802015453568356666196082705096404310887field","value":"{\n  program_id: token.aleo,\n  function_name: mint_public,\n  arguments: [\n    aleo1sry3pke49ykrf0aeshf889tr98r4c86p5f4ms766795ssdwfdyqq9jdg0j,\n    10u64\n  ]\n}"}'
     credits.aleo/fee_public:
       outputs:
-      - '{"type":"future","id":"5525308133544540763757385329943115018858161100889529786580724367369238892field","value":"{\n  program_id: credits.aleo,\n  function_name: fee_public,\n  arguments: [\n    aleo1d3e2je2m2hsxwdsvntvf4jnnlj459ywfry6ch2qwrpy6l6r6yvpq8e88h5,\n    131265u64\n  ]\n}"}'
+      - '{"type":"future","id":"8242741303045788366029769877408013430285170870359415275077024518285491239453field","value":"{\n  program_id: credits.aleo,\n  function_name: fee_public,\n  arguments: [\n    aleo1d3e2je2m2hsxwdsvntvf4jnnlj459ywfry6ch2qwrpy6l6r6yvpq8e88h5,\n    27585u64\n  ]\n}"}'
