@@ -267,7 +267,11 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         // Compute the total supply.
         let total_supply = total_stake.checked_add(account_supply).ok_or_else(|| anyhow!("Invalid total supply"))?;
         // Ensure the total supply matches.
-        ensure!(total_supply == N::STARTING_SUPPLY, "Invalid total supply");
+        ensure!(
+            total_supply == N::STARTING_SUPPLY,
+            "Invalid total supply. Found {total_supply}, expected {}",
+            N::STARTING_SUPPLY
+        );
 
         // Prepare the caller.
         let caller = Address::try_from(private_key)?;
