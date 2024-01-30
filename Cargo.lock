@@ -3312,6 +3312,7 @@ dependencies = [
  "snarkvm-ledger-narwhal-compact-certificate",
  "snarkvm-ledger-narwhal-subdag",
  "snarkvm-ledger-narwhal-traits",
+ "tracing",
 ]
 
 [[package]]

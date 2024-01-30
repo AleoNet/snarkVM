@@ -33,6 +33,9 @@ use std::collections::BTreeMap;
 #[cfg(not(feature = "serial"))]
 use rayon::prelude::*;
 
+#[macro_use]
+extern crate tracing;
+
 /// Helper enum to wrap the leader certificate.
 enum LeaderCertificate<'a, N: Network> {
     Full(&'a BatchCertificate<N>),
@@ -109,7 +112,10 @@ impl<N: Network> PartialEq for Subdag<N> {
             // Note: We do not check equality on `election_certificate_ids` as it would cause `Block::eq` to trigger false-positives.
             (Self::Full { subdag, .. }, Self::Full { subdag: other_subdag, .. }) => subdag == other_subdag,
             (Self::Compact { subdag, .. }, Self::Compact { subdag: other_subdag, .. }) => subdag == other_subdag,
-            _ => false,
+            _ => {
+                warn!("Subdag equality check failed - trying to compare a Full to a Compact subdag");
+                false
+            }
         }
     }
 }

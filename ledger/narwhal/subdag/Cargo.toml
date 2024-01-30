@@ -77,6 +77,9 @@ optional = true
 version = "1.0"
 features = [ "preserve_order" ]
 
+[dependencies.tracing]
+version = "0.1"
+
 [dev-dependencies.bincode]
 version = "1.3"
 
