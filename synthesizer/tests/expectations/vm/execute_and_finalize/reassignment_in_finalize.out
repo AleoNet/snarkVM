@@ -1,0 +1,14 @@
+errors: []
+outputs:
+- verified: true
+  execute:
+    reassignment_in_finalize.aleo/test:
+      outputs:
+      - '{"type":"future","id":"1273791078897374286634408443816979905903675759518647551844638330126044186146field","value":"{\n  program_id: reassignment_in_finalize.aleo,\n  function_name: test,\n  arguments: [\n    1field,\n    2field\n  ]\n}"}'
+  speculate: the execution was accepted
+  add_next_block: succeeded.
+additional:
+- child_outputs:
+    credits.aleo/fee_private:
+      outputs:
+      - '{"type":"record","id":"5294876369297292920622904162135744067807060947337429112012770472007489948891field","checksum":"6893393496642700830321947745405833142135207848917766417756090441809366734805field","value":"record1qyqsqkmc5n7h7tfp32szkrx4x58zmp6fmx3juqnjl47ax6wh2jdxqcqqqyxx66trwfhkxun9v35hguerqqpqzqrpnvs2en04uefta32r237723ypchw9hwexzfax4aydj2awngvsqjyel6r8n3kfxtcc5fmynhsk4wqkzh0qlryk25s8j6efjukylkdsk98x8ue"}'

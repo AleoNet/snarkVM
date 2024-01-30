@@ -14,6 +14,7 @@
 
 use super::*;
 use crate::RegisterTypes;
+use indexmap::map::Entry;
 use synthesizer_program::{
     Await,
     Branch,
@@ -115,16 +116,26 @@ impl<N: Network> FinalizeTypes<N> {
         // Check the destination register.
         match register {
             Register::Locator(locator) => {
-                // Ensure the registers are monotonically increasing.
-                let expected_locator = (self.inputs.len() as u64) + self.destinations.len() as u64;
-                ensure!(expected_locator == locator, "Register '{register}' is out of order");
+                // Ensure the register is not an input register.
+                ensure!(!self.inputs.contains_key(&locator), "Cannot re-assign to the input register '{register}'");
 
-                // Insert the destination register and type.
-                match self.destinations.insert(locator, finalize_type) {
-                    // If the register already exists, throw an error.
-                    Some(..) => bail!("Destination '{register}' already exists"),
-                    // If the register does not exist, return success.
-                    None => Ok(()),
+                // Get the corresponding entry in the mapping.
+                match self.destinations.entry(locator) {
+                    // If the entry exists, check that the types match.
+                    Entry::Occupied(entry) => {
+                        let current_finalize_type = entry.get();
+                        match current_finalize_type == &finalize_type {
+                            true => Ok(()),
+                            false => bail!(
+                                "Cannot re-assign destination register '{register}' with type '{finalize_type}' to type '{current_finalize_type}'"
+                            ),
+                        }
+                    }
+                    // If the entry does not exist, insert the register and type.
+                    Entry::Vacant(entry) => {
+                        entry.insert(finalize_type);
+                        Ok(())
+                    }
                 }
             }
             // Ensure the register is a locator, and not an access.

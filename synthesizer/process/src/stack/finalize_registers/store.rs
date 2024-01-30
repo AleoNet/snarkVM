@@ -32,14 +32,6 @@ impl<N: Network> RegistersStore<N> for FinalizeRegisters<N> {
         // Store the value to the register.
         match (register, stack_value) {
             (Register::Locator(locator), stack_value) => {
-                // Ensure the register assignments are monotonically increasing.
-                match self.last_register {
-                    None => ensure!(*locator == 0, "Out-of-order write operation at '{register}'"),
-                    Some(last) => ensure!(*locator > last, "Out-of-order write operation at '{register}'"),
-                };
-                // Ensure the register does not already exist.
-                ensure!(!self.registers.contains_key(locator), "Cannot write to occupied register '{register}'");
-
                 // Ensure the type of the register is valid.
                 match (self.finalize_types.get_type(stack, register), &stack_value) {
                     // Ensure the plaintext value matches the plaintext type.
@@ -59,17 +51,9 @@ impl<N: Network> RegistersStore<N> for FinalizeRegisters<N> {
                 };
 
                 // Store the plaintext value.
-                match self.registers.insert(*locator, stack_value) {
-                    // Ensure the register has not been previously stored.
-                    Some(..) => bail!("Attempted to write to register '{register}' again"),
-                    // Update the last register locator, and return on success.
-                    None => {
-                        // Update the last register locator.
-                        self.last_register = Some(*locator);
-                        // Return on success.
-                        Ok(())
-                    }
-                }
+                self.registers.insert(*locator, stack_value);
+
+                Ok(())
             }
             // Ensure the register is not a register access.
             (Register::Access(..), _) => bail!("Cannot store to a register access: '{register}'"),

@@ -45,8 +45,6 @@ pub struct FinalizeRegisters<N: Network> {
     finalize_types: FinalizeTypes<N>,
     /// The mapping of assigned registers to their values.
     registers: IndexMap<u64, Value<N>>,
-    /// The tracker for the last register locator.
-    last_register: Option<u64>,
 }
 
 impl<N: Network> FinalizeRegisters<N> {
@@ -58,7 +56,7 @@ impl<N: Network> FinalizeRegisters<N> {
         function_name: Identifier<N>,
         finalize_types: FinalizeTypes<N>,
     ) -> Self {
-        Self { state, transition_id, finalize_types, function_name, registers: IndexMap::new(), last_register: None }
+        Self { state, transition_id, finalize_types, function_name, registers: IndexMap::new() }
     }
 }
 
