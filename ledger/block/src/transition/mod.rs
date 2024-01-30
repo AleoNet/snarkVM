@@ -298,16 +298,22 @@ impl<N: Network> Transition<N> {
 }
 
 impl<N: Network> Transition<N> {
-    /// Returns `true` if this is a `bond` transition.
+    /// Returns `true` if this is a `bond_public` transition.
     #[inline]
-    pub fn is_bond(&self) -> bool {
-        self.program_id.to_string() == "credits.aleo" && self.function_name.to_string() == "bond"
+    pub fn is_bond_public(&self) -> bool {
+        self.inputs.len() == 2
+            && self.outputs.is_empty()
+            && self.program_id.to_string() == "credits.aleo"
+            && self.function_name.to_string() == "bond_public"
     }
 
-    /// Returns `true` if this is an `unbond` transition.
+    /// Returns `true` if this is an `unbond_public` transition.
     #[inline]
-    pub fn is_unbond(&self) -> bool {
-        self.program_id.to_string() == "credits.aleo" && self.function_name.to_string() == "unbond"
+    pub fn is_unbond_public(&self) -> bool {
+        self.inputs.len() == 2
+            && self.outputs.is_empty()
+            && self.program_id.to_string() == "credits.aleo"
+            && self.function_name.to_string() == "unbond_public"
     }
 
     /// Returns `true` if this is a `fee_private` transition.
