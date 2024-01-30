@@ -24,7 +24,7 @@ use console::{
     program::{Identifier, Literal, Plaintext, ProgramID, Value},
     types::Address,
 };
-use ledger_block::{Block, Ratify};
+use ledger_block::{Block, Ratify, Solutions};
 use ledger_store::ConsensusStore;
 use std::str::FromStr;
 use synthesizer::{
@@ -42,7 +42,7 @@ type ConsensusType<N> = ledger_store::helpers::memory::ConsensusMemory<N>;
 #[cfg(feature = "rocks")]
 type ConsensusType<N> = ledger_store::helpers::rocksdb::ConsensusDB<N>;
 
-const NUM_DELEGATORS: [u64; 4] = [0, 1000, 10_000, 100_000];
+const NUM_DELEGATORS: [u64; 5] = [0, 1000, 10_000, 100_000, 1_000_000];
 
 fn bench_atomic_post_ratify(c: &mut Criterion) {
     let rng = &mut TestRng::default();
@@ -206,7 +206,7 @@ fn bench_atomic_post_ratify(c: &mut Criterion) {
                             finalize_store,
                             finalize_state,
                             [Ratify::BlockReward(1_000_000_000)].iter(),
-                            None,
+                            &Solutions::from(None),
                         )
                         .unwrap();
                     },
