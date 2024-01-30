@@ -14,7 +14,6 @@
 
 use super::*;
 use crate::RegisterTypes;
-use indexmap::map::Entry;
 use synthesizer_program::{
     Await,
     Branch,
@@ -119,24 +118,19 @@ impl<N: Network> FinalizeTypes<N> {
                 // Ensure the register is not an input register.
                 ensure!(!self.inputs.contains_key(&locator), "Cannot re-assign to the input register '{register}'");
 
-                // Get the corresponding entry in the mapping.
-                match self.destinations.entry(locator) {
-                    // If the entry exists, check that the types match.
-                    Entry::Occupied(entry) => {
-                        let current_finalize_type = entry.get();
-                        match current_finalize_type == &finalize_type {
-                            true => Ok(()),
-                            false => bail!(
-                                "Cannot re-assign destination register '{register}' with type '{finalize_type}' to type '{current_finalize_type}'"
-                            ),
-                        }
-                    }
-                    // If the entry does not exist, insert the register and type.
-                    Entry::Vacant(entry) => {
-                        entry.insert(finalize_type);
-                        Ok(())
-                    }
+                // If the destination register is already set, ensure the types match.
+                if let Some(type_) = self.destinations.get(&locator) {
+                    ensure!(
+                        type_ == &finalize_type,
+                        "Cannot re-assign destination register '{register}' with type '{finalize_type}' to type '{type_}'"
+                    )
                 }
+                // Otherwise, insert the destination register and type.
+                else {
+                    self.destinations.insert(locator, finalize_type);
+                }
+
+                Ok(())
             }
             // Ensure the register is a locator, and not an access.
             Register::Access(..) => bail!("Register '{register}' must be a locator."),
