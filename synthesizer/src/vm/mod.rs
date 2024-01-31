@@ -1148,7 +1148,7 @@ function do:
         let transaction = vm.deploy(&private_key, &program, None, 0, None, rng).unwrap();
 
         // Destructure the deployment transaction.
-        let Transaction::Deploy(txid, program_owner, deployment, fee) = transaction else {
+        let Transaction::Deploy(_, program_owner, deployment, fee) = transaction else {
             panic!("Expected a deployment transaction");
         };
 
@@ -1161,8 +1161,8 @@ function do:
             vks_with_overreport.push((*id, (vk, cert.clone())));
         }
 
-        // Compute the required fee.
-        let required_fee = *fee.base_amount().unwrap() + 1000; // TODO: calculate exact
+        // Each additional constraint costs 25 microcredits, so we need to increase the fee by 25 microcredits.
+        let required_fee = *fee.base_amount().unwrap() + 25;
         // Authorize a new fee.
         let fee_authorization = vm
             .authorize_fee_public(&private_key, required_fee, 0, deployment.as_ref().to_deployment_id().unwrap(), rng)
@@ -1170,17 +1170,12 @@ function do:
         // Compute the fee.
         let fee = vm.execute_fee_authorization(fee_authorization, None, rng).unwrap();
 
-        // Create a new deployment tranasction with the overreported verifying keys.
+        // Create a new deployment transaction with the overreported verifying keys.
         let adjusted_deployment =
             Deployment::new(deployment.edition(), deployment.program().clone(), vks_with_overreport).unwrap();
-        let adjusted_transaction = Transaction::Deploy(txid, program_owner, Box::new(adjusted_deployment), fee);
+        let adjusted_transaction = Transaction::from_deployment(program_owner, adjusted_deployment, fee).unwrap();
 
-        // Verify the deployment transaction. It should fail because the num_constraints in the vk are not correct.
-        let res = vm.check_transaction(&adjusted_transaction, None, rng);
-        println!("Result of check transaction: {:?}", res);
         assert!(vm.check_transaction(&adjusted_transaction, None, rng).is_err());
-
-        println!("Test if we reach this code");
     }
 
     #[test]
@@ -1227,17 +1222,13 @@ function do:
             vks_with_underreport.push((*id, (vk, cert.clone())));
         }
 
-        // Create a new deployment tranasction with the underreported verifying keys.
+        // Create a new deployment transaction with the underreported verifying keys.
         let adjusted_deployment =
             Deployment::new(deployment.edition(), deployment.program().clone(), vks_with_underreport).unwrap();
         let adjusted_transaction = Transaction::Deploy(txid, program_owner, Box::new(adjusted_deployment), fee);
 
         // Verify the deployment transaction. It should fail because the num_constraints in the vk are not correct.
-        let res = vm.check_transaction(&adjusted_transaction, None, rng);
-        println!("Result of check transaction: {:?}", res);
         assert!(vm.check_transaction(&adjusted_transaction, None, rng).is_err());
-
-        println!("Test if we reach this code");
     }
 
     #[test]
