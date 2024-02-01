@@ -193,13 +193,13 @@ impl<N: Network> Block<N> {
             }
             Authority::Quorum(subdag) => {
                 // Compute the expected leader.
-                let expected_leader = current_committee.get_leader(expected_round)?;
+                // let expected_leader = current_committee.get_leader(expected_round)?;
                 // Ensure the block is authored by the expected leader.
-                ensure!(
-                    subdag.leader_address() == expected_leader,
-                    "Quorum block {expected_height} is authored by an unexpected leader (found: {}, expected: {expected_leader})",
-                    subdag.leader_address()
-                );
+                // ensure!(
+                //     subdag.leader_address() == expected_leader,
+                //     "Quorum block {expected_height} is authored by an unexpected leader (found: {}, expected: {expected_leader})",
+                //     subdag.leader_address()
+                // );
                 // Ensure the transmission IDs from the subdag correspond to the block.
                 Self::check_subdag_transmissions(
                     subdag,

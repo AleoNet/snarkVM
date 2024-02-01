@@ -25,6 +25,11 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         self.vm.finalize_store().committee_store().get_committee_for_round(round)
     }
 
+    /// Returns the committee for the given `round` with the committee round lag. 
+    pub fn get_committee_for_round_with_lag(&self, round: u64) -> Result<Option<Committee<N>>> {
+        self.vm.finalize_store().committee_store().get_committee_for_round_with_lag(round)
+    }
+
     /// Returns the state root that contains the given `block height`.
     pub fn get_state_root(&self, block_height: u32) -> Result<Option<N::StateRoot>> {
         self.vm.block_store().get_state_root(block_height)

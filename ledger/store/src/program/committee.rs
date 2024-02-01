@@ -26,6 +26,7 @@ use anyhow::Result;
 use core::marker::PhantomData;
 
 const ROUND_KEY: u8 = 0;
+const COMMITTEE_ROUND_LAG: u64 = 20; 
 
 /// A trait for committee storage.
 pub trait CommitteeStorage<N: Network>: 'static + Clone + Send + Sync {
@@ -287,6 +288,25 @@ pub trait CommitteeStorage<N: Network>: 'static + Clone + Send + Sync {
             None => Ok(None),
         }
     }
+
+    /// Returns the committee for the given `round` with the committee round lag. 
+    fn get_committee_for_round_with_lag(&self, round: u64) -> Result<Option<Committee<N>>> {
+        // If the round is less than the committee lag, return the genesis committee. 
+        if round < COMMITTEE_ROUND_LAG{ 
+            return Ok(self.get_committee(0)?); 
+        }
+        // Otherwise, return the committee at the 'round' minus the committee round lag. 
+        return self.get_committee_for_round(round.saturating_sub(COMMITTEE_ROUND_LAG));
+    }
+
+    /// Returns the current committee with the committee round lag. 
+    fn current_committee_with_lag(&self) -> Result<Committee<N>> {
+        let current_round = self.current_round()?;
+        match self.get_committee_for_round_with_lag(current_round)? {
+            Some(committee) => Ok(committee),
+            None => bail!("Current committee not found in committee storage"),
+        }
+    }
 }
 
 /// The committee store.
@@ -392,6 +412,11 @@ impl<N: Network, C: CommitteeStorage<N>> CommitteeStore<N, C> {
         self.storage.current_committee()
     }
 
+    /// Returns the current committee with the committee round lag.
+    pub fn current_committee_with_lag(&self) -> Result<Committee<N>> {
+        self.storage.current_committee_with_lag()
+    }
+
     /// Returns the height for the given `round`.
     pub fn get_height_for_round(&self, round: u64) -> Result<Option<u32>> {
         self.storage.get_height_for_round(round)
@@ -405,6 +430,11 @@ impl<N: Network, C: CommitteeStorage<N>> CommitteeStore<N, C> {
     /// Returns the committee for the given `round`.
     pub fn get_committee_for_round(&self, round: u64) -> Result<Option<Committee<N>>> {
         self.storage.get_committee_for_round(round)
+    }
+
+    /// Returns the committee for the given `round` with the committee round lag. 
+    pub fn get_committee_for_round_with_lag(&self, round: u64) -> Result<Option<Committee<N>>> {
+        self.storage.get_committee_for_round_with_lag(round)
     }
 }
 
