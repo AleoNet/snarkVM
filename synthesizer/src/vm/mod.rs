@@ -1175,10 +1175,13 @@ function do:
             Deployment::new(deployment.edition(), deployment.program().clone(), vks_with_overreport).unwrap();
         let adjusted_transaction = Transaction::from_deployment(program_owner, adjusted_deployment, fee).unwrap();
 
-        assert!(vm.check_transaction(&adjusted_transaction, None, rng).is_err());
+        // Verify the deployment transaction. It should error during synthesis for constraint count mismatch.
+        let res = vm.check_transaction(&adjusted_transaction, None, rng);
+        assert!(res.is_err());
     }
 
     #[test]
+    #[should_panic]
     fn test_deployment_synthesis_underreport() {
         let rng = &mut TestRng::default();
 
@@ -1227,8 +1230,8 @@ function do:
             Deployment::new(deployment.edition(), deployment.program().clone(), vks_with_underreport).unwrap();
         let adjusted_transaction = Transaction::Deploy(txid, program_owner, Box::new(adjusted_deployment), fee);
 
-        // Verify the deployment transaction. It should fail because the num_constraints in the vk are not correct.
-        assert!(vm.check_transaction(&adjusted_transaction, None, rng).is_err());
+        // Verify the deployment transaction. It should panic when enforcing the first constraint over the vk limit.
+        vm.check_transaction(&adjusted_transaction, None, rng);
     }
 
     #[test]
