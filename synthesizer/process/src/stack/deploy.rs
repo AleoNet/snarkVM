@@ -124,12 +124,20 @@ impl<N: Network> Stack<N> {
             lap!(timer, "Compute the request for {}", function.name());
             // Initialize the assignments.
             let assignments = Assignments::<N>::default();
+            // Initialize the constraint limit. Account for the constraint added after synthesis that randomizes vars.
+            let constraint_limit = match verifying_key.circuit_info.num_constraints.checked_sub(1) {
+                // Since a deployment must always pay non-zero fee, it must always have at least one constraint.
+                None => {
+                    bail!("The constraint limit of 0 for function '{}' is invalid", function.name());
+                }
+                Some(limit) => limit,
+            };
             // Initialize the call stack.
             let call_stack = CallStack::CheckDeployment(
                 vec![request],
                 burner_private_key,
                 assignments.clone(),
-                Some(verifying_key.circuit_info.num_constraints as u64),
+                Some(constraint_limit as u64),
             );
             // Append the function name, callstack, and assignments.
             call_stacks.push((function.name(), call_stack, assignments));
