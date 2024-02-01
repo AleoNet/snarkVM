@@ -1231,7 +1231,7 @@ function do:
         let adjusted_transaction = Transaction::Deploy(txid, program_owner, Box::new(adjusted_deployment), fee);
 
         // Verify the deployment transaction. It should panic when enforcing the first constraint over the vk limit.
-        vm.check_transaction(&adjusted_transaction, None, rng);
+        let _ = vm.check_transaction(&adjusted_transaction, None, rng);
     }
 
     #[test]
