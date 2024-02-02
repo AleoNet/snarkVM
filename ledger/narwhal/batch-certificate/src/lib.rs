@@ -30,6 +30,7 @@ use narwhal_transmission_id::TransmissionID;
 
 use core::hash::{Hash, Hasher};
 use indexmap::{IndexMap, IndexSet};
+use std::collections::BTreeSet;
 
 #[cfg(not(feature = "serial"))]
 use rayon::prelude::*;
@@ -161,7 +162,7 @@ impl<N: Network> BatchCertificate<N> {
     }
 
     /// Returns the transmission IDs.
-    pub const fn transmission_ids(&self) -> &IndexSet<TransmissionID<N>> {
+    pub const fn transmission_ids(&self) -> &BTreeSet<TransmissionID<N>> {
         self.batch_header().transmission_ids()
     }
 }

@@ -64,6 +64,28 @@ impl<N: Network> TransmissionID<N> {
     }
 }
 
+impl<N: Network> Ord for TransmissionID<N> {
+    fn cmp(&self, other: &Self) -> core::cmp::Ordering {
+        match (self, other) {
+            // If self and other are the same type, compare contents.
+            (Self::Ratification, Self::Ratification) => core::cmp::Ordering::Equal,
+            (Self::Solution(a), Self::Solution(b)) => a.cmp(b),
+            (Self::Transaction(a), Self::Transaction(b)) => a.cmp(b),
+            // If self and other are different types, order by type.
+            (Self::Ratification, _) => core::cmp::Ordering::Less,
+            (_, Self::Ratification) => core::cmp::Ordering::Greater,
+            (Self::Solution(_), Self::Transaction(_)) => core::cmp::Ordering::Less,
+            (Self::Transaction(_), Self::Solution(_)) => core::cmp::Ordering::Greater,
+        }
+    }
+}
+
+impl<N: Network> PartialOrd for TransmissionID<N> {
+    fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
 #[cfg(any(test, feature = "test-helpers"))]
 pub mod test_helpers {
     use super::*;

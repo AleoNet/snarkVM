@@ -527,7 +527,10 @@ impl<N: Network> Block<N> {
                 // Ensure the Subdag contains all solution indices.
                 ensure!(solution_indices.len() == solutions_len, "Subdag does not contain all solution indices.");
                 // Ensure solution indices are in the range [0, solutions_len)
-                ensure!(solution_indices.into_bit_vec().all(), "Subdag contains solution indices that are out of bounds.");
+                ensure!(
+                    solution_indices.into_bit_vec().all(),
+                    "Subdag contains solution indices that are out of bounds."
+                );
                 // Ensure the Subdag contains all transaction indices.
                 ensure!(tx_indices.len() == transactions_len, "Subdag does not contain all tx indices.");
                 // Ensure solution indices are in the range [0, transactions_len)

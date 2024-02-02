@@ -20,6 +20,8 @@ mod bytes;
 mod serialize;
 mod string;
 
+use std::collections::BTreeSet;
+
 use bit_set::BitSet;
 use console::{
     account::{Address, Signature},
@@ -129,7 +131,7 @@ impl<N: Network> CompactHeader<N> {
     /// Creates solution_indices from transmission_ids.
     fn create_solution_indices<'a>(
         block_solutions: impl Iterator<Item = &'a PuzzleCommitment<N>>,
-        transmission_ids: &IndexSet<TransmissionID<N>>,
+        transmission_ids: &BTreeSet<TransmissionID<N>>,
         num_solutions_in_batch: usize,
     ) -> BitSet {
         let mut solution_indices = BitSet::with_capacity(num_solutions_in_batch);
@@ -258,7 +260,8 @@ impl<N: Network> CompactHeader<N> {
         // TODO (howardwu): For mainnet - Remove the version from BatchHeader.
         let version = 2u8;
 
-        let mut transmission_ids = IndexSet::new();
+        // Insert the transactions into the transmission_ids.
+        let mut transmission_ids = BTreeSet::new();
         transactions.chain(rejected_transactions).chain(prior_transactions).enumerate().for_each(
             |(index, transaction_id)| {
                 if self.transaction_indices.contains(index) {
@@ -266,20 +269,24 @@ impl<N: Network> CompactHeader<N> {
                 }
             },
         );
+        // Define a closure to insert a solution into the transmission_ids.
+        let mut insert_solution = |(index, puzzle_commitment): (usize, &PuzzleCommitment<N>)| {
+            if self.solution_indices.contains(index) {
+                transmission_ids.insert(TransmissionID::Solution(*puzzle_commitment));
+            }
+        };
+        // Insert the solutions into the transmission_ids.
         match solutions {
             Some(solutions) => {
-                solutions.chain(prior_solutions).enumerate().for_each(|(index, puzzle_commitment)| {
-                    if self.transaction_indices.contains(index) {
-                        transmission_ids.insert(TransmissionID::Solution(*puzzle_commitment));
-                    }
-                });
+                solutions
+                    .chain(prior_solutions)
+                    .enumerate()
+                    .for_each(|(index, puzzle_commitment)| insert_solution((index, puzzle_commitment)));
             }
             None => {
-                prior_solutions.enumerate().for_each(|(index, puzzle_commitment)| {
-                    if self.transaction_indices.contains(index) {
-                        transmission_ids.insert(TransmissionID::Solution(*puzzle_commitment));
-                    }
-                });
+                prior_solutions
+                    .enumerate()
+                    .for_each(|(index, puzzle_commitment)| insert_solution((index, puzzle_commitment)));
             }
         };
 
@@ -331,7 +338,7 @@ pub mod test_helpers {
         // Sample a batch header.
         let batch_header =
             sample_batch_header_for_round_with_previous_certificate_ids(round, previous_certificate_ids, rng);
-        // Construct a set of all transmission IDs.
+        // Construct appropriate sets to collect transmission IDs.
         let mut solutions = IndexSet::new();
         let mut prior_solutions = IndexSet::new();
         let mut tx_ids = IndexSet::new();
@@ -376,7 +383,7 @@ pub mod test_helpers {
         )
         .unwrap();
 
-        let check_batch_header = compact_header
+        let candidate_batch_header = compact_header
             .clone()
             .into_batch_header(
                 std::iter::empty(),
@@ -387,7 +394,7 @@ pub mod test_helpers {
                 rejected_tx_ids.iter(),
             )
             .unwrap();
-        assert_eq!(batch_header, check_batch_header);
+        assert_eq!(batch_header, candidate_batch_header);
         compact_header
     }
 

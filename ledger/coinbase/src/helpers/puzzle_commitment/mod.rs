@@ -66,3 +66,15 @@ impl<N: Network> Deref for PuzzleCommitment<N> {
         &self.commitment
     }
 }
+
+impl<N: Network> Ord for PuzzleCommitment<N> {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.commitment.0.to_x_coordinate().cmp(&other.commitment.0.to_x_coordinate())
+    }
+}
+
+impl<N: Network> PartialOrd for PuzzleCommitment<N> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}

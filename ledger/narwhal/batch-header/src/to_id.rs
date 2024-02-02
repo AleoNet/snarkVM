@@ -36,7 +36,7 @@ impl<N: Network> BatchHeader<N> {
         author: Address<N>,
         round: u64,
         timestamp: i64,
-        transmission_ids: &IndexSet<TransmissionID<N>>,
+        transmission_ids: &BTreeSet<TransmissionID<N>>,
         previous_certificate_ids: &IndexSet<Field<N>>,
         last_election_certificate_ids: &IndexSet<Field<N>>,
     ) -> Result<Field<N>> {
