@@ -1220,7 +1220,7 @@ function do:
         let mut vks_with_underreport = Vec::with_capacity(deployment.verifying_keys().len());
         for (id, (vk, cert)) in deployment.verifying_keys() {
             let mut vk = vk.deref().clone();
-            vk.circuit_info.num_constraints -= 1;
+            vk.circuit_info.num_constraints -= 2;
             let vk = VerifyingKey::new(Arc::new(vk));
             vks_with_underreport.push((*id, (vk, cert.clone())));
         }
