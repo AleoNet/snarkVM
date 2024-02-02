@@ -1175,7 +1175,7 @@ function do:
             Deployment::new(deployment.edition(), deployment.program().clone(), vks_with_overreport).unwrap();
         let adjusted_transaction = Transaction::from_deployment(program_owner, adjusted_deployment, fee).unwrap();
 
-        // Verify the deployment transaction. It should error during synthesis for constraint count mismatch.
+        // Verify the deployment transaction. It should error when certificate checking for constraint count mismatch.
         let res = vm.check_transaction(&adjusted_transaction, None, rng);
         assert!(res.is_err());
     }

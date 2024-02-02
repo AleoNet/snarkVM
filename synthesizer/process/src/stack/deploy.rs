@@ -124,7 +124,7 @@ impl<N: Network> Stack<N> {
             lap!(timer, "Compute the request for {}", function.name());
             // Initialize the assignments.
             let assignments = Assignments::<N>::default();
-            // Initialize the constraint limit. Account for the constraint added after synthesis that randomizes vars.
+            // Initialize the constraint limit. Account for the constraint added after synthesis that makes the Varuna zerocheck hiding.
             let constraint_limit = match verifying_key.circuit_info.num_constraints.checked_sub(1) {
                 // Since a deployment must always pay non-zero fee, it must always have at least one constraint.
                 None => {

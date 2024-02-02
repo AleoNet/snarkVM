@@ -150,7 +150,7 @@ impl Environment for Circuit {
                     // Ensure that we do not surpass the constraint limit for the circuit.
                     CONSTRAINT_LIMIT.with(|constraint_limit| {
                         if let Some(limit) = constraint_limit.get() {
-                            if circuit.borrow().num_constraints() >= limit {
+                            if circuit.borrow().num_constraints() > limit {
                                 Self::halt(format!("Surpassed the constraint limit ({limit})"))
                             }
                         }
