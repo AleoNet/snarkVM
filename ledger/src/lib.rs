@@ -215,6 +215,14 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         }
     }
 
+    /// Returns the latest committee with the committee round lag. 
+    pub fn latest_committee_with_lag(&self) -> Result<Committee<N>> {
+        match self.current_committee.read().as_ref() {
+            Some(committee) => Ok(committee.clone()),
+            None => self.vm.finalize_store().committee_store().current_committee_with_lag(),
+        }
+    }
+
     /// Returns the latest state root.
     pub fn latest_state_root(&self) -> N::StateRoot {
         self.vm.block_store().current_state_root()
