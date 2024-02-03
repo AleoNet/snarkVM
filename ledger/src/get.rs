@@ -200,10 +200,10 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
     }
 
     /// Returns the block solutions for the given block height.
-    pub fn get_solutions(&self, height: u32) -> Result<Option<CoinbaseSolution<N>>> {
+    pub fn get_solutions(&self, height: u32) -> Result<Solutions<N>> {
         // If the height is 0, return the genesis block solutions.
         if height == 0 {
-            return Ok(self.genesis_block.solutions().cloned());
+            return Ok(self.genesis_block.solutions().clone());
         }
         // Retrieve the block hash.
         let block_hash = match self.vm.block_store().get_block_hash(height)? {

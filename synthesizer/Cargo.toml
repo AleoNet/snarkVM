@@ -34,7 +34,6 @@ cuda = [ "algorithms/cuda" ]
 serial = [
   "console/serial",
   "ledger-block/serial",
-  "ledger-coinbase/serial",
   "ledger-committee/serial",
   "ledger-query/serial",
   "ledger-store/serial",
@@ -52,7 +51,6 @@ wasm = [
   "snark",
   "console/wasm",
   "ledger-block/wasm",
-  "ledger-coinbase/wasm",
   "ledger-committee/wasm",
   "ledger-query/wasm",
   "ledger-store/wasm",

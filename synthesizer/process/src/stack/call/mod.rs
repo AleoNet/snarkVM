@@ -208,6 +208,9 @@ impl<N: Network> CallTrait<N> for Call<N> {
             // Retrieve the number of public variables in the circuit.
             let num_public = A::num_public();
 
+            // Indicate that external calls are never a root request.
+            let is_root = false;
+
             use circuit::Eject;
             // Eject the existing circuit.
             let r1cs = A::eject_r1cs_and_reset();
@@ -229,6 +232,7 @@ impl<N: Network> CallTrait<N> for Call<N> {
                             *function.name(),
                             inputs.iter(),
                             &function.input_types(),
+                            is_root,
                             rng,
                         )?;
 
@@ -254,6 +258,7 @@ impl<N: Network> CallTrait<N> for Call<N> {
                             *function.name(),
                             inputs.iter(),
                             &function.input_types(),
+                            is_root,
                             rng,
                         )?;
 
@@ -276,6 +281,7 @@ impl<N: Network> CallTrait<N> for Call<N> {
                             *function.name(),
                             inputs.iter(),
                             &function.input_types(),
+                            is_root,
                             rng,
                         )?;
 
@@ -367,6 +373,11 @@ impl<N: Network> CallTrait<N> for Call<N> {
 
             // Inject the existing circuit.
             A::inject_r1cs(r1cs);
+
+            // If in 'CheckDeployment' mode, set the expected constraint limit.
+            if let CallStack::CheckDeployment(_, _, _, constraint_limit) = &registers.call_stack() {
+                A::set_constraint_limit(*constraint_limit);
+            }
 
             use circuit::Inject;
 

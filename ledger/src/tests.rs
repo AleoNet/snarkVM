@@ -638,6 +638,53 @@ fn test_aborted_transaction_indexing() {
 }
 
 #[test]
+fn test_aborted_solution_ids() {
+    let rng = &mut TestRng::default();
+
+    // Initialize the test environment.
+    let crate::test_helpers::TestEnv { ledger, private_key, address, .. } = crate::test_helpers::sample_test_env(rng);
+
+    // Retrieve the coinbase puzzle parameters.
+    let coinbase_puzzle = ledger.coinbase_puzzle();
+    let epoch_challenge = ledger.latest_epoch_challenge().unwrap();
+    let minimum_proof_target = ledger.latest_proof_target();
+
+    // Create a solution that is less than the minimum proof target.
+    let mut invalid_solution = coinbase_puzzle.prove(&epoch_challenge, address, rng.gen(), None).unwrap();
+    while invalid_solution.to_target().unwrap() >= minimum_proof_target {
+        invalid_solution = coinbase_puzzle.prove(&epoch_challenge, address, rng.gen(), None).unwrap();
+    }
+
+    // Create a valid transaction for the block.
+    let inputs = [Value::from_str(&format!("{address}")).unwrap(), Value::from_str("10u64").unwrap()];
+    let transfer_transaction = ledger
+        .vm
+        .execute(&private_key, ("credits.aleo", "transfer_public"), inputs.iter(), None, 0, None, rng)
+        .unwrap();
+
+    // Create a block.
+    let block = ledger
+        .prepare_advance_to_next_beacon_block(
+            &private_key,
+            vec![],
+            vec![invalid_solution],
+            vec![transfer_transaction],
+            rng,
+        )
+        .unwrap();
+
+    // Check that the next block is valid.
+    ledger.check_next_block(&block, rng).unwrap();
+
+    // Add the deployment block to the ledger.
+    ledger.advance_to_next_block(&block).unwrap();
+
+    // Enforce that the block solution was aborted properly.
+    assert!(block.solutions().is_empty());
+    assert_eq!(block.aborted_solution_ids(), &vec![invalid_solution.commitment()]);
+}
+
+#[test]
 fn test_execute_duplicate_input_ids() {
     let rng = &mut TestRng::default();
 
@@ -926,7 +973,7 @@ function empty_function:
     // Add the block to the ledger.
     ledger.advance_to_next_block(&block).unwrap();
 
-    // Create a transaction with different transaction ids, but with a fixed transition id.
+    // Create a transaction with different transaction IDs, but with a fixed transition ID.
     let mut create_transaction_with_duplicate_transition_id = || -> Transaction<CurrentNetwork> {
         // Use a fixed seed RNG.
         let fixed_rng = &mut TestRng::from_seed(1);

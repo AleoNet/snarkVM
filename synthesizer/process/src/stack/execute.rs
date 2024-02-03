@@ -142,6 +142,11 @@ impl<N: Network> StackExecute<N> for Stack<N> {
         // Ensure the circuit environment is clean.
         A::reset();
 
+        // If in 'CheckDeployment' mode, set the constraint limit.
+        if let CallStack::CheckDeployment(_, _, _, constraint_limit) = &call_stack {
+            A::set_constraint_limit(*constraint_limit);
+        }
+
         // Retrieve the next request.
         let console_request = call_stack.pop()?;
 
@@ -188,7 +193,7 @@ impl<N: Network> StackExecute<N> for Stack<N> {
         lap!(timer, "Verify the input types");
 
         // Ensure the request is well-formed.
-        ensure!(console_request.verify(&input_types), "Request is invalid");
+        ensure!(console_request.verify(&input_types, console_is_root), "Request is invalid");
         lap!(timer, "Verify the console request");
 
         // Initialize the registers.
@@ -209,7 +214,7 @@ impl<N: Network> StackExecute<N> for Stack<N> {
         let caller = Ternary::ternary(&is_root, request.signer(), &parent);
 
         // Ensure the request has a valid signature, inputs, and transition view key.
-        A::assert(request.verify(&input_types, &tpk));
+        A::assert(request.verify(&input_types, &tpk, is_root));
         lap!(timer, "Verify the circuit request");
 
         // Set the transition signer.
@@ -416,7 +421,15 @@ impl<N: Network> StackExecute<N> for Stack<N> {
             lap!(timer, "Save the transition");
         }
         // If the circuit is in `CheckDeployment` mode, then save the assignment.
-        else if let CallStack::CheckDeployment(_, _, ref assignments) = registers.call_stack() {
+        else if let CallStack::CheckDeployment(_, _, ref assignments, constraint_limit) = registers.call_stack() {
+            // Ensure the assignment matches the constraint limit.
+            if let Some(constraint_limit) = constraint_limit {
+                ensure!(
+                    assignment.num_constraints() == constraint_limit,
+                    "The synthesized number of constraints ({}) does not match the declared limit in the verifying key ({constraint_limit})",
+                    assignment.num_constraints(),
+                );
+            }
             // Construct the call metrics.
             let metrics = CallMetrics {
                 program_id: *self.program_id(),

@@ -1520,12 +1520,15 @@ mod sanity_checks {
         let program_id = *program.id();
         // Retrieve the input types.
         let input_types = program.get_function(&function_name).unwrap().input_types();
+        // Sample 'is_root'.
+        let is_root = true;
         // Compute the request.
-        let request = Request::sign(private_key, program_id, function_name, inputs.iter(), &input_types, rng).unwrap();
+        let request =
+            Request::sign(private_key, program_id, function_name, inputs.iter(), &input_types, is_root, rng).unwrap();
         // Initialize the assignments.
         let assignments = Assignments::<N>::default();
         // Initialize the call stack.
-        let call_stack = CallStack::CheckDeployment(vec![request], *private_key, assignments.clone());
+        let call_stack = CallStack::CheckDeployment(vec![request], *private_key, assignments.clone(), None);
         // Synthesize the circuit.
         let _response = stack.execute_function::<A, _>(call_stack, None, rng).unwrap();
         // Retrieve the assignment.
@@ -1563,7 +1566,7 @@ mod sanity_checks {
         assert_eq!(15, assignment.num_public());
         assert_eq!(50681, assignment.num_private());
         assert_eq!(50729, assignment.num_constraints());
-        assert_eq!((98547, 109769, 77341), assignment.num_nonzeros());
+        assert_eq!((98548, 109771, 77341), assignment.num_nonzeros());
     }
 
     #[test]
@@ -1591,7 +1594,7 @@ mod sanity_checks {
         assert_eq!(10, assignment.num_public());
         assert_eq!(12043, assignment.num_private());
         assert_eq!(12052, assignment.num_constraints());
-        assert_eq!((27250, 36303, 16407), assignment.num_nonzeros());
+        assert_eq!((27251, 36305, 16407), assignment.num_nonzeros());
     }
 
     #[test]
@@ -1625,7 +1628,7 @@ mod sanity_checks {
         assert_eq!(14, assignment.num_public());
         assert_eq!(37840, assignment.num_private());
         assert_eq!(37878, assignment.num_constraints());
-        assert_eq!((72163, 80588, 56623), assignment.num_nonzeros());
+        assert_eq!((72164, 80590, 56623), assignment.num_nonzeros());
     }
 
     #[test]
@@ -1653,6 +1656,6 @@ mod sanity_checks {
         assert_eq!(11, assignment.num_public());
         assert_eq!(12645, assignment.num_private());
         assert_eq!(12657, assignment.num_constraints());
-        assert_eq!((29594, 39585, 16941), assignment.num_nonzeros());
+        assert_eq!((29595, 39587, 16941), assignment.num_nonzeros());
     }
 }

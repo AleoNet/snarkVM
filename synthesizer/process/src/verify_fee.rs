@@ -76,11 +76,10 @@ impl<N: Network> Process<N> {
     fn verify_fee_private(&self, fee: &&Fee<N>) -> Result<()> {
         let timer = timer!("Process::verify_fee_private");
 
-        // Compute the function ID as `Hash(network_id, program_id, function_name)`.
-        let function_id = N::hash_bhp1024(
-            &(U16::<N>::new(N::ID), fee.program_id().name(), fee.program_id().network(), fee.function_name())
-                .to_bits_le(),
-        )?;
+        // Retrieve the network ID.
+        let network_id = U16::new(N::ID);
+        // Compute the function ID.
+        let function_id = compute_function_id(&network_id, fee.program_id(), fee.function_name())?;
 
         // Ensure the fee contains 1 input record.
         ensure!(
@@ -146,11 +145,10 @@ impl<N: Network> Process<N> {
     fn verify_fee_public(&self, fee: &&Fee<N>) -> Result<()> {
         let timer = timer!("Process::verify_fee_public");
 
-        // Compute the function ID as `Hash(network_id, program_id, function_name)`.
-        let function_id = N::hash_bhp1024(
-            &(U16::<N>::new(N::ID), fee.program_id().name(), fee.program_id().network(), fee.function_name())
-                .to_bits_le(),
-        )?;
+        // Retrieve the network ID.
+        let network_id = U16::new(N::ID);
+        // Compute the function ID.
+        let function_id = compute_function_id(&network_id, fee.program_id(), fee.function_name())?;
 
         // Ensure the fee contains all public inputs.
         ensure!(
