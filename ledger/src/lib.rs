@@ -94,8 +94,11 @@ pub enum RecordsFilter<N: Network> {
 
 /// Helper struct to wrap transmissions in the Subdag.
 pub struct SubdagTransmissions<N: Network> {
+    /// The transmissions in a subdag ready to be included in the next block.
     pub transmissions: IndexMap<TransmissionID<N>, Transmission<N>>,
+    /// Transmission ids in a subdag which were already included in a prior block.
     pub prior_included_transmissions: IndexSet<TransmissionID<N>>,
+    /// Novel transmission ids in a subdag which at the moment can't be included in a block.
     pub aborted_transmissions: IndexSet<TransmissionID<N>>,
 }
 
