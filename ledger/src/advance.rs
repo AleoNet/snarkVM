@@ -19,22 +19,24 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
     pub fn prepare_advance_to_next_quorum_block(
         &self,
         subdag: Subdag<N>,
-        transmissions: IndexMap<TransmissionID<N>, Transmission<N>>,
-        prior_transmission_ids: IndexSet<TransmissionID<N>>,
-        aborted_transmission_ids: IndexSet<TransmissionID<N>>,
+        subdag_transmissions: SubdagTransmissions<N>,
     ) -> Result<Block<N>> {
         // Retrieve the latest block as the previous block (for the next block).
         let previous_block = self.latest_block();
+
+        // Obtain the subdag transmissions.
+        let SubdagTransmissions { prior_included_transmissions, aborted_transmissions, transmissions } =
+            subdag_transmissions;
 
         // Decouple the transmissions into ratifications, solutions, and transactions.
         let (ratifications, solutions, transactions) = decouple_transmissions(transmissions.into_iter())?;
         // Decouple the prior_transmissions into ratifications, solutions, and transactions.
         let (prior_ratifications, prior_solution_ids, prior_transaction_ids) =
-            decouple_transmission_ids(prior_transmission_ids)?;
+            decouple_transmission_ids(prior_included_transmissions)?;
         // Decouple the aborted_transmissions into ratifications, solutions, and transactions.
         // TODO: add support for aborted solution ids
         let (aborted_ratifications, _aborted_solution_ids, aborted_transaction_ids) =
-            decouple_transmission_ids(aborted_transmission_ids)?;
+            decouple_transmission_ids(aborted_transmissions)?;
         // Currently, we do not support ratifications from the memory pool.
         ensure!(
             ratifications.is_empty() && prior_ratifications.is_empty() && aborted_ratifications.is_empty(),

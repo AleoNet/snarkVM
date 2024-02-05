@@ -92,6 +92,29 @@ pub enum RecordsFilter<N: Network> {
     SlowUnspent(PrivateKey<N>),
 }
 
+/// Helper struct to wrap transmissions in the Subdag.
+pub struct SubdagTransmissions<N: Network> {
+    pub transmissions: IndexMap<TransmissionID<N>, Transmission<N>>,
+    pub prior_included_transmissions: IndexSet<TransmissionID<N>>,
+    pub aborted_transmissions: IndexSet<TransmissionID<N>>,
+}
+
+impl<N: Network> SubdagTransmissions<N> {
+    /// Returns the total number of transmissions.
+    pub fn len(&self) -> usize {
+        self.transmissions
+            .len()
+            .saturating_add(self.prior_included_transmissions.len().saturating_add(self.aborted_transmissions.len()))
+    }
+
+    /// Returns `true` if the subdag is empty.
+    pub fn is_empty(&self) -> bool {
+        self.transmissions.is_empty()
+            && self.prior_included_transmissions.is_empty()
+            && self.aborted_transmissions.is_empty()
+    }
+}
+
 #[derive(Clone)]
 pub struct Ledger<N: Network, C: ConsensusStorage<N>> {
     /// The VM state.
