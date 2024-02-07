@@ -156,6 +156,9 @@ pub trait Network:
     /// The maximum number of outputs per transition.
     const MAX_OUTPUTS: usize = 16;
 
+    /// The committee round lag.
+    const COMMITTEE_ROUND_LAG: u64 = 50;
+
     /// The state root type.
     type StateRoot: Bech32ID<Field<Self>>;
     /// The block hash type.
