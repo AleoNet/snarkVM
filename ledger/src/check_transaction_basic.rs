@@ -24,7 +24,9 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
     ) -> Result<()> {
         debug!("check_transaction_basic with id: {:?}", transaction.id());
         let result = self.vm().check_transaction(transaction, rejected_id, rng);
-        debug!("check_transaction_basic with id: {:?} is_err: {}", transaction.id(), result.is_err());
+        if result.is_err() {
+            debug!("check_transaction_basic with id: {:?} is_err: {:?}", transaction.id(), result);
+        }
         result
     }
 }
