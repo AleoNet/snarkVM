@@ -22,7 +22,9 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         rejected_id: Option<Field<N>>,
         rng: &mut R,
     ) -> Result<()> {
-        trace!("check_transaction_basic with id: {:?}", transaction.id());
-        self.vm().check_transaction(transaction, rejected_id, rng)
+        debug!("check_transaction_basic with id: {:?}", transaction.id());
+        let result = self.vm().check_transaction(transaction, rejected_id, rng);
+        debug!("check_transaction_basic with id: {:?} is_err: {}", transaction.id(), result.is_err());
+        result
     }
 }
