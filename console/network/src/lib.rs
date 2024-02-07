@@ -157,7 +157,7 @@ pub trait Network:
     const MAX_OUTPUTS: usize = 16;
 
     /// The committee round lag.
-    const COMMITTEE_ROUND_LAG: u64 = 50;
+    const COMMITTEE_ROUND_LAG: u64 = 100;
 
     /// The state root type.
     type StateRoot: Bech32ID<Field<Self>>;
