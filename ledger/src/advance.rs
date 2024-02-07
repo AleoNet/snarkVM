@@ -250,11 +250,13 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         let is_coinbase_target_reached = next_cumulative_proof_target >= latest_coinbase_target as u128;
         // Update the next cumulative proof target, if necessary.
         let next_cumulative_proof_target = match is_coinbase_target_reached {
+            // This hits the false case.
             true => 0,
             false => next_cumulative_proof_target,
         };
         // Construct the next coinbase target.
         let next_coinbase_target = coinbase_target(
+            // This becomes less than the next_cumulative_proof_target
             previous_block.last_coinbase_target(),
             previous_block.last_coinbase_timestamp(),
             next_timestamp,
