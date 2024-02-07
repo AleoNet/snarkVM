@@ -321,4 +321,34 @@ mod tests {
         let _output2 = poseidon.squeeze(&mut state, &mut mode, 4);
         Ok(())
     }
+
+    #[test]
+    fn unchanging_outputs() -> Result<()> {
+        println!("RATE = {} and CAPACITY = {}", RATE, CAPACITY);
+        let native = console::Poseidon::<<Circuit as Environment>::Network, { RATE as usize }>::setup(DOMAIN)?;
+        let poseidon = Poseidon::<Circuit, { RATE as usize }>::constant(native.clone());
+        let mut state = vec![Field::zero(); CAPACITY + (RATE as usize)];
+        let mut mode = DuplexSpongeMode::Absorbing { next_absorb_index : 0 };
+        let output1 = poseidon.squeeze(&mut state, &mut mode, 1);
+        println!("Squeeze 1:");
+        for output in output1 {
+            println!("Output = {}", output);
+        }
+        let output2 = poseidon.squeeze(&mut state, &mut mode, 4);
+        println!("Squeeze 4:");
+        for output in output2 {
+            println!("Output = {}", output);
+        }
+        let output3 = poseidon.squeeze(&mut state, &mut mode, 4);
+        println!("Squeeze 4:");
+        for output in output3 {
+            println!("Output = {}", output);
+        }
+        let output4 = poseidon.squeeze(&mut state, &mut mode, 4);
+        println!("Squeeze 4:");
+        for output in output4 {
+            println!("Output = {}", output);
+        }
+        Ok (())
+    }
 }
