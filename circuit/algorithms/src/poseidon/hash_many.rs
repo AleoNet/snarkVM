@@ -310,7 +310,7 @@ mod tests {
     }
 
     #[test]
-    fn skip_permute() -> Result<()> {
+    fn not_skip_permute() -> Result<()> {
         println!("RATE = {} and CAPACITY = {}", RATE, CAPACITY);
         let native = console::Poseidon::<<Circuit as Environment>::Network, { RATE as usize }>::setup(DOMAIN)?;
         let poseidon = Poseidon::<Circuit, { RATE as usize }>::constant(native.clone());
