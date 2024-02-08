@@ -84,15 +84,24 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         let ratified_finalize_operations =
             self.vm.check_speculate(state, block.ratifications(), block.solutions(), block.transactions())?;
 
+        // Get the round number for the previous committee. Note, we subtract 2 from odd rounds,
+        // because committees are updated in even rounds.
+        let previous_round = match block.round() % 2 == 0 {
+            true => block.round().saturating_sub(1),
+            false => block.round().saturating_sub(2),
+        };
+        // Get the previous round with lag.
+        let previous_round_with_lag = previous_round.saturating_sub(N::COMMITTEE_ROUND_LAG);
+        // Retrieve the previous committee with lag.
+        let previous_committee_with_lag = self
+            .get_committee_for_round(previous_round_with_lag)?
+            .ok_or(anyhow!("Failed to fetch committee for round {previous_round_with_lag}"))?;
+
         // Ensure the block is correct.
-        let round_with_lag = self.latest_round().saturating_sub(N::COMMITTEE_ROUND_LAG);
-        let committee_with_lag = self
-            .get_committee_for_round(round_with_lag)?
-            .ok_or(anyhow!("Failed to fetch committee for round {round_with_lag}"))?;
         let expected_existing_transaction_ids = block.verify(
             &self.latest_block(),
             self.latest_state_root(),
-            &committee_with_lag,
+            &previous_committee_with_lag,
             self.coinbase_puzzle(),
             &self.latest_epoch_challenge()?,
             OffsetDateTime::now_utc().unix_timestamp(),
