@@ -178,8 +178,6 @@ impl<E: Environment, const RATE: usize> Poseidon<E, RATE> {
     /// Apply the permutation for all rounds in-place.
     #[inline]
     fn permute(&self, state: &mut [Field<E>]) {
-        // Log permutation.
-        println!("Permutation.");
 
         // Determine the partial rounds range bound.
         let full_rounds_over_2 = self.full_rounds / 2;
@@ -306,18 +304,6 @@ mod tests {
             check_hash_many(Mode::Private, 5, num_outputs, 1, 0, 1060, 1060, &mut rng)?;
             check_hash_many(Mode::Private, 6, num_outputs, 1, 0, 1060, 1060, &mut rng)?;
         }
-        Ok(())
-    }
-
-    #[test]
-    fn not_skip_permute() -> Result<()> {
-        println!("RATE = {} and CAPACITY = {}", RATE, CAPACITY);
-        let native = console::Poseidon::<<Circuit as Environment>::Network, { RATE as usize }>::setup(DOMAIN)?;
-        let poseidon = Poseidon::<Circuit, { RATE as usize }>::constant(native.clone());
-        let mut state = vec![Field::zero(); CAPACITY + (RATE as usize)];
-        let mut mode = DuplexSpongeMode::Absorbing { next_absorb_index : 0 };
-        let _output1 = poseidon.squeeze(&mut state, &mut mode, 1);
-        let _output2 = poseidon.squeeze(&mut state, &mut mode, 4);
         Ok(())
     }
 
