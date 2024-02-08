@@ -16,11 +16,14 @@
 
 use super::*;
 use crate::helpers::{NestedMap, NestedMapRead};
-use console::prelude::{anyhow, FromBytes};
+use console::prelude::{anyhow, cfg_into_iter, FromBytes};
 
 use core::{fmt, fmt::Debug, hash::Hash, mem};
 use std::{borrow::Cow, sync::atomic::Ordering};
 use tracing::error;
+
+#[cfg(not(feature = "serial"))]
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
 
 #[derive(Clone)]
 pub struct NestedDataMap<
@@ -350,6 +353,38 @@ impl<
     type Values = NestedValues<'a, V>;
 
     ///
+    /// Returns the number of confirmed entries in the map.
+    ///
+    fn len_map_confirmed(&self, map: &M) -> Result<usize> {
+        // Obtain the nested map prefix and its final part.
+        let prefix = self.create_prefixed_map(map)?;
+        let serialized_map = &prefix[PREFIX_LEN + 4..];
+
+        // A raw iterator doesn't allocate.
+        let mut iter = self.database.raw_iterator();
+        // Find the first key with the nested map prefix.
+        iter.seek(&prefix);
+
+        // Count the number of keys belonging to the nested map.
+        let mut len = 0usize;
+        while let Some(key) = iter.key() {
+            // Only compare the nested map - the network ID and the outer map
+            // ID are guaranteed to remain the same as long as there is more
+            // than a single map in the database.
+            if !key[PREFIX_LEN + 4..].starts_with(serialized_map) {
+                // If the nested map ID is different, it's the end of iteration.
+                break;
+            }
+
+            // Increment the length and go to the next record.
+            len += 1;
+            iter.next();
+        }
+
+        Ok(len)
+    }
+
+    ///
     /// Returns `true` if the given map and key exists.
     ///
     fn contains_key_confirmed(&self, map: &M, key: &K) -> Result<bool> {
@@ -409,12 +444,8 @@ impl<
 
             // If the 'entry_map' matches 'serialized_map', deserialize the key and value.
             if entry_map == serialized_map {
-                // Deserialize the key.
-                let key = bincode::deserialize(entry_key)?;
-                // Deserialize the value.
-                let value = bincode::deserialize(&value)?;
                 // Push the key-value pair to the vector.
-                entries.push((key, value));
+                entries.push((entry_key.to_owned(), value));
             } else {
                 // If the 'entry_map' no longer matches the 'serialized_map',
                 // we've moved past the relevant keys and can break the loop.
@@ -422,7 +453,15 @@ impl<
             }
         }
 
-        Ok(entries)
+        // Possibly deserialize the entries in parallel.
+        Ok(cfg_into_iter!(entries)
+            .map(|(k, v)| {
+                let k = bincode::deserialize::<K>(&k);
+                let v = bincode::deserialize::<V>(&v);
+
+                k.and_then(|k| v.map(|v| (k, v)))
+            })
+            .collect::<Result<_, bincode::Error>>()?)
     }
 
     ///
@@ -436,14 +475,14 @@ impl<
         let operations = self.atomic_batch.lock().clone();
 
         if !operations.is_empty() {
-            // Perform all the queued operations.
+            // Traverse the queued operations.
             for (m, k, v) in operations {
                 // If the map does not match the given map, then continue.
                 if &m != map {
                     continue;
                 }
 
-                // Perform the operation.
+                // Update the confirmed pairs based on the pending operations.
                 match (k, v) {
                     // Insert or update the key-value pair for the key.
                     (Some(k), Some(v)) => {

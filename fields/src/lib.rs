@@ -16,9 +16,6 @@
 #![forbid(unsafe_code)]
 
 #[macro_use]
-extern crate derivative;
-
-#[macro_use]
 extern crate thiserror;
 
 #[macro_use]

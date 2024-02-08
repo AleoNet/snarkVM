@@ -16,6 +16,7 @@ use crate::Index;
 use snarkvm_fields::PrimeField;
 
 use indexmap::IndexMap;
+use std::sync::Arc;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum AssignmentVariable<F: PrimeField> {
@@ -84,9 +85,9 @@ impl<F: PrimeField> AssignmentLC<F> {
 /// and constraint assignments.
 #[derive(Clone, Debug)]
 pub struct Assignment<F: PrimeField> {
-    public: Vec<(Index, F)>,
-    private: Vec<(Index, F)>,
-    constraints: Vec<(AssignmentLC<F>, AssignmentLC<F>, AssignmentLC<F>)>,
+    public: Arc<[(Index, F)]>,
+    private: Arc<[(Index, F)]>,
+    constraints: Arc<[(AssignmentLC<F>, AssignmentLC<F>, AssignmentLC<F>)]>,
 }
 
 impl<F: PrimeField> From<crate::R1CS<F>> for Assignment<F> {
@@ -109,17 +110,17 @@ impl<F: PrimeField> From<crate::R1CS<F>> for Assignment<F> {
 
 impl<F: PrimeField> Assignment<F> {
     /// Returns the public inputs of the assignment.
-    pub const fn public_inputs(&self) -> &Vec<(Index, F)> {
+    pub const fn public_inputs(&self) -> &Arc<[(Index, F)]> {
         &self.public
     }
 
     /// Returns the private inputs of the assignment.
-    pub const fn private_inputs(&self) -> &Vec<(Index, F)> {
+    pub const fn private_inputs(&self) -> &Arc<[(Index, F)]> {
         &self.private
     }
 
     /// Returns the constraints of the assignment.
-    pub const fn constraints(&self) -> &Vec<(AssignmentLC<F>, AssignmentLC<F>, AssignmentLC<F>)> {
+    pub const fn constraints(&self) -> &Arc<[(AssignmentLC<F>, AssignmentLC<F>, AssignmentLC<F>)]> {
         &self.constraints
     }
 
@@ -166,14 +167,18 @@ impl<F: PrimeField> snarkvm_algorithms::r1cs::ConstraintSynthesizer<F> for Assig
         assert_eq!(0, cs.num_private_variables());
         assert_eq!(0, cs.num_constraints());
 
+        let result = converter.public.insert(0, CS::one());
+        assert!(result.is_none(), "Overwrote an existing public variable in the converter");
+
         // Allocate the public variables.
-        for (i, (index, value)) in self.public.iter().enumerate() {
-            assert_eq!(i as u64, *index, "Public variables in first system must be processed in lexicographic order");
+        // NOTE: we skip the first public `One` variable because we already allocated it in the `ConstraintSystem` constructor.
+        for (i, (index, value)) in self.public.iter().skip(1).enumerate() {
+            assert_eq!((i + 1) as u64, *index, "Public vars in first system must be processed in lexicographic order");
 
             let gadget = cs.alloc_input(|| format!("Public {i}"), || Ok(*value))?;
 
             assert_eq!(
-                snarkvm_algorithms::r1cs::Index::Public((index + 1) as usize),
+                snarkvm_algorithms::r1cs::Index::Public(*index as usize),
                 gadget.get_unchecked(),
                 "Public variables in the second system must match the first system (with an off-by-1 for the public case)"
             );
@@ -218,7 +223,7 @@ impl<F: PrimeField> snarkvm_algorithms::r1cs::ConstraintSynthesizer<F> for Assig
                         AssignmentVariable::Public(index) => {
                             let gadget = converter.public.get(index).unwrap();
                             assert_eq!(
-                                snarkvm_algorithms::r1cs::Index::Public((index + 1) as usize),
+                                snarkvm_algorithms::r1cs::Index::Public(*index as usize),
                                 gadget.get_unchecked(),
                                 "Failed during constraint translation. The public variable in the second system must match the first system (with an off-by-1 for the public case)"
                             );
@@ -257,7 +262,7 @@ impl<F: PrimeField> snarkvm_algorithms::r1cs::ConstraintSynthesizer<F> for Assig
         }
 
         // Ensure the given `cs` matches in size with the first system.
-        assert_eq!(self.num_public() + 1, cs.num_public_variables() as u64);
+        assert_eq!(self.num_public(), cs.num_public_variables() as u64);
         assert_eq!(self.num_private(), cs.num_private_variables() as u64);
         assert_eq!(self.num_constraints(), cs.num_constraints() as u64);
 
@@ -308,7 +313,7 @@ mod tests {
         assignment.generate_constraints(&mut cs).unwrap();
         {
             use snarkvm_algorithms::r1cs::ConstraintSystem;
-            assert_eq!(assignment.num_public() + 1, cs.num_public_variables() as u64);
+            assert_eq!(assignment.num_public(), cs.num_public_variables() as u64);
             assert_eq!(assignment.num_private(), cs.num_private_variables() as u64);
             assert_eq!(assignment.num_constraints(), cs.num_constraints() as u64);
             assert!(cs.is_satisfied());

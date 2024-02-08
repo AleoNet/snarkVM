@@ -19,7 +19,7 @@ impl<N: Network> Request<N> {
     ///
     /// Verifies (challenge == challenge') && (address == address') && (serial_numbers == serial_numbers') where:
     ///     challenge' := HashToScalar(r * G, pk_sig, pr_sig, signer, \[tvk, tcm, function ID, input IDs\])
-    pub fn verify(&self, input_types: &[ValueType<N>]) -> bool {
+    pub fn verify(&self, input_types: &[ValueType<N>], is_root: bool) -> bool {
         // Verify the transition public key, transition view key, and transition commitment are well-formed.
         {
             // Compute the transition commitment `tcm` as `Hash(tvk)`.
@@ -43,11 +43,8 @@ impl<N: Network> Request<N> {
         // Retrieve the response from the signature.
         let response = self.signature.response();
 
-        // Compute the function ID as `Hash(network_id, program_id, function_name)`.
-        let function_id = match N::hash_bhp1024(
-            &(U16::<N>::new(N::ID), self.program_id.name(), self.program_id.network(), &self.function_name)
-                .to_bits_le(),
-        ) {
+        // Compute the function ID.
+        let function_id = match compute_function_id(&self.network_id, &self.program_id, &self.function_name) {
             Ok(function_id) => function_id,
             Err(error) => {
                 eprintln!("Failed to construct the function ID: {error}");
@@ -55,11 +52,15 @@ impl<N: Network> Request<N> {
             }
         };
 
+        // Compute the 'is_root' field.
+        let is_root = if is_root { Field::<N>::one() } else { Field::<N>::zero() };
+
         // Construct the signature message as `[tvk, tcm, function ID, input IDs]`.
         let mut message = Vec::with_capacity(3 + self.input_ids.len());
         message.push(self.tvk);
         message.push(self.tcm);
         message.push(function_id);
+        message.push(is_root);
 
         if let Err(error) = self.input_ids.iter().zip_eq(&self.inputs).zip_eq(input_types).enumerate().try_for_each(
             |(index, ((input_id, input), input_type))| {
@@ -251,10 +252,24 @@ mod tests {
                 ValueType::from_str("token.aleo/token.record").unwrap(),
             ];
 
+            // Sample 'root_tvk'.
+            let root_tvk = None;
+            // Sample 'is_root'.
+            let is_root = Uniform::rand(rng);
+
             // Compute the signed request.
-            let request =
-                Request::sign(&private_key, program_id, function_name, inputs.into_iter(), &input_types, rng).unwrap();
-            assert!(request.verify(&input_types));
+            let request = Request::sign(
+                &private_key,
+                program_id,
+                function_name,
+                inputs.into_iter(),
+                &input_types,
+                root_tvk,
+                is_root,
+                rng,
+            )
+            .unwrap();
+            assert!(request.verify(&input_types, is_root));
         }
     }
 }

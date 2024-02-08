@@ -95,6 +95,18 @@ pub trait NestedMapRead<
     type Values: Iterator<Item = Cow<'a, V>>;
 
     ///
+    /// Returns the number of confirmed entries in the map.
+    ///
+    fn len_map_confirmed(&self, map: &M) -> Result<usize>;
+
+    ///
+    /// Checks whether there are any confirmed entries in the map.
+    ///
+    fn is_empty_map_confirmed(&self, map: &M) -> Result<bool> {
+        Ok(self.len_map_confirmed(map)? == 0)
+    }
+
+    ///
     /// Returns `true` if the given key exists in the map.
     ///
     fn contains_key_confirmed(&self, map: &M, key: &K) -> Result<bool>;

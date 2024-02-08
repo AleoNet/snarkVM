@@ -105,6 +105,10 @@ mod tests {
             Ok(("", ValueType::<CurrentNetwork>::from_str("signature.private")?)),
             ValueType::<CurrentNetwork>::parse("signature.private")
         );
+        assert_eq!(
+            Ok(("", ValueType::<CurrentNetwork>::from_str("i8abc.constant")?)),
+            ValueType::<CurrentNetwork>::parse("i8abc.constant")
+        );
 
         // Record type.
         assert_eq!(

@@ -302,25 +302,19 @@ where
         // (since the first coeff is 1), and so we squeeze out `num_polynomials` points.
         let mut challenges = sponge.squeeze_nonnative_field_elements(verifying_key.circuit_commitments.len());
         let point = challenges.pop().ok_or(anyhow!("Failed to squeeze random element"))?;
-        let one = E::Fr::one();
-        let linear_combination_challenges = core::iter::once(&one).chain(challenges.iter());
+        let combiners = core::iter::once(E::Fr::one()).chain(challenges);
 
         // We will construct a linear combination and provide a proof of evaluation of the lc at `point`.
-        let poly_info = AHPForR1CS::<E::Fr, SM>::index_polynomial_info(std::iter::once(circuit_id));
-        let evaluations_at_point = AHPForR1CS::<E::Fr, SM>::evaluate_index_polynomials(state, circuit_id, point)?;
-        let mut lc = crate::polycommit::sonic_pc::LinearCombination::empty("circuit_check");
-        let mut evaluation = E::Fr::zero();
-        for ((label, &c), eval) in poly_info.keys().zip_eq(linear_combination_challenges).zip_eq(evaluations_at_point) {
-            lc.add(c, label.as_str());
-            evaluation += c * eval;
-        }
+        let (lc, evaluation) =
+            AHPForR1CS::<E::Fr, SM>::evaluate_index_polynomials(state, circuit_id, point, combiners)?;
 
+        ensure!(verifying_key.circuit_commitments.len() == lc.terms.len());
         let commitments = verifying_key
             .iter()
             .cloned()
-            .zip_eq(poly_info.values())
-            .map(|(c, info)| LabeledCommitment::new_with_info(info, c))
-            .collect::<Vec<_>>();
+            .zip_eq(lc.terms.keys())
+            .map(|(c, label)| LabeledCommitment::new(format!("{label:?}"), c, None))
+            .collect_vec();
         let evaluations = Evaluations::from_iter([(("circuit_check".into(), point), evaluation)]);
         let query_set = QuerySet::from_iter([("circuit_check".into(), ("challenge".into(), point))]);
 
@@ -676,17 +670,25 @@ where
 
             let input_fields = public_inputs_i
                 .iter()
-                .map(|input| input.borrow().to_field_elements())
+                .map(|input| {
+                    let input = input.borrow().to_field_elements()?;
+                    ensure!(input.len() > 0);
+                    ensure!(input[0] == E::Fr::one());
+                    if input.len() > input_domain.size() {
+                        bail!(SNARKError::PublicInputSizeMismatch);
+                    }
+                    Ok(input)
+                })
                 .collect::<Result<Vec<_>, _>>()?;
 
             let (padded_public_inputs_i, parsed_public_inputs_i): (Vec<_>, Vec<_>) = {
                 input_fields
                     .iter()
                     .map(|input| {
-                        let mut new_input = Vec::with_capacity((1 + input.len()).max(input_domain.size()));
-                        new_input.push(E::Fr::one());
+                        let input_len = input.len().max(input_domain.size());
+                        let mut new_input = Vec::with_capacity(input_len);
                         new_input.extend_from_slice(input);
-                        new_input.resize(input.len().max(input_domain.size()), E::Fr::zero());
+                        new_input.resize(input_len, E::Fr::zero());
                         if cfg!(debug_assertions) {
                             println!("Number of padded public variables: {}", new_input.len());
                         }
@@ -842,7 +844,6 @@ where
         // degree bounds because we know the committed index polynomial has the
         // correct degree.
 
-        // Gather commitments in one vector.
         let commitments: Vec<_> = circuit_commitments
             .into_iter()
             .flatten()

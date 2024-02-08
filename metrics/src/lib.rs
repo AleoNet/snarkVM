@@ -14,17 +14,49 @@
 
 #![forbid(unsafe_code)]
 
-pub const GAUGE_NAMES: [&str; 1] = [committee::TOTAL_STAKE];
+const GAUGE_NAMES: [&str; 1] = [committee::TOTAL_STAKE];
 
 pub mod committee {
     pub const TOTAL_STAKE: &str = "snarkvm_ledger_committee_total_stake";
 }
 
-/// Registers all metrics.
+/// Registers all snarkVM metrics.
 pub fn register_metrics() {
     for name in GAUGE_NAMES {
-        ::metrics::register_gauge!(name);
+        register_gauge(name);
     }
+}
+
+/******** Counter ********/
+
+/// Registers a counter with the given name.
+pub fn register_counter(name: &'static str) {
+    let _counter = ::metrics::counter!(name);
+}
+
+/// Updates a counter with the given name to the given value.
+///
+/// Counters represent a single monotonic value, which means the value can only be incremented,
+/// not decremented, and always starts out with an initial value of zero.
+pub fn counter<V: Into<u64>>(name: &'static str, value: V) {
+    let counter = ::metrics::counter!(name);
+    counter.absolute(value.into());
+}
+
+/// Increments a counter with the given name by one.
+///
+/// Counters represent a single monotonic value, which means the value can only be incremented,
+/// not decremented, and always starts out with an initial value of zero.
+pub fn increment_counter(name: &'static str) {
+    let counter = ::metrics::counter!(name);
+    counter.increment(1);
+}
+
+/******** Gauge ********/
+
+/// Registers a gauge with the given name.
+pub fn register_gauge(name: &'static str) {
+    let _gauge = ::metrics::gauge!(name);
 }
 
 /// Updates a gauge with the given name to the given value.
@@ -32,5 +64,37 @@ pub fn register_metrics() {
 /// Gauges represent a single value that can go up or down over time,
 /// and always starts out with an initial value of zero.
 pub fn gauge<V: Into<f64>>(name: &'static str, value: V) {
-    ::metrics::gauge!(name, value.into());
+    let gauge = ::metrics::gauge!(name);
+    gauge.set(value.into());
+}
+
+/// Increments a gauge with the given name by the given value.
+///
+/// Gauges represent a single value that can go up or down over time,
+/// and always starts out with an initial value of zero.
+pub fn increment_gauge<V: Into<f64>>(name: &'static str, value: V) {
+    let gauge = ::metrics::gauge!(name);
+    gauge.increment(value.into());
+}
+
+/// Decrements a gauge with the given name by the given value.
+///
+/// Gauges represent a single value that can go up or down over time,
+/// and always starts out with an initial value of zero.
+pub fn decrement_gauge<V: Into<f64>>(name: &'static str, value: V) {
+    let gauge = ::metrics::gauge!(name);
+    gauge.decrement(value.into());
+}
+
+/******** Histogram ********/
+
+/// Registers a histogram with the given name.
+pub fn register_histogram(name: &'static str) {
+    let _histogram = ::metrics::histogram!(name);
+}
+
+/// Updates a histogram with the given name to the given value.
+pub fn histogram<V: Into<f64>>(name: &'static str, value: V) {
+    let histogram = ::metrics::histogram!(name);
+    histogram.record(value.into());
 }

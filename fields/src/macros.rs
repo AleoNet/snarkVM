@@ -104,12 +104,12 @@ macro_rules! sqrt_impl {
                 let l_minus_one_times_k = n - 1 - k_2;
                 let l_minus_one = l_minus_one_times_k / k;
                 let l = l_minus_one + 1;
-                let mut l_s: Vec<u64> = Vec::with_capacity(k as usize);
-                l_s.resize(l_s.len() + k_1 as usize, l_minus_one);
-                l_s.resize(l_s.len() + k_2 as usize, l);
+
+                let l_s =
+                    || std::iter::repeat(l_minus_one).take(k_1 as usize).chain(std::iter::repeat(l).take(k_2 as usize));
 
                 let mut l_sum = 0;
-                let x_s = l_s.iter().take((k as usize) - 1).map(|l| {
+                let x_s = l_s().take((k as usize) - 1).map(|l| {
                     l_sum += l;
                     x.pow(BigInteger::from(2u64.pow((n - 1 - l_sum) as u32)))
                 });
@@ -140,20 +140,16 @@ macro_rules! sqrt_impl {
                     s
                 };
 
-                let calculate_kappa = |i: usize, j: usize, l_s: &[u64]| -> u64 {
-                    l_s.iter().take(j).sum::<u64>() + 1 + l_s.iter().skip(i + 1).sum::<u64>()
-                };
-
                 let calculate_gamma = |i: usize, q_s: &[u64], last: bool| -> $Self {
                     let mut gamma = $Self::one();
                     if i != 0 {
-                        q_s.iter().zip(l_s.iter()).enumerate().for_each(|(j, (q, l))| {
-                            let mut kappa = calculate_kappa(i, j, &l_s);
+                        q_s.iter().zip(l_s()).enumerate().for_each(|(j, (q, l))| {
+                            let mut kappa = l_s().take(j).sum::<u64>() + 1 + l_s().skip(i + 1).sum::<u64>();
                             if last {
                                 kappa -= 1;
                             }
                             let mut value = *q;
-                            (0..*l as usize).for_each(|k| {
+                            (0..l as usize).for_each(|k| {
                                 let bit = value & 1 == 1;
                                 if bit {
                                     gamma *= $Self($P::POWERS_OF_ROOTS_OF_UNITY[(kappa as usize) + k], PhantomData);

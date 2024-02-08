@@ -114,7 +114,12 @@ impl<F: Field> AddAssign<(F, Variable)> for LinearCombination<F> {
     #[inline]
     fn add_assign(&mut self, (coeff, var): (F, Variable)) {
         match self.get_var_loc(&var) {
-            Ok(found) => self.0[found].1 += &coeff,
+            Ok(found) => {
+                self.0[found].1 += &coeff;
+                if self.0[found].1.is_zero() {
+                    self.0.remove(found);
+                }
+            }
             Err(not_found) => self.0.insert(not_found, (var, coeff)),
         }
     }

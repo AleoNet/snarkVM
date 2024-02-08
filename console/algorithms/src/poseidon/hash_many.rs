@@ -31,6 +31,6 @@ impl<E: Environment, const RATE: usize> HashMany for Poseidon<E, RATE> {
 
         let mut sponge = PoseidonSponge::<E, RATE, CAPACITY>::new(&self.parameters);
         sponge.absorb(&preimage);
-        sponge.squeeze(num_outputs).to_vec()
+        sponge.squeeze(num_outputs).into_vec()
     }
 }

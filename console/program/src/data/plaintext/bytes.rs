@@ -33,7 +33,8 @@ impl<N: Network> FromBytes for Plaintext<N> {
                     // Read the plaintext value (in 2 steps to prevent infinite recursion).
                     let num_bytes = u16::read_le(&mut reader)?;
                     // Read the plaintext bytes.
-                    let bytes = (0..num_bytes).map(|_| u8::read_le(&mut reader)).collect::<Result<Vec<_>, _>>()?;
+                    let mut bytes = Vec::new();
+                    (&mut reader).take(num_bytes as u64).read_to_end(&mut bytes)?;
                     // Recover the plaintext value.
                     let plaintext = Plaintext::read_le(&mut bytes.as_slice())?;
                     // Add the member.
@@ -54,7 +55,8 @@ impl<N: Network> FromBytes for Plaintext<N> {
                     // Read the plaintext value (in 2 steps to prevent infinite recursion).
                     let num_bytes = u16::read_le(&mut reader)?;
                     // Read the plaintext bytes.
-                    let bytes = (0..num_bytes).map(|_| u8::read_le(&mut reader)).collect::<Result<Vec<_>, _>>()?;
+                    let mut bytes = Vec::new();
+                    (&mut reader).take(num_bytes as u64).read_to_end(&mut bytes)?;
                     // Recover the plaintext value.
                     let plaintext = Plaintext::read_le(&mut bytes.as_slice())?;
                     // Add the element.

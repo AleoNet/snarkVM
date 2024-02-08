@@ -359,6 +359,9 @@ impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
             let non_zero_domains = [&state_i.non_zero_a_domain, &state_i.non_zero_b_domain, &state_i.non_zero_c_domain];
             let sums = sums_fourth_msg[i].iter();
 
+            ensure!(matrices.len() == sums.len());
+            ensure!(matrices.len() == deltas.len());
+            ensure!(matrices.len() == non_zero_domains.len());
             for (((m, sum), delta), non_zero_domain) in
                 matrices.into_iter().zip_eq(sums).zip_eq(deltas).zip_eq(non_zero_domains)
             {

@@ -32,20 +32,17 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         }
 
         // Ensure the solutions do not already exist.
-        if let Some(solutions) = block.solutions() {
-            for puzzle_commitment in solutions.puzzle_commitments() {
-                if self.contains_puzzle_commitment(puzzle_commitment)? {
-                    bail!("Puzzle commitment {puzzle_commitment} already exists in the ledger");
-                }
+        for solution_id in block.solutions().solution_ids() {
+            if self.contains_puzzle_commitment(solution_id)? {
+                bail!("Solution ID {solution_id} already exists in the ledger");
             }
         }
 
         // Ensure each transaction is well-formed and unique.
-        // TODO: this intermediate allocation shouldn't be necessary; this is most likely https://github.com/rust-lang/rust/issues/89418.
-        let transactions = block.transactions().iter().collect::<Vec<_>>();
+        let transactions = block.transactions();
         let rngs = (0..transactions.len()).map(|_| StdRng::from_seed(rng.gen())).collect::<Vec<_>>();
         cfg_iter!(transactions).zip(rngs).try_for_each(|(transaction, mut rng)| {
-            self.check_transaction_basic(*transaction, transaction.to_rejected_id()?, &mut rng)
+            self.check_transaction_basic(transaction, transaction.to_rejected_id()?, &mut rng)
                 .map_err(|e| anyhow!("Invalid transaction found in the transactions list: {e}"))
         })?;
 
@@ -86,7 +83,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             self.vm.check_speculate(state, block.ratifications(), block.solutions(), block.transactions())?;
 
         // Ensure the block is correct.
-        block.verify(
+        let (expected_existing_solution_ids, expected_existing_transaction_ids) = block.verify(
             &self.latest_block(),
             self.latest_state_root(),
             &self.latest_committee()?,
@@ -95,6 +92,20 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             OffsetDateTime::now_utc().unix_timestamp(),
             ratified_finalize_operations,
         )?;
+
+        // Ensure that each existing solution ID from the block exists in the ledger.
+        for existing_solution_id in expected_existing_solution_ids {
+            if !self.contains_puzzle_commitment(&existing_solution_id)? {
+                bail!("Solution ID '{existing_solution_id}' does not exist in the ledger");
+            }
+        }
+
+        // Ensure that each existing transaction ID from the block exists in the ledger.
+        for existing_transaction_id in expected_existing_transaction_ids {
+            if !self.contains_transaction_id(&existing_transaction_id)? {
+                bail!("Transaction ID '{existing_transaction_id}' does not exist in the ledger");
+            }
+        }
 
         Ok(())
     }

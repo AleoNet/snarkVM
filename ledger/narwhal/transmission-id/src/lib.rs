@@ -33,14 +33,14 @@ pub enum TransmissionID<N: Network> {
 }
 
 impl<N: Network> From<PuzzleCommitment<N>> for TransmissionID<N> {
-    /// Converts the puzzle commitment into an transmission ID.
+    /// Converts the puzzle commitment into a transmission ID.
     fn from(puzzle_commitment: PuzzleCommitment<N>) -> Self {
         Self::Solution(puzzle_commitment)
     }
 }
 
 impl<N: Network> From<&N::TransactionID> for TransmissionID<N> {
-    /// Converts the transaction ID into an transmission ID.
+    /// Converts the transaction ID into a transmission ID.
     fn from(transaction_id: &N::TransactionID) -> Self {
         Self::Transaction(*transaction_id)
     }

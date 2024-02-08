@@ -53,7 +53,7 @@ impl<N: Network> Package<N> {
         // Initialize the call stack.
         let call_stack = CallStack::PackageRun(vec![request], *private_key, assignments.clone());
         // Synthesize the circuit.
-        let response = stack.execute_function::<A, R>(call_stack, None, rng)?;
+        let response = stack.execute_function::<A, R>(call_stack, None, None, rng)?;
         // Retrieve the call metrics.
         let call_metrics = assignments.read().iter().map(|(_, metrics)| *metrics).collect::<Vec<_>>();
         // Return the response and call metrics.
@@ -96,6 +96,30 @@ mod tests {
     fn test_run_with_import() {
         // Samples a new package at a temporary directory.
         let (directory, package) = crate::package::test_helpers::sample_wallet_package();
+
+        // Ensure the build directory does *not* exist.
+        assert!(!package.build_directory().exists());
+        // Build the package.
+        package.build::<CurrentAleo>(None).unwrap();
+        // Ensure the build directory exists.
+        assert!(package.build_directory().exists());
+
+        // Initialize an RNG.
+        let rng = &mut TestRng::default();
+        // Sample the function inputs.
+        let (private_key, function_name, inputs) =
+            crate::package::test_helpers::sample_package_run(package.program_id());
+        // Run the program function.
+        let (_response, _metrics) = package.run::<CurrentAleo, _>(&private_key, function_name, &inputs, rng).unwrap();
+
+        // Proactively remove the temporary directory (to conserve space).
+        std::fs::remove_dir_all(directory).unwrap();
+    }
+
+    #[test]
+    fn test_run_with_nested_imports() {
+        // Samples a new package at a temporary directory.
+        let (directory, package) = crate::package::test_helpers::sample_nested_package();
 
         // Ensure the build directory does *not* exist.
         assert!(!package.build_directory().exists());

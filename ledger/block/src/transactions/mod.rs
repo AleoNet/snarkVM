@@ -38,6 +38,8 @@ use console::{
     },
     types::{Field, Group, U64},
 };
+use ledger_committee::Committee;
+use ledger_narwhal_batch_header::BatchHeader;
 use synthesizer_program::FinalizeOperation;
 
 use indexmap::IndexMap;
@@ -167,6 +169,10 @@ impl<N: Network> Transactions<N> {
 }
 
 impl<N: Network> Transactions<N> {
+    /// The maximum number of aborted transactions allowed in a block.
+    pub const MAX_ABORTED_TRANSACTIONS: usize = BatchHeader::<N>::MAX_TRANSMISSIONS_PER_BATCH
+        * BatchHeader::<N>::MAX_GC_ROUNDS
+        * Committee::<N>::MAX_COMMITTEE_SIZE as usize;
     /// The maximum number of transactions allowed in a block.
     pub const MAX_TRANSACTIONS: usize = usize::pow(2, TRANSACTIONS_DEPTH as u32).saturating_sub(1);
 
@@ -177,7 +183,7 @@ impl<N: Network> Transactions<N> {
 
     /// Returns a parallel iterator over all transactions, for all transactions in `self`.
     #[cfg(not(feature = "serial"))]
-    pub fn par_iter(&self) -> impl '_ + ParallelIterator<Item = &ConfirmedTransaction<N>> {
+    pub fn par_iter(&self) -> impl '_ + IndexedParallelIterator<Item = &ConfirmedTransaction<N>> {
         self.transactions.par_values()
     }
 
@@ -352,7 +358,7 @@ mod tests {
     fn test_max_transmissions() {
         // Determine the maximum number of transmissions in a block.
         let max_transmissions_per_block = BatchHeader::<CurrentNetwork>::MAX_TRANSMISSIONS_PER_BATCH
-            * usize::try_from(BatchHeader::<CurrentNetwork>::MAX_GC_ROUNDS).unwrap()
+            * BatchHeader::<CurrentNetwork>::MAX_GC_ROUNDS
             * BatchHeader::<CurrentNetwork>::MAX_CERTIFICATES as usize;
 
         // Note: The maximum number of *transmissions* in a block cannot exceed the maximum number of *transactions* in a block.
