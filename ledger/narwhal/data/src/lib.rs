@@ -137,7 +137,7 @@ impl<T: FromBytes + ToBytes + Send + 'static> ToBytes for Data<T> {
             Self::Object(object) => {
                 // Serialize the object.
                 let buffer =
-                    object.to_bytes_le().map_err(|err| error(format!("Failed to serialize a Data::Object: {err}")))?;
+                    object.to_bytes_le().map_err(|e| error(format!("Failed to serialize 'Data::Object' - {e}")))?;
                 // Write the object.
                 u32::try_from(buffer.len()).map_err(error)?.write_le(&mut writer)?;
                 // Write the object.
