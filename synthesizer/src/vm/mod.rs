@@ -1199,7 +1199,7 @@ function do:
         // Deploy the base program.
         let program = Program::from_str(
             r"
-program synthesis_overreport.aleo;
+program synthesis_underreport.aleo;
 
 function do:
     input r0 as u32.private;
