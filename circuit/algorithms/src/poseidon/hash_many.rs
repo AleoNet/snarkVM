@@ -322,7 +322,7 @@ mod tests {
     }
 
     #[test]
-    fn unchanging_outputs() -> Result<()> {
+    fn changing_outputs() -> Result<()> {
         println!("RATE = {} and CAPACITY = {}", RATE, CAPACITY);
         let native = console::Poseidon::<<Circuit as Environment>::Network, { RATE as usize }>::setup(DOMAIN)?;
         let poseidon = Poseidon::<Circuit, { RATE as usize }>::constant(native.clone());
