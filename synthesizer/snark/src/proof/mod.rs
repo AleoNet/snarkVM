@@ -26,7 +26,7 @@ pub struct Proof<N: Network> {
 
 impl<N: Network> Proof<N> {
     /// Initializes a new proof.
-    pub(super) const fn new(proof: varuna::Proof<N::PairingCurve>) -> Self {
+    pub const fn new(proof: varuna::Proof<N::PairingCurve>) -> Self {
         Self { proof }
     }
 }
