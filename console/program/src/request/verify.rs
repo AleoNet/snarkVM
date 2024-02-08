@@ -252,12 +252,23 @@ mod tests {
                 ValueType::from_str("token.aleo/token.record").unwrap(),
             ];
 
+            // Sample 'root_tvk'.
+            let root_tvk = None;
+            // Sample 'is_root'.
             let is_root = Uniform::rand(rng);
 
             // Compute the signed request.
-            let request =
-                Request::sign(&private_key, program_id, function_name, inputs.into_iter(), &input_types, is_root, rng)
-                    .unwrap();
+            let request = Request::sign(
+                &private_key,
+                program_id,
+                function_name,
+                inputs.into_iter(),
+                &input_types,
+                root_tvk,
+                is_root,
+                rng,
+            )
+            .unwrap();
             assert!(request.verify(&input_types, is_root));
         }
     }

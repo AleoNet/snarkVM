@@ -21,8 +21,8 @@ impl<N: Network> Parser for PlaintextType<N> {
         // Parse to determine the plaintext type (order matters).
         alt((
             map(ArrayType::parse, |type_| Self::Array(type_)),
-            map(LiteralType::parse, |type_| Self::Literal(type_)),
             map(Identifier::parse, |identifier| Self::Struct(identifier)),
+            map(LiteralType::parse, |type_| Self::Literal(type_)),
         ))(string)
     }
 }
@@ -85,6 +85,10 @@ mod tests {
         assert_eq!(
             PlaintextType::parse("foo"),
             Ok(("", PlaintextType::<CurrentNetwork>::Struct(Identifier::from_str("foo")?)))
+        );
+        assert_eq!(
+            PlaintextType::parse("u8jdsklaj"),
+            Ok(("", PlaintextType::<CurrentNetwork>::Struct(Identifier::from_str("u8jdsklaj")?)))
         );
         assert_eq!(
             PlaintextType::parse("[field; 1u32]"),

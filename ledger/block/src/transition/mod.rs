@@ -62,6 +62,8 @@ pub struct Transition<N: Network> {
     tpk: Group<N>,
     /// The transition commitment.
     tcm: Field<N>,
+    /// The transition signer commitment.
+    scm: Field<N>,
 }
 
 impl<N: Network> Transition<N> {
@@ -74,12 +76,13 @@ impl<N: Network> Transition<N> {
         outputs: Vec<Output<N>>,
         tpk: Group<N>,
         tcm: Field<N>,
+        scm: Field<N>,
     ) -> Result<Self> {
         // Compute the transition ID.
         let function_tree = Self::function_tree(&inputs, &outputs)?;
         let id = N::hash_bhp512(&(*function_tree.root(), tcm).to_bits_le())?;
         // Return the transition.
-        Ok(Self { id: id.into(), program_id, function_name, inputs, outputs, tpk, tcm })
+        Ok(Self { id: id.into(), program_id, function_name, inputs, outputs, tpk, tcm, scm })
     }
 
     /// Initializes a new transition from a request and response.
@@ -255,8 +258,10 @@ impl<N: Network> Transition<N> {
         let tpk = request.to_tpk();
         // Retrieve the `tcm`.
         let tcm = *request.tcm();
+        // Retrieve the `scm`.
+        let scm = *request.scm();
         // Return the transition.
-        Self::new(program_id, function_name, inputs, outputs, tpk, tcm)
+        Self::new(program_id, function_name, inputs, outputs, tpk, tcm, scm)
     }
 }
 
@@ -295,19 +300,30 @@ impl<N: Network> Transition<N> {
     pub const fn tcm(&self) -> &Field<N> {
         &self.tcm
     }
+
+    /// Returns the signer commitment.
+    pub const fn scm(&self) -> &Field<N> {
+        &self.scm
+    }
 }
 
 impl<N: Network> Transition<N> {
-    /// Returns `true` if this is a `bond` transition.
+    /// Returns `true` if this is a `bond_public` transition.
     #[inline]
-    pub fn is_bond(&self) -> bool {
-        self.program_id.to_string() == "credits.aleo" && self.function_name.to_string() == "bond"
+    pub fn is_bond_public(&self) -> bool {
+        self.inputs.len() == 2
+            && self.outputs.is_empty()
+            && self.program_id.to_string() == "credits.aleo"
+            && self.function_name.to_string() == "bond_public"
     }
 
-    /// Returns `true` if this is an `unbond` transition.
+    /// Returns `true` if this is an `unbond_public` transition.
     #[inline]
-    pub fn is_unbond(&self) -> bool {
-        self.program_id.to_string() == "credits.aleo" && self.function_name.to_string() == "unbond"
+    pub fn is_unbond_public(&self) -> bool {
+        self.inputs.len() == 2
+            && self.outputs.is_empty()
+            && self.program_id.to_string() == "credits.aleo"
+            && self.function_name.to_string() == "unbond_public"
     }
 
     /// Returns `true` if this is a `fee_private` transition.

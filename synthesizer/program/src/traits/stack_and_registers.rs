@@ -16,6 +16,7 @@ use std::sync::Arc;
 
 use crate::{FinalizeGlobalState, Function, Operand, Program};
 use console::{
+    account::Group,
     network::Network,
     prelude::{bail, Result},
     program::{
@@ -92,6 +93,15 @@ pub trait StackProgram<N: Network> {
         value_type: &ValueType<N>,
         rng: &mut R,
     ) -> Result<Value<N>>;
+
+    /// Returns a record for the given record name, with the given burner address and nonce.
+    fn sample_record<R: Rng + CryptoRng>(
+        &self,
+        burner_address: &Address<N>,
+        record_name: &Identifier<N>,
+        record_nonce: Group<N>,
+        rng: &mut R,
+    ) -> Result<Record<N, Plaintext<N>>>;
 }
 
 pub trait FinalizeRegistersState<N: Network> {
@@ -112,6 +122,12 @@ pub trait RegistersSigner<N: Network> {
     /// Sets the transition signer.
     fn set_signer(&mut self, signer: Address<N>);
 
+    /// Returns the root transition view key.
+    fn root_tvk(&self) -> Result<Field<N>>;
+
+    /// Sets the root transition view key.
+    fn set_root_tvk(&mut self, root_tvk: Field<N>);
+
     /// Returns the transition caller.
     fn caller(&self) -> Result<Address<N>>;
 
@@ -131,6 +147,12 @@ pub trait RegistersSignerCircuit<N: Network, A: circuit::Aleo<Network = N>> {
 
     /// Sets the transition signer, as a circuit.
     fn set_signer_circuit(&mut self, signer_circuit: circuit::Address<A>);
+
+    /// Returns the root transition view key, as a circuit.
+    fn root_tvk_circuit(&self) -> Result<circuit::Field<A>>;
+
+    /// Sets the root transition view key, as a circuit.
+    fn set_root_tvk_circuit(&mut self, root_tvk_circuit: circuit::Field<A>);
 
     /// Returns the transition caller, as a circuit.
     fn caller_circuit(&self) -> Result<circuit::Address<A>>;
