@@ -178,7 +178,7 @@ finalize bond_public:
     // Increment the stake for the specified validator.
     add r12.microcredits r2 into r13;
     // Construct the updated committee state.
-    cast r13 r9.is_open into r14 as committee_state;
+    cast r13 r12.is_open into r14 as committee_state;
 
     /* Bonded */
 
@@ -468,7 +468,7 @@ finalize unbond_public:
 
     // Get the stake for the specified validator.
     // If the validator does not exist, this finalize scope will fail.
-    get committee[r19.validator] into r24;
+    get committee[r21.validator] into r24;
     // Decrement the stake for the specified validator.
     sub r24.microcredits r1 into r25;
     // Construct the updated committee state.
