@@ -138,7 +138,7 @@ finalize bond_public:
     /* Committee */
 
     // Check if the validator is already in the committee.
-    contains committee[r1] into r4;
+    contains committee[r0] into r4;
     // If the validator is already in the committee, jump to the `continue_bond_validator` logic.
     branch.eq r4 true to continue_bond_validator;
 
@@ -183,11 +183,11 @@ finalize bond_public:
     /* Bonded */
 
     // Construct the initial bond state.
-    cast r1 0u64 into r15 as bond_state;
+    cast r0 0u64 into r15 as bond_state;
     // Get the bond state for the caller, or default to the initial bond state.
     get.or_use bonded[r0] r15 into r16;
     // Enforce the validator matches in the bond state.
-    assert.eq r16.validator r1;
+    assert.eq r16.validator r0;
 
     // Increment the microcredits in the bond state.
     add r12.microcredits r2 into r17;
@@ -197,7 +197,7 @@ finalize bond_public:
     assert.eq r18 true;
 
     // Construct the updated bond state.
-    cast r1 r17 into r19 as bond_state;
+    cast r0 r17 into r19 as bond_state;
 
     /* Account */
 

@@ -827,7 +827,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                             program_id,
                             metadata_mapping,
                             Plaintext::from_str("aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc")?,
-                            Value::from(Literal::U64(U64::new(committee.members().len() as u64))),
+                            Value::from_str(&format!("{}u32", committee.num_members()))?,
                         )?,
                     ]);
 
@@ -838,7 +838,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                             program_id,
                             metadata_mapping,
                             Plaintext::from_str("aleo1qgqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqanmpl0")?,
-                            Value::from(Literal::U64(U64::new(stakers.len() as u64))),
+                            Value::from_str(&format!("{}u32", stakers.len()))?,
                         )?,
                     ]);
 
@@ -921,6 +921,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     let next_stakers = staking_rewards(&current_stakers, &current_committee, *block_reward);
                     // Compute the updated committee, using the stakers.
                     let next_committee = to_next_committee(&current_committee, state.block_round(), &next_stakers)?;
+
                     // Construct the next committee map and next bonded map.
                     let (next_committee_map, next_bonded_map) =
                         to_next_commitee_map_and_bonded_map(&next_committee, &next_stakers);
@@ -1081,8 +1082,13 @@ finalize transfer_public:
         rng: &mut R,
     ) -> Result<Block<CurrentNetwork>> {
         // Speculate on the candidate ratifications, solutions, and transactions.
-        let (ratifications, transactions, aborted_transaction_ids, ratified_finalize_operations) =
-            vm.speculate(sample_finalize_state(1), None, vec![], &None.into(), transactions.iter())?;
+        let (ratifications, transactions, aborted_transaction_ids, ratified_finalize_operations) = vm.speculate(
+            sample_finalize_state(previous_block.height() + 1),
+            Some(0),
+            vec![],
+            &None.into(),
+            transactions.iter(),
+        )?;
 
         // Construct the metadata associated with the block.
         let metadata = Metadata::new(
@@ -1952,6 +1958,10 @@ finalize compute:
         // Add the next block to the VM.
         vm.add_next_block(&next_block).unwrap();
 
+        // Check that the first validator was added to the committee.
+        let committee = vm.finalize_store().committee_store().current_committee().unwrap();
+        assert!(committee.is_committee_member(first_address));
+
         // Attempt to bond the second validator.
         let bond_second_transaction = vm
             .execute(
@@ -1982,5 +1992,9 @@ finalize compute:
 
         // Check that the transaction was rejected.
         assert!(next_block.transactions().iter().next().unwrap().is_rejected());
+
+        // Check that the second validator was not added to the committee.
+        let committee = vm.finalize_store().committee_store().current_committee().unwrap();
+        assert!(!committee.is_committee_member(second_address));
     }
 }
