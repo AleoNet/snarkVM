@@ -144,6 +144,7 @@ impl<N: Network> StackExecute<N> for Stack<N> {
         A::reset();
 
         // If in 'CheckDeployment' mode, set the constraint limit.
+        // We do not have to reset it after function calls because `CheckDeployment` mode does not execute those.
         if let CallStack::CheckDeployment(_, _, _, constraint_limit) = &call_stack {
             A::set_constraint_limit(*constraint_limit);
         }
