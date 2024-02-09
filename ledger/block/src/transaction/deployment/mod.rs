@@ -124,6 +124,23 @@ impl<N: Network> Deployment<N> {
         &self.verifying_keys
     }
 
+    /// Returns the sum of the constraint counts for all functions in this deployment.
+    pub fn num_combined_constraints(&self) -> Result<u64> {
+        // Initialize the accumulator.
+        let mut num_combined_constraints = 0u64;
+        // Iterate over the functions.
+        for (_, (vk, _)) in &self.verifying_keys {
+            // Add the number of constraints.
+            // Note: This method must be *checked* because the claimed constraint count
+            // is from the user, not the synthesizer.
+            num_combined_constraints = num_combined_constraints
+                .checked_add(vk.circuit_info.num_constraints as u64)
+                .ok_or_else(|| anyhow!("Overflow when counting constraints for '{}'", self.program_id()))?;
+        }
+        // Return the number of combined constraints.
+        Ok(num_combined_constraints)
+    }
+
     /// Returns the deployment ID.
     pub fn to_deployment_id(&self) -> Result<Field<N>> {
         Ok(*Transaction::deployment_tree(self, None)?.root())

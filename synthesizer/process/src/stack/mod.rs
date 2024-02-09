@@ -81,7 +81,7 @@ pub type Assignments<N> = Arc<RwLock<Vec<(circuit::Assignment<<N as Environment>
 pub enum CallStack<N: Network> {
     Authorize(Vec<Request<N>>, PrivateKey<N>, Authorization<N>),
     Synthesize(Vec<Request<N>>, PrivateKey<N>, Authorization<N>),
-    CheckDeployment(Vec<Request<N>>, PrivateKey<N>, Assignments<N>),
+    CheckDeployment(Vec<Request<N>>, PrivateKey<N>, Assignments<N>, Option<u64>),
     Evaluate(Authorization<N>),
     Execute(Authorization<N>, Arc<RwLock<Trace<N>>>),
     PackageRun(Vec<Request<N>>, PrivateKey<N>, Assignments<N>),
@@ -109,11 +109,14 @@ impl<N: Network> CallStack<N> {
             CallStack::Synthesize(requests, private_key, authorization) => {
                 CallStack::Synthesize(requests.clone(), *private_key, authorization.replicate())
             }
-            CallStack::CheckDeployment(requests, private_key, assignments) => CallStack::CheckDeployment(
-                requests.clone(),
-                *private_key,
-                Arc::new(RwLock::new(assignments.read().clone())),
-            ),
+            CallStack::CheckDeployment(requests, private_key, assignments, constraint_limit) => {
+                CallStack::CheckDeployment(
+                    requests.clone(),
+                    *private_key,
+                    Arc::new(RwLock::new(assignments.read().clone())),
+                    *constraint_limit,
+                )
+            }
             CallStack::Evaluate(authorization) => CallStack::Evaluate(authorization.replicate()),
             CallStack::Execute(authorization, trace) => {
                 CallStack::Execute(authorization.replicate(), Arc::new(RwLock::new(trace.read().clone())))

@@ -17,6 +17,7 @@ use crate::{
     test_helpers::{CurrentLedger, CurrentNetwork},
     RecordsFilter,
 };
+use aleo_std::StorageMode;
 use console::{
     account::{Address, PrivateKey},
     network::prelude::*,
@@ -38,7 +39,7 @@ fn test_load() {
     let genesis = VM::from(store).unwrap().genesis_beacon(&private_key, rng).unwrap();
 
     // Initialize the ledger with the genesis block.
-    let ledger = CurrentLedger::load(genesis.clone(), None).unwrap();
+    let ledger = CurrentLedger::load(genesis.clone(), StorageMode::Production).unwrap();
     assert_eq!(ledger.latest_hash(), genesis.hash());
     assert_eq!(ledger.latest_height(), genesis.height());
     assert_eq!(ledger.latest_round(), genesis.round());
@@ -51,14 +52,14 @@ fn test_load_unchecked() {
     let genesis = crate::test_helpers::sample_genesis_block();
 
     // Initialize the ledger without checks.
-    let ledger = CurrentLedger::load_unchecked(genesis.clone(), None).unwrap();
+    let ledger = CurrentLedger::load_unchecked(genesis.clone(), StorageMode::Production).unwrap();
     assert_eq!(ledger.latest_hash(), genesis.hash());
     assert_eq!(ledger.latest_height(), genesis.height());
     assert_eq!(ledger.latest_round(), genesis.round());
     assert_eq!(ledger.latest_block(), genesis);
 
     // Initialize the ledger with the genesis block.
-    let ledger = CurrentLedger::load(genesis.clone(), None).unwrap();
+    let ledger = CurrentLedger::load(genesis.clone(), StorageMode::Production).unwrap();
     assert_eq!(ledger.latest_hash(), genesis.hash());
     assert_eq!(ledger.latest_height(), genesis.height());
     assert_eq!(ledger.latest_round(), genesis.round());

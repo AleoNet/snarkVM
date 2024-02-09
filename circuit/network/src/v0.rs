@@ -466,6 +466,16 @@ impl Environment for AleoV0 {
         E::halt(message)
     }
 
+    /// Returns the constraint limit for the circuit, if one exists.
+    fn get_constraint_limit() -> Option<u64> {
+        E::get_constraint_limit()
+    }
+
+    /// Sets the constraint limit for the circuit.
+    fn set_constraint_limit(limit: Option<u64>) {
+        E::set_constraint_limit(limit)
+    }
+
     /// Returns the R1CS circuit, resetting the circuit.
     fn inject_r1cs(r1cs: R1CS<Self::BaseField>) {
         E::inject_r1cs(r1cs)
