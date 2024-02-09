@@ -27,7 +27,7 @@ commands:
                 cargo generate-lockfile
             }
             cd << parameters.workspace_member >>
-            CC=x86_64-w64-mingw32-gcc cargo check --examples --benches --tests
+            cargo check --examples --benches --tests
       - save_cache:
           paths:
             - C:\Users\circleci\.cargo\registry
