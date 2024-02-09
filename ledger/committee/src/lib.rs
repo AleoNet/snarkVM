@@ -36,8 +36,6 @@ use std::collections::HashSet;
 pub const MIN_VALIDATOR_STAKE: u64 = 1_000_000_000_000u64; // microcredits
 /// The minimum amount of stake required for a delegator to bond.
 pub const MIN_DELEGATOR_STAKE: u64 = 10_000_000u64; // microcredits
-/// The maximum number of members in a committee.
-pub const MAX_COMMITTEE_SIZE: u16 = 200;
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct Committee<N: Network> {
