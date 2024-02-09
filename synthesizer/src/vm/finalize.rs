@@ -758,6 +758,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         let bonded_mapping = Identifier::from_str("bonded")?;
         // Construct the account mapping name.
         let account_mapping = Identifier::from_str("account")?;
+        // Construct the metadata mapping name.
+        let metadata_mapping = Identifier::from_str("metadata")?;
 
         // Initialize a list of finalize operations.
         let mut finalize_operations = Vec::new();
@@ -775,6 +777,11 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     ensure!(
                         committee.starting_round() == 0,
                         "Ratify::Genesis(..) expected a genesis committee round of 0"
+                    );
+                    // Ensure that the number of members in the committee does not exceed the maximum.
+                    ensure!(
+                        committee.members().len() <= Committee::<N>::MAX_COMMITTEE_SIZE as usize,
+                        "Ratify::Genesis(..) exceeds the maximum number of committee members"
                     );
                     // Ensure genesis has not been ratified yet.
                     ensure!(!is_genesis_ratified, "Ratify::Genesis(..) has already been ratified");
@@ -811,6 +818,28 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                         store.replace_mapping(program_id, committee_mapping, next_committee_map)?,
                         // Replace the bonded mapping in storage.
                         store.replace_mapping(program_id, bonded_mapping, next_bonded_map)?,
+                    ]);
+
+                    // Update the number of validators.
+                    finalize_operations.extend(&[
+                        // Update the number of validators in the metadata mapping.
+                        store.update_key_value(
+                            program_id,
+                            metadata_mapping,
+                            Plaintext::from_str("aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc")?,
+                            Value::from(Literal::U64(U64::new(committee.members().len() as u64))),
+                        )?,
+                    ]);
+
+                    // Update the number of stakers.
+                    finalize_operations.extend(&[
+                        // Update the number of stakers in the metadata mapping.
+                        store.update_key_value(
+                            program_id,
+                            metadata_mapping,
+                            Plaintext::from_str("")?,
+                            Value::from(Literal::U64(U64::new(stakers.len() as u64))),
+                        )?,
                     ]);
 
                     // Iterate over the public balances.
