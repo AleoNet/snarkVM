@@ -831,17 +831,6 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                         )?,
                     ]);
 
-                    // Update the number of stakers.
-                    finalize_operations.extend(&[
-                        // Update the number of stakers in the metadata mapping.
-                        store.update_key_value(
-                            program_id,
-                            metadata_mapping,
-                            Plaintext::from_str("aleo1qgqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqanmpl0")?,
-                            Value::from_str(&format!("{}u32", stakers.len()))?,
-                        )?,
-                    ]);
-
                     // Iterate over the public balances.
                     for (address, amount) in public_balances {
                         // Construct the key.

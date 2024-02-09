@@ -36,11 +36,11 @@ struct committee_state:
 
 /// The `metadata` mapping stores:
 ///   - The number of members in the committee.
-///   - The number of stakers.
+///   - The number of delegators.
 mapping metadata:
     // The key represents the index at which the count is stored.
     //    - This address (aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc) stores the number of **members** in the committee.
-    //    - This address (aleo1qgqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqanmpl0) stores the number of **stakers**.
+    //    - This address (aleo1qgqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqanmpl0) stores the number of **delegators**.
     key as address.public;
     // The value represents the count.
     value as u32.public;
@@ -153,68 +153,57 @@ finalize bond_public:
     // Set the new committee size.
     set r6 into metadata[aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc];
 
-    // Get the number of stakers.
-    get.or_use metadata[aleo1qgqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqanmpl0] 0u32 into r8;
-    // Increment the number of stakers by one.
-    add r8 1u32 into r9;
-    // Determine if the number of stakers is less than or equal to 100_000.
-    lte r9 100_000u32 into r10;
-    // Enforce that the number of stakers is less than or equal to 100_000.
-    assert.eq r10 true;
-    // Set the new number of stakers.
-    set r9 into metadata[aleo1qgqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqanmpl0];
-
     // Continues the rest of the `bond_validator` logic.
     position continue_bond_validator;
 
     // Construct the initial committee state.
     // Note: We set the initial 'is_open' state to 'true'.
-    cast 0u64 true into r11 as committee_state;
+    cast 0u64 true into r8 as committee_state;
     // Retrieve the committee state of the specified validator.
-    get.or_use committee[r0] r11 into r12;
+    get.or_use committee[r0] r8 into r9;
     // Ensure that the validator is open to stakers.
-    assert.eq r12.is_open true;
+    assert.eq r9.is_open true;
 
     // Increment the stake for the specified validator.
-    add r12.microcredits r2 into r13;
+    add r9.microcredits r2 into r10;
     // Construct the updated committee state.
-    cast r13 r12.is_open into r14 as committee_state;
+    cast r10 r9.is_open into r11 as committee_state;
 
     /* Bonded */
 
     // Construct the initial bond state.
-    cast r0 0u64 into r15 as bond_state;
+    cast r0 0u64 into r12 as bond_state;
     // Get the bond state for the caller, or default to the initial bond state.
-    get.or_use bonded[r0] r15 into r16;
+    get.or_use bonded[r0] r12 into r13;
     // Enforce the validator matches in the bond state.
-    assert.eq r16.validator r0;
+    assert.eq r13.validator r0;
 
     // Increment the microcredits in the bond state.
-    add r12.microcredits r2 into r17;
+    add r9.microcredits r2 into r14;
     // Determine if the amount is at least one million credits.
-    gte r17 1_000_000_000_000u64 into r18;
+    gte r14 1_000_000_000_000u64 into r15;
     // Enforce the amount is at least one million credits.
-    assert.eq r18 true;
+    assert.eq r15 true;
 
     // Construct the updated bond state.
-    cast r0 r17 into r19 as bond_state;
+    cast r0 r14 into r16 as bond_state;
 
     /* Account */
 
     // Get the balance of the caller.
     // If the account does not exist, this finalize scope will fail.
-    get account[r0] into r20;
+    get account[r0] into r17;
     // Decrement the balance of the caller.
-    sub r20 r2 into r21;
+    sub r17 r2 into r18;
 
     /* Writes */
 
     // Update the committee state of the specified validator.
-    set r14 into committee[r0];
+    set r11 into committee[r0];
     // Update the bond state for the caller.
-    set r19 into bonded[r0];
+    set r16 into bonded[r0];
     // Update the balance of the caller.
-    set r21 into account[r0];
+    set r18 into account[r0];
 
     // Ends the `bond_validator` logic.
     branch.eq true true to end;
@@ -227,35 +216,35 @@ finalize bond_public:
     /* Committee */
 
     // Check if the caller is a validator.
-    contains committee[r0] into r22;
+    contains committee[r0] into r19;
     // Enforce the caller is *not* a validator.
-    assert.eq r22 false;
+    assert.eq r19 false;
 
     // Get the stake for the specified validator.
     // If the validator does not exist, this finalize scope will fail.
-    get committee[r1] into r23;
+    get committee[r1] into r20;
     // Ensure that the validator is open to stakers.
-    assert.eq r23.is_open true;
+    assert.eq r20.is_open true;
 
     // Increment the stake for the specified validator.
-    add r23.microcredits r2 into r24;
+    add r20.microcredits r2 into r21;
     // Construct the updated committee state.
-    cast r24 r23.is_open into r25 as committee_state;
+    cast r21 r20.is_open into r22 as committee_state;
 
     // Check if the delegator is already bonded to the validator.
-    contains bonded[r0] into r26;
+    contains bonded[r0] into r23;
     // If the delegator is already bonded to the validator, jump to the `continue_bond_delegator` logic.
-    branch.eq r26 true to continue_bond_delegator;
-    // Get the number of stakers.
-    get.or_use metadata[aleo1qgqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqanmpl0] 0u32 into r27;
+    branch.eq r23 true to continue_bond_delegator;
+    // Get the number of delegators.
+    get.or_use metadata[aleo1qgqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqanmpl0] 0u32 into r24;
     // Increment the number of bonded delegators by one.
-    add r27 1u32 into r28;
-    // Determine if the number of stakers is less than or equal to 100_000.
-    lte r28 100_000u32 into r29;
-    // Enforce that the number of stakers is less than or equal to 100_000.
-    assert.eq r29 true;
-    // Set the new number of stakers.
-    set r28 into metadata[aleo1qgqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqanmpl0];
+    add r24 1u32 into r25;
+    // Determine if the number of delegators is less than or equal to 100_000.
+    lte r25 100_000u32 into r26;
+    // Enforce that the number of delegators is less than or equal to 100_000.
+    assert.eq r26 true;
+    // Set the new number of delegators.
+    set r25 into metadata[aleo1qgqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqanmpl0];
 
     // Continues the rest of the `bond_delegator` logic.
     position continue_bond_delegator;
@@ -263,38 +252,38 @@ finalize bond_public:
     /* Bonded */
 
     // Construct the initial bond state.
-    cast r1 0u64 into r30 as bond_state;
+    cast r1 0u64 into r27 as bond_state;
     // Get the bond state for the caller, or default to the initial bond state.
-    get.or_use bonded[r0] r30 into r31;
+    get.or_use bonded[r0] r27 into r28;
     // Enforce the validator matches in the bond state.
-    assert.eq r31.validator r1;
+    assert.eq r28.validator r1;
 
     // Increment the microcredits in the bond state.
-    add r31.microcredits r2 into r32;
+    add r28.microcredits r2 into r29;
     // Determine if the amount is at least 10 credits.
-    gte r32 10_000_000u64 into r33;
+    gte r29 10_000_000u64 into r30;
     // Enforce the amount is at least 10 credits.
-    assert.eq r33 true;
+    assert.eq r30 true;
 
     // Construct the updated bond state.
-    cast r1 r32 into r34 as bond_state;
+    cast r1 r29 into r31 as bond_state;
 
     /* Account */
 
     // Get the balance of the caller.
     // If the account does not exist, this finalize scope will fail.
-    get account[r0] into r35;
+    get account[r0] into r32;
     // Decrement the balance of the caller.
-    sub r35 r2 into r36;
+    sub r32 r2 into r33;
 
     /* Writes */
 
     // Update the committee state for the specified validator.
-    set r25 into committee[r1];
+    set r22 into committee[r1];
     // Update the bond state for the caller.
-    set r34 into bonded[r0];
+    set r31 into bonded[r0];
     // Update the balance of the caller.
-    set r36 into account[r0];
+    set r33 into account[r0];
 
     // The terminus.
     position end;
@@ -416,13 +405,6 @@ finalize unbond_public:
     // Set the new committee size.
     set r16 into metadata[aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc];
 
-    // Get the number of stakers.
-    get metadata[aleo1qgqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqanmpl0] into r17;
-    // Decrement the number of stakers by one.
-    sub r17 1u32 into r18;
-    // Set the new number of stakers.
-    set r18 into metadata[aleo1qgqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqanmpl0];
-
     /* Bonded */
 
     // Remove the bond state for the validator.
@@ -431,12 +413,12 @@ finalize unbond_public:
     /* Unbonding */
 
     // Increment the microcredits in the unbond state.
-    add r3.microcredits r8.microcredits into r19;
+    add r3.microcredits r8.microcredits into r17;
 
     // Construct the updated unbond state.
-    cast r19 r4 into r20 as unbond_state;
+    cast r17 r4 into r18 as unbond_state;
     // Update the unbond state for the caller.
-    set r20 into unbonding[r0];
+    set r18 into unbonding[r0];
 
     // Ends the `remove_validator` logic.
     branch.eq true true to end;
@@ -447,17 +429,17 @@ finalize unbond_public:
     position unbond_delegator;
 
     // Get the bond state for the caller, or fail if it does not exist.
-    get bonded[r0] into r21;
+    get bonded[r0] into r19;
     // Decrement the microcredits in the bond state.
-    sub r21.microcredits r1 into r22;
+    sub r19.microcredits r1 into r20;
 
     // Determine if the remaining bond is at least 10 credits.
-    gte r22 10_000_000u64 into r23;
+    gte r20 10_000_000u64 into r21;
 
     // If the remaining balance is at least 10 credits, jump to the `decrement_delegator` logic.
-    branch.eq r23 true to decrement_delegator;
+    branch.eq r21 true to decrement_delegator;
     // If the remaining balance is less than 10 credits, jump to the `remove_delegator` logic.
-    branch.eq r23 false to remove_delegator;
+    branch.eq r21 false to remove_delegator;
 
     /*** Decrement Delegator ***/
 
@@ -468,30 +450,30 @@ finalize unbond_public:
 
     // Get the stake for the specified validator.
     // If the validator does not exist, this finalize scope will fail.
-    get committee[r21.validator] into r24;
+    get committee[r19.validator] into r22;
     // Decrement the stake for the specified validator.
-    sub r24.microcredits r1 into r25;
+    sub r22.microcredits r1 into r23;
     // Construct the updated committee state.
-    cast r25 r24.is_open into r26 as committee_state;
+    cast r23 r22.is_open into r24 as committee_state;
     // Update the stake for the specified validator.
-    set r26 into committee[r21.validator];
+    set r24 into committee[r19.validator];
 
     /* Bonded */
 
     // Construct the updated bond state.
-    cast r21.validator r22 into r27 as bond_state;
+    cast r19.validator r20 into r25 as bond_state;
     // Update the bond state for the caller.
-    set r27 into bonded[r0];
+    set r25 into bonded[r0];
 
     /* Unbonding */
 
     // Increment the microcredits in the unbond state.
-    add r3.microcredits r1 into r28;
+    add r3.microcredits r1 into r26;
 
     // Construct the updated unbond state.
-    cast r28 r4 into r29 as unbond_state;
+    cast r26 r4 into r27 as unbond_state;
     // Update the unbond state for the caller.
-    set r29 into unbonding[r0];
+    set r27 into unbonding[r0];
 
     // Ends the `decrement_delegator` logic.
     branch.eq true true to end;
@@ -505,20 +487,20 @@ finalize unbond_public:
 
     // Get the stake for the specified validator.
     // If the validator does not exist, this finalize scope will fail.
-    get committee[r21.validator] into r30;
+    get committee[r19.validator] into r28;
     // Decrement the stake for the specified validator.
-    sub r30.microcredits r21.microcredits into r31;
+    sub r28.microcredits r19.microcredits into r29;
     // Construct the updated committee state.
-    cast r31 r30.is_open into r32 as committee_state;
+    cast r29 r28.is_open into r30 as committee_state;
     // Update the stake for the specified validator.
-    set r32 into committee[r21.validator];
+    set r30 into committee[r19.validator];
 
-    // Get the number of stakers.
-    get metadata[aleo1qgqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqanmpl0] into r33;
+    // Get the number of delegators.
+    get metadata[aleo1qgqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqanmpl0] into r31;
     // Decrement the number of bonded delegators by one.
-    sub r33 1u32 into r34;
-    // Set the new number of stakers.
-    set r34 into metadata[aleo1qgqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqanmpl0];
+    sub r31 1u32 into r32;
+    // Set the new number of delegators.
+    set r32 into metadata[aleo1qgqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqanmpl0];
 
     /* Bonded */
 
@@ -528,12 +510,12 @@ finalize unbond_public:
     /* Unbonding */
 
     // Increment the microcredits in the unbond state.
-    add r3.microcredits r21.microcredits into r35;
+    add r3.microcredits r19.microcredits into r33;
 
     // Construct the updated unbond state.
-    cast r35 r4 into r36 as unbond_state;
+    cast r33 r4 into r34 as unbond_state;
     // Update the unbond state for the caller.
-    set r36 into unbonding[r0];
+    set r34 into unbonding[r0];
 
     // The terminus.
     position end;
@@ -587,9 +569,9 @@ finalize unbond_delegator_as_validator:
     // Construct the updated committee state.
     cast r5 r2.is_open into r6 as committee_state;
 
-    // Get the number of stakers.
+    // Get the number of delegators.
     get metadata[aleo1qgqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqanmpl0] into r7;
-    // Decrement the number of stakers by one.
+    // Decrement the number of delegators by one.
     sub r7 1u32 into r8;
 
     /* End Committee */
@@ -620,7 +602,7 @@ finalize unbond_delegator_as_validator:
     remove bonded[r1];
     // Update the unbond state for the delegator.
     set r13 into unbonding[r1];
-    // Update the number of stakers.
+    // Update the number of delegators.
     set r8 into metadata[aleo1qgqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqanmpl0];
 
     /* End Writes */
