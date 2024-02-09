@@ -1902,8 +1902,8 @@ finalize compute:
         let remaining_supply = <CurrentNetwork as Network>::STARTING_SUPPLY - allocated_amount;
         let amount = remaining_supply / 3;
         public_balances.insert(Address::try_from(validators.keys().next().unwrap()).unwrap(), amount);
-        public_balances.insert(first_address.clone(), amount);
-        public_balances.insert(second_address.clone(), remaining_supply - 2 * amount);
+        public_balances.insert(first_address, amount);
+        public_balances.insert(second_address, remaining_supply - 2 * amount);
 
         // Construct the genesis block, which should pass.
         let genesis_block = vm
@@ -1938,7 +1938,7 @@ finalize compute:
         // Construct the next block.
         let next_block = sample_next_block(
             &vm,
-            &validators.keys().next().unwrap(),
+            validators.keys().next().unwrap(),
             &[bond_first_transaction],
             &genesis_block,
             &mut vec![],
@@ -1972,7 +1972,7 @@ finalize compute:
         // Construct the next block.
         let next_block = sample_next_block(
             &vm,
-            &validators.keys().next().unwrap(),
+            validators.keys().next().unwrap(),
             &[bond_second_transaction],
             &next_block,
             &mut vec![],
