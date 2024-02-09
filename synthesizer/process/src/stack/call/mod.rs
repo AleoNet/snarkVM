@@ -382,7 +382,7 @@ impl<N: Network> CallTrait<N> for Call<N> {
             // Inject the existing circuit.
             A::inject_r1cs(r1cs);
 
-            // If in 'CheckDeployment' mode, set the expected constraint limit.
+            // If in 'CheckDeployment' mode, reset the constraint limit back to the parent circuit limit.
             if let CallStack::CheckDeployment(_, _, _, constraint_limit) = &registers.call_stack() {
                 A::set_constraint_limit(*constraint_limit);
             }
