@@ -133,12 +133,9 @@ impl<N: Network> Stack<N> {
             // Initialize the assignments.
             let assignments = Assignments::<N>::default();
             // Initialize the constraint limit. Account for the constraint added after synthesis that makes the Varuna zerocheck hiding.
-            let constraint_limit = match verifying_key.circuit_info.num_constraints.checked_sub(1) {
+            let Some(constraint_limit) = verifying_key.circuit_info.num_constraints.checked_sub(1) else {
                 // Since a deployment must always pay non-zero fee, it must always have at least one constraint.
-                None => {
-                    bail!("The constraint limit of 0 for function '{}' is invalid", function.name());
-                }
-                Some(limit) => limit,
+                bail!("The constraint limit of 0 for function '{}' is invalid", function.name());
             };
             // Initialize the call stack.
             let call_stack = CallStack::CheckDeployment(
