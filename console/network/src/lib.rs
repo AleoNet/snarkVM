@@ -156,9 +156,6 @@ pub trait Network:
     /// The maximum number of outputs per transition.
     const MAX_OUTPUTS: usize = 16;
 
-    /// The committee lookback range.
-    const COMMITTEE_LOOKBACK_RANGE: u64 = 100;
-
     /// The state root type.
     type StateRoot: Bech32ID<Field<Self>>;
     /// The block hash type.
