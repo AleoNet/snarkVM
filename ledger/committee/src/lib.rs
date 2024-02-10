@@ -47,6 +47,8 @@ pub struct Committee<N: Network> {
 }
 
 impl<N: Network> Committee<N> {
+    /// The committee lookback range.
+    pub const COMMITTEE_LOOKBACK_RANGE: u64 = BatchHeader::<N>::MAX_GC_ROUNDS as u64;
     /// The maximum number of members that may be in a committee.
     pub const MAX_COMMITTEE_SIZE: u16 = 200;
 
@@ -415,15 +417,6 @@ mod tests {
         assert_eq!(
             Committee::<CurrentNetwork>::MAX_COMMITTEE_SIZE as usize,
             ledger_narwhal_batch_header::BatchHeader::<CurrentNetwork>::MAX_CERTIFICATES
-        );
-    }
-
-    #[test]
-    fn test_committee_lookback_range() {
-        assert_eq!(
-            BatchHeader::<CurrentNetwork>::MAX_GC_ROUNDS as u64,
-            <CurrentNetwork as Network>::COMMITTEE_LOOKBACK_RANGE,
-            "The max GC rounds should be equal to the committee lookback range"
         );
     }
 }

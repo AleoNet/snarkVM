@@ -168,9 +168,10 @@ impl<N: Network> Block<N> {
         };
         // Ensure the block round minus the committee lookback range is at least the starting round of the committee lookback.
         ensure!(
-            expected_round.saturating_sub(N::COMMITTEE_LOOKBACK_RANGE) >= current_committee_lookback.starting_round(),
+            expected_round.saturating_sub(Committee::<N>::COMMITTEE_LOOKBACK_RANGE)
+                >= current_committee_lookback.starting_round(),
             "Block {expected_height} has an invalid round (found '{}', expected at least '{}')",
-            expected_round.saturating_sub(N::COMMITTEE_LOOKBACK_RANGE),
+            expected_round.saturating_sub(Committee::<N>::COMMITTEE_LOOKBACK_RANGE),
             current_committee_lookback.starting_round()
         );
 
