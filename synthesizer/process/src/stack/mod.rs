@@ -421,13 +421,13 @@ impl<N: Network> Stack<N> {
     /// Removes the proving key for the given function name.
     #[inline]
     pub fn remove_proving_key(&self, function_name: &Identifier<N>) {
-        self.proving_keys.write().remove(function_name);
+        self.proving_keys.write().shift_remove(function_name);
     }
 
     /// Removes the verifying key for the given function name.
     #[inline]
     pub fn remove_verifying_key(&self, function_name: &Identifier<N>) {
-        self.verifying_keys.write().remove(function_name);
+        self.verifying_keys.write().shift_remove(function_name);
     }
 }
 
