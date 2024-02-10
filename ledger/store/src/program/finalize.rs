@@ -314,7 +314,7 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
             None => bail!("Illegal operation: program ID '{program_id}' is not initialized - cannot remove mapping."),
         };
         // Remove the mapping name.
-        if !mapping_names.remove(&mapping_name) {
+        if !mapping_names.shift_remove(&mapping_name) {
             bail!("Illegal operation: mapping '{mapping_name}' does not exist in storage - cannot remove mapping.");
         }
 
