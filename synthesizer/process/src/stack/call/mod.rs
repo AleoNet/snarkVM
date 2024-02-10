@@ -67,8 +67,7 @@ impl<N: Network> CallTrait<N> for Call<N> {
         let timer = timer!("Call::evaluate");
 
         // Load the operands values.
-        let inputs: Vec<_> =
-            self.operands().iter().map(|operand| registers.load(stack.deref(), operand)).try_collect()?;
+        let inputs: Vec<_> = self.operands().iter().map(|operand| registers.load(stack, operand)).try_collect()?;
 
         // Retrieve the substack and resource.
         let (substack, resource) = match self.operator() {

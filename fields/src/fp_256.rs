@@ -122,7 +122,7 @@ impl<P: Fp256Parameters> Fp256<P> {
 impl<P: Fp256Parameters> Zero for Fp256<P> {
     #[inline]
     fn zero() -> Self {
-        Fp256::<P>(BigInteger::from(0), PhantomData)
+        Self(BigInteger::from(0), PhantomData)
     }
 
     #[inline]
@@ -134,12 +134,12 @@ impl<P: Fp256Parameters> Zero for Fp256<P> {
 impl<P: Fp256Parameters> One for Fp256<P> {
     #[inline]
     fn one() -> Self {
-        Fp256::<P>(P::R, PhantomData)
+        Self(P::R, PhantomData)
     }
 
     #[inline]
     fn is_one(&self) -> bool {
-        self == &Self::one()
+        self.0 == P::R
     }
 }
 
@@ -299,7 +299,7 @@ impl<P: Fp256Parameters> Field for Fp256<P> {
 
             let mut u = self.0;
             let mut v = P::MODULUS;
-            let mut b = Fp256::<P>(P::R2, PhantomData); // Avoids unnecessary reduction step.
+            let mut b = Self(P::R2, PhantomData); // Avoids unnecessary reduction step.
             let mut c = Self::zero();
 
             while u != one && v != one {
@@ -536,12 +536,25 @@ impl<P: Fp256Parameters> SquareRootField for Fp256<P> {
     }
 
     fn sqrt_in_place(&mut self) -> Option<&mut Self> {
-        if let Some(sqrt) = self.sqrt() {
+        (*self).sqrt().map(|sqrt| {
             *self = sqrt;
-            Some(self)
-        } else {
-            None
-        }
+            self
+        })
+    }
+}
+
+/// `Fp` elements are ordered lexicographically.
+impl<P: Fp256Parameters> Ord for Fp256<P> {
+    #[inline(always)]
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.to_bigint().cmp(&other.to_bigint())
+    }
+}
+
+impl<P: Fp256Parameters> PartialOrd for Fp256<P> {
+    #[inline(always)]
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
     }
 }
 
@@ -590,21 +603,6 @@ impl<P: Fp256Parameters> FromBytes for Fp256<P> {
             Some(f) => Ok(f),
             None => Err(FieldError::InvalidFieldElement.into()),
         })
-    }
-}
-
-/// `Fp` elements are ordered lexicographically.
-impl<P: Fp256Parameters> Ord for Fp256<P> {
-    #[inline(always)]
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.to_bigint().cmp(&other.to_bigint())
-    }
-}
-
-impl<P: Fp256Parameters> PartialOrd for Fp256<P> {
-    #[inline(always)]
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
     }
 }
 
@@ -677,7 +675,7 @@ impl<P: Fp256Parameters> Neg for Fp256<P> {
         if !self.is_zero() {
             let mut tmp = P::MODULUS;
             tmp.sub_noborrow(&self.0);
-            Fp256::<P>(tmp, PhantomData)
+            Self(tmp, PhantomData)
         } else {
             self
         }
