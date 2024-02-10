@@ -90,18 +90,18 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             true => block.round().saturating_sub(1),
             false => block.round().saturating_sub(2),
         };
-        // Get the previous round with lag.
-        let previous_round_with_lag = previous_round.saturating_sub(N::COMMITTEE_ROUND_LAG);
-        // Retrieve the previous committee with lag.
-        let previous_committee_with_lag = self
-            .get_committee_for_round(previous_round_with_lag)?
-            .ok_or(anyhow!("Failed to fetch committee for round {previous_round_with_lag}"))?;
+        // Get the committee lookback round.
+        let committee_lookback_round = previous_round.saturating_sub(N::COMMITTEE_LOOKBACK_RANGE);
+        // Retrieve the committee lookback.
+        let committee_lookback = self
+            .get_committee_for_round(committee_lookback_round)?
+            .ok_or(anyhow!("Failed to fetch committee for round {committee_lookback_round}"))?;
 
         // Ensure the block is correct.
         let expected_existing_transaction_ids = block.verify(
             &self.latest_block(),
             self.latest_state_root(),
-            &previous_committee_with_lag,
+            &committee_lookback,
             self.coinbase_puzzle(),
             &self.latest_epoch_challenge()?,
             OffsetDateTime::now_utc().unix_timestamp(),
