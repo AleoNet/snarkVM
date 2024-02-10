@@ -1886,12 +1886,22 @@ finalize compute:
             public_balances.insert(address, remaining_supply);
         }
 
+        // Construct the bonded balances.
+        let bonded_balances = validators
+            .iter()
+            .map(|(private_key, (amount, _))| {
+                let address = Address::try_from(private_key).unwrap();
+                (address, (address, *amount))
+            })
+            .collect();
+
         // Construct the genesis block, which should pass.
         let block = vm
             .genesis_quorum(
                 validators.keys().next().unwrap(),
                 Committee::new_genesis(committee_map).unwrap(),
                 public_balances,
+                bonded_balances,
                 rng,
             )
             .unwrap();
@@ -1944,12 +1954,22 @@ finalize compute:
         public_balances.insert(first_address, amount);
         public_balances.insert(second_address, remaining_supply - 2 * amount);
 
+        // Construct the bonded balances.
+        let bonded_balances = validators
+            .iter()
+            .map(|(private_key, (amount, _))| {
+                let address = Address::try_from(private_key).unwrap();
+                (address, (address, *amount))
+            })
+            .collect();
+
         // Construct the genesis block, which should pass.
         let genesis_block = vm
             .genesis_quorum(
                 validators.keys().next().unwrap(),
                 Committee::new_genesis(committee_map).unwrap(),
                 public_balances,
+                bonded_balances,
                 rng,
             )
             .unwrap();
@@ -1966,7 +1986,7 @@ finalize compute:
                     Value::<CurrentNetwork>::from_str(&first_address.to_string()).unwrap(),
                     Value::<CurrentNetwork>::from_str(&format!("{MIN_VALIDATOR_STAKE}u64")).unwrap(),
                 ]
-                    .iter(),
+                .iter(),
                 None,
                 0,
                 None,
@@ -1983,7 +2003,7 @@ finalize compute:
             &mut vec![],
             rng,
         )
-            .unwrap();
+        .unwrap();
 
         // Check that the transaction was accepted.
         assert!(next_block.aborted_transaction_ids().is_empty());
@@ -2004,7 +2024,7 @@ finalize compute:
                     Value::<CurrentNetwork>::from_str(&second_address.to_string()).unwrap(),
                     Value::<CurrentNetwork>::from_str(&format!("{MIN_VALIDATOR_STAKE}u64")).unwrap(),
                 ]
-                    .iter(),
+                .iter(),
                 None,
                 0,
                 None,
@@ -2021,7 +2041,7 @@ finalize compute:
             &mut vec![],
             rng,
         )
-            .unwrap();
+        .unwrap();
 
         // Check that the transaction was rejected.
         assert!(next_block.transactions().iter().next().unwrap().is_rejected());
@@ -2145,7 +2165,7 @@ finalize compute:
                         Value::<CurrentNetwork>::from_str(&validator.to_string()).unwrap(),
                         Value::<CurrentNetwork>::from_str(&format!("{amount}u64")).unwrap(),
                     ]
-                        .into_iter(),
+                    .into_iter(),
                     None,
                     0,
                     None,
@@ -2322,7 +2342,7 @@ finalize compute:
                 })
                 .collect(),
         )
-            .unwrap();
+        .unwrap();
 
         // Construct the public balances, allocating the remaining supply to rest of the validators.
         let mut public_balances = IndexMap::new();
