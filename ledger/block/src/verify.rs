@@ -30,7 +30,7 @@ impl<N: Network> Block<N> {
         &self,
         previous_block: &Block<N>,
         current_state_root: N::StateRoot,
-        current_committee: &Committee<N>,
+        current_committee_lookback: &Committee<N>,
         current_puzzle: &CoinbasePuzzle<N>,
         current_epoch_challenge: &EpochChallenge<N>,
         current_timestamp: i64,
@@ -46,7 +46,7 @@ impl<N: Network> Block<N> {
             expected_timestamp,
             expected_existing_solution_ids,
             expected_existing_transaction_ids,
-        ) = self.verify_authority(previous_block.round(), previous_block.height(), current_committee)?;
+        ) = self.verify_authority(previous_block.round(), previous_block.height(), current_committee_lookback)?;
 
         // Ensure the block solutions are correct.
         let (
@@ -143,7 +143,7 @@ impl<N: Network> Block<N> {
         &self,
         previous_round: u64,
         previous_height: u32,
-        current_committee: &Committee<N>,
+        current_committee_lookback: &Committee<N>,
     ) -> Result<(u64, u32, i64, Vec<PuzzleCommitment<N>>, Vec<N::TransactionID>)> {
         // Note: Do not remove this. This ensures that all blocks after genesis are quorum blocks.
         #[cfg(not(any(test, feature = "test")))]
@@ -170,12 +170,13 @@ impl<N: Network> Block<N> {
                 subdag.anchor_round()
             }
         };
-        // Ensure the block round is at least the starting round of the committee.
+        // Ensure the block round minus the committee lookback range is at least the starting round of the committee lookback.
         ensure!(
-            expected_round >= current_committee.starting_round(),
-            "Block {} has an invalid round (found '{expected_round}', expected at least '{}')",
-            expected_height,
-            current_committee.starting_round()
+            expected_round.saturating_sub(Committee::<N>::COMMITTEE_LOOKBACK_RANGE)
+                >= current_committee_lookback.starting_round(),
+            "Block {expected_height} has an invalid round (found '{}', expected at least '{}')",
+            expected_round.saturating_sub(Committee::<N>::COMMITTEE_LOOKBACK_RANGE),
+            current_committee_lookback.starting_round()
         );
 
         // Ensure the block authority is correct.
@@ -186,7 +187,7 @@ impl<N: Network> Block<N> {
                 let signer = signature.to_address();
                 // Ensure the block is signed by a committee member.
                 ensure!(
-                    current_committee.members().contains_key(&signer),
+                    current_committee_lookback.members().contains_key(&signer),
                     "Beacon block {expected_height} has a signer not in the committee (found '{signer}')",
                 );
                 // Ensure the signature is valid.
@@ -199,7 +200,7 @@ impl<N: Network> Block<N> {
             }
             Authority::Quorum(subdag) => {
                 // Compute the expected leader.
-                let expected_leader = current_committee.get_leader(expected_round)?;
+                let expected_leader = current_committee_lookback.get_leader(expected_round)?;
                 // Ensure the block is authored by the expected leader.
                 ensure!(
                     subdag.leader_address() == expected_leader,
@@ -222,7 +223,7 @@ impl<N: Network> Block<N> {
             // Beacon blocks do not have a timestamp check.
             Authority::Beacon(..) => self.timestamp(),
             // Quorum blocks use the weighted median timestamp from the subdag.
-            Authority::Quorum(subdag) => subdag.timestamp(current_committee),
+            Authority::Quorum(subdag) => subdag.timestamp(current_committee_lookback),
         };
 
         // Return success.
