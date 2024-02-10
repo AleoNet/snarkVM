@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-fields"
-version = "0.16.17"
+version = "0.16.18"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Fields for a decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -23,9 +23,14 @@ include = [ "Cargo.toml", "src", "README.md", "LICENSE.md" ]
 license = "Apache-2.0"
 edition = "2021"
 
+[[bench]]
+name = "fields"
+path = "benches/fields.rs"
+harness = false
+
 [dependencies.snarkvm-utilities]
 path = "../utilities"
-version = "=0.16.17"
+version = "=0.16.18"
 default-features = false
 
 [dependencies.aleo-std]
@@ -59,6 +64,14 @@ version = "1.0"
 [dependencies.zeroize]
 version = "1"
 features = [ "derive" ]
+
+[dev-dependencies.criterion]
+version = "0.5"
+
+[dev-dependencies.snarkvm-curves]
+path = "../curves"
+version = "=0.16.18"
+default-features = false
 
 [features]
 default = [ "snarkvm-utilities/default" ]
