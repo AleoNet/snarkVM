@@ -37,7 +37,7 @@ pub const MIN_VALIDATOR_STAKE: u64 = 1_000_000_000_000u64; // microcredits
 /// The minimum amount of stake required for a delegator to bond.
 pub const MIN_DELEGATOR_STAKE: u64 = 10_000_000u64; // microcredits
 /// The maximum number of delegators.
-pub const MAX_DELEGATORS: u64 = 100_000u64;
+pub const MAX_DELEGATORS: u32 = 100_000u32;
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct Committee<N: Network> {

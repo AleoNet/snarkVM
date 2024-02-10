@@ -1432,7 +1432,7 @@ fn test_max_committee_limit_with_bonds() {
     // Create a block.
     let block = ledger
         .prepare_advance_to_next_beacon_block(
-            &validators.keys().next().unwrap(),
+            validators.keys().next().unwrap(),
             vec![],
             vec![],
             vec![bond_first_transaction],
@@ -1475,7 +1475,7 @@ fn test_max_committee_limit_with_bonds() {
     // Create a block.
     let block = ledger
         .prepare_advance_to_next_beacon_block(
-            &validators.keys().next().unwrap(),
+            validators.keys().next().unwrap(),
             vec![],
             vec![],
             vec![bond_second_transaction],
