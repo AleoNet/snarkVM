@@ -31,10 +31,6 @@ use narwhal_transmission_id::TransmissionID;
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct BatchHeader<N: Network> {
-    /// The version of the batch header.
-    /// TODO (howardwu): For mainnet - Remove this version from the struct, we only use it here for backwards compatibility.
-    ///  NOTE: You must keep the version encoding in the byte serialization, just remove it from the struct in memory.
-    version: u8,
     /// The batch ID, defined as the hash of the author, round number, timestamp, transmission IDs,
     /// previous batch certificate IDs, and last election certificate IDs.
     batch_id: Field<N>,
@@ -48,8 +44,6 @@ pub struct BatchHeader<N: Network> {
     transmission_ids: IndexSet<TransmissionID<N>>,
     /// The batch certificate IDs of the previous round.
     previous_certificate_ids: IndexSet<Field<N>>,
-    /// The last election batch certificate IDs.
-    last_election_certificate_ids: IndexSet<Field<N>>,
     /// The signature of the batch ID from the creator.
     signature: Signature<N>,
 }
@@ -74,20 +68,12 @@ impl<N: Network> BatchHeader<N> {
         timestamp: i64,
         transmission_ids: IndexSet<TransmissionID<N>>,
         previous_certificate_ids: IndexSet<Field<N>>,
-        last_election_certificate_ids: IndexSet<Field<N>>,
         rng: &mut R,
     ) -> Result<Self> {
-        // Set the version.
-        // TODO (howardwu): For mainnet - Remove this version from the struct, we only use it here for backwards compatibility.
-        //  NOTE: You must keep the version encoding in the byte serialization, just remove it from the struct in memory.
-        let version = 2u8;
-
         match round {
             0 | 1 => {
                 // If the round is zero or one, then there should be no previous certificate IDs.
                 ensure!(previous_certificate_ids.is_empty(), "Invalid round number, must not have certificates");
-                // If the round is zero or one, then there should be no last election certificate IDs.
-                ensure!(last_election_certificate_ids.is_empty(), "Invalid batch, contains election certificates");
             }
             // If the round is not zero and not one, then there should be at least one previous certificate ID.
             _ => ensure!(!previous_certificate_ids.is_empty(), "Invalid round number, must have certificates"),
@@ -105,58 +91,30 @@ impl<N: Network> BatchHeader<N> {
             "Invalid number of previous certificate IDs ({})",
             previous_certificate_ids.len()
         );
-        // Ensure the number of last election certificate IDs is within bounds.
-        ensure!(
-            last_election_certificate_ids.len() <= Self::MAX_CERTIFICATES as usize,
-            "Invalid number of last election certificate IDs ({})",
-            last_election_certificate_ids.len()
-        );
 
         // Retrieve the address.
         let author = Address::try_from(private_key)?;
         // Compute the batch ID.
-        let batch_id = Self::compute_batch_id(
-            version,
-            author,
-            round,
-            timestamp,
-            &transmission_ids,
-            &previous_certificate_ids,
-            &last_election_certificate_ids,
-        )?;
+        let batch_id = Self::compute_batch_id(author, round, timestamp, &transmission_ids, &previous_certificate_ids)?;
         // Sign the preimage.
         let signature = private_key.sign(&[batch_id], rng)?;
         // Return the batch header.
-        Ok(Self {
-            version,
-            author,
-            batch_id,
-            round,
-            timestamp,
-            transmission_ids,
-            previous_certificate_ids,
-            last_election_certificate_ids,
-            signature,
-        })
+        Ok(Self { author, batch_id, round, timestamp, transmission_ids, previous_certificate_ids, signature })
     }
 
     /// Initializes a new batch header.
     pub fn from(
-        version: u8,
         author: Address<N>,
         round: u64,
         timestamp: i64,
         transmission_ids: IndexSet<TransmissionID<N>>,
         previous_certificate_ids: IndexSet<Field<N>>,
-        last_election_certificate_ids: IndexSet<Field<N>>,
         signature: Signature<N>,
     ) -> Result<Self> {
         match round {
             0 | 1 => {
                 // If the round is zero or one, then there should be no previous certificate IDs.
                 ensure!(previous_certificate_ids.is_empty(), "Invalid round number, must not have certificates");
-                // If the round is zero or one, then there should be no last election certificate IDs.
-                ensure!(last_election_certificate_ids.is_empty(), "Invalid batch, contains election certificates");
             }
             // If the round is not zero and not one, then there should be at least one previous certificate ID.
             _ => ensure!(!previous_certificate_ids.is_empty(), "Invalid round number, must have certificates"),
@@ -174,39 +132,15 @@ impl<N: Network> BatchHeader<N> {
             "Invalid number of previous certificate IDs ({})",
             previous_certificate_ids.len()
         );
-        // Ensure the number of last election certificate IDs is within bounds.
-        ensure!(
-            last_election_certificate_ids.len() <= Self::MAX_CERTIFICATES as usize,
-            "Invalid number of last election certificate IDs ({})",
-            last_election_certificate_ids.len()
-        );
 
         // Compute the batch ID.
-        let batch_id = Self::compute_batch_id(
-            version,
-            author,
-            round,
-            timestamp,
-            &transmission_ids,
-            &previous_certificate_ids,
-            &last_election_certificate_ids,
-        )?;
+        let batch_id = Self::compute_batch_id(author, round, timestamp, &transmission_ids, &previous_certificate_ids)?;
         // Verify the signature.
         if !signature.verify(&author, &[batch_id]) {
             bail!("Invalid signature for the batch header");
         }
         // Return the batch header.
-        Ok(Self {
-            version,
-            author,
-            batch_id,
-            round,
-            timestamp,
-            transmission_ids,
-            previous_certificate_ids,
-            last_election_certificate_ids,
-            signature,
-        })
+        Ok(Self { author, batch_id, round, timestamp, transmission_ids, previous_certificate_ids, signature })
     }
 }
 
@@ -239,11 +173,6 @@ impl<N: Network> BatchHeader<N> {
     /// Returns the batch certificate IDs for the previous round.
     pub const fn previous_certificate_ids(&self) -> &IndexSet<Field<N>> {
         &self.previous_certificate_ids
-    }
-
-    /// Returns the last election batch certificate IDs.
-    pub const fn last_election_certificate_ids(&self) -> &IndexSet<Field<N>> {
-        &self.last_election_certificate_ids
     }
 
     /// Returns the signature.
@@ -304,19 +233,8 @@ pub mod test_helpers {
             narwhal_transmission_id::test_helpers::sample_transmission_ids(rng).into_iter().collect::<IndexSet<_>>();
         // Checkpoint the timestamp for the batch.
         let timestamp = OffsetDateTime::now_utc().unix_timestamp();
-        // Sample the last election certificate IDs.
-        let last_election_certificate_ids = (0..5).map(|_| Field::<CurrentNetwork>::rand(rng)).collect::<IndexSet<_>>();
         // Return the batch header.
-        BatchHeader::new(
-            &private_key,
-            round,
-            timestamp,
-            transmission_ids,
-            previous_certificate_ids,
-            last_election_certificate_ids,
-            rng,
-        )
-        .unwrap()
+        BatchHeader::new(&private_key, round, timestamp, transmission_ids, previous_certificate_ids, rng).unwrap()
     }
 
     /// Returns a list of sample batch headers, sampled at random.
