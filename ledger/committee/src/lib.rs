@@ -454,4 +454,13 @@ mod tests {
     fn test_maximum_committee_size() {
         assert_eq!(Committee::<CurrentNetwork>::MAX_COMMITTEE_SIZE, BatchHeader::<CurrentNetwork>::MAX_CERTIFICATES);
     }
+
+    #[test]
+    fn test_committee_lookback_range() {
+        assert_eq!(
+            BatchHeader::<CurrentNetwork>::MAX_GC_ROUNDS as u64,
+            <CurrentNetwork as Network>::COMMITTEE_LOOKBACK_RANGE,
+            "The max GC rounds should be equal to the committee lookback range"
+        );
+    }
 }

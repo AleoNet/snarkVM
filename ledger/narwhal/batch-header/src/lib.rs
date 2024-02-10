@@ -332,19 +332,3 @@ pub mod test_helpers {
         sample
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    type CurrentNetwork = console::network::Testnet3;
-
-    #[test]
-    fn test_max_gc_rounds() {
-        assert_eq!(
-            BatchHeader::<CurrentNetwork>::MAX_GC_ROUNDS as u64,
-            <CurrentNetwork as Network>::COMMITTEE_ROUND_LAG,
-            "The max GC rounds should be equal to the committee round lag"
-        );
-    }
-}
