@@ -71,7 +71,7 @@ mod tests {
     use super::*;
     use snarkvm_console_network::Network;
 
-    type CurrentNetwork = snarkvm_console_network::Testnet3;
+    type CurrentNetwork = snarkvm_console_network::MainnetV0;
 
     #[test]
     fn test_transaction_depth_is_correct() {

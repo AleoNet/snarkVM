@@ -38,9 +38,9 @@ impl<'de, N: Network> Deserialize<'de> for Identifier<N> {
 mod tests {
     use super::*;
     use crate::data::identifier::tests::sample_identifier;
-    use snarkvm_console_network::Testnet3;
+    use snarkvm_console_network::MainnetV0;
 
-    type CurrentNetwork = Testnet3;
+    type CurrentNetwork = MainnetV0;
 
     const ITERATIONS: u64 = 1000;
 

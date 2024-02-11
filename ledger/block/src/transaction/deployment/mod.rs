@@ -150,12 +150,12 @@ impl<N: Network> Deployment<N> {
 #[cfg(test)]
 pub mod test_helpers {
     use super::*;
-    use console::network::Testnet3;
+    use console::network::MainnetV0;
     use synthesizer_process::Process;
 
     use once_cell::sync::OnceCell;
 
-    type CurrentNetwork = Testnet3;
+    type CurrentNetwork = MainnetV0;
     type CurrentAleo = circuit::network::AleoV0;
 
     pub(crate) fn sample_deployment(rng: &mut TestRng) -> Deployment<CurrentNetwork> {

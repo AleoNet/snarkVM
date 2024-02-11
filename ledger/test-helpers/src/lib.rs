@@ -39,7 +39,7 @@ use synthesizer_program::Program;
 
 use once_cell::sync::OnceCell;
 
-type CurrentNetwork = console::network::Testnet3;
+type CurrentNetwork = console::network::MainnetV0;
 type CurrentAleo = circuit::network::AleoV0;
 
 /****************************************** Transition ********************************************/

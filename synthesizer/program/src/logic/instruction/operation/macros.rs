@@ -95,7 +95,7 @@ macro_rules! operation {
                 use console::types::*;
 
                 // Prepare the environment.
-                type CurrentNetwork = console::network::Testnet3;
+                type CurrentNetwork = console::network::MainnetV0;
                 type CurrentAleo = circuit::network::AleoV0;
 
                 // Prepare the operator.
@@ -150,7 +150,7 @@ macro_rules! operation {
                 use console::types::*;
 
                 // Prepare the environment.
-                type CurrentNetwork = console::network::Testnet3;
+                type CurrentNetwork = console::network::MainnetV0;
                 type CurrentAleo = circuit::network::AleoV0;
 
                 // Prepare the operator.

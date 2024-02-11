@@ -92,9 +92,9 @@ impl<N: Network, Command: CommandTrait<N>> ToBytes for FinalizeCore<N, Command> 
 mod tests {
     use super::*;
     use crate::Finalize;
-    use console::network::Testnet3;
+    use console::network::MainnetV0;
 
-    type CurrentNetwork = Testnet3;
+    type CurrentNetwork = MainnetV0;
 
     #[test]
     fn test_finalize_bytes() -> Result<()> {

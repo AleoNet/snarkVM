@@ -60,9 +60,9 @@ impl<N: Network, Private: Visibility<Boolean = Boolean<N>>> Equal<Self> for Reco
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_console_network::Testnet3;
+    use snarkvm_console_network::MainnetV0;
 
-    type CurrentNetwork = Testnet3;
+    type CurrentNetwork = MainnetV0;
 
     fn sample_record() -> Record<CurrentNetwork, Plaintext<CurrentNetwork>> {
         Record::<CurrentNetwork, Plaintext<CurrentNetwork>>::from_str(

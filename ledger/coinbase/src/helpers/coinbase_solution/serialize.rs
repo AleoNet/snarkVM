@@ -48,7 +48,7 @@ pub(super) mod tests {
     use super::*;
     use console::account::PrivateKey;
 
-    type CurrentNetwork = console::network::Testnet3;
+    type CurrentNetwork = console::network::MainnetV0;
 
     pub(crate) fn sample_solutions(rng: &mut TestRng) -> CoinbaseSolution<CurrentNetwork> {
         // Sample a new solutions.

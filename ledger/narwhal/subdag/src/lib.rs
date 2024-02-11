@@ -233,11 +233,11 @@ impl<N: Network> Deref for Subdag<N> {
 #[cfg(any(test, feature = "test-helpers"))]
 pub mod test_helpers {
     use super::*;
-    use console::{network::Testnet3, prelude::TestRng};
+    use console::{network::MainnetV0, prelude::TestRng};
 
     use indexmap::{indexset, IndexSet};
 
-    type CurrentNetwork = Testnet3;
+    type CurrentNetwork = MainnetV0;
 
     /// Returns a sample subdag, sampled at random.
     pub fn sample_subdag(rng: &mut TestRng) -> Subdag<CurrentNetwork> {
@@ -307,7 +307,7 @@ mod tests {
     use super::*;
     use narwhal_batch_header::BatchHeader;
 
-    type CurrentNetwork = console::network::Testnet3;
+    type CurrentNetwork = console::network::MainnetV0;
 
     const ITERATIONS: u64 = 100;
 

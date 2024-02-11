@@ -167,11 +167,11 @@ impl<N: Network, const VARIANT: u8> ToBytes for Branch<N, VARIANT> {
 mod tests {
     use super::*;
     use console::{
-        network::Testnet3,
+        network::MainnetV0,
         program::{Identifier, Register},
     };
 
-    type CurrentNetwork = Testnet3;
+    type CurrentNetwork = MainnetV0;
 
     #[test]
     fn test_parse() {

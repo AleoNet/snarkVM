@@ -389,14 +389,14 @@ pub(crate) mod test_helpers {
     use aleo_std::StorageMode;
     use console::{
         account::{Address, PrivateKey, ViewKey},
-        network::Testnet3,
+        network::MainnetV0,
         prelude::*,
     };
     use ledger_block::Block;
     use ledger_store::ConsensusStore;
     use synthesizer::vm::VM;
 
-    pub(crate) type CurrentNetwork = Testnet3;
+    pub(crate) type CurrentNetwork = MainnetV0;
 
     #[cfg(not(feature = "rocks"))]
     pub(crate) type CurrentLedger =

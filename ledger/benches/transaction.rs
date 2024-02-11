@@ -19,7 +19,7 @@ extern crate criterion;
 
 use console::{
     account::*,
-    network::Testnet3,
+    network::MainnetV0,
     program::{Plaintext, Record, Value},
 };
 use ledger_block::Transition;
@@ -30,9 +30,9 @@ use criterion::Criterion;
 use indexmap::IndexMap;
 
 fn initialize_vm<R: Rng + CryptoRng>(
-    private_key: &PrivateKey<Testnet3>,
+    private_key: &PrivateKey<MainnetV0>,
     rng: &mut R,
-) -> (VM<Testnet3, ConsensusMemory<Testnet3>>, Vec<Record<Testnet3, Plaintext<Testnet3>>>) {
+) -> (VM<MainnetV0, ConsensusMemory<MainnetV0>>, Vec<Record<MainnetV0, Plaintext<MainnetV0>>>) {
     let vm = VM::from(ConsensusStore::open(None).unwrap()).unwrap();
 
     // Initialize the genesis block.
@@ -55,13 +55,13 @@ fn deploy(c: &mut Criterion) {
     let rng = &mut TestRng::default();
 
     // Sample a new private key and address.
-    let private_key = PrivateKey::<Testnet3>::new(rng).unwrap();
+    let private_key = PrivateKey::<MainnetV0>::new(rng).unwrap();
 
     // Initialize the VM.
     let (vm, records) = initialize_vm(&private_key, rng);
 
     // Create a sample program.
-    let program = Program::<Testnet3>::from_str(
+    let program = Program::<MainnetV0>::from_str(
         r"
 program helloworld.aleo;
 
@@ -88,7 +88,7 @@ fn execute(c: &mut Criterion) {
     let rng = &mut TestRng::default();
 
     // Sample a new private key and address.
-    let private_key = PrivateKey::<Testnet3>::new(rng).unwrap();
+    let private_key = PrivateKey::<MainnetV0>::new(rng).unwrap();
     let address = Address::try_from(&private_key).unwrap();
 
     // Initialize the VM.
@@ -96,9 +96,11 @@ fn execute(c: &mut Criterion) {
 
     {
         // Prepare the inputs.
-        let inputs =
-            [Value::<Testnet3>::from_str(&address.to_string()).unwrap(), Value::<Testnet3>::from_str("1u64").unwrap()]
-                .into_iter();
+        let inputs = [
+            Value::<MainnetV0>::from_str(&address.to_string()).unwrap(),
+            Value::<MainnetV0>::from_str("1u64").unwrap(),
+        ]
+        .into_iter();
 
         // Authorize the execution.
         let execute_authorization = vm.authorize(&private_key, "credits.aleo", "transfer_public", inputs, rng).unwrap();
@@ -131,9 +133,9 @@ fn execute(c: &mut Criterion) {
     {
         // Prepare the inputs.
         let inputs = [
-            Value::<Testnet3>::Record(records[0].clone()),
-            Value::<Testnet3>::from_str(&address.to_string()).unwrap(),
-            Value::<Testnet3>::from_str("1u64").unwrap(),
+            Value::<MainnetV0>::Record(records[0].clone()),
+            Value::<MainnetV0>::from_str(&address.to_string()).unwrap(),
+            Value::<MainnetV0>::from_str("1u64").unwrap(),
         ]
         .into_iter();
 

@@ -614,7 +614,7 @@ pub mod test_helpers {
 
     use once_cell::sync::OnceCell;
 
-    type CurrentNetwork = console::network::Testnet3;
+    type CurrentNetwork = console::network::MainnetV0;
     type CurrentAleo = circuit::network::AleoV0;
 
     /// Samples a random genesis block.

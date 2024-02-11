@@ -19,7 +19,7 @@ use core::{
     fmt,
 };
 
-type Field = <console::Testnet3 as console::Environment>::Field;
+type Field = <console::MainnetV0 as console::Environment>::Field;
 
 thread_local! {
     pub(super) static CONSTRAINT_LIMIT: Cell<Option<u64>> = Cell::new(None);
@@ -33,10 +33,10 @@ thread_local! {
 pub struct Circuit;
 
 impl Environment for Circuit {
-    type Affine = <console::Testnet3 as console::Environment>::Affine;
+    type Affine = <console::MainnetV0 as console::Environment>::Affine;
     type BaseField = Field;
-    type Network = console::Testnet3;
-    type ScalarField = <console::Testnet3 as console::Environment>::Scalar;
+    type Network = console::MainnetV0;
+    type ScalarField = <console::MainnetV0 as console::Environment>::Scalar;
 
     /// Returns the `zero` constant.
     fn zero() -> LinearCombination<Self::BaseField> {

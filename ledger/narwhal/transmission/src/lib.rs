@@ -68,13 +68,13 @@ impl<N: Network> From<Data<Transaction<N>>> for Transmission<N> {
 pub mod test_helpers {
     use super::*;
     use console::{
-        network::Testnet3,
+        network::MainnetV0,
         prelude::{Rng, TestRng},
     };
 
     use ::bytes::Bytes;
 
-    type CurrentNetwork = Testnet3;
+    type CurrentNetwork = MainnetV0;
 
     /// Returns a list of sample transmissions, sampled at random.
     pub fn sample_transmissions(rng: &mut TestRng) -> Vec<Transmission<CurrentNetwork>> {
