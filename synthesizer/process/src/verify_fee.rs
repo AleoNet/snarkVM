@@ -76,11 +76,10 @@ impl<N: Network> Process<N> {
     fn verify_fee_private(&self, fee: &&Fee<N>) -> Result<()> {
         let timer = timer!("Process::verify_fee_private");
 
-        // Compute the function ID as `Hash(network_id, program_id, function_name)`.
-        let function_id = N::hash_bhp1024(
-            &(U16::<N>::new(N::ID), fee.program_id().name(), fee.program_id().network(), fee.function_name())
-                .to_bits_le(),
-        )?;
+        // Retrieve the network ID.
+        let network_id = U16::new(N::ID);
+        // Compute the function ID.
+        let function_id = compute_function_id(&network_id, fee.program_id(), fee.function_name())?;
 
         // Ensure the fee contains 1 input record.
         ensure!(
@@ -120,7 +119,7 @@ impl<N: Network> Process<N> {
         let (parent_x, parent_y) = fee.program_id().to_address()?.to_xy_coordinates();
 
         // Construct the public inputs to verify the proof.
-        let mut inputs = vec![N::Field::one(), *tpk_x, *tpk_y, **fee.tcm()];
+        let mut inputs = vec![N::Field::one(), *tpk_x, *tpk_y, **fee.tcm(), **fee.scm()];
         // Extend the inputs with the input IDs.
         inputs.extend(fee.inputs().iter().flat_map(|input| input.verifier_inputs()));
         // Extend the verifier inputs with the public inputs for 'self.caller'.
@@ -146,11 +145,10 @@ impl<N: Network> Process<N> {
     fn verify_fee_public(&self, fee: &&Fee<N>) -> Result<()> {
         let timer = timer!("Process::verify_fee_public");
 
-        // Compute the function ID as `Hash(network_id, program_id, function_name)`.
-        let function_id = N::hash_bhp1024(
-            &(U16::<N>::new(N::ID), fee.program_id().name(), fee.program_id().network(), fee.function_name())
-                .to_bits_le(),
-        )?;
+        // Retrieve the network ID.
+        let network_id = U16::new(N::ID);
+        // Compute the function ID.
+        let function_id = compute_function_id(&network_id, fee.program_id(), fee.function_name())?;
 
         // Ensure the fee contains all public inputs.
         ensure!(
@@ -190,7 +188,7 @@ impl<N: Network> Process<N> {
         let (parent_x, parent_y) = fee.program_id().to_address()?.to_xy_coordinates();
 
         // Construct the public inputs to verify the proof.
-        let mut inputs = vec![N::Field::one(), *tpk_x, *tpk_y, **fee.tcm()];
+        let mut inputs = vec![N::Field::one(), *tpk_x, *tpk_y, **fee.tcm(), **fee.scm()];
         // Extend the inputs with the input IDs.
         inputs.extend(fee.inputs().iter().flat_map(|input| input.verifier_inputs()));
         // Extend the verifier inputs with the public inputs for 'self.caller'
@@ -241,17 +239,17 @@ mod tests {
                     // Compute the deployment ID.
                     let deployment_id = deployment.to_deployment_id().unwrap();
                     // Verify the fee.
-                    assert!(process.verify_fee(&fee, deployment_id).is_ok());
+                    process.verify_fee(&fee, deployment_id).unwrap();
                 }
                 Transaction::Execute(_, execution, fee) => {
                     // Compute the execution ID.
                     let execution_id = execution.to_execution_id().unwrap();
                     // Verify the fee.
-                    assert!(process.verify_fee(&fee.unwrap(), execution_id).is_ok());
+                    process.verify_fee(&fee.unwrap(), execution_id).unwrap();
                 }
                 Transaction::Fee(_, fee) => match fee.is_fee_private() {
-                    true => assert!(process.verify_fee_private(&&fee).is_ok()),
-                    false => assert!(process.verify_fee_public(&&fee).is_ok()),
+                    true => process.verify_fee_private(&&fee).unwrap(),
+                    false => process.verify_fee_public(&&fee).unwrap(),
                 },
             }
         }

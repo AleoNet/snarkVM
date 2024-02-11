@@ -15,19 +15,19 @@
 /// A helper macro to downcast a `$variable` to `$object<$network>`.
 #[macro_export]
 macro_rules! cast_ref {
-    // Example: cast_ref!((foo.bar()) as Bar<Testnet3>)
+    // Example: cast_ref!((foo.bar()) as Bar<MainnetV0>)
     (($variable:expr) as $object:ident<$($traits:path),+>) => {{
         (&$variable as &dyn std::any::Any)
             .downcast_ref::<$object<$($traits),+>>()
             .ok_or_else(|| anyhow!("Failed to downcast {}", stringify!($variable)))?
     }};
-    // Example: cast_ref!(bar as Bar<Testnet3>)
+    // Example: cast_ref!(bar as Bar<MainnetV0>)
     ($variable:ident as $object:ident<$($traits:path),+>) => {{
         (&$variable as &dyn std::any::Any)
             .downcast_ref::<$object<$($traits),+>>()
             .ok_or_else(|| anyhow!("Failed to downcast {}", stringify!($variable)))?
     }};
-    // Example: cast_ref!(&bar as Bar<Testnet3>)
+    // Example: cast_ref!(&bar as Bar<MainnetV0>)
     (&$variable:ident as $object:ident<$($traits:path),+>) => {{
         ($variable as &dyn std::any::Any)
             .downcast_ref::<$object<$($traits),+>>()
@@ -38,13 +38,13 @@ macro_rules! cast_ref {
 /// A helper macro to downcast a `$variable` to `&mut $object<$network>`.
 #[macro_export]
 macro_rules! cast_mut_ref {
-    // Example: cast_mut_ref!((foo.bar()) as Bar<Testnet3>)
+    // Example: cast_mut_ref!((foo.bar()) as Bar<MainnetV0>)
     (($variable:expr) as $object:ident<$($traits:path),+>) => {{
         (&mut $variable as &mut dyn std::any::Any)
             .downcast_mut::<$object<$($traits),+>>()
             .ok_or_else(|| anyhow!("Failed to downcast mut {}", stringify!($variable)))?
     }};
-    // Example: cast_mut_ref!(bar as Bar<Testnet3>)
+    // Example: cast_mut_ref!(bar as Bar<MainnetV0>)
     ($variable:ident as $object:ident<$($traits:path),+>) => {{
         (&mut $variable as &mut dyn std::any::Any)
             .downcast_mut::<$object<$($traits),+>>()
@@ -58,13 +58,13 @@ macro_rules! process {
     // Example: process!(self, logic)
     ($self:ident, $logic:ident) => {{
         match N::ID {
-            console::network::Testnet3::ID => {
+            console::network::MainnetV0::ID => {
                 // Cast the process.
                 let process = (&$self.process as &dyn std::any::Any)
-                    .downcast_ref::<Arc<RwLock<Process<console::network::Testnet3>>>>()
+                    .downcast_ref::<Arc<RwLock<Process<console::network::MainnetV0>>>>()
                     .ok_or_else(|| anyhow!("Failed to downcast {}", stringify!($self.process)))?;
                 // Process the logic.
-                $logic!(process.read(), console::network::Testnet3, circuit::AleoV0)
+                $logic!(process.read(), console::network::MainnetV0, circuit::AleoV0)
             }
             _ => bail!("Unsupported VM configuration for network: {}", N::ID),
         }

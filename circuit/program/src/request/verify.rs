@@ -16,21 +16,29 @@ use super::*;
 
 impl<A: Aleo> Request<A> {
     /// Returns `true` if the input IDs are derived correctly, the input records all belong to the signer,
-    /// and the signature is valid. tpk is passed separately so it can have a Mode different from Self.
+    /// and the signature is valid.
     ///
     /// Verifies (challenge == challenge') && (address == address') && (serial_numbers == serial_numbers') where:
     ///     challenge' := HashToScalar(r * G, pk_sig, pr_sig, signer, \[tvk, tcm, function ID, input IDs\])
-    pub fn verify(&self, input_types: &[console::ValueType<A::Network>], tpk: &Group<A>) -> Boolean<A> {
-        // Compute the function ID as `Hash(network_id, program_id, function_name)`.
-        let function_id = A::hash_bhp1024(
-            &(&self.network_id, self.program_id.name(), self.program_id.network(), &self.function_name).to_bits_le(),
-        );
+    pub fn verify(
+        &self,
+        input_types: &[console::ValueType<A::Network>],
+        tpk: &Group<A>,
+        root_tvk: Option<Field<A>>,
+        is_root: Boolean<A>,
+    ) -> Boolean<A> {
+        // Compute the function ID.
+        let function_id = compute_function_id(&self.network_id, &self.program_id, &self.function_name);
+
+        // Compute 'is_root' as a field element.
+        let is_root = Ternary::ternary(&is_root, &Field::<A>::one(), &Field::<A>::zero());
 
         // Construct the signature message as `[tvk, tcm, function ID, input IDs]`.
         let mut message = Vec::with_capacity(3 + 4 * self.input_ids.len());
         message.push(self.tvk.clone());
         message.push(self.tcm.clone());
         message.push(function_id);
+        message.push(is_root);
 
         // Check the input IDs and construct the rest of the signature message.
         let (input_checks, append_to_message) = Self::check_input_ids::<true>(
@@ -52,15 +60,21 @@ impl<A: Aleo> Request<A> {
             None => A::halt("Missing input elements in request verification"),
         }
 
-        // Verify the transition public key and commitment are well-formed.
+        let root_tvk = root_tvk.unwrap_or(Field::<A>::new(Mode::Private, self.tvk.eject_value()));
+
+        // Verify the transition public key and commitments are well-formed.
         let tpk_checks = {
             // Compute the transition commitment as `Hash(tvk)`.
             let tcm = A::hash_psd2(&[self.tvk.clone()]);
+            // Compute the signer commitment as `Hash(signer || root_tvk)`.
+            let scm = A::hash_psd2(&[self.signer.to_field(), root_tvk]);
 
             // Ensure the transition public key matches with the saved one from the signature.
             tpk.is_equal(&self.to_tpk())
             // Ensure the computed transition commitment matches.
             & tcm.is_equal(&self.tcm)
+            // Ensure the computed signer commitment matches.
+            & scm.is_equal(&self.scm)
         };
 
         // Verify the signature.
@@ -111,9 +125,8 @@ impl<A: Aleo> Request<A> {
             false => assert!(signature.is_none()),
         }
 
-        // Compute the function ID as `Hash(network_id, program_id, function_name)`.
-        let function_id =
-            A::hash_bhp1024(&(network_id, program_id.name(), program_id.network(), function_name).to_bits_le());
+        // Compute the function ID.
+        let function_id = compute_function_id(network_id, program_id, function_name);
 
         // Initialize a vector for a message.
         let mut message = Vec::new();
@@ -350,17 +363,33 @@ mod tests {
                 console::ValueType::from_str("token.aleo/token.record").unwrap(),
             ];
 
+            // Sample 'root_tvk'.
+            let root_tvk = None;
+
+            // Sample 'is_root'.
+            let is_root = true;
+
             // Compute the signed request.
-            let request =
-                console::Request::sign(&private_key, program_id, function_name, inputs.iter(), &input_types, rng)?;
-            assert!(request.verify(&input_types));
+            let request = console::Request::sign(
+                &private_key,
+                program_id,
+                function_name,
+                inputs.iter(),
+                &input_types,
+                root_tvk,
+                is_root,
+                rng,
+            )?;
+            assert!(request.verify(&input_types, is_root));
 
             // Inject the request into a circuit.
             let tpk = Group::<Circuit>::new(mode, request.to_tpk());
             let request = Request::<Circuit>::new(mode, request);
+            let is_root = Boolean::new(mode, is_root);
 
             Circuit::scope(format!("Request {i}"), || {
-                let candidate = request.verify(&input_types, &tpk);
+                let root_tvk = None;
+                let candidate = request.verify(&input_types, &tpk, root_tvk, is_root);
                 assert!(candidate.eject_value());
                 match mode.is_constant() {
                     true => assert_scope!(<=num_constants, <=num_public, <=num_private, <=num_constraints),
@@ -394,16 +423,16 @@ mod tests {
         // Note: This is correct. At this (high) level of a program, we override the default mode in the `Record` case,
         // based on the user-defined visibility in the record type. Thus, we have nonzero private and constraint values.
         // These bounds are determined experimentally.
-        check_verify(Mode::Constant, 42520, 0, 17494, 17518)
+        check_verify(Mode::Constant, 43000, 0, 18000, 18000)
     }
 
     #[test]
     fn test_sign_and_verify_public() -> Result<()> {
-        check_verify(Mode::Public, 40018, 0, 26401, 26429)
+        check_verify(Mode::Public, 40131, 0, 26675, 26702)
     }
 
     #[test]
     fn test_sign_and_verify_private() -> Result<()> {
-        check_verify(Mode::Private, 40018, 0, 26401, 26429)
+        check_verify(Mode::Private, 40131, 0, 26675, 26702)
     }
 }

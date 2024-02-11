@@ -14,7 +14,7 @@
 
 use circuit::AleoV0;
 use console::{
-    network::Testnet3,
+    network::MainnetV0,
     prelude::*,
     program::{Identifier, Literal, Plaintext, Register, Value},
 };
@@ -24,7 +24,7 @@ use snarkvm_synthesizer_program::{
 };
 use synthesizer_process::{Authorization, CallStack, FinalizeRegisters, Registers, Stack, StackProgramTypes};
 
-type CurrentNetwork = Testnet3;
+type CurrentNetwork = MainnetV0;
 type CurrentAleo = AleoV0;
 
 /// Samples the registers. Note: Do not replicate this for real program use, it is insecure.

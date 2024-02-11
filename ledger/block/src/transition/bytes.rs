@@ -53,10 +53,12 @@ impl<N: Network> FromBytes for Transition<N> {
         let tpk = FromBytes::read_le(&mut reader)?;
         // Read the transition commitment.
         let tcm = FromBytes::read_le(&mut reader)?;
+        // Read the signer commitment.
+        let scm = FromBytes::read_le(&mut reader)?;
 
         // Construct the candidate transition.
         let transition =
-            Self::new(program_id, function_name, inputs, outputs, tpk, tcm).map_err(|e| error(e.to_string()))?;
+            Self::new(program_id, function_name, inputs, outputs, tpk, tcm, scm).map_err(|e| error(e.to_string()))?;
         // Ensure the transition ID matches the expected ID.
         match transition_id == *transition.id() {
             true => Ok(transition),
@@ -91,7 +93,9 @@ impl<N: Network> ToBytes for Transition<N> {
         // Write the transition public key.
         self.tpk.write_le(&mut writer)?;
         // Write the transition commitment.
-        self.tcm.write_le(&mut writer)
+        self.tcm.write_le(&mut writer)?;
+        // Write the signer commitment.
+        self.scm.write_le(&mut writer)
     }
 }
 

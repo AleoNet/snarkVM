@@ -29,6 +29,7 @@ use narwhal_transmission_id::TransmissionID;
 
 use core::hash::{Hash, Hasher};
 use indexmap::{IndexMap, IndexSet};
+use std::collections::HashSet;
 
 #[cfg(not(feature = "serial"))]
 use rayon::prelude::*;
@@ -54,7 +55,7 @@ pub enum BatchCertificate<N: Network> {
 
 impl<N: Network> BatchCertificate<N> {
     /// The maximum number of signatures in a batch certificate.
-    pub const MAX_SIGNATURES: usize = BatchHeader::<N>::MAX_CERTIFICATES;
+    pub const MAX_SIGNATURES: u16 = BatchHeader::<N>::MAX_CERTIFICATES;
 }
 
 impl<N: Network> BatchCertificate<N> {
@@ -84,7 +85,7 @@ impl<N: Network> BatchCertificate<N> {
             N::hash_bhp1024(&preimage.to_bits_le())
         }
         // Ensure that the number of signatures is within bounds.
-        ensure!(signatures.len() <= Self::MAX_SIGNATURES, "Invalid number of signatures");
+        ensure!(signatures.len() <= Self::MAX_SIGNATURES as usize, "Invalid number of signatures");
         // Compute the certificate ID.
         if certificate_id != compute_certificate_id(batch_header.batch_id(), &signatures)? {
             bail!("Invalid batch certificate ID")
@@ -103,7 +104,15 @@ impl<N: Network> BatchCertificate<N> {
     /// Initializes a new batch certificate.
     pub fn from(batch_header: BatchHeader<N>, signatures: IndexSet<Signature<N>>) -> Result<Self> {
         // Ensure that the number of signatures is within bounds.
-        ensure!(signatures.len() <= Self::MAX_SIGNATURES, "Invalid number of signatures");
+        ensure!(signatures.len() <= Self::MAX_SIGNATURES as usize, "Invalid number of signatures");
+
+        // Ensure that the signature is from a unique signer and not from the author.
+        let signature_authors = signatures.iter().map(|signature| signature.to_address()).collect::<HashSet<_>>();
+        ensure!(
+            !signature_authors.contains(&batch_header.author()),
+            "The author's signature was included in the signers"
+        );
+        ensure!(signature_authors.len() == signatures.len(), "A duplicate author was found in the set of signatures");
 
         // Verify the signatures are valid.
         cfg_iter!(signatures).try_for_each(|signature| {
@@ -197,8 +206,7 @@ impl<N: Network> BatchCertificate<N> {
         match self {
             Self::V1 { batch_header, signatures, .. } => {
                 // Return the median timestamp.
-                let mut timestamps =
-                    signatures.values().copied().chain([batch_header.timestamp()].into_iter()).collect::<Vec<_>>();
+                let mut timestamps = signatures.values().copied().chain([batch_header.timestamp()]).collect::<Vec<_>>();
                 timestamps.sort_unstable();
                 timestamps[timestamps.len() / 2]
             }
@@ -218,11 +226,11 @@ impl<N: Network> BatchCertificate<N> {
 #[cfg(any(test, feature = "test-helpers"))]
 pub mod test_helpers {
     use super::*;
-    use console::{account::PrivateKey, network::Testnet3, prelude::TestRng, types::Field};
+    use console::{account::PrivateKey, network::MainnetV0, prelude::TestRng, types::Field};
 
     use indexmap::IndexSet;
 
-    type CurrentNetwork = Testnet3;
+    type CurrentNetwork = MainnetV0;
 
     /// Returns a sample batch certificate, sampled at random.
     pub fn sample_batch_certificate(rng: &mut TestRng) -> BatchCertificate<CurrentNetwork> {
@@ -297,7 +305,7 @@ pub mod test_helpers {
         // Sample the leader certificate.
         let certificate = sample_batch_certificate_for_round_with_previous_certificate_ids(
             current_round,
-            previous_certificate_ids.clone(),
+            previous_certificate_ids,
             rng,
         );
 
@@ -309,7 +317,7 @@ pub mod test_helpers {
 mod tests {
     use super::*;
 
-    type CurrentNetwork = console::network::Testnet3;
+    type CurrentNetwork = console::network::MainnetV0;
 
     #[test]
     fn test_maximum_signatures() {

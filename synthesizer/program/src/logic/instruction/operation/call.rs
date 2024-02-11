@@ -444,11 +444,11 @@ impl<N: Network> ToBytes for Call<N> {
 mod tests {
     use super::*;
     use console::{
-        network::Testnet3,
+        network::MainnetV0,
         program::{Access, Address, Identifier, Literal, U64},
     };
 
-    type CurrentNetwork = Testnet3;
+    type CurrentNetwork = MainnetV0;
 
     const TEST_CASES: &[&str] = &[
         "call foo",

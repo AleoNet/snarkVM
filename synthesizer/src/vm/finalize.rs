@@ -31,7 +31,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         state: FinalizeGlobalState,
         coinbase_reward: Option<u64>,
         candidate_ratifications: Vec<Ratify<N>>,
-        candidate_solutions: Option<&CoinbaseSolution<N>>,
+        candidate_solutions: &Solutions<N>,
         candidate_transactions: impl ExactSizeIterator<Item = &'a Transaction<N>>,
     ) -> Result<(Ratifications<N>, Transactions<N>, Vec<N::TransactionID>, Vec<FinalizeOperation<N>>)> {
         let timer = timer!("VM::speculate");
@@ -72,7 +72,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         &self,
         state: FinalizeGlobalState,
         ratifications: &Ratifications<N>,
-        solutions: Option<&CoinbaseSolution<N>>,
+        solutions: &Solutions<N>,
         transactions: &Transactions<N>,
     ) -> Result<Vec<FinalizeOperation<N>>> {
         let timer = timer!("VM::check_speculate");
@@ -114,7 +114,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         &self,
         state: FinalizeGlobalState,
         ratifications: &Ratifications<N>,
-        solutions: Option<&CoinbaseSolution<N>>,
+        solutions: &Solutions<N>,
         transactions: &Transactions<N>,
     ) -> Result<Vec<FinalizeOperation<N>>> {
         let timer = timer!("VM::finalize");
@@ -151,7 +151,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         state: FinalizeGlobalState,
         coinbase_reward: Option<u64>,
         ratifications: Vec<Ratify<N>>,
-        solutions: Option<&CoinbaseSolution<N>>,
+        solutions: &Solutions<N>,
         transactions: impl ExactSizeIterator<Item = &'a Transaction<N>>,
     ) -> Result<(
         Ratifications<N>,
@@ -166,17 +166,28 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
         let timer = timer!("VM::atomic_speculate");
 
+        // Retrieve the number of solutions.
+        let num_solutions = solutions.len();
         // Retrieve the number of transactions.
         let num_transactions = transactions.len();
 
         // Perform the finalize operation on the preset finalize mode.
         atomic_finalize!(self.finalize_store(), FinalizeMode::DryRun, {
+            // Ensure the number of solutions does not exceed the maximum.
+            if num_solutions > Solutions::<N>::MAX_ABORTED_SOLUTIONS {
+                // Note: This will abort the entire atomic batch.
+                return Err(format!(
+                    "Too many solutions in the block - {num_solutions} (max: {})",
+                    Solutions::<N>::MAX_ABORTED_SOLUTIONS
+                ));
+            }
+
             // Ensure the number of transactions does not exceed the maximum.
-            if num_transactions > 2 * Transactions::<N>::MAX_TRANSACTIONS {
+            if num_transactions > Transactions::<N>::MAX_ABORTED_TRANSACTIONS {
                 // Note: This will abort the entire atomic batch.
                 return Err(format!(
                     "Too many transactions in the block - {num_transactions} (max: {})",
-                    2 * Transactions::<N>::MAX_TRANSACTIONS
+                    Transactions::<N>::MAX_ABORTED_TRANSACTIONS
                 ));
             }
 
@@ -221,8 +232,14 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             let mut deployments = IndexSet::new();
             // Initialize a counter for the confirmed transaction index.
             let mut counter = 0u32;
+            // Initialize a list of created transition IDs.
+            let mut transition_ids: IndexSet<N::TransitionID> = IndexSet::new();
             // Initialize a list of spent input IDs.
             let mut input_ids: IndexSet<Field<N>> = IndexSet::new();
+            // Initialize a list of created output IDs.
+            let mut output_ids: IndexSet<Field<N>> = IndexSet::new();
+            // Initialize the list of created transition public keys.
+            let mut tpks: IndexSet<Group<N>> = IndexSet::new();
 
             // Finalize the transactions.
             'outer: for transaction in transactions {
@@ -235,6 +252,19 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     continue 'outer;
                 }
 
+                // Ensure that the transaction is not producing a duplicate transition.
+                for transition_id in transaction.transition_ids() {
+                    // If the transition ID is already produced in this block or previous blocks, abort the transaction.
+                    if transition_ids.contains(transition_id)
+                        || self.transition_store().contains_transition_id(transition_id).unwrap_or(true)
+                    {
+                        // Store the aborted transaction.
+                        aborted.push((transaction.clone(), format!("Duplicate transition {transition_id}")));
+                        // Continue to the next transaction.
+                        continue 'outer;
+                    }
+                }
+
                 // Ensure that the transaction is not double-spending an input.
                 for input_id in transaction.input_ids() {
                     // If the input ID is already spent in this block or previous blocks, abort the transaction.
@@ -243,6 +273,31 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     {
                         // Store the aborted transaction.
                         aborted.push((transaction.clone(), format!("Double-spending input {input_id}")));
+                        // Continue to the next transaction.
+                        continue 'outer;
+                    }
+                }
+
+                // Ensure that the transaction is not producing a duplicate output.
+                for output_id in transaction.output_ids() {
+                    // If the output ID is already produced in this block or previous blocks, abort the transaction.
+                    if output_ids.contains(output_id)
+                        || self.transition_store().contains_output_id(output_id).unwrap_or(true)
+                    {
+                        // Store the aborted transaction.
+                        aborted.push((transaction.clone(), format!("Duplicate output {output_id}")));
+                        // Continue to the next transaction.
+                        continue 'outer;
+                    }
+                }
+
+                // // Ensure that the transaction is not producing a duplicate transition public key.
+                // // Note that the tpk and tcm are corresponding, so a uniqueness check for just the tpk is sufficient.
+                for tpk in transaction.transition_public_keys() {
+                    // If the transition public key is already produced in this block or previous blocks, abort the transaction.
+                    if tpks.contains(tpk) || self.transition_store().contains_tpk(tpk).unwrap_or(true) {
+                        // Store the aborted transaction.
+                        aborted.push((transaction.clone(), format!("Duplicate transition public key {tpk}")));
                         // Continue to the next transaction.
                         continue 'outer;
                     }
@@ -361,8 +416,14 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 match outcome {
                     // If the transaction succeeded, store it and continue to the next transaction.
                     Ok(confirmed_transaction) => {
+                        // Add the transition IDs to the set of produced transition IDs.
+                        transition_ids.extend(confirmed_transaction.transaction().transition_ids());
                         // Add the input IDs to the set of spent input IDs.
                         input_ids.extend(confirmed_transaction.transaction().input_ids());
+                        // Add the output IDs to the set of produced output IDs.
+                        output_ids.extend(confirmed_transaction.transaction().output_ids());
+                        // Add the transition public keys to the set of produced transition public keys.
+                        tpks.extend(confirmed_transaction.transaction().transition_public_keys());
                         // Store the confirmed transaction.
                         confirmed.push(confirmed_transaction);
                         // Increment the transaction index counter.
@@ -450,7 +511,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         &self,
         state: FinalizeGlobalState,
         ratifications: &Ratifications<N>,
-        solutions: Option<&CoinbaseSolution<N>>,
+        solutions: &Solutions<N>,
         transactions: &Transactions<N>,
     ) -> Result<Vec<FinalizeOperation<N>>> {
         // Acquire the atomic lock, which is needed to ensure this function is not called concurrently
@@ -697,6 +758,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         let bonded_mapping = Identifier::from_str("bonded")?;
         // Construct the account mapping name.
         let account_mapping = Identifier::from_str("account")?;
+        // Construct the metadata mapping name.
+        let metadata_mapping = Identifier::from_str("metadata")?;
 
         // Initialize a list of finalize operations.
         let mut finalize_operations = Vec::new();
@@ -714,6 +777,11 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     ensure!(
                         committee.starting_round() == 0,
                         "Ratify::Genesis(..) expected a genesis committee round of 0"
+                    );
+                    // Ensure that the number of members in the committee does not exceed the maximum.
+                    ensure!(
+                        committee.members().len() <= Committee::<N>::MAX_COMMITTEE_SIZE as usize,
+                        "Ratify::Genesis(..) exceeds the maximum number of committee members"
                     );
                     // Ensure genesis has not been ratified yet.
                     ensure!(!is_genesis_ratified, "Ratify::Genesis(..) has already been ratified");
@@ -752,6 +820,17 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                         store.replace_mapping(program_id, bonded_mapping, next_bonded_map)?,
                     ]);
 
+                    // Update the number of validators.
+                    finalize_operations.extend(&[
+                        // Update the number of validators in the metadata mapping.
+                        store.update_key_value(
+                            program_id,
+                            metadata_mapping,
+                            Plaintext::from_str("aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc")?,
+                            Value::from_str(&format!("{}u32", committee.num_members()))?,
+                        )?,
+                    ]);
+
                     // Iterate over the public balances.
                     for (address, amount) in public_balances {
                         // Construct the key.
@@ -788,7 +867,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         store: &FinalizeStore<N, C::FinalizeStorage>,
         state: FinalizeGlobalState,
         post_ratifications: impl Iterator<Item = &'a Ratify<N>>,
-        solutions: Option<&CoinbaseSolution<N>>,
+        solutions: &Solutions<N>,
     ) -> Result<Vec<FinalizeOperation<N>>> {
         // Construct the program ID.
         let program_id = ProgramID::from_str("credits.aleo")?;
@@ -831,6 +910,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     let next_stakers = staking_rewards(&current_stakers, &current_committee, *block_reward);
                     // Compute the updated committee, using the stakers.
                     let next_committee = to_next_committee(&current_committee, state.block_round(), &next_stakers)?;
+
                     // Construct the next committee map and next bonded map.
                     let (next_committee_map, next_bonded_map) =
                         to_next_commitee_map_and_bonded_map(&next_committee, &next_stakers);
@@ -857,7 +937,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                         continue;
                     }
                     // Retrieve the solutions.
-                    let Some(solutions) = solutions else {
+                    let Some(solutions) = solutions.deref() else {
                         continue;
                     };
                     // Compute the proof targets, with the corresponding addresses.
@@ -905,6 +985,7 @@ mod tests {
         types::Field,
     };
     use ledger_block::{Block, Header, Metadata, Transaction, Transition};
+    use ledger_committee::MIN_VALIDATOR_STAKE;
     use ledger_store::helpers::memory::ConsensusMemory;
     use synthesizer_program::Program;
 
@@ -990,8 +1071,13 @@ finalize transfer_public:
         rng: &mut R,
     ) -> Result<Block<CurrentNetwork>> {
         // Speculate on the candidate ratifications, solutions, and transactions.
-        let (ratifications, transactions, aborted_transaction_ids, ratified_finalize_operations) =
-            vm.speculate(sample_finalize_state(1), None, vec![], None, transactions.iter())?;
+        let (ratifications, transactions, aborted_transaction_ids, ratified_finalize_operations) = vm.speculate(
+            sample_finalize_state(previous_block.height() + 1),
+            Some(0),
+            vec![],
+            &None.into(),
+            transactions.iter(),
+        )?;
 
         // Construct the metadata associated with the block.
         let metadata = Metadata::new(
@@ -1023,7 +1109,8 @@ finalize transfer_public:
             previous_block.hash(),
             header,
             ratifications,
-            None,
+            None.into(),
+            vec![],
             transactions,
             aborted_transaction_ids,
             rng,
@@ -1175,7 +1262,7 @@ finalize transfer_public:
 
         // Prepare the confirmed transactions.
         let (ratifications, confirmed_transactions, aborted_transaction_ids, _) = vm
-            .speculate(sample_finalize_state(1), None, vec![], None, [deployment_transaction.clone()].iter())
+            .speculate(sample_finalize_state(1), None, vec![], &None.into(), [deployment_transaction.clone()].iter())
             .unwrap();
         assert_eq!(confirmed_transactions.len(), 1);
         assert!(aborted_transaction_ids.is_empty());
@@ -1184,25 +1271,26 @@ finalize transfer_public:
         assert!(!vm.contains_program(&program_id));
 
         // Finalize the transaction.
-        assert!(vm.finalize(sample_finalize_state(1), &ratifications, None, &confirmed_transactions).is_ok());
+        assert!(vm.finalize(sample_finalize_state(1), &ratifications, &None.into(), &confirmed_transactions).is_ok());
 
         // Ensure the VM contains this program.
         assert!(vm.contains_program(&program_id));
 
         // Ensure the VM can't redeploy the same transaction.
-        assert!(vm.finalize(sample_finalize_state(1), &ratifications, None, &confirmed_transactions).is_err());
+        assert!(vm.finalize(sample_finalize_state(1), &ratifications, &None.into(), &confirmed_transactions).is_err());
 
         // Ensure the VM contains this program.
         assert!(vm.contains_program(&program_id));
 
         // Ensure the dry run of the redeployment will cause a reject transaction to be created.
-        let (_, candidate_transactions, aborted_transaction_ids, _) =
-            vm.atomic_speculate(sample_finalize_state(1), None, vec![], None, [deployment_transaction].iter()).unwrap();
+        let (_, candidate_transactions, aborted_transaction_ids, _) = vm
+            .atomic_speculate(sample_finalize_state(1), None, vec![], &None.into(), [deployment_transaction].iter())
+            .unwrap();
         assert_eq!(candidate_transactions.len(), 1);
         assert!(matches!(candidate_transactions[0], ConfirmedTransaction::RejectedDeploy(..)));
         assert!(aborted_transaction_ids.is_empty());
 
-        // Check that the unconfirmed transaction id of the rejected deployment is correct.
+        // Check that the unconfirmed transaction ID of the rejected deployment is correct.
         assert_eq!(candidate_transactions[0].to_unconfirmed_transaction_id().unwrap(), deployment_transaction_id);
     }
 
@@ -1299,7 +1387,7 @@ finalize transfer_public:
         {
             let transactions = [mint_10.clone(), transfer_10.clone(), transfer_20.clone()];
             let (_, confirmed_transactions, aborted_transaction_ids, _) =
-                vm.atomic_speculate(sample_finalize_state(1), None, vec![], None, transactions.iter()).unwrap();
+                vm.atomic_speculate(sample_finalize_state(1), None, vec![], &None.into(), transactions.iter()).unwrap();
 
             // Assert that all the transactions are accepted.
             assert_eq!(confirmed_transactions.len(), 3);
@@ -1319,7 +1407,7 @@ finalize transfer_public:
         {
             let transactions = [transfer_20.clone(), mint_10.clone(), mint_20.clone(), transfer_30.clone()];
             let (_, confirmed_transactions, aborted_transaction_ids, _) =
-                vm.atomic_speculate(sample_finalize_state(1), None, vec![], None, transactions.iter()).unwrap();
+                vm.atomic_speculate(sample_finalize_state(1), None, vec![], &None.into(), transactions.iter()).unwrap();
 
             // Assert that all the transactions are accepted.
             assert_eq!(confirmed_transactions.len(), 4);
@@ -1339,7 +1427,7 @@ finalize transfer_public:
         {
             let transactions = [transfer_20.clone(), transfer_10.clone()];
             let (_, confirmed_transactions, aborted_transaction_ids, _) =
-                vm.atomic_speculate(sample_finalize_state(1), None, vec![], None, transactions.iter()).unwrap();
+                vm.atomic_speculate(sample_finalize_state(1), None, vec![], &None.into(), transactions.iter()).unwrap();
 
             // Assert that the accepted and rejected transactions are correct.
             assert_eq!(confirmed_transactions.len(), 2);
@@ -1363,7 +1451,7 @@ finalize transfer_public:
         {
             let transactions = [mint_20.clone(), transfer_30.clone(), transfer_20.clone(), transfer_10.clone()];
             let (_, confirmed_transactions, aborted_transaction_ids, _) =
-                vm.atomic_speculate(sample_finalize_state(1), None, vec![], None, transactions.iter()).unwrap();
+                vm.atomic_speculate(sample_finalize_state(1), None, vec![], &None.into(), transactions.iter()).unwrap();
 
             // Assert that the accepted and rejected transactions are correct.
             assert_eq!(confirmed_transactions.len(), 4);
@@ -1461,8 +1549,9 @@ function ped_hash:
                 create_execution(&vm, caller_private_key, program_id, "ped_hash", inputs, &mut unspent_records, rng);
 
             // Speculatively execute the transaction. Ensure that this call does not panic and returns a rejected transaction.
-            let (_, confirmed_transactions, aborted_transaction_ids, _) =
-                vm.speculate(sample_finalize_state(1), None, vec![], None, [transaction.clone()].iter()).unwrap();
+            let (_, confirmed_transactions, aborted_transaction_ids, _) = vm
+                .speculate(sample_finalize_state(1), None, vec![], &None.into(), [transaction.clone()].iter())
+                .unwrap();
             assert!(aborted_transaction_ids.is_empty());
 
             // Ensure that the transaction is rejected.
@@ -1685,5 +1774,216 @@ finalize compute:
             next_block.transactions().len(),
             VM::<CurrentNetwork, ConsensusMemory<_>>::MAXIMUM_CONFIRMED_TRANSACTIONS
         );
+    }
+
+    #[test]
+    fn test_genesis_ratify_greater_than_max_committee_size() {
+        // Initialize an RNG.
+        let rng = &mut TestRng::default();
+
+        // Initialize the VM.
+        let vm =
+            VM::from(ConsensusStore::<CurrentNetwork, ConsensusMemory<CurrentNetwork>>::open(None).unwrap()).unwrap();
+
+        // Construct the validators, greater than the maximum committee size.
+        let validators = (0..(Committee::<CurrentNetwork>::MAX_COMMITTEE_SIZE + 1))
+            .map(|_| {
+                let private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+                let amount = MIN_VALIDATOR_STAKE;
+                let is_open = true;
+                (private_key, (amount, is_open))
+            })
+            .collect::<IndexMap<_, _>>();
+
+        // Construct the committee.
+        let mut committee_map = IndexMap::new();
+        for (private_key, (amount, _)) in &validators {
+            let address = Address::try_from(private_key).unwrap();
+            committee_map.insert(address, (*amount, true));
+        }
+
+        // Attempt to construct a `Committee` with more than the maximum committee size.
+        let result = Committee::new_genesis(committee_map);
+        assert!(result.is_err());
+
+        // Reset the validators.
+        let validators = (0..Committee::<CurrentNetwork>::MAX_COMMITTEE_SIZE)
+            .map(|_| {
+                let private_key = PrivateKey::new(rng).unwrap();
+                let amount = MIN_VALIDATOR_STAKE;
+                let is_open = true;
+                (private_key, (amount, is_open))
+            })
+            .collect::<IndexMap<_, _>>();
+
+        // Track the allocated amount.
+        let mut allocated_amount = 0;
+
+        // Construct the committee.
+        let mut committee_map = IndexMap::new();
+        for (private_key, (amount, _)) in &validators {
+            let address = Address::try_from(private_key).unwrap();
+            committee_map.insert(address, (*amount, true));
+            allocated_amount += *amount;
+        }
+
+        // Construct the public balances, allocating the remaining supply.
+        let mut public_balances = IndexMap::new();
+        let remaining_supply = <CurrentNetwork as Network>::STARTING_SUPPLY - allocated_amount;
+        for (private_key, _) in &validators {
+            let address = Address::try_from(private_key).unwrap();
+            let amount = remaining_supply / validators.len() as u64;
+            allocated_amount += amount;
+            public_balances.insert(address, amount);
+        }
+        let remaining_supply = <CurrentNetwork as Network>::STARTING_SUPPLY - allocated_amount;
+        if remaining_supply > 0 {
+            let address = Address::try_from(&PrivateKey::<CurrentNetwork>::new(rng).unwrap()).unwrap();
+            public_balances.insert(address, remaining_supply);
+        }
+
+        // Construct the genesis block, which should pass.
+        let block = vm
+            .genesis_quorum(
+                validators.keys().next().unwrap(),
+                Committee::new_genesis(committee_map).unwrap(),
+                public_balances,
+                rng,
+            )
+            .unwrap();
+
+        // Add the block.
+        vm.add_next_block(&block).unwrap();
+    }
+
+    #[test]
+    fn test_max_committee_limit_with_bonds() {
+        // Initialize an RNG.
+        let rng = &mut TestRng::default();
+
+        // Initialize the VM.
+        let vm =
+            VM::from(ConsensusStore::<CurrentNetwork, ConsensusMemory<CurrentNetwork>>::open(None).unwrap()).unwrap();
+
+        // Construct the validators, one less than the maximum committee size.
+        let validators = (0..Committee::<CurrentNetwork>::MAX_COMMITTEE_SIZE - 1)
+            .map(|_| {
+                let private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+                let amount = MIN_VALIDATOR_STAKE;
+                let is_open = true;
+                (private_key, (amount, is_open))
+            })
+            .collect::<IndexMap<_, _>>();
+
+        // Track the allocated amount.
+        let mut allocated_amount = 0;
+
+        // Construct the committee.
+        let mut committee_map = IndexMap::new();
+        for (private_key, (amount, _)) in &validators {
+            let address = Address::try_from(private_key).unwrap();
+            committee_map.insert(address, (*amount, true));
+            allocated_amount += *amount;
+        }
+
+        // Initialize two new validators.
+        let first_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+        let first_address = Address::try_from(&first_private_key).unwrap();
+        let second_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+        let second_address = Address::try_from(&second_private_key).unwrap();
+
+        // Construct the public balances, allocating the remaining supply to the first validator and two new validators.
+        let mut public_balances = IndexMap::new();
+        let remaining_supply = <CurrentNetwork as Network>::STARTING_SUPPLY - allocated_amount;
+        let amount = remaining_supply / 3;
+        public_balances.insert(Address::try_from(validators.keys().next().unwrap()).unwrap(), amount);
+        public_balances.insert(first_address, amount);
+        public_balances.insert(second_address, remaining_supply - 2 * amount);
+
+        // Construct the genesis block, which should pass.
+        let genesis_block = vm
+            .genesis_quorum(
+                validators.keys().next().unwrap(),
+                Committee::new_genesis(committee_map).unwrap(),
+                public_balances,
+                rng,
+            )
+            .unwrap();
+
+        // Add the block.
+        vm.add_next_block(&genesis_block).unwrap();
+
+        // Bond the first validator.
+        let bond_first_transaction = vm
+            .execute(
+                &first_private_key,
+                ("credits.aleo", "bond_public"),
+                vec![
+                    Value::<CurrentNetwork>::from_str(&first_address.to_string()).unwrap(),
+                    Value::<CurrentNetwork>::from_str(&format!("{MIN_VALIDATOR_STAKE}u64")).unwrap(),
+                ]
+                .iter(),
+                None,
+                0,
+                None,
+                rng,
+            )
+            .unwrap();
+
+        // Construct the next block.
+        let next_block = sample_next_block(
+            &vm,
+            validators.keys().next().unwrap(),
+            &[bond_first_transaction],
+            &genesis_block,
+            &mut vec![],
+            rng,
+        )
+        .unwrap();
+
+        // Check that the transaction was accepted.
+        assert!(next_block.aborted_transaction_ids().is_empty());
+
+        // Add the next block to the VM.
+        vm.add_next_block(&next_block).unwrap();
+
+        // Check that the first validator was added to the committee.
+        let committee = vm.finalize_store().committee_store().current_committee().unwrap();
+        assert!(committee.is_committee_member(first_address));
+
+        // Attempt to bond the second validator.
+        let bond_second_transaction = vm
+            .execute(
+                &second_private_key,
+                ("credits.aleo", "bond_public"),
+                vec![
+                    Value::<CurrentNetwork>::from_str(&second_address.to_string()).unwrap(),
+                    Value::<CurrentNetwork>::from_str(&format!("{MIN_VALIDATOR_STAKE}u64")).unwrap(),
+                ]
+                .iter(),
+                None,
+                0,
+                None,
+                rng,
+            )
+            .unwrap();
+
+        // Construct the next block.
+        let next_block = sample_next_block(
+            &vm,
+            validators.keys().next().unwrap(),
+            &[bond_second_transaction],
+            &next_block,
+            &mut vec![],
+            rng,
+        )
+        .unwrap();
+
+        // Check that the transaction was rejected.
+        assert!(next_block.transactions().iter().next().unwrap().is_rejected());
+
+        // Check that the second validator was not added to the committee.
+        let committee = vm.finalize_store().committee_store().current_committee().unwrap();
+        assert!(!committee.is_committee_member(second_address));
     }
 }

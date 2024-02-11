@@ -62,10 +62,10 @@ mod tests {
     use super::*;
     use crate::Literal;
     use snarkvm_console_account::PrivateKey;
-    use snarkvm_console_network::Testnet3;
+    use snarkvm_console_network::MainnetV0;
     use snarkvm_console_types::Field;
 
-    type CurrentNetwork = Testnet3;
+    type CurrentNetwork = MainnetV0;
 
     const ITERATIONS: u64 = 1_000;
 
@@ -78,13 +78,10 @@ mod tests {
         let randomizer = Scalar::rand(rng);
         let record = Record {
             owner,
-            data: IndexMap::from_iter(
-                vec![
-                    (Identifier::from_str("a")?, Entry::Private(Plaintext::from(Literal::Field(Field::rand(rng))))),
-                    (Identifier::from_str("b")?, Entry::Private(Plaintext::from(Literal::Scalar(Scalar::rand(rng))))),
-                ]
-                .into_iter(),
-            ),
+            data: IndexMap::from_iter(vec![
+                (Identifier::from_str("a")?, Entry::Private(Plaintext::from(Literal::Field(Field::rand(rng))))),
+                (Identifier::from_str("b")?, Entry::Private(Plaintext::from(Literal::Scalar(Scalar::rand(rng))))),
+            ]),
             nonce: N::g_scalar_multiply(&randomizer),
         };
 

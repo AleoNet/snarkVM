@@ -37,9 +37,9 @@ impl<'de, N: Network> Deserialize<'de> for RecordType<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_console_network::Testnet3;
+    use snarkvm_console_network::MainnetV0;
 
-    type CurrentNetwork = Testnet3;
+    type CurrentNetwork = MainnetV0;
 
     /// Add test cases here to be checked for serialization.
     const TEST_CASES: &[&str] =

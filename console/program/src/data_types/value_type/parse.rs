@@ -72,9 +72,9 @@ impl<N: Network> Display for ValueType<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_console_network::Testnet3;
+    use snarkvm_console_network::MainnetV0;
 
-    type CurrentNetwork = Testnet3;
+    type CurrentNetwork = MainnetV0;
 
     #[test]
     fn test_parse() -> Result<()> {
@@ -104,6 +104,10 @@ mod tests {
         assert_eq!(
             Ok(("", ValueType::<CurrentNetwork>::from_str("signature.private")?)),
             ValueType::<CurrentNetwork>::parse("signature.private")
+        );
+        assert_eq!(
+            Ok(("", ValueType::<CurrentNetwork>::from_str("i8abc.constant")?)),
+            ValueType::<CurrentNetwork>::parse("i8abc.constant")
         );
 
         // Record type.

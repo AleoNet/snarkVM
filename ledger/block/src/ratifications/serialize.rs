@@ -66,9 +66,9 @@ impl<'de, N: Network> Deserialize<'de> for Ratifications<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use console::network::Testnet3;
+    use console::network::MainnetV0;
 
-    type CurrentNetwork = Testnet3;
+    type CurrentNetwork = MainnetV0;
 
     const ITERATIONS: u32 = 100;
 

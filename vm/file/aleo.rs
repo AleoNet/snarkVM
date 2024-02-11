@@ -241,7 +241,7 @@ mod tests {
     use super::*;
     use crate::prelude::Parser;
 
-    type CurrentNetwork = snarkvm_console::network::Testnet3;
+    type CurrentNetwork = snarkvm_console::network::MainnetV0;
 
     fn temp_dir() -> std::path::PathBuf {
         tempfile::tempdir().expect("Failed to open temporary directory").into_path()

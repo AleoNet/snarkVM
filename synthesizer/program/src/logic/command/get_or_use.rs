@@ -275,9 +275,9 @@ impl<N: Network> ToBytes for GetOrUse<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use console::{network::Testnet3, program::Register};
+    use console::{network::MainnetV0, program::Register};
 
-    type CurrentNetwork = Testnet3;
+    type CurrentNetwork = MainnetV0;
 
     pub struct OldGetOrUse<N: Network> {
         pub mapping: Identifier<N>,

@@ -407,9 +407,9 @@ impl<N: Network> Transaction<N> {
 #[cfg(test)]
 pub mod test_helpers {
     use super::*;
-    use console::{account::PrivateKey, network::Testnet3, program::ProgramOwner};
+    use console::{account::PrivateKey, network::MainnetV0, program::ProgramOwner};
 
-    type CurrentNetwork = Testnet3;
+    type CurrentNetwork = MainnetV0;
 
     /// Samples a random deployment transaction with a private or public fee.
     pub fn sample_deployment_transaction(is_fee_private: bool, rng: &mut TestRng) -> Transaction<CurrentNetwork> {

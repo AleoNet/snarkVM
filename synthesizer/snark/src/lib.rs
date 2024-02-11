@@ -50,11 +50,11 @@ pub(crate) mod test_helpers {
         environment::{Assignment, Circuit, Eject, Environment, Inject, Mode, One},
         types::Field,
     };
-    use console::{network::Testnet3, prelude::One as _};
+    use console::{network::MainnetV0, prelude::One as _};
 
     use once_cell::sync::OnceCell;
 
-    type CurrentNetwork = Testnet3;
+    type CurrentNetwork = MainnetV0;
 
     /// Compute 2^EXPONENT - 1, in a purposefully constraint-inefficient manner for testing.
     fn create_example_circuit<E: Environment>() -> Field<E> {
@@ -138,9 +138,9 @@ pub(crate) mod test_helpers {
 mod test {
     use super::*;
     use circuit::environment::{Circuit, Environment};
-    use console::network::Testnet3;
+    use console::network::MainnetV0;
 
-    type CurrentNetwork = Testnet3;
+    type CurrentNetwork = MainnetV0;
 
     #[test]
     fn test_varuna() {

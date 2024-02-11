@@ -186,7 +186,7 @@ impl<N: Network> Header<N> {
 pub mod test_helpers {
     use super::*;
 
-    type CurrentNetwork = console::network::Testnet3;
+    type CurrentNetwork = console::network::MainnetV0;
 
     /// Samples a block header.
     pub(crate) fn sample_block_header(rng: &mut TestRng) -> Header<CurrentNetwork> {

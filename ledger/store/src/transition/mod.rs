@@ -31,6 +31,7 @@ use console::{
 };
 use ledger_block::{Input, Output, Transition};
 
+use aleo_std_storage::StorageMode;
 use anyhow::Result;
 use std::borrow::Cow;
 
@@ -50,9 +51,11 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
     type TCMMap: for<'a> Map<'a, N::TransitionID, Field<N>>;
     /// The mapping of `transition commitment` to `transition ID`.
     type ReverseTCMMap: for<'a> Map<'a, Field<N>, N::TransitionID>;
+    /// The signer commitments.
+    type SCMMap: for<'a> Map<'a, N::TransitionID, Field<N>>;
 
     /// Initializes the transition storage.
-    fn open(dev: Option<u16>) -> Result<Self>;
+    fn open<S: Clone + Into<StorageMode>>(storage: S) -> Result<Self>;
 
     /// Returns the transition program IDs and function names.
     fn locator_map(&self) -> &Self::LocatorMap;
@@ -68,11 +71,13 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
     fn tcm_map(&self) -> &Self::TCMMap;
     /// Returns the reverse `tcm` map.
     fn reverse_tcm_map(&self) -> &Self::ReverseTCMMap;
+    /// Returns the signer commitments map.
+    fn scm_map(&self) -> &Self::SCMMap;
 
-    /// Returns the optional development ID.
-    fn dev(&self) -> Option<u16> {
-        debug_assert!(self.input_store().dev() == self.output_store().dev());
-        self.input_store().dev()
+    /// Returns the storage mode.
+    fn storage_mode(&self) -> &StorageMode {
+        debug_assert!(self.input_store().storage_mode() == self.output_store().storage_mode());
+        self.input_store().storage_mode()
     }
 
     /// Starts an atomic batch write operation.
@@ -84,6 +89,7 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
         self.reverse_tpk_map().start_atomic();
         self.tcm_map().start_atomic();
         self.reverse_tcm_map().start_atomic();
+        self.scm_map().start_atomic();
     }
 
     /// Checks if an atomic batch is in progress.
@@ -95,6 +101,7 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
             || self.reverse_tpk_map().is_atomic_in_progress()
             || self.tcm_map().is_atomic_in_progress()
             || self.reverse_tcm_map().is_atomic_in_progress()
+            || self.scm_map().is_atomic_in_progress()
     }
 
     /// Checkpoints the atomic batch.
@@ -106,6 +113,7 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
         self.reverse_tpk_map().atomic_checkpoint();
         self.tcm_map().atomic_checkpoint();
         self.reverse_tcm_map().atomic_checkpoint();
+        self.scm_map().atomic_checkpoint();
     }
 
     /// Clears the latest atomic batch checkpoint.
@@ -117,6 +125,7 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
         self.reverse_tpk_map().clear_latest_checkpoint();
         self.tcm_map().clear_latest_checkpoint();
         self.reverse_tcm_map().clear_latest_checkpoint();
+        self.scm_map().clear_latest_checkpoint();
     }
 
     /// Rewinds the atomic batch to the previous checkpoint.
@@ -128,6 +137,7 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
         self.reverse_tpk_map().atomic_rewind();
         self.tcm_map().atomic_rewind();
         self.reverse_tcm_map().atomic_rewind();
+        self.scm_map().atomic_rewind();
     }
 
     /// Aborts an atomic batch write operation.
@@ -139,6 +149,7 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
         self.reverse_tpk_map().abort_atomic();
         self.tcm_map().abort_atomic();
         self.reverse_tcm_map().abort_atomic();
+        self.scm_map().abort_atomic();
     }
 
     /// Finishes an atomic batch write operation.
@@ -149,7 +160,8 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
         self.tpk_map().finish_atomic()?;
         self.reverse_tpk_map().finish_atomic()?;
         self.tcm_map().finish_atomic()?;
-        self.reverse_tcm_map().finish_atomic()
+        self.reverse_tcm_map().finish_atomic()?;
+        self.scm_map().finish_atomic()
     }
 
     /// Stores the given `transition` into storage.
@@ -171,6 +183,8 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
             self.tcm_map().insert(transition_id, *transition.tcm())?;
             // Store the reverse `tcm` entry.
             self.reverse_tcm_map().insert(*transition.tcm(), transition_id)?;
+            // Store `scm`.
+            self.scm_map().insert(transition_id, *transition.scm())?;
 
             Ok(())
         })
@@ -204,6 +218,8 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
             self.tcm_map().remove(transition_id)?;
             // Remove the reverse `tcm` entry.
             self.reverse_tcm_map().remove(&tcm)?;
+            // Remove `scm`.
+            self.scm_map().remove(transition_id)?;
 
             Ok(())
         })
@@ -224,9 +240,11 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
         let tpk = self.tpk_map().get_confirmed(transition_id)?;
         // Retrieve `tcm`.
         let tcm = self.tcm_map().get_confirmed(transition_id)?;
+        // Retrieve `scm`.
+        let scm = self.scm_map().get_confirmed(transition_id)?;
 
-        match (tpk, tcm) {
-            (Some(tpk), Some(tcm)) => {
+        match (tpk, tcm, scm) {
+            (Some(tpk), Some(tcm), Some(scm)) => {
                 // Construct the transition.
                 let transition = Transition::new(
                     program_id,
@@ -235,6 +253,7 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
                     outputs,
                     cow_to_cloned!(tpk),
                     cow_to_cloned!(tcm),
+                    cow_to_cloned!(scm),
                 )?;
                 // Ensure the transition ID matches.
                 match transition.id() == transition_id {
@@ -264,15 +283,17 @@ pub struct TransitionStore<N: Network, T: TransitionStorage<N>> {
     tcm: T::TCMMap,
     /// The reverse `tcm` map.
     reverse_tcm: T::ReverseTCMMap,
+    /// The map of signer commitments.
+    scm: T::SCMMap,
     /// The transition storage.
     storage: T,
 }
 
 impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
     /// Initializes the transition store.
-    pub fn open(dev: Option<u16>) -> Result<Self> {
+    pub fn open<S: Clone + Into<StorageMode>>(storage: S) -> Result<Self> {
         // Initialize the transition storage.
-        let storage = T::open(dev)?;
+        let storage = T::open(storage)?;
         // Return the transition store.
         Ok(Self {
             locator: storage.locator_map().clone(),
@@ -282,6 +303,7 @@ impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
             reverse_tpk: storage.reverse_tpk_map().clone(),
             tcm: storage.tcm_map().clone(),
             reverse_tcm: storage.reverse_tcm_map().clone(),
+            scm: storage.scm_map().clone(),
             storage,
         })
     }
@@ -296,6 +318,7 @@ impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
             reverse_tpk: storage.reverse_tpk_map().clone(),
             tcm: storage.tcm_map().clone(),
             reverse_tcm: storage.reverse_tcm_map().clone(),
+            scm: storage.scm_map().clone(),
             storage,
         }
     }
@@ -345,9 +368,9 @@ impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
         self.storage.finish_atomic()
     }
 
-    /// Returns the optional development ID.
-    pub fn dev(&self) -> Option<u16> {
-        self.storage.dev()
+    /// Returns the storage mode.
+    pub fn storage_mode(&self) -> &StorageMode {
+        self.storage.storage_mode()
     }
 }
 
@@ -613,6 +636,11 @@ impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
     /// Returns an iterator over the transition commitments, for all transitions.
     pub fn tcms(&self) -> impl '_ + Iterator<Item = Cow<'_, Field<N>>> {
         self.tcm.values_confirmed()
+    }
+
+    /// Returns an iterator over the signer commitments, for all transitions.
+    pub fn scms(&self) -> impl '_ + Iterator<Item = Cow<'_, Field<N>>> {
+        self.scm.values_confirmed()
     }
 }
 

@@ -130,10 +130,9 @@ impl<E: Environment, const RATE: usize> Poseidon<E, RATE> {
             let num_squeezed = RATE - squeeze_index;
             remaining[..num_squeezed].clone_from_slice(&state[start..(start + num_squeezed)]);
 
-            // Unless we are done with squeezing in this call, permute.
-            if remaining.len() != RATE {
-                self.permute(state);
-            }
+            // Permute.
+            self.permute(state);
+
             // Repeat with the updated output slice and squeeze index.
             remaining = &mut remaining[num_squeezed..];
             squeeze_index = 0;

@@ -24,6 +24,7 @@ mod parse;
 mod sample;
 mod serialize;
 mod size_in_bits;
+mod size_in_bytes;
 mod to_bits;
 mod to_type;
 mod variant;

@@ -77,6 +77,8 @@ pub enum BlockMap {
     Ratifications = DataID::BlockRatificationsMap as u16,
     Solutions = DataID::BlockSolutionsMap as u16,
     PuzzleCommitments = DataID::BlockPuzzleCommitmentsMap as u16,
+    AbortedSolutionIDs = DataID::BlockAbortedSolutionIDsMap as u16,
+    AbortedSolutionHeights = DataID::BlockAbortedSolutionHeightsMap as u16,
     Transactions = DataID::BlockTransactionsMap as u16,
     AbortedTransactionIDs = DataID::BlockAbortedTransactionIDsMap as u16,
     RejectedOrAbortedTransactionID = DataID::BlockRejectedOrAbortedTransactionIDMap as u16,
@@ -184,6 +186,7 @@ pub enum TransitionMap {
     ReverseTPK = DataID::TransitionReverseTPKMap as u16,
     TCM = DataID::TransitionTCMMap as u16,
     ReverseTCM = DataID::TransitionReverseTCMMap as u16,
+    SCM = DataID::TransitionSCMMap as u16,
 }
 
 /// The RocksDB map prefix for program-related entries.
@@ -228,6 +231,8 @@ enum DataID {
     BlockRatificationsMap,
     BlockSolutionsMap,
     BlockPuzzleCommitmentsMap,
+    BlockAbortedSolutionIDsMap,
+    BlockAbortedSolutionHeightsMap,
     BlockTransactionsMap,
     BlockAbortedTransactionIDsMap,
     BlockRejectedOrAbortedTransactionIDMap,
@@ -278,6 +283,7 @@ enum DataID {
     TransitionReverseTPKMap,
     TransitionTCMMap,
     TransitionReverseTCMMap,
+    TransitionSCMMap,
     // Program
     ProgramIDMap,
     KeyValueMap,

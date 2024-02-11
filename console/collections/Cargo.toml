@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-console-collections"
-version = "0.16.15"
+version = "0.16.19"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Collections for a decentralized virtual machine"
 license = "Apache-2.0"
@@ -18,16 +18,16 @@ harness = false
 
 [dependencies.snarkvm-console-algorithms]
 path = "../algorithms"
-version = "=0.16.15"
+version = "=0.16.19"
 
 [dependencies.snarkvm-console-types]
 path = "../types"
-version = "=0.16.15"
+version = "=0.16.19"
 default-features = false
 features = [ "field", "integers" ]
 
 [dependencies.aleo-std]
-version = "0.1.18"
+version = "0.1.24"
 default-features = false
 
 [dependencies.rayon]

@@ -73,11 +73,28 @@ impl<N: Network> Stack<N> {
 
         let program_id = self.program.id();
 
+        // Check that the number of combined constraints does not exceed the deployment limit.
+        ensure!(deployment.num_combined_constraints()? <= N::MAX_DEPLOYMENT_LIMIT);
+
         // Construct the call stacks and assignments used to verify the certificates.
         let mut call_stacks = Vec::with_capacity(deployment.verifying_keys().len());
 
+        // The `root_tvk` is `None` when verifying the deployment of an individual circuit.
+        let root_tvk = None;
+
+        // The `caller` is `None` when verifying the deployment of an individual circuit.
+        let caller = None;
+
+        // Check that the number of functions matches the number of verifying keys.
+        ensure!(
+            deployment.program().functions().len() == deployment.verifying_keys().len(),
+            "The number of functions in the program does not match the number of verifying keys"
+        );
+
         // Iterate through the program functions and construct the callstacks and corresponding assignments.
-        for function in deployment.program().functions().values() {
+        for (function, (_, (verifying_key, _))) in
+            deployment.program().functions().values().zip_eq(deployment.verifying_keys())
+        {
             // Initialize a burner private key.
             let burner_private_key = PrivateKey::new(rng)?;
             // Compute the burner address.
@@ -98,6 +115,8 @@ impl<N: Network> Stack<N> {
                 })
                 .collect::<Result<Vec<_>>>()?;
             lap!(timer, "Sample the inputs");
+            // Sample 'is_root'.
+            let is_root = true;
 
             // Compute the request, with a burner private key.
             let request = Request::sign(
@@ -106,23 +125,35 @@ impl<N: Network> Stack<N> {
                 *function.name(),
                 inputs.into_iter(),
                 &input_types,
+                root_tvk,
+                is_root,
                 rng,
             )?;
             lap!(timer, "Compute the request for {}", function.name());
             // Initialize the assignments.
             let assignments = Assignments::<N>::default();
+            // Initialize the constraint limit. Account for the constraint added after synthesis that makes the Varuna zerocheck hiding.
+            let Some(constraint_limit) = verifying_key.circuit_info.num_constraints.checked_sub(1) else {
+                // Since a deployment must always pay non-zero fee, it must always have at least one constraint.
+                bail!("The constraint limit of 0 for function '{}' is invalid", function.name());
+            };
             // Initialize the call stack.
-            let call_stack = CallStack::CheckDeployment(vec![request], burner_private_key, assignments.clone());
+            let call_stack = CallStack::CheckDeployment(
+                vec![request],
+                burner_private_key,
+                assignments.clone(),
+                Some(constraint_limit as u64),
+            );
             // Append the function name, callstack, and assignments.
             call_stacks.push((function.name(), call_stack, assignments));
         }
 
         // Verify the certificates.
         let rngs = (0..call_stacks.len()).map(|_| StdRng::from_seed(rng.gen())).collect::<Vec<_>>();
-        cfg_iter!(call_stacks).zip_eq(deployment.verifying_keys()).zip_eq(rngs).try_for_each(
+        cfg_into_iter!(call_stacks).zip_eq(deployment.verifying_keys()).zip_eq(rngs).try_for_each(
             |(((function_name, call_stack, assignments), (_, (verifying_key, certificate))), mut rng)| {
                 // Synthesize the circuit.
-                if let Err(err) = self.execute_function::<A, _>(call_stack.clone(), None, &mut rng) {
+                if let Err(err) = self.execute_function::<A, _>(call_stack, caller, root_tvk, &mut rng) {
                     bail!("Failed to synthesize the circuit for '{function_name}': {err}")
                 }
                 // Check the certificate.

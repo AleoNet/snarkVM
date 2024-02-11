@@ -13,7 +13,7 @@
 // limitations under the License.
 
 pub use crate::{
-    io::{self, Read, Write},
+    io::{Read, Write},
     FromBytes,
     ToBytes,
     Vec,

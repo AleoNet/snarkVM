@@ -41,8 +41,10 @@ use console::{
     account::{Address, PrivateKey},
     network::prelude::*,
     program::{
+        Argument,
         Entry,
         EntryType,
+        FinalizeType,
         Future,
         Identifier,
         Literal,
@@ -79,7 +81,7 @@ pub type Assignments<N> = Arc<RwLock<Vec<(circuit::Assignment<<N as Environment>
 pub enum CallStack<N: Network> {
     Authorize(Vec<Request<N>>, PrivateKey<N>, Authorization<N>),
     Synthesize(Vec<Request<N>>, PrivateKey<N>, Authorization<N>),
-    CheckDeployment(Vec<Request<N>>, PrivateKey<N>, Assignments<N>),
+    CheckDeployment(Vec<Request<N>>, PrivateKey<N>, Assignments<N>, Option<u64>),
     Evaluate(Authorization<N>),
     Execute(Authorization<N>, Arc<RwLock<Trace<N>>>),
     PackageRun(Vec<Request<N>>, PrivateKey<N>, Assignments<N>),
@@ -107,11 +109,14 @@ impl<N: Network> CallStack<N> {
             CallStack::Synthesize(requests, private_key, authorization) => {
                 CallStack::Synthesize(requests.clone(), *private_key, authorization.replicate())
             }
-            CallStack::CheckDeployment(requests, private_key, assignments) => CallStack::CheckDeployment(
-                requests.clone(),
-                *private_key,
-                Arc::new(RwLock::new(assignments.read().clone())),
-            ),
+            CallStack::CheckDeployment(requests, private_key, assignments, constraint_limit) => {
+                CallStack::CheckDeployment(
+                    requests.clone(),
+                    *private_key,
+                    Arc::new(RwLock::new(assignments.read().clone())),
+                    *constraint_limit,
+                )
+            }
             CallStack::Evaluate(authorization) => CallStack::Evaluate(authorization.replicate()),
             CallStack::Execute(authorization, trace) => {
                 CallStack::Execute(authorization.replicate(), Arc::new(RwLock::new(trace.read().clone())))
@@ -292,6 +297,46 @@ impl<N: Network> StackProgram<N> for Stack<N> {
         }
         Ok(num_calls)
     }
+
+    /// Returns a value for the given value type.
+    fn sample_value<R: Rng + CryptoRng>(
+        &self,
+        burner_address: &Address<N>,
+        value_type: &ValueType<N>,
+        rng: &mut R,
+    ) -> Result<Value<N>> {
+        match value_type {
+            ValueType::Constant(plaintext_type)
+            | ValueType::Public(plaintext_type)
+            | ValueType::Private(plaintext_type) => Ok(Value::Plaintext(self.sample_plaintext(plaintext_type, rng)?)),
+            ValueType::Record(record_name) => {
+                Ok(Value::Record(self.sample_record(burner_address, record_name, Group::rand(rng), rng)?))
+            }
+            ValueType::ExternalRecord(locator) => {
+                // Retrieve the external stack.
+                let stack = self.get_external_stack(locator.program_id())?;
+                // Sample the output.
+                Ok(Value::Record(stack.sample_record(burner_address, locator.resource(), Group::rand(rng), rng)?))
+            }
+            ValueType::Future(locator) => Ok(Value::Future(self.sample_future(locator, rng)?)),
+        }
+    }
+
+    /// Returns a record for the given record name, with the given burner address and nonce.
+    fn sample_record<R: Rng + CryptoRng>(
+        &self,
+        burner_address: &Address<N>,
+        record_name: &Identifier<N>,
+        nonce: Group<N>,
+        rng: &mut R,
+    ) -> Result<Record<N, Plaintext<N>>> {
+        // Sample a record.
+        let record = self.sample_record_internal(burner_address, record_name, nonce, 0, rng)?;
+        // Ensure the record matches the value type.
+        self.matches_record(&record, record_name)?;
+        // Return the record.
+        Ok(record)
+    }
 }
 
 impl<N: Network> StackProgramTypes<N> for Stack<N> {
@@ -376,13 +421,13 @@ impl<N: Network> Stack<N> {
     /// Removes the proving key for the given function name.
     #[inline]
     pub fn remove_proving_key(&self, function_name: &Identifier<N>) {
-        self.proving_keys.write().remove(function_name);
+        self.proving_keys.write().shift_remove(function_name);
     }
 
     /// Removes the verifying key for the given function name.
     #[inline]
     pub fn remove_verifying_key(&self, function_name: &Identifier<N>) {
-        self.verifying_keys.write().remove(function_name);
+        self.verifying_keys.write().shift_remove(function_name);
     }
 }
 

@@ -20,9 +20,9 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         self.vm.block_store().state_roots()
     }
 
-    /// Returns an iterator over the puzzle commitments, for all blocks in `self`.
-    pub fn puzzle_commitments(&self) -> impl '_ + Iterator<Item = Cow<'_, PuzzleCommitment<N>>> {
-        self.vm.block_store().puzzle_commitments()
+    /// Returns an iterator over the solution IDs, for all blocks in `self`.
+    pub fn solution_ids(&self) -> impl '_ + Iterator<Item = Cow<'_, PuzzleCommitment<N>>> {
+        self.vm.block_store().solution_ids()
     }
 
     /* Transaction */

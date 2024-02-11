@@ -42,7 +42,7 @@ mod tests;
 use console::{
     account::PrivateKey,
     network::prelude::*,
-    program::{Identifier, Literal, Locator, Plaintext, ProgramID, Record, Response, Value},
+    program::{compute_function_id, Identifier, Literal, Locator, Plaintext, ProgramID, Record, Response, Value},
     types::{Field, U16, U64},
 };
 use ledger_block::{Deployment, Execution, Fee, Input, Transition};
@@ -283,7 +283,7 @@ impl<N: Network> Process<N> {
 #[cfg(any(test, feature = "test"))]
 pub mod test_helpers {
     use super::*;
-    use console::{account::PrivateKey, network::Testnet3, program::Identifier};
+    use console::{account::PrivateKey, network::MainnetV0, program::Identifier};
     use ledger_block::Transition;
     use ledger_query::Query;
     use ledger_store::{helpers::memory::BlockMemory, BlockStore};
@@ -291,7 +291,7 @@ pub mod test_helpers {
 
     use once_cell::sync::OnceCell;
 
-    type CurrentNetwork = Testnet3;
+    type CurrentNetwork = MainnetV0;
     type CurrentAleo = circuit::network::AleoV0;
 
     pub fn sample_key() -> (Identifier<CurrentNetwork>, ProvingKey<CurrentNetwork>, VerifyingKey<CurrentNetwork>) {

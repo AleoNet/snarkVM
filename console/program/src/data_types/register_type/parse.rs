@@ -71,9 +71,9 @@ impl<N: Network> Display for RegisterType<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_console_network::Testnet3;
+    use snarkvm_console_network::MainnetV0;
 
-    type CurrentNetwork = Testnet3;
+    type CurrentNetwork = MainnetV0;
 
     #[test]
     fn test_parse() -> Result<()> {
@@ -87,6 +87,10 @@ mod tests {
         assert_eq!(
             Ok(("", RegisterType::<CurrentNetwork>::Plaintext(PlaintextType::from_str("signature")?))),
             RegisterType::<CurrentNetwork>::parse("signature")
+        );
+        assert_eq!(
+            Ok(("", RegisterType::<CurrentNetwork>::Plaintext(PlaintextType::from_str("u8kldsafj")?))),
+            RegisterType::<CurrentNetwork>::parse("u8kldsafj")
         );
 
         // Record type.

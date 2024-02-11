@@ -42,9 +42,9 @@ pub enum FinalizeOperation<N: Network> {
 #[cfg(test)]
 pub(crate) mod test_helpers {
     use super::*;
-    use console::network::Testnet3;
+    use console::network::MainnetV0;
 
-    type CurrentNetwork = Testnet3;
+    type CurrentNetwork = MainnetV0;
 
     /// Samples a random `InitializeMapping`.
     pub(crate) fn sample_initialize_mapping(rng: &mut TestRng) -> FinalizeOperation<CurrentNetwork> {

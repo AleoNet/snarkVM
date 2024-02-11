@@ -26,7 +26,7 @@ use console::{
     account::{Address, PrivateKey},
     network::prelude::*,
     program::{Identifier, Literal, Locator, Plaintext, ProgramID, ProgramOwner, Record, Value},
-    types::{Field, U64},
+    types::{Field, Group, U64},
 };
 use ledger_block::{
     Block,
@@ -38,10 +38,10 @@ use ledger_block::{
     Ratifications,
     Ratify,
     Rejected,
+    Solutions,
     Transaction,
     Transactions,
 };
-use ledger_coinbase::CoinbaseSolution;
 use ledger_committee::Committee;
 use ledger_query::Query;
 use ledger_store::{
@@ -101,7 +101,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             transaction_store: &TransactionStore<N, T>,
             transaction_id: N::TransactionID,
         ) -> Result<Vec<(ProgramID<N>, Deployment<N>)>> {
-            // Retrieve the deployment from the transaction id.
+            // Retrieve the deployment from the transaction ID.
             let deployment = match transaction_store.get_deployment(&transaction_id)? {
                 Some(deployment) => deployment,
                 None => bail!("Deployment transaction '{transaction_id}' is not found in storage."),
@@ -123,11 +123,11 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             for import_program_id in program.imports().keys() {
                 // Add the imports to the process if does not exist yet.
                 if !process.contains_program(import_program_id) {
-                    // Fetch the deployment transaction id.
+                    // Fetch the deployment transaction ID.
                     let Some(transaction_id) =
                         transaction_store.deployment_store().find_transaction_id_from_program_id(import_program_id)?
                     else {
-                        bail!("Transaction id for '{program_id}' is not found in storage.");
+                        bail!("Transaction ID for '{program_id}' is not found in storage.");
                     };
 
                     // Add the deployment and its imports found recursively.
@@ -277,7 +277,9 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         // Prepare the ratifications.
         let ratifications = vec![Ratify::Genesis(committee, public_balances)];
         // Prepare the solutions.
-        let solutions = None; // The genesis block does not require solutions.
+        let solutions = Solutions::<N>::from(None); // The genesis block does not require solutions.
+        // Prepare the aborted solution IDs.
+        let aborted_solution_ids = vec![];
         // Prepare the transactions.
         let transactions = (0..Block::<N>::NUM_GENESIS_TRANSACTIONS)
             .map(|_| self.execute(private_key, locator, inputs.iter(), None, 0, None, rng))
@@ -287,7 +289,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         let state = FinalizeGlobalState::new_genesis::<N>()?;
         // Speculate on the ratifications, solutions, and transactions.
         let (ratifications, transactions, aborted_transaction_ids, ratified_finalize_operations) =
-            self.speculate(state, None, ratifications, solutions.as_ref(), transactions.iter())?;
+            self.speculate(state, None, ratifications, &solutions, transactions.iter())?;
         ensure!(
             aborted_transaction_ids.is_empty(),
             "Failed to initialize a genesis block - found aborted transaction IDs"
@@ -305,6 +307,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             header,
             ratifications,
             solutions,
+            aborted_solution_ids,
             transactions,
             aborted_transaction_ids,
             rng,
@@ -360,7 +363,7 @@ pub(crate) mod test_helpers {
     use super::*;
     use console::{
         account::{Address, ViewKey},
-        network::Testnet3,
+        network::MainnetV0,
         program::Value,
         types::Field,
     };
@@ -371,8 +374,9 @@ pub(crate) mod test_helpers {
     use indexmap::IndexMap;
     use once_cell::sync::OnceCell;
     use std::borrow::Borrow;
+    use synthesizer_snark::VerifyingKey;
 
-    pub(crate) type CurrentNetwork = Testnet3;
+    pub(crate) type CurrentNetwork = MainnetV0;
 
     /// Samples a new finalize state.
     pub(crate) fn sample_finalize_state(block_height: u32) -> FinalizeGlobalState {
@@ -637,11 +641,11 @@ function compute:
     }
 
     pub fn sample_next_block<R: Rng + CryptoRng>(
-        vm: &VM<Testnet3, ConsensusMemory<Testnet3>>,
-        private_key: &PrivateKey<Testnet3>,
-        transactions: &[Transaction<Testnet3>],
+        vm: &VM<MainnetV0, ConsensusMemory<MainnetV0>>,
+        private_key: &PrivateKey<MainnetV0>,
+        transactions: &[Transaction<MainnetV0>],
         rng: &mut R,
-    ) -> Result<Block<Testnet3>> {
+    ) -> Result<Block<MainnetV0>> {
         // Get the most recent block.
         let block_hash =
             vm.block_store().get_block_hash(*vm.block_store().heights().max().unwrap().borrow()).unwrap().unwrap();
@@ -649,21 +653,21 @@ function compute:
 
         // Construct the new block header.
         let (ratifications, transactions, aborted_transaction_ids, ratified_finalize_operations) =
-            vm.speculate(sample_finalize_state(1), None, vec![], None, transactions.iter())?;
+            vm.speculate(sample_finalize_state(1), None, vec![], &None.into(), transactions.iter())?;
         assert!(aborted_transaction_ids.is_empty());
 
         // Construct the metadata associated with the block.
         let metadata = Metadata::new(
-            Testnet3::ID,
+            MainnetV0::ID,
             previous_block.round() + 1,
             previous_block.height() + 1,
             0,
             0,
-            Testnet3::GENESIS_COINBASE_TARGET,
-            Testnet3::GENESIS_PROOF_TARGET,
+            MainnetV0::GENESIS_COINBASE_TARGET,
+            MainnetV0::GENESIS_PROOF_TARGET,
             previous_block.last_coinbase_target(),
             previous_block.last_coinbase_timestamp(),
-            Testnet3::GENESIS_TIMESTAMP + 1,
+            MainnetV0::GENESIS_TIMESTAMP + 1,
         )?;
 
         let header = Header::from(
@@ -682,7 +686,8 @@ function compute:
             previous_block.hash(),
             header,
             ratifications,
-            None,
+            None.into(),
+            vec![],
             transactions,
             aborted_transaction_ids,
             rng,
@@ -815,7 +820,7 @@ finalize getter:
             .execute(
                 &caller_private_key,
                 ("test_program_1.aleo", "init"),
-                Vec::<Value<Testnet3>>::new().iter(),
+                Vec::<Value<MainnetV0>>::new().iter(),
                 Some(third_record),
                 1,
                 None,
@@ -826,7 +831,7 @@ finalize getter:
             .execute(
                 &caller_private_key,
                 ("test_program_2.aleo", "init"),
-                Vec::<Value<Testnet3>>::new().iter(),
+                Vec::<Value<MainnetV0>>::new().iter(),
                 Some(fourth_record),
                 1,
                 None,
@@ -938,17 +943,18 @@ function a:
             sample_next_block(&vm, &caller_private_key, &[deployment_3.clone(), deployment_4.clone()], rng).unwrap();
         vm.add_next_block(&deployment_block).unwrap();
 
-        // Check that the iterator ordering is not the same as the deployment ordering.
-        let deployment_transaction_ids =
-            vm.transaction_store().deployment_transaction_ids().map(|id| *id).collect::<Vec<_>>();
-        // This `assert_ne` check is here to ensure that we are properly loading imports even though any order will work for `VM::from`.
-        // Note: `deployment_transaction_ids` is sorted lexicographically by transaction id, so the order may change if we update internal methods.
-        assert_ne!(deployment_transaction_ids, vec![
-            deployment_1.id(),
-            deployment_2.id(),
-            deployment_3.id(),
-            deployment_4.id()
-        ]);
+        // Sanity check the ordering of the deployment transaction IDs from storage.
+        {
+            let deployment_transaction_ids =
+                vm.transaction_store().deployment_transaction_ids().map(|id| *id).collect::<Vec<_>>();
+            // This assert check is here to ensure that we are properly loading imports even though any order will work for `VM::from`.
+            // Note: `deployment_transaction_ids` is sorted lexicographically by transaction ID, so the order may change if we update internal methods.
+            assert_eq!(
+                deployment_transaction_ids,
+                vec![deployment_1.id(), deployment_2.id(), deployment_3.id(), deployment_4.id()],
+                "Update me if serialization has changed"
+            );
+        }
 
         // Enforce that the VM can load properly with the imports.
         assert!(VM::from(vm.store.clone()).is_ok());
@@ -1003,9 +1009,9 @@ function multitransfer:
 
         // Execute the programs.
         let inputs = [
-            Value::<Testnet3>::Record(record_1),
-            Value::<Testnet3>::from_str(&address.to_string()).unwrap(),
-            Value::<Testnet3>::from_str("10u64").unwrap(),
+            Value::<MainnetV0>::Record(record_1),
+            Value::<MainnetV0>::from_str(&address.to_string()).unwrap(),
+            Value::<MainnetV0>::from_str("10u64").unwrap(),
         ];
         let execution = vm
             .execute(
@@ -1075,6 +1081,197 @@ function check:
 
         // Check that program is deployed.
         assert!(vm.contains_program(&ProgramID::from_str("parent_program.aleo").unwrap()));
+    }
+
+    #[test]
+    fn test_deployment_with_external_records() {
+        let rng = &mut TestRng::default();
+
+        // Initialize a private key.
+        let private_key = sample_genesis_private_key(rng);
+
+        // Initialize the genesis block.
+        let genesis = sample_genesis_block(rng);
+
+        // Initialize the VM.
+        let vm = sample_vm();
+        // Update the VM.
+        vm.add_next_block(&genesis).unwrap();
+
+        // Deploy the program.
+        let program = Program::from_str(
+            r"
+import credits.aleo;
+program test_program.aleo;
+
+function transfer:
+    input r0 as credits.aleo/credits.record;
+    input r1 as u64.private;
+    input r2 as u64.private;
+    input r3 as [address; 10u32].private;
+    call credits.aleo/transfer_private r0 r3[0u32] r1 into r4 r5;
+    call credits.aleo/transfer_private r5 r3[0u32] r2 into r6 r7;
+",
+        )
+        .unwrap();
+
+        let deployment = vm.deploy(&private_key, &program, None, 0, None, rng).unwrap();
+        assert!(vm.check_transaction(&deployment, None, rng).is_ok());
+        vm.add_next_block(&sample_next_block(&vm, &private_key, &[deployment], rng).unwrap()).unwrap();
+
+        // Check that program is deployed.
+        assert!(vm.contains_program(&ProgramID::from_str("test_program.aleo").unwrap()));
+    }
+
+    #[test]
+    fn test_deployment_synthesis_overload() {
+        let rng = &mut TestRng::default();
+
+        // Initialize a private key.
+        let private_key = sample_genesis_private_key(rng);
+
+        // Initialize the genesis block.
+        let genesis = sample_genesis_block(rng);
+
+        // Initialize the VM.
+        let vm = sample_vm();
+        // Update the VM.
+        vm.add_next_block(&genesis).unwrap();
+
+        // Deploy the base program.
+        let program = Program::from_str(
+            r"
+program synthesis_overload.aleo;
+
+function do:
+    input r0 as [[u128; 32u32]; 2u32].private;
+    hash.sha3_256 r0 into r1 as field;
+    output r1 as field.public;",
+        )
+        .unwrap();
+
+        // Create the deployment transaction.
+        let deployment = vm.deploy(&private_key, &program, None, 0, None, rng).unwrap();
+
+        // Verify the deployment transaction. It should fail because there are too many constraints.
+        assert!(vm.check_transaction(&deployment, None, rng).is_err());
+    }
+
+    #[test]
+    fn test_deployment_synthesis_overreport() {
+        let rng = &mut TestRng::default();
+
+        // Initialize a private key.
+        let private_key = sample_genesis_private_key(rng);
+
+        // Initialize the genesis block.
+        let genesis = sample_genesis_block(rng);
+
+        // Initialize the VM.
+        let vm = sample_vm();
+        // Update the VM.
+        vm.add_next_block(&genesis).unwrap();
+
+        // Deploy the base program.
+        let program = Program::from_str(
+            r"
+program synthesis_overreport.aleo;
+
+function do:
+    input r0 as u32.private;
+    add r0 r0 into r1;
+    output r1 as u32.public;",
+        )
+        .unwrap();
+
+        // Create the deployment transaction.
+        let transaction = vm.deploy(&private_key, &program, None, 0, None, rng).unwrap();
+
+        // Destructure the deployment transaction.
+        let Transaction::Deploy(_, program_owner, deployment, fee) = transaction else {
+            panic!("Expected a deployment transaction");
+        };
+
+        // Increase the number of constraints in the verifying keys.
+        let mut vks_with_overreport = Vec::with_capacity(deployment.verifying_keys().len());
+        for (id, (vk, cert)) in deployment.verifying_keys() {
+            let mut vk = vk.deref().clone();
+            vk.circuit_info.num_constraints += 1;
+            let vk = VerifyingKey::new(Arc::new(vk));
+            vks_with_overreport.push((*id, (vk, cert.clone())));
+        }
+
+        // Each additional constraint costs 25 microcredits, so we need to increase the fee by 25 microcredits.
+        let required_fee = *fee.base_amount().unwrap() + 25;
+        // Authorize a new fee.
+        let fee_authorization = vm
+            .authorize_fee_public(&private_key, required_fee, 0, deployment.as_ref().to_deployment_id().unwrap(), rng)
+            .unwrap();
+        // Compute the fee.
+        let fee = vm.execute_fee_authorization(fee_authorization, None, rng).unwrap();
+
+        // Create a new deployment transaction with the overreported verifying keys.
+        let adjusted_deployment =
+            Deployment::new(deployment.edition(), deployment.program().clone(), vks_with_overreport).unwrap();
+        let adjusted_transaction = Transaction::from_deployment(program_owner, adjusted_deployment, fee).unwrap();
+
+        // Verify the deployment transaction. It should error when certificate checking for constraint count mismatch.
+        let res = vm.check_transaction(&adjusted_transaction, None, rng);
+        assert!(res.is_err());
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_deployment_synthesis_underreport() {
+        let rng = &mut TestRng::default();
+
+        // Initialize a private key.
+        let private_key = sample_genesis_private_key(rng);
+
+        // Initialize the genesis block.
+        let genesis = sample_genesis_block(rng);
+
+        // Initialize the VM.
+        let vm = sample_vm();
+        // Update the VM.
+        vm.add_next_block(&genesis).unwrap();
+
+        // Deploy the base program.
+        let program = Program::from_str(
+            r"
+program synthesis_underreport.aleo;
+
+function do:
+    input r0 as u32.private;
+    add r0 r0 into r1;
+    output r1 as u32.public;",
+        )
+        .unwrap();
+
+        // Create the deployment transaction.
+        let transaction = vm.deploy(&private_key, &program, None, 0, None, rng).unwrap();
+
+        // Destructure the deployment transaction.
+        let Transaction::Deploy(txid, program_owner, deployment, fee) = transaction else {
+            panic!("Expected a deployment transaction");
+        };
+
+        // Decrease the number of constraints in the verifying keys.
+        let mut vks_with_underreport = Vec::with_capacity(deployment.verifying_keys().len());
+        for (id, (vk, cert)) in deployment.verifying_keys() {
+            let mut vk = vk.deref().clone();
+            vk.circuit_info.num_constraints -= 2;
+            let vk = VerifyingKey::new(Arc::new(vk));
+            vks_with_underreport.push((*id, (vk, cert.clone())));
+        }
+
+        // Create a new deployment transaction with the underreported verifying keys.
+        let adjusted_deployment =
+            Deployment::new(deployment.edition(), deployment.program().clone(), vks_with_underreport).unwrap();
+        let adjusted_transaction = Transaction::Deploy(txid, program_owner, Box::new(adjusted_deployment), fee);
+
+        // Verify the deployment transaction. It should panic when enforcing the first constraint over the vk limit.
+        let _ = vm.check_transaction(&adjusted_transaction, None, rng);
     }
 
     #[test]

@@ -117,7 +117,7 @@ mod tests {
 
     type CurrentAleo = snarkvm_circuit::network::AleoV0;
 
-    // TODO: Re-enable this test after `staging` is merged into `testnet3` for the October 18, 2023 calibration reset.
+    // TODO: Re-enable this test after `mainnet`.
     #[test]
     #[ignore]
     fn test_execute() {

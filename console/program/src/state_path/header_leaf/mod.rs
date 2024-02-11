@@ -49,9 +49,9 @@ impl<N: Network> HeaderLeaf<N> {
 #[cfg(test)]
 mod test_helpers {
     use super::*;
-    use snarkvm_console_network::Testnet3;
+    use snarkvm_console_network::MainnetV0;
 
-    type CurrentNetwork = Testnet3;
+    type CurrentNetwork = MainnetV0;
 
     pub(super) fn sample_leaf(rng: &mut TestRng) -> HeaderLeaf<CurrentNetwork> {
         // Construct a new leaf.
