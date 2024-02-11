@@ -180,23 +180,20 @@ impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
         let max_constraint_domain = state.max_constraint_domain;
         let max_variable_domain = state.max_variable_domain;
         let max_non_zero_domain = state.max_non_zero_domain;
-        let public_inputs = state
-            .circuit_specific_states
-            .iter()
-            .map(|(circuit_id, circuit_state)| {
-                let input_domain = circuit_state.input_domain;
-                let public_inputs = public_inputs[circuit_id]
-                    .iter()
-                    .map(|p| {
-                        let public_input = prover::ConstraintSystem::format_public_input(p);
-                        Self::formatted_public_input_is_admissible(&public_input)?;
-                        Ok::<_, AHPError>(public_input)
-                    })
-                    .collect::<Result<Vec<_>, _>>()?;
-                ensure!(public_inputs[0].len() == input_domain.size());
-                Ok(public_inputs)
-            })
-            .collect::<Result<Vec<_>, _>>()?;
+        let mut formatted_public_inputs = Vec::with_capacity(state.circuit_specific_states.len());
+        for (circuit_id, circuit_state) in &state.circuit_specific_states {
+            let input_domain = circuit_state.input_domain;
+            let public_inputs_i = public_inputs[circuit_id]
+                .iter()
+                .map(|p| {
+                    let public_input = prover::ConstraintSystem::format_public_input(p);
+                    Self::formatted_public_input_is_admissible(&public_input)?;
+                    Ok::<_, AHPError>(public_input)
+                })
+                .collect::<Result<Vec<_>, _>>()?;
+            ensure!(public_inputs_i[0].len() == input_domain.size());
+            formatted_public_inputs.push(public_inputs_i);
+        }
 
         let verifier::FirstMessage { batch_combiners } = state.first_round_message.as_ref().unwrap();
         let verifier::SecondMessage { alpha, eta_b, eta_c } = state.second_round_message.unwrap();
@@ -286,7 +283,7 @@ impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
             .enumerate()
             .map(|(i, (circuit_id, circuit_state))| {
                 let lag_at_beta = circuit_state.input_domain.evaluate_all_lagrange_coefficients(beta);
-                let x_at_beta = public_inputs[i]
+                let x_at_beta = formatted_public_inputs[i]
                     .iter()
                     .map(|x| x.iter().zip_eq(&lag_at_beta).map(|(x, l)| *x * l).sum::<F>())
                     .collect_vec();
