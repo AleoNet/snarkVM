@@ -18,7 +18,7 @@ pub use genesis::*;
 pub mod powers;
 pub use powers::*;
 
-const REMOTE_URL: &str = "https://s3-us-west-1.amazonaws.com/testnet3.parameters";
+const REMOTE_URL: &str = "https://s3-us-west-1.amazonaws.com/mainnet.parameters";
 
 // Degrees
 #[cfg(not(feature = "wasm"))]
