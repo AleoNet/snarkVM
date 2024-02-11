@@ -417,9 +417,6 @@ impl<N: Network> Block<N> {
     fn verify_transactions(&self) -> Result<()> {
         let height = self.height();
 
-        // Ensure there are transactions.
-        ensure!(!self.transactions.is_empty(), "Block {height} must contain at least 1 transaction");
-
         // Ensure the number of transactions is within the allowed range.
         if self.transactions.len() > Transactions::<N>::MAX_TRANSACTIONS {
             bail!(
