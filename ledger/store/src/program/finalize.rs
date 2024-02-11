@@ -314,7 +314,7 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
             None => bail!("Illegal operation: program ID '{program_id}' is not initialized - cannot remove mapping."),
         };
         // Remove the mapping name.
-        if !mapping_names.remove(&mapping_name) {
+        if !mapping_names.shift_remove(&mapping_name) {
             bail!("Illegal operation: mapping '{mapping_name}' does not exist in storage - cannot remove mapping.");
         }
 
@@ -769,9 +769,9 @@ impl<N: Network, P: FinalizeStorage<N>> FinalizeStore<N, P> {
 mod tests {
     use super::*;
     use crate::helpers::memory::FinalizeMemory;
-    use console::{network::Testnet3, program::Literal, types::U64};
+    use console::{network::MainnetV0, program::Literal, types::U64};
 
-    type CurrentNetwork = Testnet3;
+    type CurrentNetwork = MainnetV0;
 
     /// Checks `initialize_mapping`, `insert_key_value`, `remove_key_value`, and `remove_mapping`.
     fn check_initialize_insert_remove<N: Network>(

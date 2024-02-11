@@ -113,8 +113,6 @@ fn weighted_median(timestamps_and_stake: Vec<(i64, u64)>) -> i64 {
 pub struct Subdag<N: Network> {
     /// The subdag of round certificates.
     subdag: BTreeMap<u64, IndexSet<BatchCertificate<N>>>,
-    /// The election certificate IDs.
-    election_certificate_ids: IndexSet<Field<N>>,
 }
 
 impl<N: Network> PartialEq for Subdag<N> {
@@ -128,10 +126,7 @@ impl<N: Network> Eq for Subdag<N> {}
 
 impl<N: Network> Subdag<N> {
     /// Initializes a new subdag.
-    pub fn from(
-        subdag: BTreeMap<u64, IndexSet<BatchCertificate<N>>>,
-        election_certificate_ids: IndexSet<Field<N>>,
-    ) -> Result<Self> {
+    pub fn from(subdag: BTreeMap<u64, IndexSet<BatchCertificate<N>>>) -> Result<Self> {
         // Ensure the subdag is not empty.
         ensure!(!subdag.is_empty(), "Subdag cannot be empty");
         // Ensure the subdag does not exceed the maximum number of rounds.
@@ -143,17 +138,12 @@ impl<N: Network> Subdag<N> {
         ensure!(subdag.iter().next_back().map_or(0, |(r, _)| *r) % 2 == 0, "Anchor round must be even");
         // Ensure there is only one leader certificate.
         ensure!(subdag.iter().next_back().map_or(0, |(_, c)| c.len()) == 1, "Subdag cannot have multiple leaders");
-        // Ensure the number of election certificate IDs is within bounds.
-        ensure!(
-            election_certificate_ids.len() <= usize::try_from(BatchHeader::<N>::MAX_CERTIFICATES)?,
-            "Number of election certificate IDs exceeds the maximum"
-        );
         // Ensure the rounds are sequential.
         ensure!(is_sequential(&subdag), "Subdag rounds must be sequential");
         // Ensure the subdag structure matches the commit.
         ensure!(sanity_check_subdag_with_dfs(&subdag), "Subdag structure does not match commit");
         // Ensure the leader certificate is an even round.
-        Ok(Self { subdag, election_certificate_ids })
+        Ok(Self { subdag })
     }
 }
 
@@ -217,11 +207,6 @@ impl<N: Network> Subdag<N> {
         }
     }
 
-    /// Returns the election certificate IDs.
-    pub fn election_certificate_ids(&self) -> &IndexSet<Field<N>> {
-        &self.election_certificate_ids
-    }
-
     /// Returns the subdag root of the certificates.
     pub fn to_subdag_root(&self) -> Result<Field<N>> {
         // Prepare the leaves.
@@ -248,11 +233,11 @@ impl<N: Network> Deref for Subdag<N> {
 #[cfg(any(test, feature = "test-helpers"))]
 pub mod test_helpers {
     use super::*;
-    use console::{network::Testnet3, prelude::TestRng};
+    use console::{network::MainnetV0, prelude::TestRng};
 
     use indexmap::{indexset, IndexSet};
 
-    type CurrentNetwork = Testnet3;
+    type CurrentNetwork = MainnetV0;
 
     /// Returns a sample subdag, sampled at random.
     pub fn sample_subdag(rng: &mut TestRng) -> Subdag<CurrentNetwork> {
@@ -300,14 +285,8 @@ pub mod test_helpers {
             );
         subdag.insert(starting_round + 2, indexset![certificate]);
 
-        // Initialize the election certificate IDs.
-        let mut election_certificate_ids = IndexSet::new();
-        for _ in 0..AVAILABILITY_THRESHOLD {
-            election_certificate_ids.insert(rng.gen());
-        }
-
         // Return the subdag.
-        Subdag::from(subdag, election_certificate_ids).unwrap()
+        Subdag::from(subdag).unwrap()
     }
 
     /// Returns a list of sample subdags, sampled at random.
@@ -328,7 +307,7 @@ mod tests {
     use super::*;
     use narwhal_batch_header::BatchHeader;
 
-    type CurrentNetwork = console::network::Testnet3;
+    type CurrentNetwork = console::network::MainnetV0;
 
     const ITERATIONS: u64 = 100;
 

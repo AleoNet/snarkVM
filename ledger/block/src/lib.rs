@@ -160,7 +160,10 @@ impl<N: Network> Block<N> {
         }
 
         // Ensure the block contains transactions.
-        ensure!(!transactions.is_empty(), "Cannot create a block with zero transactions");
+        ensure!(
+            !transactions.is_empty() || !aborted_transaction_ids.is_empty(),
+            "Cannot create a block with zero transactions"
+        );
 
         // Ensure the number of transactions is within the allowed range.
         if transactions.len() > Transactions::<N>::MAX_TRANSACTIONS {
@@ -611,7 +614,7 @@ pub mod test_helpers {
 
     use once_cell::sync::OnceCell;
 
-    type CurrentNetwork = console::network::Testnet3;
+    type CurrentNetwork = console::network::MainnetV0;
     type CurrentAleo = circuit::network::AleoV0;
 
     /// Samples a random genesis block.

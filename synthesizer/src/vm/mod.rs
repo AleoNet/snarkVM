@@ -372,7 +372,7 @@ pub(crate) mod test_helpers {
     use super::*;
     use console::{
         account::{Address, ViewKey},
-        network::Testnet3,
+        network::MainnetV0,
         program::Value,
         types::Field,
     };
@@ -385,7 +385,7 @@ pub(crate) mod test_helpers {
     use std::borrow::Borrow;
     use synthesizer_snark::VerifyingKey;
 
-    pub(crate) type CurrentNetwork = Testnet3;
+    pub(crate) type CurrentNetwork = MainnetV0;
 
     /// Samples a new finalize state.
     pub(crate) fn sample_finalize_state(block_height: u32) -> FinalizeGlobalState {
@@ -650,11 +650,11 @@ function compute:
     }
 
     pub fn sample_next_block<R: Rng + CryptoRng>(
-        vm: &VM<Testnet3, ConsensusMemory<Testnet3>>,
-        private_key: &PrivateKey<Testnet3>,
-        transactions: &[Transaction<Testnet3>],
+        vm: &VM<MainnetV0, ConsensusMemory<MainnetV0>>,
+        private_key: &PrivateKey<MainnetV0>,
+        transactions: &[Transaction<MainnetV0>],
         rng: &mut R,
-    ) -> Result<Block<Testnet3>> {
+    ) -> Result<Block<MainnetV0>> {
         // Get the most recent block.
         let block_hash =
             vm.block_store().get_block_hash(*vm.block_store().heights().max().unwrap().borrow()).unwrap().unwrap();
@@ -667,16 +667,16 @@ function compute:
 
         // Construct the metadata associated with the block.
         let metadata = Metadata::new(
-            Testnet3::ID,
+            MainnetV0::ID,
             previous_block.round() + 1,
             previous_block.height() + 1,
             0,
             0,
-            Testnet3::GENESIS_COINBASE_TARGET,
-            Testnet3::GENESIS_PROOF_TARGET,
+            MainnetV0::GENESIS_COINBASE_TARGET,
+            MainnetV0::GENESIS_PROOF_TARGET,
             previous_block.last_coinbase_target(),
             previous_block.last_coinbase_timestamp(),
-            Testnet3::GENESIS_TIMESTAMP + 1,
+            MainnetV0::GENESIS_TIMESTAMP + 1,
         )?;
 
         let header = Header::from(
@@ -829,7 +829,7 @@ finalize getter:
             .execute(
                 &caller_private_key,
                 ("test_program_1.aleo", "init"),
-                Vec::<Value<Testnet3>>::new().iter(),
+                Vec::<Value<MainnetV0>>::new().iter(),
                 Some(third_record),
                 1,
                 None,
@@ -840,7 +840,7 @@ finalize getter:
             .execute(
                 &caller_private_key,
                 ("test_program_2.aleo", "init"),
-                Vec::<Value<Testnet3>>::new().iter(),
+                Vec::<Value<MainnetV0>>::new().iter(),
                 Some(fourth_record),
                 1,
                 None,
@@ -960,7 +960,7 @@ function a:
             // Note: `deployment_transaction_ids` is sorted lexicographically by transaction ID, so the order may change if we update internal methods.
             assert_eq!(
                 deployment_transaction_ids,
-                vec![deployment_2.id(), deployment_1.id(), deployment_4.id(), deployment_3.id()],
+                vec![deployment_1.id(), deployment_2.id(), deployment_3.id(), deployment_4.id()],
                 "Update me if serialization has changed"
             );
         }
@@ -1018,9 +1018,9 @@ function multitransfer:
 
         // Execute the programs.
         let inputs = [
-            Value::<Testnet3>::Record(record_1),
-            Value::<Testnet3>::from_str(&address.to_string()).unwrap(),
-            Value::<Testnet3>::from_str("10u64").unwrap(),
+            Value::<MainnetV0>::Record(record_1),
+            Value::<MainnetV0>::from_str(&address.to_string()).unwrap(),
+            Value::<MainnetV0>::from_str("10u64").unwrap(),
         ];
         let execution = vm
             .execute(

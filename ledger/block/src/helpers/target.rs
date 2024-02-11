@@ -226,9 +226,9 @@ fn retarget(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use console::network::{prelude::*, Testnet3};
+    use console::network::{prelude::*, MainnetV0};
 
-    type CurrentNetwork = Testnet3;
+    type CurrentNetwork = MainnetV0;
 
     const ITERATIONS: u32 = 1000;
 

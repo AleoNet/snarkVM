@@ -239,7 +239,7 @@ pub mod test_helpers {
     use indexmap::IndexMap;
     use rand_distr::{Distribution, Exp};
 
-    type CurrentNetwork = console::network::Testnet3;
+    type CurrentNetwork = console::network::MainnetV0;
 
     /// Samples a list of random committees.
     pub fn sample_committees(rng: &mut TestRng) -> Vec<Committee<CurrentNetwork>> {
@@ -346,7 +346,7 @@ mod tests {
     use rayon::prelude::*;
     use std::sync::Arc;
 
-    type CurrentNetwork = console::network::Testnet3;
+    type CurrentNetwork = console::network::MainnetV0;
 
     /// Checks the leader distribution.
     fn check_leader_distribution(committee: Committee<CurrentNetwork>, num_rounds: u64, tolerance_percent: f64) {

@@ -18,7 +18,7 @@ use crate::helpers::{
     MapRead,
 };
 use console::{
-    network::{Network, Testnet3},
+    network::{MainnetV0, Network},
     prelude::{TestRng, Uniform},
     types::Scalar,
 };
@@ -154,7 +154,7 @@ fn test_insert_and_values() {
 #[test]
 #[serial]
 fn test_scalar_mul() {
-    type CurrentNetwork = Testnet3;
+    type CurrentNetwork = MainnetV0;
 
     let rng = &mut TestRng::default();
 

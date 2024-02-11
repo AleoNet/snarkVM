@@ -131,7 +131,7 @@ mod tests {
 
     use indexmap::indexmap;
 
-    type CurrentNetwork = console::network::Testnet3;
+    type CurrentNetwork = console::network::MainnetV0;
 
     const ITERATIONS: usize = 1000;
 

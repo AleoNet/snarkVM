@@ -338,9 +338,9 @@ impl<N: Network> Deref for ConfirmedTransaction<N> {
 #[cfg(test)]
 pub mod test_helpers {
     use super::*;
-    use console::network::Testnet3;
+    use console::network::MainnetV0;
 
-    type CurrentNetwork = Testnet3;
+    type CurrentNetwork = MainnetV0;
 
     /// Samples an accepted deploy transaction at the given index.
     pub(crate) fn sample_accepted_deploy(
@@ -449,7 +449,7 @@ mod test {
     use super::*;
     use crate::transactions::confirmed::test_helpers;
 
-    type CurrentNetwork = console::network::Testnet3;
+    type CurrentNetwork = console::network::MainnetV0;
 
     #[test]
     fn test_accepted_execute() {

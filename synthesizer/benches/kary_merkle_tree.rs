@@ -21,7 +21,7 @@ use console::{
     collections::kary_merkle_tree::KaryMerkleTree,
     network::{
         prelude::{TestRng, ToBits, Uniform},
-        Testnet3,
+        MainnetV0,
     },
     types::Field,
 };
@@ -29,7 +29,7 @@ use synthesizer_snark::{ProvingKey, UniversalSRS};
 
 use criterion::Criterion;
 
-type CurrentNetwork = Testnet3;
+type CurrentNetwork = MainnetV0;
 type CurrentAleo = AleoV0;
 
 type NativePathHasher = Sha3_256;
@@ -42,7 +42,7 @@ const ARITY: u8 = 8;
 
 /// Generates the specified number of random Merkle tree leaves.
 macro_rules! generate_leaves {
-    ($num_leaves:expr, $rng:expr) => {{ (0..$num_leaves).map(|_| Field::<Testnet3>::rand($rng).to_bits_le()).collect::<Vec<_>>() }};
+    ($num_leaves:expr, $rng:expr) => {{ (0..$num_leaves).map(|_| Field::<MainnetV0>::rand($rng).to_bits_le()).collect::<Vec<_>>() }};
 }
 
 fn batch_prove(c: &mut Criterion) {

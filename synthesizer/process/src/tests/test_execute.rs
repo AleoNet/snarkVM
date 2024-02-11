@@ -21,7 +21,7 @@ use crate::{
 use circuit::{network::AleoV0, Aleo};
 use console::{
     account::{Address, PrivateKey, ViewKey},
-    network::{prelude::*, Testnet3},
+    network::{prelude::*, MainnetV0},
     program::{Identifier, Literal, Plaintext, ProgramID, Record, Value},
     types::{Field, U64},
 };
@@ -41,7 +41,7 @@ use indexmap::IndexMap;
 use parking_lot::RwLock;
 use std::sync::Arc;
 
-type CurrentNetwork = Testnet3;
+type CurrentNetwork = MainnetV0;
 type CurrentAleo = AleoV0;
 
 /// Samples a new finalize state.
@@ -1926,7 +1926,7 @@ function a:
 
     // Construct the expected transition order.
     let expected_order = [
-        (program0.id(), Identifier::<Testnet3>::from_str("c").unwrap()),
+        (program0.id(), Identifier::<MainnetV0>::from_str("c").unwrap()),
         (program1.id(), Identifier::from_str("b").unwrap()),
         (program2.id(), Identifier::from_str("a").unwrap()),
     ];
@@ -2108,16 +2108,16 @@ fn test_complex_execution_order() {
 
     // Construct the expected execution order.
     let expected_order = [
-        (program0.id(), Identifier::<Testnet3>::from_str("c").unwrap()),
-        (program1.id(), Identifier::<Testnet3>::from_str("d").unwrap()),
-        (program2.id(), Identifier::<Testnet3>::from_str("b").unwrap()),
-        (program0.id(), Identifier::<Testnet3>::from_str("c").unwrap()),
-        (program1.id(), Identifier::<Testnet3>::from_str("d").unwrap()),
-        (program2.id(), Identifier::<Testnet3>::from_str("b").unwrap()),
-        (program1.id(), Identifier::<Testnet3>::from_str("d").unwrap()),
-        (program0.id(), Identifier::<Testnet3>::from_str("c").unwrap()),
-        (program3.id(), Identifier::<Testnet3>::from_str("e").unwrap()),
-        (program4.id(), Identifier::<Testnet3>::from_str("a").unwrap()),
+        (program0.id(), Identifier::<MainnetV0>::from_str("c").unwrap()),
+        (program1.id(), Identifier::<MainnetV0>::from_str("d").unwrap()),
+        (program2.id(), Identifier::<MainnetV0>::from_str("b").unwrap()),
+        (program0.id(), Identifier::<MainnetV0>::from_str("c").unwrap()),
+        (program1.id(), Identifier::<MainnetV0>::from_str("d").unwrap()),
+        (program2.id(), Identifier::<MainnetV0>::from_str("b").unwrap()),
+        (program1.id(), Identifier::<MainnetV0>::from_str("d").unwrap()),
+        (program0.id(), Identifier::<MainnetV0>::from_str("c").unwrap()),
+        (program3.id(), Identifier::<MainnetV0>::from_str("e").unwrap()),
+        (program4.id(), Identifier::<MainnetV0>::from_str("a").unwrap()),
     ];
     for (transition, (expected_program_id, expected_function_name)) in
         trace.transitions().iter().zip_eq(expected_order.iter())

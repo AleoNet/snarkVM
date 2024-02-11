@@ -62,10 +62,10 @@ mod tests {
     use super::*;
     use crate::Literal;
     use snarkvm_console_account::PrivateKey;
-    use snarkvm_console_network::Testnet3;
+    use snarkvm_console_network::MainnetV0;
     use snarkvm_console_types::Field;
 
-    type CurrentNetwork = Testnet3;
+    type CurrentNetwork = MainnetV0;
 
     const ITERATIONS: u64 = 1_000;
 

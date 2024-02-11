@@ -481,7 +481,7 @@ pub mod test_helpers {
     use super::*;
     use crate::Transaction;
 
-    type CurrentNetwork = console::network::Testnet3;
+    type CurrentNetwork = console::network::MainnetV0;
 
     /// Samples a random transition.
     pub(crate) fn sample_transition(rng: &mut TestRng) -> Transition<CurrentNetwork> {

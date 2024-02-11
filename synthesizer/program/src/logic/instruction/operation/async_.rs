@@ -348,9 +348,9 @@ impl<N: Network> ToBytes for Async<N> {
 mod tests {
     use super::*;
     // use circuit::AleoV0;
-    use console::network::Testnet3;
+    use console::network::MainnetV0;
 
-    type CurrentNetwork = Testnet3;
+    type CurrentNetwork = MainnetV0;
     // type CurrentAleo = AleoV0;
     //
     // /// Samples the stack. Note: Do not replicate this for real program use, it is insecure.

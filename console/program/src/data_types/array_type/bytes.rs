@@ -103,7 +103,7 @@ impl<N: Network> ToBytes for ArrayType<N> {
 mod tests {
     use super::*;
 
-    type CurrentNetwork = snarkvm_console_network::Testnet3;
+    type CurrentNetwork = snarkvm_console_network::MainnetV0;
 
     #[test]
     fn test_array_maximum_depth() {

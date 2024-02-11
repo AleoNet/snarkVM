@@ -339,7 +339,7 @@ impl<N: Network> Transactions<N> {
 pub mod test_helpers {
     use super::*;
 
-    type CurrentNetwork = console::network::Testnet3;
+    type CurrentNetwork = console::network::MainnetV0;
 
     /// Samples a block transactions.
     pub(crate) fn sample_block_transactions(rng: &mut TestRng) -> Transactions<CurrentNetwork> {
@@ -352,7 +352,7 @@ mod tests {
     use super::*;
     use ledger_narwhal_batch_header::BatchHeader;
 
-    type CurrentNetwork = console::network::Testnet3;
+    type CurrentNetwork = console::network::MainnetV0;
 
     #[test]
     fn test_max_transmissions() {

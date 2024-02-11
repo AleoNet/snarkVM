@@ -22,9 +22,7 @@ impl<N: Network> Header<N> {
         ratified_finalize_operations: Vec<FinalizeOperation<N>>,
     ) -> Result<Self> {
         #[cfg(not(debug_assertions))]
-        ensure!(!ratifications.is_empty(), "The genesis block must not contain ratifications");
-        #[cfg(not(debug_assertions))]
-        ensure!(ratifications.len() == 1, "The genesis block must not contain 1 ratification");
+        ensure!(ratifications.len() == 1, "The genesis block must contain exactly 1 ratification");
         #[cfg(not(debug_assertions))]
         ensure!(!ratified_finalize_operations.is_empty(), "The genesis block must contain ratify-finalize operations");
 
@@ -71,9 +69,9 @@ impl<N: Network> Header<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use console::network::Testnet3;
+    use console::network::MainnetV0;
 
-    type CurrentNetwork = Testnet3;
+    type CurrentNetwork = MainnetV0;
 
     /// Returns the expected block header size by summing its subcomponent sizes.
     /// Update this method if the contents of a block header have changed.

@@ -661,11 +661,11 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Typ
 mod tests {
     use super::*;
     use console::{
-        network::Testnet3,
+        network::MainnetV0,
         program::{Locator, ValueType},
     };
 
-    type CurrentNetwork = Testnet3;
+    type CurrentNetwork = MainnetV0;
 
     #[test]
     fn test_program_mapping() -> Result<()> {

@@ -4,22 +4,22 @@ outputs:
   execute:
     timelock.aleo/lock:
       outputs:
-      - '{"type":"future","id":"7519916640716130495448528557347618353867911739810990318131281151848970103498field","value":"{\n  program_id: timelock.aleo,\n  function_name: lock,\n  arguments: []\n}"}'
+      - '{"type":"future","id":"5672658027601092821150632972624132536122029882218363630138745076773379462255field","value":"{\n  program_id: timelock.aleo,\n  function_name: lock,\n  arguments: []\n}"}'
   speculate: the execution was rejected
   add_next_block: succeeded.
 - verified: true
   execute:
     timelock.aleo/lock:
       outputs:
-      - '{"type":"future","id":"1692329568288717165704659211644970574488153730247332824408199047029733666363field","value":"{\n  program_id: timelock.aleo,\n  function_name: lock,\n  arguments: []\n}"}'
+      - '{"type":"future","id":"1309583359781052742370984261699469991508636898906015087862071776472698441892field","value":"{\n  program_id: timelock.aleo,\n  function_name: lock,\n  arguments: []\n}"}'
   speculate: the execution was rejected
   add_next_block: succeeded.
 additional:
 - child_outputs:
     credits.aleo/fee_public:
       outputs:
-      - '{"type":"future","id":"945360682200179475934660913543316288826823363735980525242738043528572749037field","value":"{\n  program_id: credits.aleo,\n  function_name: fee_public,\n  arguments: [\n    aleo12tksdptp7hvxly8tkm3um08fvf53qpehsgdgqfvy9pe3sewcq5ysjg5myy,\n    2196u64\n  ]\n}"}'
+      - '{"type":"future","id":"651337484339032269160121054560086838303223967284342562550571699484082802926field","value":"{\n  program_id: credits.aleo,\n  function_name: fee_public,\n  arguments: [\n    aleo12tksdptp7hvxly8tkm3um08fvf53qpehsgdgqfvy9pe3sewcq5ysjg5myy,\n    2196u64\n  ]\n}"}'
 - child_outputs:
     credits.aleo/fee_public:
       outputs:
-      - '{"type":"future","id":"4407865525570721713881622682558869732652022922248324986891224724282763545029field","value":"{\n  program_id: credits.aleo,\n  function_name: fee_public,\n  arguments: [\n    aleo12tksdptp7hvxly8tkm3um08fvf53qpehsgdgqfvy9pe3sewcq5ysjg5myy,\n    2196u64\n  ]\n}"}'
+      - '{"type":"future","id":"7443982931975690101989710049485828676544650952612755258270206826459548145627field","value":"{\n  program_id: credits.aleo,\n  function_name: fee_public,\n  arguments: [\n    aleo12tksdptp7hvxly8tkm3um08fvf53qpehsgdgqfvy9pe3sewcq5ysjg5myy,\n    2196u64\n  ]\n}"}'

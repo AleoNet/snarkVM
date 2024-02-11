@@ -239,17 +239,17 @@ mod tests {
                     // Compute the deployment ID.
                     let deployment_id = deployment.to_deployment_id().unwrap();
                     // Verify the fee.
-                    assert!(process.verify_fee(&fee, deployment_id).is_ok());
+                    process.verify_fee(&fee, deployment_id).unwrap();
                 }
                 Transaction::Execute(_, execution, fee) => {
                     // Compute the execution ID.
                     let execution_id = execution.to_execution_id().unwrap();
                     // Verify the fee.
-                    assert!(process.verify_fee(&fee.unwrap(), execution_id).is_ok());
+                    process.verify_fee(&fee.unwrap(), execution_id).unwrap();
                 }
                 Transaction::Fee(_, fee) => match fee.is_fee_private() {
-                    true => assert!(process.verify_fee_private(&&fee).is_ok()),
-                    false => assert!(process.verify_fee_public(&&fee).is_ok()),
+                    true => process.verify_fee_private(&&fee).unwrap(),
+                    false => process.verify_fee_public(&&fee).unwrap(),
                 },
             }
         }

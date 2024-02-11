@@ -164,9 +164,9 @@ impl<N: Network> Request<N> {
 #[cfg(test)]
 mod test_helpers {
     use super::*;
-    use snarkvm_console_network::Testnet3;
+    use snarkvm_console_network::MainnetV0;
 
-    type CurrentNetwork = Testnet3;
+    type CurrentNetwork = MainnetV0;
 
     const ITERATIONS: u64 = 1000;
 

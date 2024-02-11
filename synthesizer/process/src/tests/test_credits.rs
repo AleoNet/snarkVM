@@ -16,7 +16,7 @@ use crate::Process;
 use circuit::network::AleoV0;
 use console::{
     account::{Address, PrivateKey},
-    network::{prelude::*, Testnet3},
+    network::{prelude::*, MainnetV0},
     program::{Identifier, Literal, Plaintext, ProgramID, Value},
     types::U64,
 };
@@ -34,7 +34,7 @@ use synthesizer_program::{FinalizeGlobalState, FinalizeStoreTrait, Program};
 
 use indexmap::IndexMap;
 
-type CurrentNetwork = Testnet3;
+type CurrentNetwork = MainnetV0;
 type CurrentAleo = AleoV0;
 
 const NUM_BLOCKS_TO_UNLOCK: u32 = 360;

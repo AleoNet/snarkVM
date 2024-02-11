@@ -119,7 +119,7 @@ pub mod test_helpers {
     use super::*;
     use console::prelude::{TestRng, Uniform};
 
-    pub type CurrentNetwork = console::network::Testnet3;
+    pub type CurrentNetwork = console::network::MainnetV0;
 
     /// Returns a sample beacon authority.
     pub fn sample_beacon_authority(rng: &mut TestRng) -> Authority<CurrentNetwork> {

@@ -226,11 +226,11 @@ impl<N: Network> BatchCertificate<N> {
 #[cfg(any(test, feature = "test-helpers"))]
 pub mod test_helpers {
     use super::*;
-    use console::{account::PrivateKey, network::Testnet3, prelude::TestRng, types::Field};
+    use console::{account::PrivateKey, network::MainnetV0, prelude::TestRng, types::Field};
 
     use indexmap::IndexSet;
 
-    type CurrentNetwork = Testnet3;
+    type CurrentNetwork = MainnetV0;
 
     /// Returns a sample batch certificate, sampled at random.
     pub fn sample_batch_certificate(rng: &mut TestRng) -> BatchCertificate<CurrentNetwork> {
@@ -317,7 +317,7 @@ pub mod test_helpers {
 mod tests {
     use super::*;
 
-    type CurrentNetwork = console::network::Testnet3;
+    type CurrentNetwork = console::network::MainnetV0;
 
     #[test]
     fn test_maximum_signatures() {

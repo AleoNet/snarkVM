@@ -65,7 +65,7 @@ pub(super) mod tests {
     use console::account::{Address, PrivateKey};
     use ledger_coinbase::{PartialSolution, ProverSolution, PuzzleCommitment, PuzzleProof};
 
-    type CurrentNetwork = console::network::Testnet3;
+    type CurrentNetwork = console::network::MainnetV0;
 
     pub(crate) fn sample_solutions(rng: &mut TestRng) -> Solutions<CurrentNetwork> {
         // Sample a new solutions.

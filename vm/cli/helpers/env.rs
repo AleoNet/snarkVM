@@ -18,7 +18,7 @@ use anyhow::{anyhow, Result};
 
 fn env_template() -> String {
     r#"
-NETWORK=testnet3
+NETWORK=mainnet
 PRIVATE_KEY={{PASTE_YOUR_PRIVATE_KEY_HERE}}
 "#
     .to_string()
