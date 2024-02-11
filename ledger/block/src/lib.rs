@@ -126,7 +126,10 @@ impl<N: Network> Block<N> {
         aborted_transaction_ids: Vec<N::TransactionID>,
     ) -> Result<Self> {
         // Ensure the block contains transactions.
-        ensure!(!transactions.is_empty(), "Cannot create a block with zero transactions");
+        ensure!(
+            !transactions.is_empty() || !aborted_transaction_ids.is_empty(),
+            "Cannot create a block with zero transactions"
+        );
 
         // Ensure the number of transactions is within the allowed range.
         if transactions.len() > Transactions::<N>::MAX_TRANSACTIONS {
