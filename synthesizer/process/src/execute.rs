@@ -63,7 +63,7 @@ mod tests {
     use super::*;
     use console::types::Address;
 
-    type CurrentNetwork = console::network::Testnet3;
+    type CurrentNetwork = console::network::MainnetV0;
     type CurrentAleo = circuit::AleoV0;
 
     #[test]

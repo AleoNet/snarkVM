@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-    <a href="https://circleci.com/gh/AleoHQ/snarkVM"><img src="https://dl.circleci.com/status-badge/img/gh/AleoHQ/snarkVM/tree/testnet3.svg?style=svg"></a>
+    <a href="https://circleci.com/gh/AleoHQ/snarkVM"><img src="https://dl.circleci.com/status-badge/img/gh/AleoHQ/snarkVM/tree/mainnet.svg?style=svg"></a>
     <a href="https://codecov.io/gh/AleoHQ/snarkVM"><img src="https://codecov.io/gh/AleoHQ/snarkVM/branch/master/graph/badge.svg?token=cck8tS9HpO"/></a>
     <a href="https://discord.gg/aleo"><img src="https://img.shields.io/discord/700454073459015690?logo=discord"/></a>
     <a href="https://twitter.com/AleoHQ"><img src="https://img.shields.io/twitter/follow/AleoHQ?style=social"/></a>

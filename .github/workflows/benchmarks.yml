@@ -3,7 +3,7 @@ name: Run snarkVM Benchmarks
 on:
   push:
     branches:
-      - 'testnet3'
+      - 'mainnet'
 
 jobs:
   # Run benchmarks and stores the output to a file

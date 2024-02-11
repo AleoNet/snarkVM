@@ -63,11 +63,11 @@ impl<N: Network> ProgramOwner<N> {
 #[cfg(test)]
 pub(crate) mod test_helpers {
     use super::*;
-    use snarkvm_console_network::Testnet3;
+    use snarkvm_console_network::MainnetV0;
 
     use once_cell::sync::OnceCell;
 
-    type CurrentNetwork = Testnet3;
+    type CurrentNetwork = MainnetV0;
 
     pub(crate) fn sample_program_owner() -> ProgramOwner<CurrentNetwork> {
         static INSTANCE: OnceCell<ProgramOwner<CurrentNetwork>> = OnceCell::new();

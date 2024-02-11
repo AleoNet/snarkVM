@@ -1125,11 +1125,11 @@ impl<N: Network, const VARIANT: u8> ToBytes for CastOperation<N, VARIANT> {
 mod tests {
     use super::*;
     use console::{
-        network::Testnet3,
+        network::MainnetV0,
         program::{Access, Identifier},
     };
 
-    type CurrentNetwork = Testnet3;
+    type CurrentNetwork = MainnetV0;
 
     #[test]
     fn test_parse() {

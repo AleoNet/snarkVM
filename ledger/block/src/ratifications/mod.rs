@@ -137,7 +137,7 @@ impl<N: Network> Ratifications<N> {
 pub mod test_helpers {
     use super::*;
 
-    type CurrentNetwork = console::network::Testnet3;
+    type CurrentNetwork = console::network::MainnetV0;
 
     /// Samples a block ratifications.
     pub(crate) fn sample_block_ratifications(rng: &mut TestRng) -> Ratifications<CurrentNetwork> {

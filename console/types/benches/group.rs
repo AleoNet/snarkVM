@@ -16,10 +16,10 @@
 extern crate criterion;
 
 use criterion::Criterion;
-use snarkvm_console_network::{environment::prelude::*, Testnet3};
+use snarkvm_console_network::{environment::prelude::*, MainnetV0};
 use snarkvm_console_types::{Field, Group};
 
-type CurrentNetwork = Testnet3;
+type CurrentNetwork = MainnetV0;
 
 fn group_from_field(c: &mut Criterion) {
     let rng = &mut TestRng::default();

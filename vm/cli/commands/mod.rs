@@ -44,5 +44,5 @@ use std::collections::HashMap;
 
 pub const LOCALE: &num_format::Locale = &num_format::Locale::en;
 
-pub(crate) type CurrentNetwork = crate::prelude::Testnet3;
+pub(crate) type CurrentNetwork = crate::prelude::MainnetV0;
 pub(crate) type Aleo = crate::circuit::AleoV0;

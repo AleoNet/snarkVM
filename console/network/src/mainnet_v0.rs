@@ -34,38 +34,38 @@ use snarkvm_console_algorithms::{
 
 lazy_static! {
     /// The group bases for the Aleo signature and encryption schemes.
-    pub static ref GENERATOR_G: Vec<Group<Testnet3>> = Testnet3::new_bases("AleoAccountEncryptionAndSignatureScheme0");
+    pub static ref GENERATOR_G: Vec<Group<MainnetV0 >> = MainnetV0::new_bases("AleoAccountEncryptionAndSignatureScheme0");
 
     /// The Varuna sponge parameters.
-    pub static ref VARUNA_FS_PARAMETERS: FiatShamirParameters<Testnet3> = FiatShamir::<Testnet3>::sample_parameters();
+    pub static ref VARUNA_FS_PARAMETERS: FiatShamirParameters<MainnetV0> = FiatShamir::<MainnetV0>::sample_parameters();
 
     /// The encryption domain as a constant field element.
-    pub static ref ENCRYPTION_DOMAIN: Field<Testnet3> = Field::<Testnet3>::new_domain_separator("AleoSymmetricEncryption0");
+    pub static ref ENCRYPTION_DOMAIN: Field<MainnetV0> = Field::<MainnetV0>::new_domain_separator("AleoSymmetricEncryption0");
     /// The graph key domain as a constant field element.
-    pub static ref GRAPH_KEY_DOMAIN: Field<Testnet3> = Field::<Testnet3>::new_domain_separator("AleoGraphKey0");
+    pub static ref GRAPH_KEY_DOMAIN: Field<MainnetV0> = Field::<MainnetV0>::new_domain_separator("AleoGraphKey0");
     /// The serial number domain as a constant field element.
-    pub static ref SERIAL_NUMBER_DOMAIN: Field<Testnet3> = Field::<Testnet3>::new_domain_separator("AleoSerialNumber0");
+    pub static ref SERIAL_NUMBER_DOMAIN: Field<MainnetV0> = Field::<MainnetV0>::new_domain_separator("AleoSerialNumber0");
 
     /// The BHP hash function, which can take an input of up to 256 bits.
-    pub static ref BHP_256: BHP256<Testnet3> = BHP256::<Testnet3>::setup("AleoBHP256").expect("Failed to setup BHP256");
+    pub static ref BHP_256: BHP256<MainnetV0> = BHP256::<MainnetV0>::setup("AleoBHP256").expect("Failed to setup BHP256");
     /// The BHP hash function, which can take an input of up to 512 bits.
-    pub static ref BHP_512: BHP512<Testnet3> = BHP512::<Testnet3>::setup("AleoBHP512").expect("Failed to setup BHP512");
+    pub static ref BHP_512: BHP512<MainnetV0> = BHP512::<MainnetV0>::setup("AleoBHP512").expect("Failed to setup BHP512");
     /// The BHP hash function, which can take an input of up to 768 bits.
-    pub static ref BHP_768: BHP768<Testnet3> = BHP768::<Testnet3>::setup("AleoBHP768").expect("Failed to setup BHP768");
+    pub static ref BHP_768: BHP768<MainnetV0> = BHP768::<MainnetV0>::setup("AleoBHP768").expect("Failed to setup BHP768");
     /// The BHP hash function, which can take an input of up to 1024 bits.
-    pub static ref BHP_1024: BHP1024<Testnet3> = BHP1024::<Testnet3>::setup("AleoBHP1024").expect("Failed to setup BHP1024");
+    pub static ref BHP_1024: BHP1024<MainnetV0> = BHP1024::<MainnetV0>::setup("AleoBHP1024").expect("Failed to setup BHP1024");
 
     /// The Pedersen hash function, which can take an input of up to 64 bits.
-    pub static ref PEDERSEN_64: Pedersen64<Testnet3> = Pedersen64::<Testnet3>::setup("AleoPedersen64");
+    pub static ref PEDERSEN_64: Pedersen64<MainnetV0> = Pedersen64::<MainnetV0>::setup("AleoPedersen64");
     /// The Pedersen hash function, which can take an input of up to 128 bits.
-    pub static ref PEDERSEN_128: Pedersen128<Testnet3> = Pedersen128::<Testnet3>::setup("AleoPedersen128");
+    pub static ref PEDERSEN_128: Pedersen128<MainnetV0> = Pedersen128::<MainnetV0>::setup("AleoPedersen128");
 
     /// The Poseidon hash function, using a rate of 2.
-    pub static ref POSEIDON_2: Poseidon2<Testnet3> = Poseidon2::<Testnet3>::setup("AleoPoseidon2").expect("Failed to setup Poseidon2");
+    pub static ref POSEIDON_2: Poseidon2<MainnetV0> = Poseidon2::<MainnetV0>::setup("AleoPoseidon2").expect("Failed to setup Poseidon2");
     /// The Poseidon hash function, using a rate of 4.
-    pub static ref POSEIDON_4: Poseidon4<Testnet3> = Poseidon4::<Testnet3>::setup("AleoPoseidon4").expect("Failed to setup Poseidon4");
+    pub static ref POSEIDON_4: Poseidon4<MainnetV0> = Poseidon4::<MainnetV0>::setup("AleoPoseidon4").expect("Failed to setup Poseidon4");
     /// The Poseidon hash function, using a rate of 8.
-    pub static ref POSEIDON_8: Poseidon8<Testnet3> = Poseidon8::<Testnet3>::setup("AleoPoseidon8").expect("Failed to setup Poseidon8");
+    pub static ref POSEIDON_8: Poseidon8<MainnetV0> = Poseidon8::<MainnetV0>::setup("AleoPoseidon8").expect("Failed to setup Poseidon8");
 
     pub static ref CREDITS_PROVING_KEYS: IndexMap<String, Arc<VarunaProvingKey<Console>>> = {
         let mut map = IndexMap::new();
@@ -82,9 +82,9 @@ lazy_static! {
 pub const TRANSACTION_PREFIX: &str = "at";
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct Testnet3;
+pub struct MainnetV0;
 
-impl Testnet3 {
+impl MainnetV0 {
     /// Initializes a new instance of group bases from a given input domain message.
     fn new_bases(message: &str) -> Vec<Group<Self>> {
         // Hash the given message to a point on the curve, to initialize the starting base.
@@ -101,7 +101,7 @@ impl Testnet3 {
     }
 }
 
-impl Environment for Testnet3 {
+impl Environment for MainnetV0 {
     type Affine = <Console as Environment>::Affine;
     type BigInteger = <Console as Environment>::BigInteger;
     type Field = <Console as Environment>::Field;
@@ -119,7 +119,7 @@ impl Environment for Testnet3 {
     const MONTGOMERY_B: Self::Field = Console::MONTGOMERY_B;
 }
 
-impl Network for Testnet3 {
+impl Network for MainnetV0 {
     /// The block hash type.
     type BlockHash = AleoID<Field<Self>, { hrp2!("ab") }>;
     /// The ratification ID type.
@@ -134,15 +134,15 @@ impl Network for Testnet3 {
     /// The network edition.
     const EDITION: u16 = 0;
     /// The network ID.
-    const ID: u16 = 3;
+    const ID: u16 = 0;
     /// The function name for the inclusion circuit.
-    const INCLUSION_FUNCTION_NAME: &'static str = snarkvm_parameters::testnet3::TESTNET3_INCLUSION_FUNCTION_NAME;
+    const INCLUSION_FUNCTION_NAME: &'static str = snarkvm_parameters::mainnet::TESTNET3_INCLUSION_FUNCTION_NAME;
     /// The network name.
-    const NAME: &'static str = "Aleo Testnet 3";
+    const NAME: &'static str = "Aleo Mainnet (v0)";
 
     /// Returns the genesis block bytes.
     fn genesis_bytes() -> &'static [u8] {
-        snarkvm_parameters::testnet3::GenesisBytes::load_bytes()
+        snarkvm_parameters::mainnet::GenesisBytes::load_bytes()
     }
 
     /// Returns the proving key for the given function name in `credits.aleo`.
@@ -165,7 +165,7 @@ impl Network for Testnet3 {
         INSTANCE.get_or_init(|| {
             // Skipping the first byte, which is the encoded version.
             Arc::new(
-                CircuitProvingKey::from_bytes_le(&snarkvm_parameters::testnet3::INCLUSION_PROVING_KEY[1..])
+                CircuitProvingKey::from_bytes_le(&snarkvm_parameters::mainnet::INCLUSION_PROVING_KEY[1..])
                     .expect("Failed to load inclusion proving key."),
             )
         })
@@ -177,7 +177,7 @@ impl Network for Testnet3 {
         INSTANCE.get_or_init(|| {
             // Skipping the first byte, which is the encoded version.
             Arc::new(
-                CircuitVerifyingKey::from_bytes_le(&snarkvm_parameters::testnet3::INCLUSION_VERIFYING_KEY[1..])
+                CircuitVerifyingKey::from_bytes_le(&snarkvm_parameters::mainnet::INCLUSION_VERIFYING_KEY[1..])
                     .expect("Failed to load inclusion verifying key."),
             )
         })
@@ -485,7 +485,7 @@ impl Network for Testnet3 {
 mod tests {
     use super::*;
 
-    type CurrentNetwork = Testnet3;
+    type CurrentNetwork = MainnetV0;
 
     #[test]
     fn test_g_scalar_multiply() {

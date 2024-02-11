@@ -49,7 +49,7 @@ impl<N: Network> Package<N> {
 mod tests {
     use super::*;
 
-    type CurrentNetwork = snarkvm_console::network::Testnet3;
+    type CurrentNetwork = snarkvm_console::network::MainnetV0;
     type CurrentAleo = snarkvm_circuit::network::AleoV0;
 
     #[test]

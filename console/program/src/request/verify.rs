@@ -211,9 +211,9 @@ impl<N: Network> Request<N> {
 mod tests {
     use super::*;
     use snarkvm_console_account::PrivateKey;
-    use snarkvm_console_network::Testnet3;
+    use snarkvm_console_network::MainnetV0;
 
-    type CurrentNetwork = Testnet3;
+    type CurrentNetwork = MainnetV0;
 
     pub(crate) const ITERATIONS: usize = 1000;
 

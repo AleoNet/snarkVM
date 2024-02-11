@@ -68,12 +68,12 @@ impl<N: Network> TransmissionID<N> {
 pub mod test_helpers {
     use super::*;
     use console::{
-        network::Testnet3,
+        network::MainnetV0,
         prelude::{Rng, TestRng, Uniform},
         types::Field,
     };
 
-    type CurrentNetwork = Testnet3;
+    type CurrentNetwork = MainnetV0;
 
     /// Returns a list of sample transmission IDs, sampled at random.
     pub fn sample_transmission_ids(rng: &mut TestRng) -> Vec<TransmissionID<CurrentNetwork>> {

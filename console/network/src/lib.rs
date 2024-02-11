@@ -25,8 +25,8 @@ pub use snarkvm_console_network_environment::*;
 mod helpers;
 pub use helpers::*;
 
-mod testnet3;
-pub use testnet3::*;
+mod mainnet_v0;
+pub use mainnet_v0::*;
 
 pub mod prelude {
     pub use crate::{environment::prelude::*, Network};

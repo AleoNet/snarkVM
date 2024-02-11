@@ -208,7 +208,7 @@ mod tests {
 
     use crate::{Function, Instruction};
 
-    type CurrentNetwork = console::network::Testnet3;
+    type CurrentNetwork = console::network::MainnetV0;
 
     #[test]
     fn test_add_input() {

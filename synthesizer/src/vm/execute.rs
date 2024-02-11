@@ -208,7 +208,7 @@ mod tests {
     use super::*;
     use console::{
         account::{Address, ViewKey},
-        network::Testnet3,
+        network::MainnetV0,
         program::{Ciphertext, Value},
         types::Field,
     };
@@ -217,7 +217,7 @@ mod tests {
 
     use indexmap::IndexMap;
 
-    type CurrentNetwork = Testnet3;
+    type CurrentNetwork = MainnetV0;
 
     fn prepare_vm(
         rng: &mut TestRng,

@@ -29,7 +29,7 @@ use std::{
 };
 use test_strategy::proptest;
 
-type CurrentNetwork = console::network::Testnet3;
+type CurrentNetwork = console::network::MainnetV0;
 
 #[derive(Debug, Clone)]
 pub struct Validator {

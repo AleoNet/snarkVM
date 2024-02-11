@@ -16,11 +16,11 @@
 extern crate criterion;
 
 use snarkvm_console_account::{Address, PrivateKey, ViewKey};
-use snarkvm_console_network::{environment::prelude::*, Testnet3};
+use snarkvm_console_network::{environment::prelude::*, MainnetV0};
 
 use criterion::Criterion;
 
-type CurrentNetwork = Testnet3;
+type CurrentNetwork = MainnetV0;
 
 fn account_private_key(c: &mut Criterion) {
     let rng = &mut TestRng::default();

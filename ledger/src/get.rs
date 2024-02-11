@@ -247,9 +247,9 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
 mod tests {
     use super::*;
     use crate::test_helpers::CurrentLedger;
-    use console::network::Testnet3;
+    use console::network::MainnetV0;
 
-    type CurrentNetwork = Testnet3;
+    type CurrentNetwork = MainnetV0;
 
     #[test]
     fn test_get_block() {

@@ -19,29 +19,29 @@ extern crate criterion;
 
 use console::{
     account::*,
-    network::{Network, Testnet3},
+    network::{MainnetV0, Network},
 };
 use snarkvm_ledger_coinbase::{CoinbasePuzzle, CoinbaseSolution, EpochChallenge, PuzzleConfig};
 
 use criterion::Criterion;
 use rand::{self, thread_rng, CryptoRng, RngCore};
 
-type CoinbasePuzzleInst = CoinbasePuzzle<Testnet3>;
+type CoinbasePuzzleInst = CoinbasePuzzle<MainnetV0>;
 
 fn sample_inputs(
     degree: u32,
     rng: &mut (impl CryptoRng + RngCore),
-) -> (EpochChallenge<Testnet3>, Address<Testnet3>, u64) {
+) -> (EpochChallenge<MainnetV0>, Address<MainnetV0>, u64) {
     let epoch_challenge = sample_epoch_challenge(degree, rng);
     let (address, nonce) = sample_address_and_nonce(rng);
     (epoch_challenge, address, nonce)
 }
 
-fn sample_epoch_challenge(degree: u32, rng: &mut (impl CryptoRng + RngCore)) -> EpochChallenge<Testnet3> {
+fn sample_epoch_challenge(degree: u32, rng: &mut (impl CryptoRng + RngCore)) -> EpochChallenge<MainnetV0> {
     EpochChallenge::new(rng.next_u32(), Default::default(), degree).unwrap()
 }
 
-fn sample_address_and_nonce(rng: &mut (impl CryptoRng + RngCore)) -> (Address<Testnet3>, u64) {
+fn sample_address_and_nonce(rng: &mut (impl CryptoRng + RngCore)) -> (Address<MainnetV0>, u64) {
     let private_key = PrivateKey::new(rng).unwrap();
     let address = Address::try_from(private_key).unwrap();
     let nonce = rng.next_u64();
@@ -52,7 +52,7 @@ fn sample_address_and_nonce(rng: &mut (impl CryptoRng + RngCore)) -> (Address<Te
 fn coinbase_puzzle_trim(c: &mut Criterion) {
     let max_degree = 1 << 15;
     let max_config = PuzzleConfig { degree: max_degree };
-    let universal_srs = CoinbasePuzzle::<Testnet3>::setup(max_config).unwrap();
+    let universal_srs = CoinbasePuzzle::<MainnetV0>::setup(max_config).unwrap();
 
     for degree in [(1 << 13) - 1] {
         let config = PuzzleConfig { degree };
@@ -69,7 +69,7 @@ fn coinbase_puzzle_prove(c: &mut Criterion) {
 
     let max_degree = 1 << 15;
     let max_config = PuzzleConfig { degree: max_degree };
-    let universal_srs = CoinbasePuzzle::<Testnet3>::setup(max_config).unwrap();
+    let universal_srs = CoinbasePuzzle::<MainnetV0>::setup(max_config).unwrap();
 
     for degree in [(1 << 13) - 1] {
         let config = PuzzleConfig { degree };
@@ -88,14 +88,14 @@ fn coinbase_puzzle_verify(c: &mut Criterion) {
 
     let max_degree = 1 << 15;
     let max_config = PuzzleConfig { degree: max_degree };
-    let universal_srs = CoinbasePuzzle::<Testnet3>::setup(max_config).unwrap();
+    let universal_srs = CoinbasePuzzle::<MainnetV0>::setup(max_config).unwrap();
 
     for degree in [(1 << 13) - 1] {
         let config = PuzzleConfig { degree };
         let puzzle = CoinbasePuzzleInst::trim(&universal_srs, config).unwrap();
         let epoch_challenge = sample_epoch_challenge(degree, rng);
 
-        for batch_size in [10, 100, <Testnet3 as Network>::MAX_SOLUTIONS] {
+        for batch_size in [10, 100, <MainnetV0 as Network>::MAX_SOLUTIONS] {
             let solutions = (0..batch_size)
                 .map(|_| {
                     let (address, nonce) = sample_address_and_nonce(rng);

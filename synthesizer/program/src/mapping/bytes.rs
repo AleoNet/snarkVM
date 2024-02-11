@@ -45,9 +45,9 @@ impl<N: Network> ToBytes for Mapping<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use console::network::Testnet3;
+    use console::network::MainnetV0;
 
-    type CurrentNetwork = Testnet3;
+    type CurrentNetwork = MainnetV0;
 
     #[test]
     fn test_mapping_bytes() -> Result<()> {
