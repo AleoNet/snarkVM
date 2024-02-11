@@ -139,7 +139,6 @@ impl<N: Network> Block<N> {
         previous_round: u64,
         previous_height: u32,
         current_committee_lookback: &Committee<N>,
-        committee_with_lag: &Committee<N>,
     ) -> Result<(u64, u32, i64, Vec<N::TransactionID>)> {
         // Note: Do not remove this. This ensures that all blocks after genesis are quorum blocks.
         #[cfg(not(any(test, feature = "test")))]
