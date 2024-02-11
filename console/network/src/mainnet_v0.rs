@@ -136,7 +136,7 @@ impl Network for MainnetV0 {
     /// The network ID.
     const ID: u16 = 0;
     /// The function name for the inclusion circuit.
-    const INCLUSION_FUNCTION_NAME: &'static str = snarkvm_parameters::mainnet::TESTNET3_INCLUSION_FUNCTION_NAME;
+    const INCLUSION_FUNCTION_NAME: &'static str = snarkvm_parameters::mainnet::NETWORK_INCLUSION_FUNCTION_NAME;
     /// The network name.
     const NAME: &'static str = "Aleo Mainnet (v0)";
 

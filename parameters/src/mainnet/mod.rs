@@ -149,7 +149,7 @@ impl_remote!(InclusionProver, REMOTE_URL, "resources/", "inclusion", "prover");
 impl_local!(InclusionVerifier, "resources/", "inclusion", "verifier");
 
 /// The function name for the inclusion circuit.
-pub const TESTNET3_INCLUSION_FUNCTION_NAME: &str = "inclusion";
+pub const NETWORK_INCLUSION_FUNCTION_NAME: &str = "inclusion";
 
 lazy_static! {
     pub static ref INCLUSION_PROVING_KEY: Vec<u8> =
