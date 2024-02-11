@@ -75,6 +75,6 @@ mod tests {
 
     #[test]
     fn check_ratify_size() {
-        assert_eq!(std::mem::size_of::<Ratify<console::network::Testnet3>>(), 32);
+        assert_eq!(std::mem::size_of::<Ratify<console::network::MainnetV0>>(), 32);
     }
 }
