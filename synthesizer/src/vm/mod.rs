@@ -361,8 +361,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 // Disable the atomic batch override.
                 #[cfg(feature = "rocks")]
                 assert!(!self.block_store().flip_atomic_override()?);
-                // Rollback the block (only applies to in-memory storage).
-                #[cfg(not(feature = "rocks"))]
+                // Rollback the block.
                 self.block_store().remove_last_n(1).map_err(|removal_error| {
                     // Log the finalize error.
                     error!("Failed to finalize block {} - {finalize_error}", block.height());
