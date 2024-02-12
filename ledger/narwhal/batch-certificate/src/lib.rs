@@ -28,29 +28,18 @@ use narwhal_batch_header::BatchHeader;
 use narwhal_transmission_id::TransmissionID;
 
 use core::hash::{Hash, Hasher};
-use indexmap::{IndexMap, IndexSet};
+use indexmap::IndexSet;
 use std::collections::HashSet;
 
 #[cfg(not(feature = "serial"))]
 use rayon::prelude::*;
 
 #[derive(Clone)]
-pub enum BatchCertificate<N: Network> {
-    // TODO (howardwu): For mainnet - Delete V1 and switch everyone to V2 as the default.
-    V1 {
-        /// The certificate ID.
-        certificate_id: Field<N>,
-        /// The batch header.
-        batch_header: BatchHeader<N>,
-        /// The `(signature, timestamp)` pairs for the batch ID from the committee.
-        signatures: IndexMap<Signature<N>, i64>,
-    },
-    V2 {
-        /// The batch header.
-        batch_header: BatchHeader<N>,
-        /// The signatures for the batch ID from the committee.
-        signatures: IndexSet<Signature<N>>,
-    },
+pub struct BatchCertificate<N: Network> {
+    /// The batch header.
+    batch_header: BatchHeader<N>,
+    /// The signatures for the batch ID from the committee.
+    signatures: IndexSet<Signature<N>>,
 }
 
 impl<N: Network> BatchCertificate<N> {
@@ -59,48 +48,6 @@ impl<N: Network> BatchCertificate<N> {
 }
 
 impl<N: Network> BatchCertificate<N> {
-    // TODO (howardwu): For mainnet - Delete V1 and switch everyone to V2 as the default.
-    /// Initializes a (deprecated) V1 batch certificate.
-    pub fn from_v1_deprecated(
-        certificate_id: Field<N>,
-        batch_header: BatchHeader<N>,
-        signatures: IndexMap<Signature<N>, i64>,
-    ) -> Result<Self> {
-        /// Returns the certificate ID.
-        fn compute_certificate_id<N: Network>(
-            batch_id: Field<N>,
-            signatures: &IndexMap<Signature<N>, i64>,
-        ) -> Result<Field<N>> {
-            let mut preimage = Vec::new();
-            // Insert the batch ID.
-            batch_id.write_le(&mut preimage)?;
-            // Insert the signatures.
-            for (signature, timestamp) in signatures {
-                // Insert the signature.
-                signature.write_le(&mut preimage)?;
-                // Insert the timestamp.
-                timestamp.write_le(&mut preimage)?;
-            }
-            // Hash the preimage.
-            N::hash_bhp1024(&preimage.to_bits_le())
-        }
-        // Ensure that the number of signatures is within bounds.
-        ensure!(signatures.len() <= Self::MAX_SIGNATURES as usize, "Invalid number of signatures");
-        // Compute the certificate ID.
-        if certificate_id != compute_certificate_id(batch_header.batch_id(), &signatures)? {
-            bail!("Invalid batch certificate ID")
-        }
-        // Verify the signatures are valid.
-        for (signature, timestamp) in &signatures {
-            let preimage = [batch_header.batch_id(), Field::from_u64(*timestamp as u64)];
-            if !signature.verify(&signature.to_address(), &preimage) {
-                bail!("Invalid batch certificate signature")
-            }
-        }
-        // Return the V1 batch certificate.
-        Ok(Self::V1 { certificate_id, batch_header, signatures })
-    }
-
     /// Initializes a new batch certificate.
     pub fn from(batch_header: BatchHeader<N>, signatures: IndexSet<Signature<N>>) -> Result<Self> {
         // Ensure that the number of signatures is within bounds.
@@ -130,7 +77,7 @@ impl<N: Network> BatchCertificate<N> {
         // Ensure the signatures are not empty.
         ensure!(!signatures.is_empty(), "Batch certificate must contain signatures");
         // Return the batch certificate.
-        Ok(Self::V2 { batch_header, signatures })
+        Ok(Self { batch_header, signatures })
     }
 }
 
@@ -144,36 +91,19 @@ impl<N: Network> Eq for BatchCertificate<N> {}
 
 impl<N: Network> Hash for BatchCertificate<N> {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        match self {
-            Self::V1 { batch_header, signatures, .. } => {
-                batch_header.batch_id().hash(state);
-                (signatures.len() as u64).hash(state);
-                for signature in signatures.iter() {
-                    signature.hash(state);
-                }
-            }
-            Self::V2 { batch_header, .. } => {
-                batch_header.batch_id().hash(state);
-            }
-        }
+        self.batch_header.batch_id().hash(state);
     }
 }
 
 impl<N: Network> BatchCertificate<N> {
     /// Returns the certificate ID.
     pub const fn id(&self) -> Field<N> {
-        match self {
-            Self::V1 { certificate_id, .. } => *certificate_id,
-            Self::V2 { batch_header, .. } => batch_header.batch_id(),
-        }
+        self.batch_header.batch_id()
     }
 
     /// Returns the batch header.
     pub const fn batch_header(&self) -> &BatchHeader<N> {
-        match self {
-            Self::V1 { batch_header, .. } => batch_header,
-            Self::V2 { batch_header, .. } => batch_header,
-        }
+        &self.batch_header
     }
 
     /// Returns the batch ID.
@@ -203,23 +133,12 @@ impl<N: Network> BatchCertificate<N> {
 
     /// Returns the timestamp of the batch header.
     pub fn timestamp(&self) -> i64 {
-        match self {
-            Self::V1 { batch_header, signatures, .. } => {
-                // Return the median timestamp.
-                let mut timestamps = signatures.values().copied().chain([batch_header.timestamp()]).collect::<Vec<_>>();
-                timestamps.sort_unstable();
-                timestamps[timestamps.len() / 2]
-            }
-            Self::V2 { batch_header, .. } => batch_header.timestamp(),
-        }
+        self.batch_header().timestamp()
     }
 
     /// Returns the signatures of the batch ID from the committee.
     pub fn signatures(&self) -> Box<dyn '_ + ExactSizeIterator<Item = &Signature<N>>> {
-        match self {
-            Self::V1 { signatures, .. } => Box::new(signatures.keys()),
-            Self::V2 { signatures, .. } => Box::new(signatures.iter()),
-        }
+        Box::new(self.signatures.iter())
     }
 }
 

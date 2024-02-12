@@ -27,12 +27,12 @@ pub enum FinalizeOperation<N: Network> {
     /// Inserts a key-value leaf into the mapping tree,
     /// as (`mapping ID`, `key ID`, `value ID`).
     InsertKeyValue(Field<N>, Field<N>, Field<N>),
-    /// Updates the key-value leaf at the given index in the mapping tree,
-    /// as (`mapping ID`, `index`, `key ID`, `value ID`).
-    UpdateKeyValue(Field<N>, u64, Field<N>, Field<N>),
-    /// Removes the key-value leaf at the given index in the mapping tree,
-    /// as (`mapping ID`, `index`).
-    RemoveKeyValue(Field<N>, u64),
+    /// Updates the key-value leaf in the mapping tree,
+    /// as (`mapping ID`, `key ID`, `value ID`).
+    UpdateKeyValue(Field<N>, Field<N>, Field<N>),
+    /// Removes the key-value leaf in the mapping tree,
+    /// as (`mapping ID`, `key ID`).
+    RemoveKeyValue(Field<N>, Field<N>),
     /// Replaces a mapping from the program tree, as (`mapping ID`).
     ReplaceMapping(Field<N>),
     /// Removes a mapping from the program tree, as (`mapping ID`).
@@ -58,12 +58,12 @@ pub(crate) mod test_helpers {
 
     /// Samples a random `UpdateKeyValue`.
     pub(crate) fn sample_update_key_value(rng: &mut TestRng) -> FinalizeOperation<CurrentNetwork> {
-        FinalizeOperation::UpdateKeyValue(Uniform::rand(rng), rng.gen(), Uniform::rand(rng), Uniform::rand(rng))
+        FinalizeOperation::UpdateKeyValue(Uniform::rand(rng), Uniform::rand(rng), Uniform::rand(rng))
     }
 
     /// Samples a random `RemoveKeyValue`.
     pub(crate) fn sample_remove_key_value(rng: &mut TestRng) -> FinalizeOperation<CurrentNetwork> {
-        FinalizeOperation::RemoveKeyValue(Uniform::rand(rng), rng.gen())
+        FinalizeOperation::RemoveKeyValue(Uniform::rand(rng), Uniform::rand(rng))
     }
 
     /// Samples a random `ReplaceMapping`.
