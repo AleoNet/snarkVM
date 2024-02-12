@@ -24,93 +24,42 @@ impl<N: Network> FromBytes for BatchCertificate<N> {
             return Err(error("Invalid batch certificate version"));
         }
 
-        if version == 1 {
-            // Read the certificate ID.
-            let certificate_id = Field::read_le(&mut reader)?;
-            // Read the batch header.
-            let batch_header = BatchHeader::read_le(&mut reader)?;
-            // Read the number of signatures.
-            let num_signatures = u32::read_le(&mut reader)?;
-            // Ensure the number of signatures is within bounds.
-            if num_signatures > Self::MAX_SIGNATURES as u32 {
-                return Err(error(format!(
-                    "Number of signatures ({num_signatures}) exceeds the maximum ({})",
-                    Self::MAX_SIGNATURES
-                )));
-            }
-            // Read the signatures.
-            let mut signatures = IndexMap::with_capacity(num_signatures as usize);
-            for _ in 0..num_signatures {
-                // Read the signature.
-                let signature = Signature::read_le(&mut reader)?;
-                // Read the timestamp.
-                let timestamp = i64::read_le(&mut reader)?;
-                // Insert the signature and timestamp.
-                signatures.insert(signature, timestamp);
-            }
-            // Return the batch certificate.
-            Self::from_v1_deprecated(certificate_id, batch_header, signatures).map_err(error)
-        } else if version == 2 {
-            // Read the batch header.
-            let batch_header = BatchHeader::read_le(&mut reader)?;
-            // Read the number of signatures.
-            let num_signatures = u16::read_le(&mut reader)?;
-            // Ensure the number of signatures is within bounds.
-            if num_signatures > Self::MAX_SIGNATURES {
-                return Err(error(format!(
-                    "Number of signatures ({num_signatures}) exceeds the maximum ({})",
-                    Self::MAX_SIGNATURES
-                )));
-            }
-            // Read the signature bytes.
-            let mut signature_bytes = vec![0u8; num_signatures as usize * Signature::<N>::size_in_bytes()];
-            reader.read_exact(&mut signature_bytes)?;
-            // Read the signatures.
-            let signatures = cfg_chunks!(signature_bytes, Signature::<N>::size_in_bytes())
-                .map(Signature::read_le)
-                .collect::<Result<IndexSet<_>, _>>()?;
-            // Return the batch certificate.
-            Self::from(batch_header, signatures).map_err(error)
-        } else {
-            unreachable!("Invalid batch certificate version")
+        // Read the batch header.
+        let batch_header = BatchHeader::read_le(&mut reader)?;
+        // Read the number of signatures.
+        let num_signatures = u16::read_le(&mut reader)?;
+        // Ensure the number of signatures is within bounds.
+        if num_signatures > Self::MAX_SIGNATURES {
+            return Err(error(format!(
+                "Number of signatures ({num_signatures}) exceeds the maximum ({})",
+                Self::MAX_SIGNATURES
+            )));
         }
+        // Read the signature bytes.
+        let mut signature_bytes = vec![0u8; num_signatures as usize * Signature::<N>::size_in_bytes()];
+        reader.read_exact(&mut signature_bytes)?;
+        // Read the signatures.
+        let signatures = cfg_chunks!(signature_bytes, Signature::<N>::size_in_bytes())
+            .map(Signature::read_le)
+            .collect::<Result<IndexSet<_>, _>>()?;
+        // Return the batch certificate.
+        Self::from(batch_header, signatures).map_err(error)
     }
 }
 
 impl<N: Network> ToBytes for BatchCertificate<N> {
     /// Writes the batch certificate to the buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        match self {
-            Self::V1 { certificate_id, batch_header, signatures } => {
-                // Write the version.
-                1u8.write_le(&mut writer)?;
-                // Write the certificate ID.
-                certificate_id.write_le(&mut writer)?;
-                // Write the batch header.
-                batch_header.write_le(&mut writer)?;
-                // Write the number of signatures.
-                u32::try_from(signatures.len()).map_err(error)?.write_le(&mut writer)?;
-                // Write the signatures.
-                for (signature, timestamp) in signatures.iter() {
-                    // Write the signature.
-                    signature.write_le(&mut writer)?;
-                    // Write the timestamp.
-                    timestamp.write_le(&mut writer)?;
-                }
-            }
-            Self::V2 { batch_header, signatures } => {
-                // Write the version.
-                2u8.write_le(&mut writer)?;
-                // Write the batch header.
-                batch_header.write_le(&mut writer)?;
-                // Write the number of signatures.
-                u16::try_from(signatures.len()).map_err(error)?.write_le(&mut writer)?;
-                // Write the signatures.
-                for signature in signatures.iter() {
-                    // Write the signature.
-                    signature.write_le(&mut writer)?;
-                }
-            }
+        // Write the version.
+        1u8.write_le(&mut writer)?;
+        // Write the batch header.
+        self.batch_header.write_le(&mut writer)?;
+        // Write the number of signatures.
+        u16::try_from(self.signatures.len()).map_err(error)?.write_le(&mut writer)?;
+        // Write the signatures.
+        for signature in self.signatures.iter() {
+            // Write the signature.
+            signature.write_le(&mut writer)?;
         }
         Ok(())
     }
