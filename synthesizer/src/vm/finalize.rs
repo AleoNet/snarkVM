@@ -902,7 +902,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     // Update the public balances.
                     finalize_operations.extend(&[
                         // Update the public balances in storage.
-                        store.replace_mapping(program_id, account_mapping, public_balances.clone())?,
+                        store.replace_mapping(program_id, account_mapping, public_balances)?,
                     ]);
 
                     // Set the genesis ratification flag.
@@ -2593,5 +2593,151 @@ finalize compute:
 
         // Add the block.
         vm.add_next_block(&block).unwrap();
+    }
+
+    #[test]
+    fn test_ratify_genesis_with_closed_validator() {
+        // Sample an RNG.
+        let rng = &mut TestRng::default();
+
+        // Initialize the VM.
+        let vm =
+            VM::from(ConsensusStore::<CurrentNetwork, ConsensusMemory<CurrentNetwork>>::open(None).unwrap()).unwrap();
+
+        // Initialize the validators, with one closed.
+        let validators = (0..4)
+            .map(|i| {
+                let private_key = PrivateKey::new(rng).unwrap();
+                let amount = MIN_VALIDATOR_STAKE;
+                let is_open = i != 0;
+                (private_key, (amount, is_open))
+            })
+            .collect::<IndexMap<_, _>>();
+
+        // Initialize a potential delegator.
+        let delegator_key = PrivateKey::new(rng).unwrap();
+        let delegator_address = Address::try_from(delegator_key).unwrap();
+
+        // Track the allocated amount.
+        let mut allocated_amount = 0;
+
+        // Construct the committee.
+        let mut committee_map = IndexMap::new();
+        for (private_key, (amount, is_open)) in &validators {
+            let address = Address::try_from(private_key).unwrap();
+            committee_map.insert(address, (*amount, *is_open));
+            allocated_amount += *amount;
+        }
+
+        // Construct the public balances, allocating half to the first validator and the remaining to the delegator.
+        let mut public_balances = IndexMap::new();
+        let remaining_supply = <CurrentNetwork as Network>::STARTING_SUPPLY - allocated_amount;
+        public_balances.insert(Address::try_from(validators.keys().next().unwrap()).unwrap(), remaining_supply / 2);
+        public_balances.insert(delegator_address, remaining_supply - remaining_supply / 2);
+
+        // Construct the bonded balances.
+        let bonded_balances = validators
+            .iter()
+            .map(|(private_key, (amount, _))| {
+                let address = Address::try_from(private_key).unwrap();
+                (address, (address, *amount))
+            })
+            .collect();
+
+        // Construct the genesis block, which should pass.
+        let block = vm
+            .genesis_quorum(
+                validators.keys().next().unwrap(),
+                Committee::new_genesis(committee_map).unwrap(),
+                public_balances,
+                bonded_balances,
+                rng,
+            )
+            .unwrap();
+
+        // Add the block.
+        vm.add_next_block(&block).unwrap();
+
+        // Attempt to bond the potential delegator to the closed validator.
+        let transaction = vm
+            .execute(
+                &delegator_key,
+                ("credits.aleo", "bond_public"),
+                vec![
+                    Value::<CurrentNetwork>::from_str(
+                        &Address::try_from(validators.keys().next().unwrap()).unwrap().to_string(),
+                    )
+                    .unwrap(),
+                    Value::<CurrentNetwork>::from_str(&format!("{MIN_DELEGATOR_STAKE}u64")).unwrap(),
+                ]
+                .into_iter(),
+                None,
+                0,
+                None,
+                rng,
+            )
+            .unwrap();
+
+        // Generate the next block.
+        let next_block =
+            sample_next_block(&vm, validators.keys().next().unwrap(), &vec![transaction], &block, &mut vec![], rng)
+                .unwrap();
+
+        // Add the next block.
+        vm.add_next_block(&next_block).unwrap();
+
+        // Check that the delegator is not in the `bonded` mapping.
+        let bonded_mapping = vm
+            .finalize_store()
+            .get_mapping_confirmed(
+                ProgramID::from_str("credits.aleo").unwrap(),
+                Identifier::from_str("bonded").unwrap(),
+            )
+            .unwrap();
+        assert_eq!(bonded_mapping.len(), validators.len());
+
+        // Attempt to bond the potential delegator to the open validator.
+        let transaction = vm
+            .execute(
+                &delegator_key,
+                ("credits.aleo", "bond_public"),
+                vec![
+                    Value::<CurrentNetwork>::from_str(
+                        &Address::try_from(validators.keys().nth(1).unwrap()).unwrap().to_string(),
+                    )
+                    .unwrap(),
+                    Value::<CurrentNetwork>::from_str(&format!("{MIN_DELEGATOR_STAKE}u64")).unwrap(),
+                ]
+                .into_iter(),
+                None,
+                0,
+                None,
+                rng,
+            )
+            .unwrap();
+
+        // Generate the next block.
+        let next_block = sample_next_block(
+            &vm,
+            validators.keys().next().unwrap(),
+            &vec![transaction],
+            &next_block,
+            &mut vec![],
+            rng,
+        )
+        .unwrap();
+
+        // Add the next block.
+        vm.add_next_block(&next_block).unwrap();
+
+        // Check that the delegator is in the `bonded` mapping.
+        let bonded_mapping = vm
+            .finalize_store()
+            .get_mapping_confirmed(
+                ProgramID::from_str("credits.aleo").unwrap(),
+                Identifier::from_str("bonded").unwrap(),
+            )
+            .unwrap();
+        assert_eq!(bonded_mapping.len(), validators.len() + 1);
     }
 }
