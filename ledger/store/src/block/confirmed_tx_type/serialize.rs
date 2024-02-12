@@ -59,7 +59,7 @@ impl<'de, N: Network> Deserialize<'de> for ConfirmedTxType<N> {
                 let mut confirmed_tx_type = serde_json::Value::deserialize(deserializer)?;
                 let type_: String = DeserializeExt::take_from_value::<D>(&mut confirmed_tx_type, "type")?;
 
-                // Recover the confirmed transmission type.
+                // Recover the confirmed transaction type.
                 match type_.as_str() {
                     "AcceptedDeploy" => Ok(Self::AcceptedDeploy(
                         DeserializeExt::take_from_value::<D>(&mut confirmed_tx_type, "index")
