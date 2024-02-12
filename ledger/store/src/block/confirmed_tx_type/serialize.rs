@@ -20,30 +20,30 @@ impl<N: Network> Serialize for ConfirmedTxType<N> {
         match serializer.is_human_readable() {
             true => match self {
                 Self::AcceptedDeploy(index) => {
-                    let mut transmission = serializer.serialize_struct("ConfirmedTxType", 2)?;
-                    transmission.serialize_field("type", "AcceptedDeploy")?;
-                    transmission.serialize_field("index", index)?;
-                    transmission.end()
+                    let mut confirmed_tx_type = serializer.serialize_struct("ConfirmedTxType", 2)?;
+                    confirmed_tx_type.serialize_field("type", "AcceptedDeploy")?;
+                    confirmed_tx_type.serialize_field("index", index)?;
+                    confirmed_tx_type.end()
                 }
                 Self::AcceptedExecute(index) => {
-                    let mut transmission = serializer.serialize_struct("ConfirmedTxType", 2)?;
-                    transmission.serialize_field("type", "AcceptedExecute")?;
-                    transmission.serialize_field("index", index)?;
-                    transmission.end()
+                    let mut confirmed_tx_type = serializer.serialize_struct("ConfirmedTxType", 2)?;
+                    confirmed_tx_type.serialize_field("type", "AcceptedExecute")?;
+                    confirmed_tx_type.serialize_field("index", index)?;
+                    confirmed_tx_type.end()
                 }
                 Self::RejectedDeploy(index, rejected) => {
-                    let mut transmission = serializer.serialize_struct("ConfirmedTxType", 3)?;
-                    transmission.serialize_field("type", "RejectedDeploy")?;
-                    transmission.serialize_field("index", index)?;
-                    transmission.serialize_field("rejected", rejected)?;
-                    transmission.end()
+                    let mut confirmed_tx_type = serializer.serialize_struct("ConfirmedTxType", 3)?;
+                    confirmed_tx_type.serialize_field("type", "RejectedDeploy")?;
+                    confirmed_tx_type.serialize_field("index", index)?;
+                    confirmed_tx_type.serialize_field("rejected", rejected)?;
+                    confirmed_tx_type.end()
                 }
                 Self::RejectedExecute(index, rejected) => {
-                    let mut transmission = serializer.serialize_struct("ConfirmedTxType", 3)?;
-                    transmission.serialize_field("type", "transaction")?;
-                    transmission.serialize_field("index", index)?;
-                    transmission.serialize_field("rejected", rejected)?;
-                    transmission.end()
+                    let mut confirmed_tx_type = serializer.serialize_struct("ConfirmedTxType", 3)?;
+                    confirmed_tx_type.serialize_field("type", "transaction")?;
+                    confirmed_tx_type.serialize_field("index", index)?;
+                    confirmed_tx_type.serialize_field("rejected", rejected)?;
+                    confirmed_tx_type.end()
                 }
             },
             false => ToBytesSerializer::serialize_with_size_encoding(self, serializer),
@@ -56,28 +56,30 @@ impl<'de, N: Network> Deserialize<'de> for ConfirmedTxType<N> {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         match deserializer.is_human_readable() {
             true => {
-                let mut transmission = serde_json::Value::deserialize(deserializer)?;
-                let type_: String = DeserializeExt::take_from_value::<D>(&mut transmission, "type")?;
+                let mut confirmed_tx_type = serde_json::Value::deserialize(deserializer)?;
+                let type_: String = DeserializeExt::take_from_value::<D>(&mut confirmed_tx_type, "type")?;
 
-                // Recover the transmission.
+                // Recover the confirmed transmission type.
                 match type_.as_str() {
                     "AcceptedDeploy" => Ok(Self::AcceptedDeploy(
-                        DeserializeExt::take_from_value::<D>(&mut transmission, "index").map_err(de::Error::custom)?,
+                        DeserializeExt::take_from_value::<D>(&mut confirmed_tx_type, "index")
+                            .map_err(de::Error::custom)?,
                     )),
                     "AcceptedExecute" => Ok(Self::AcceptedExecute(
-                        DeserializeExt::take_from_value::<D>(&mut transmission, "index").map_err(de::Error::custom)?,
+                        DeserializeExt::take_from_value::<D>(&mut confirmed_tx_type, "index")
+                            .map_err(de::Error::custom)?,
                     )),
                     "RejectedDeploy" => {
-                        let index = DeserializeExt::take_from_value::<D>(&mut transmission, "index")
+                        let index = DeserializeExt::take_from_value::<D>(&mut confirmed_tx_type, "index")
                             .map_err(de::Error::custom)?;
-                        let rejected = DeserializeExt::take_from_value::<D>(&mut transmission, "rejected")
+                        let rejected = DeserializeExt::take_from_value::<D>(&mut confirmed_tx_type, "rejected")
                             .map_err(de::Error::custom)?;
                         Ok(Self::RejectedDeploy(index, rejected))
                     }
                     "RejectedExecute" => {
-                        let index = DeserializeExt::take_from_value::<D>(&mut transmission, "index")
+                        let index = DeserializeExt::take_from_value::<D>(&mut confirmed_tx_type, "index")
                             .map_err(de::Error::custom)?;
-                        let rejected = DeserializeExt::take_from_value::<D>(&mut transmission, "rejected")
+                        let rejected = DeserializeExt::take_from_value::<D>(&mut confirmed_tx_type, "rejected")
                             .map_err(de::Error::custom)?;
                         Ok(Self::RejectedExecute(index, rejected))
                     }
