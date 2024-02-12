@@ -34,7 +34,7 @@ use ledger_store::{
     FinalizeStorage,
     FinalizeStore,
 };
-use synthesizer_program::{FinalizeGlobalState, FinalizeStoreTrait, Program};
+use synthesizer_program::{FinalizeGlobalState, FinalizeStoreTrait, Program, StackProgram};
 use synthesizer_snark::UniversalSRS;
 
 use indexmap::IndexMap;
@@ -2482,4 +2482,95 @@ function {function_name}:
     // Ensure that the transitions are unique.
     assert_ne!(execution_1.peek().unwrap().id(), execution_2.peek().unwrap().id());
     assert_ne!(execution_1.to_execution_id().unwrap(), execution_2.to_execution_id().unwrap());
+}
+
+#[test]
+fn test_long_import_chain() {
+    // Initialize a new program.
+    let program = Program::<CurrentNetwork>::from_str(
+        r"
+    program test0.aleo;
+    function c:",
+    )
+    .unwrap();
+
+    // Construct the process.
+    let mut process = crate::test_helpers::sample_process(&program);
+
+    // Add 1024 programs to the process.
+    for i in 1..=1024 {
+        println!("Adding program {i}");
+        // Initialize a new program.
+        let program = Program::from_str(&format!(
+            "
+        import test{}.aleo;
+        program test{}.aleo;
+        function c:",
+            i - 1,
+            i
+        ))
+        .unwrap();
+        // Add the program to the process.
+        process.add_program(&program).unwrap();
+    }
+
+    // Add the 1025th program to the process, which should fail.
+    let program = Program::from_str(
+        r"
+        import test1024.aleo;
+        program test1025.
+        aleo;function c:",
+    )
+    .unwrap();
+    let result = process.add_program(&program);
+    assert!(result.is_err());
+}
+
+#[test]
+fn test_long_import_chain_with_calls() {
+    // Initialize a new program.
+    let program = Program::<CurrentNetwork>::from_str(
+        r"
+    program test0.aleo;
+    function c:",
+    )
+    .unwrap();
+
+    // Construct the process.
+    let mut process = crate::test_helpers::sample_process(&program);
+
+    // Check that the number of calls is correct.
+    for i in 1..31 {
+        println!("Adding program {}", i);
+        // Initialize a new program.
+        let program = Program::from_str(&format!(
+            "
+        import test{}.aleo;
+        program test{}.aleo;
+        function c:
+            call test{}.aleo/c;",
+            i - 1,
+            i,
+            i - 1
+        ))
+        .unwrap();
+        // Add the program to the process.
+        process.add_program(&program).unwrap();
+        // Check that the number of calls is correct.
+        let stack = process.get_stack(program.id()).unwrap();
+        let number_of_calls = stack.get_number_of_calls(program.functions().into_iter().next().unwrap().0).unwrap();
+        assert_eq!(number_of_calls, i + 1);
+    }
+
+    // Check that an additional level of import will fail.
+    let program = Program::from_str(
+        r"
+        import test30.aleo;
+        program test31.aleo;
+        function c:
+            call test30.aleo/c;",
+    )
+    .unwrap();
+    let result = process.add_program(&program);
+    assert!(result.is_err())
 }

@@ -28,6 +28,7 @@ impl<N: Network> Stack<N> {
             proving_keys: Default::default(),
             verifying_keys: Default::default(),
             number_of_calls: Default::default(),
+            program_depth: 0,
         };
 
         // Add all of the imports into the stack.
@@ -40,12 +41,19 @@ impl<N: Network> Stack<N> {
             let external_stack = process.get_stack(import)?;
             // Add the external stack to the stack.
             stack.insert_external_stack(external_stack.clone())?;
+            // Update the program depth, checking that it does not exceed the maximum call depth.
+            stack.program_depth = std::cmp::max(stack.program_depth, external_stack.program_depth() + 1);
+            ensure!(
+                stack.program_depth <= N::MAX_PROGRAM_DEPTH,
+                "Program depth exceeds the maximum allowed call depth"
+            );
         }
         // Add the program closures to the stack.
         for closure in program.closures().values() {
             // Add the closure to the stack.
             stack.insert_closure(closure)?;
         }
+
         // Add the program functions to the stack.
         for function in program.functions().values() {
             // Add the function to the stack.
@@ -75,6 +83,7 @@ impl<N: Network> Stack<N> {
             // Add the number of calls to the stack.
             stack.number_of_calls.insert(*function.name(), num_calls);
         }
+
         // Return the stack.
         Ok(stack)
     }
@@ -134,7 +143,6 @@ impl<N: Network> Stack<N> {
             // Add the finalize name and finalize types to the stack.
             self.finalize_types.insert(*name, finalize_types);
         }
-
         // Return success.
         Ok(())
     }

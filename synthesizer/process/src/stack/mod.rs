@@ -187,6 +187,8 @@ pub struct Stack<N: Network> {
     verifying_keys: Arc<RwLock<IndexMap<Identifier<N>, VerifyingKey<N>>>>,
     /// The mapping of function names to the number of calls.
     number_of_calls: IndexMap<Identifier<N>, usize>,
+    /// The program depth.
+    program_depth: usize,
 }
 
 impl<N: Network> Stack<N> {
@@ -220,6 +222,12 @@ impl<N: Network> StackProgram<N> for Stack<N> {
     #[inline]
     fn program(&self) -> &Program<N> {
         &self.program
+    }
+
+    /// Returns the program depth.
+    #[inline]
+    fn program_depth(&self) -> usize {
+        self.program_depth
     }
 
     /// Returns the program ID.
