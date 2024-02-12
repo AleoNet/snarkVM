@@ -20,7 +20,7 @@ impl<N: Network> FromBytes for BatchCertificate<N> {
         // Read the version.
         let version = u8::read_le(&mut reader)?;
         // Ensure the version is valid.
-        if version != 1 && version != 2 {
+        if version != 1 {
             return Err(error("Invalid batch certificate version"));
         }
 
