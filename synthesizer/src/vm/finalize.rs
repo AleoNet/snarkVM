@@ -787,7 +787,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     );
                     // Ensure that the number of delegators does not exceed the maximum.
                     ensure!(
-                        bonded_balances.len() - committee.members().len() <= MAX_DELEGATORS as usize,
+                        bonded_balances.len().saturating_sub(committee.members().len()) <= MAX_DELEGATORS as usize,
                         "Ratify::Genesis(..) exceeds the maximum number of delegators"
                     );
                     // Ensure genesis has not been ratified yet.
@@ -887,7 +887,10 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                             program_id,
                             metadata_mapping,
                             Plaintext::from_str("aleo1qgqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqanmpl0")?,
-                            Value::from_str(&format!("{}u32", bonded_balances.len() - committee.num_members()))?,
+                            Value::from_str(&format!(
+                                "{}u32",
+                                bonded_balances.len().saturating_sub(committee.num_members())
+                            ))?,
                         )?,
                     ]);
 
