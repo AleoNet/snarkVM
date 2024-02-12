@@ -160,10 +160,8 @@ pub trait Network:
     /// The maximum number of outputs per transition.
     const MAX_OUTPUTS: usize = 16;
 
-    /// The maximum call depth.
-    const MAX_CALL_DEPTH: usize = 1024;
-    /// The maximum import depth.
-    const MAX_IMPORT_DEPTH: usize = 1024;
+    /// The maximum number of imports. This is roughly bounded by the `MAX_FUNCTIONS * MAX_TRANSITIONS`
+    const MAX_IMPORTS: usize = 1024;
 
     /// The state root type.
     type StateRoot: Bech32ID<Field<Self>>;

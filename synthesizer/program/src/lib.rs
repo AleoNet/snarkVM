@@ -295,6 +295,9 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Pro
         // Retrieve the imported program name.
         let import_name = *import.name();
 
+        // Ensure that the number of imports is within the allowed range.
+        ensure!(self.imports.len() < N::MAX_IMPORTS, "Program exceeds the maximum number of imports");
+
         // Ensure the import name is new.
         ensure!(self.is_unique_name(&import_name), "'{import_name}' is already in use.");
         // Ensure the import name is not a reserved opcode.
