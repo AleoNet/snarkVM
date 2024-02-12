@@ -805,12 +805,6 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     //     }
                     // }
 
-                    // Ensure that all members of the committee are open.
-                    ensure!(
-                        committee.members().iter().all(|(_, (_, is_open))| *is_open),
-                        "Ratify::Genesis(..) all members of the committee must be open"
-                    );
-
                     // Calculate the stake per validator using `bonded_balances`.
                     let mut stake_per_validator = IndexMap::with_capacity(committee.members().len());
                     for (address, (validator_address, amount)) in bonded_balances.iter() {
@@ -831,11 +825,6 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                                 "Ratify::Genesis(..) the delegator {address} is delegating to a closed validator {validator_address}",
                             );
                         }
-                        // Ensure that each staker has an entry in `public_balances`.
-                        ensure!(
-                            public_balances.contains_key(address),
-                            "Ratify::Genesis(..) the staker {address} is missing from the public balances",
-                        );
                         // Accumulate the staked amount per validator.
                         let total = stake_per_validator.entry(validator_address).or_insert(0u64);
                         *total = total.saturating_add(*amount);
