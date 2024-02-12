@@ -836,19 +836,24 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     );
 
                     // Check that `committee` is consistent with `stake_per_validator`.
-                    for (validator_address, amount) in stake_per_validator {
+                    for (validator_address, amount) in &stake_per_validator {
                         // Retrieve the expected validator stake from the committee.
-                        let Some((expected_amount, _)) = committee.members().get(validator_address) else {
+                        let Some((expected_amount, _)) = committee.members().get(*validator_address) else {
                             bail!(
                                 "Ratify::Genesis(..) found a validator in the bonded balances that is not in the committee"
                             )
                         };
                         // Ensure the staked amount matches the committee.
                         ensure!(
-                            *expected_amount == amount,
+                            *expected_amount == *amount,
                             "Ratify::Genesis(..) inconsistent staked amount for validator {validator_address}",
                         );
                     }
+                    // Ensure that the total stake matches the sum of the staked amounts.
+                    ensure!(
+                        committee.total_stake() == stake_per_validator.values().sum::<u64>(),
+                        "Ratify::Genesis(..) incorrect total total stake for the committee"
+                    );
 
                     // Construct the next committee map and next bonded map.
                     let (next_committee_map, next_bonded_map) =
