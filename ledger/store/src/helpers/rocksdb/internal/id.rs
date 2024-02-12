@@ -220,6 +220,8 @@ pub enum TestMap {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(u16)]
 enum DataID {
+    // BFT
+    BFTTransmissionsMap,
     // Block
     BlockStateRootMap,
     BlockReverseStateRootMap,
@@ -237,6 +239,7 @@ enum DataID {
     BlockAbortedTransactionIDsMap,
     BlockRejectedOrAbortedTransactionIDMap,
     BlockConfirmedTransactionsMap,
+    BlockRejectedDeploymentOrExecutionMap,
     // Committee
     CurrentRoundMap,
     RoundToHeightMap,
@@ -287,10 +290,6 @@ enum DataID {
     // Program
     ProgramIDMap,
     KeyValueMap,
-
-    // TODO (howardwu): For mainnet - Reorder this up above.
-    BlockRejectedDeploymentOrExecutionMap,
-    BFTTransmissionsMap,
 
     // Testing
     #[cfg(test)]
