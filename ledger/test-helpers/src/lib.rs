@@ -28,6 +28,7 @@ use ledger_block::{
     Input,
     Output,
     Ratifications,
+    Rejected,
     Transaction,
     Transactions,
     Transition,
@@ -158,6 +159,23 @@ function compute:
         .clone()
 }
 
+/// Samples a rejected deployment.
+pub fn sample_rejected_deployment(is_fee_private: bool, rng: &mut TestRng) -> Rejected<CurrentNetwork> {
+    // Sample a deploy transaction.
+    let deployment = match crate::sample_deployment_transaction(is_fee_private, rng) {
+        Transaction::Deploy(_, _, deployment, _) => (*deployment).clone(),
+        _ => unreachable!(),
+    };
+
+    // Sample a new program owner.
+    let private_key = PrivateKey::new(rng).unwrap();
+    let deployment_id = deployment.to_deployment_id().unwrap();
+    let program_owner = ProgramOwner::new(&private_key, deployment_id, rng).unwrap();
+
+    // Return the rejected deployment.
+    Rejected::new_deployment(program_owner, deployment)
+}
+
 /******************************************* Execution ********************************************/
 
 /// Samples a random execution.
@@ -168,6 +186,18 @@ pub fn sample_execution(rng: &mut TestRng) -> Execution<CurrentNetwork> {
     let transaction = block.transactions().iter().next().unwrap().deref().clone();
     // Retrieve the execution.
     if let Transaction::Execute(_, execution, _) = transaction { execution } else { unreachable!() }
+}
+
+/// Samples a rejected execution.
+pub fn sample_rejected_execution(is_fee_private: bool, rng: &mut TestRng) -> Rejected<CurrentNetwork> {
+    // Sample an execute transaction.
+    let execution = match crate::sample_execution_transaction_with_fee(is_fee_private, rng) {
+        Transaction::Execute(_, execution, _) => execution,
+        _ => unreachable!(),
+    };
+
+    // Return the rejected execution.
+    Rejected::new_execution(execution)
 }
 
 /********************************************** Fee ***********************************************/

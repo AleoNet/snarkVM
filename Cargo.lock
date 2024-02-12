@@ -3268,6 +3268,7 @@ dependencies = [
  "rayon",
  "rocksdb",
  "serde",
+ "serde_json",
  "serial_test",
  "snarkvm-console",
  "snarkvm-ledger-authority",
