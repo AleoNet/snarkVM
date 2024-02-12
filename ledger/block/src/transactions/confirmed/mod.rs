@@ -356,12 +356,7 @@ pub mod test_helpers {
             true => vec![FinalizeOperation::InitializeMapping(Uniform::rand(rng))],
             false => vec![
                 FinalizeOperation::InitializeMapping(Uniform::rand(rng)),
-                FinalizeOperation::UpdateKeyValue(
-                    Uniform::rand(rng),
-                    Uniform::rand(rng),
-                    Uniform::rand(rng),
-                    Uniform::rand(rng),
-                ),
+                FinalizeOperation::UpdateKeyValue(Uniform::rand(rng), Uniform::rand(rng), Uniform::rand(rng)),
             ],
         };
 
@@ -461,12 +456,7 @@ mod test {
         // Create an `AcceptedExecution` with valid `FinalizeOperation`s.
         let finalize_operations = vec![
             FinalizeOperation::InsertKeyValue(Uniform::rand(rng), Uniform::rand(rng), Uniform::rand(rng)),
-            FinalizeOperation::UpdateKeyValue(
-                Uniform::rand(rng),
-                Uniform::rand(rng),
-                Uniform::rand(rng),
-                Uniform::rand(rng),
-            ),
+            FinalizeOperation::UpdateKeyValue(Uniform::rand(rng), Uniform::rand(rng), Uniform::rand(rng)),
             FinalizeOperation::RemoveKeyValue(Uniform::rand(rng), Uniform::rand(rng)),
         ];
         let confirmed = ConfirmedTransaction::accepted_execute(index, tx.clone(), finalize_operations.clone()).unwrap();

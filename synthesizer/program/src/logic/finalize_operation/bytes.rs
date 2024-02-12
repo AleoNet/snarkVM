@@ -40,14 +40,12 @@ impl<N: Network> FromBytes for FinalizeOperation<N> {
             2 => {
                 // Read the mapping ID.
                 let mapping_id = Field::read_le(&mut reader)?;
-                // Read the index.
-                let index = u64::read_le(&mut reader)?;
                 // Read the key ID.
                 let key_id = Field::read_le(&mut reader)?;
                 // Read the value ID.
                 let value_id = Field::read_le(&mut reader)?;
                 // Return the finalize operation.
-                Ok(Self::UpdateKeyValue(mapping_id, index, key_id, value_id))
+                Ok(Self::UpdateKeyValue(mapping_id, key_id, value_id))
             }
             3 => {
                 // Read the mapping ID.
@@ -94,13 +92,11 @@ impl<N: Network> ToBytes for FinalizeOperation<N> {
                 // Write the value ID.
                 value_id.write_le(&mut writer)?;
             }
-            Self::UpdateKeyValue(mapping_id, index, key_id, value_id) => {
+            Self::UpdateKeyValue(mapping_id, key_id, value_id) => {
                 // Write the variant.
                 2u8.write_le(&mut writer)?;
                 // Write the mapping ID.
                 mapping_id.write_le(&mut writer)?;
-                // Write the index.
-                index.write_le(&mut writer)?;
                 // Write the key ID.
                 key_id.write_le(&mut writer)?;
                 // Write the value ID.

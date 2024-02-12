@@ -244,7 +244,7 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
         })?;
 
         // Return the finalize operation.
-        Ok(FinalizeOperation::UpdateKeyValue(to_mapping_id(&program_id, &mapping_name)?, 0u64, key_id, value_id))
+        Ok(FinalizeOperation::UpdateKeyValue(to_mapping_id(&program_id, &mapping_name)?, key_id, value_id))
     }
 
     /// Removes the key-value pair for the given `program ID`, `mapping name`, and `key` from storage.

@@ -52,14 +52,12 @@ impl<N: Network> FromBits for FinalizeOperation<N> {
             2 => {
                 // Read the mapping ID.
                 let mapping_id = Field::from_bits_le(&next_bits(Field::<N>::size_in_bits())?)?;
-                // Read the index.
-                let index = u64::from_bits_le(&next_bits(64)?)?;
                 // Read the key ID.
                 let key_id = Field::from_bits_le(&next_bits(Field::<N>::size_in_bits())?)?;
                 // Read the value ID.
                 let value_id = Field::from_bits_le(&next_bits(Field::<N>::size_in_bits())?)?;
                 // Return the finalize operation.
-                Ok(Self::UpdateKeyValue(mapping_id, index, key_id, value_id))
+                Ok(Self::UpdateKeyValue(mapping_id, key_id, value_id))
             }
             3 => {
                 // Read the mapping ID.
@@ -122,14 +120,12 @@ impl<N: Network> FromBits for FinalizeOperation<N> {
             2 => {
                 // Read the mapping ID.
                 let mapping_id = Field::from_bits_be(&next_bits(Field::<N>::size_in_bits())?)?;
-                // Read the index.
-                let index = u64::from_bits_be(&next_bits(64)?)?;
                 // Read the key ID.
                 let key_id = Field::from_bits_be(&next_bits(Field::<N>::size_in_bits())?)?;
                 // Read the value ID.
                 let value_id = Field::from_bits_be(&next_bits(Field::<N>::size_in_bits())?)?;
                 // Return the finalize operation.
-                Ok(Self::UpdateKeyValue(mapping_id, index, key_id, value_id))
+                Ok(Self::UpdateKeyValue(mapping_id, key_id, value_id))
             }
             3 => {
                 // Read the mapping ID.
@@ -176,13 +172,11 @@ impl<N: Network> ToBits for FinalizeOperation<N> {
                 // Write the value ID.
                 value_id.write_bits_le(vec);
             }
-            Self::UpdateKeyValue(mapping_id, index, key_id, value_id) => {
+            Self::UpdateKeyValue(mapping_id, key_id, value_id) => {
                 // Write the variant.
                 2u8.write_bits_le(vec);
                 // Write the mapping ID.
                 mapping_id.write_bits_le(vec);
-                // Write the index.
-                index.write_bits_le(vec);
                 // Write the key ID.
                 key_id.write_bits_le(vec);
                 // Write the value ID.
@@ -230,13 +224,11 @@ impl<N: Network> ToBits for FinalizeOperation<N> {
                 // Write the value ID.
                 value_id.write_bits_be(vec);
             }
-            Self::UpdateKeyValue(mapping_id, index, key_id, value_id) => {
+            Self::UpdateKeyValue(mapping_id, key_id, value_id) => {
                 // Write the variant.
                 2u8.write_bits_be(vec);
                 // Write the mapping ID.
                 mapping_id.write_bits_be(vec);
-                // Write the index.
-                index.write_bits_be(vec);
                 // Write the key ID.
                 key_id.write_bits_be(vec);
                 // Write the value ID.
