@@ -23,11 +23,13 @@ use console::{prelude::*, types::Field};
 use ledger_authority::Authority;
 use ledger_block::{Header, Ratifications, Rejected, Solutions};
 use ledger_coinbase::PuzzleCommitment;
+use synthesizer_program::FinalizeOperation;
 
 use aleo_std_storage::StorageMode;
 
 /// An in-memory block storage.
 #[derive(Clone)]
+#[allow(clippy::type_complexity)]
 pub struct BlockMemory<N: Network> {
     /// The mapping of `block height` to `state root`.
     state_root_map: MemoryMap<u32, N::StateRoot>,
@@ -60,7 +62,8 @@ pub struct BlockMemory<N: Network> {
     /// The rejected transaction ID or aborted transaction ID map.
     rejected_or_aborted_transaction_id_map: MemoryMap<N::TransactionID, N::BlockHash>,
     /// The confirmed transactions map.
-    confirmed_transactions_map: MemoryMap<N::TransactionID, (N::BlockHash, ConfirmedTxType, Vec<u8>)>,
+    confirmed_transactions_map:
+        MemoryMap<N::TransactionID, (N::BlockHash, ConfirmedTxType<N>, Vec<FinalizeOperation<N>>)>,
     /// The rejected deployment or execution map.
     rejected_deployment_or_execution_map: MemoryMap<Field<N>, Rejected<N>>,
     /// The transaction store.
@@ -84,7 +87,7 @@ impl<N: Network> BlockStorage<N> for BlockMemory<N> {
     type TransactionsMap = MemoryMap<N::BlockHash, Vec<N::TransactionID>>;
     type AbortedTransactionIDsMap = MemoryMap<N::BlockHash, Vec<N::TransactionID>>;
     type RejectedOrAbortedTransactionIDMap = MemoryMap<N::TransactionID, N::BlockHash>;
-    type ConfirmedTransactionsMap = MemoryMap<N::TransactionID, (N::BlockHash, ConfirmedTxType, Vec<u8>)>;
+    type ConfirmedTransactionsMap = MemoryMap<N::TransactionID, (N::BlockHash, ConfirmedTxType<N>, Vec<FinalizeOperation<N>>)>;
     type RejectedDeploymentOrExecutionMap = MemoryMap<Field<N>, Rejected<N>>;
     type TransactionStorage = TransactionMemory<N>;
     type TransitionStorage = TransitionMemory<N>;

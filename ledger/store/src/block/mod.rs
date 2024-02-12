@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+pub mod confirmed_tx_type;
+pub use confirmed_tx_type::*;
+
 use crate::{
     atomic_batch_scope,
     cow_to_cloned,
@@ -32,7 +35,6 @@ use ledger_block::{
     Block,
     ConfirmedTransaction,
     Header,
-    NumFinalizeSize,
     Ratifications,
     Rejected,
     Solutions,
@@ -41,130 +43,62 @@ use ledger_block::{
 };
 use ledger_coinbase::{ProverSolution, PuzzleCommitment};
 use ledger_narwhal_batch_certificate::BatchCertificate;
-use synthesizer_program::Program;
+use synthesizer_program::{FinalizeOperation, Program};
 
 use aleo_std_storage::StorageMode;
 use anyhow::Result;
 use parking_lot::RwLock;
-use std::{borrow::Cow, io::Cursor, sync::Arc};
+use std::{borrow::Cow, sync::Arc};
 
 #[cfg(not(feature = "serial"))]
 use rayon::prelude::*;
-
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum ConfirmedTxType {
-    /// A deploy transaction that was accepted.
-    AcceptedDeploy(u32),
-    /// An execute transaction that was accepted.
-    AcceptedExecute(u32),
-    /// A deploy transaction that was rejected.
-    RejectedDeploy(u32),
-    /// An execute transaction that was rejected.
-    RejectedExecute(u32),
-}
 
 /// Separates the confirmed transaction into a tuple.
 #[allow(clippy::type_complexity)]
 fn to_confirmed_tuple<N: Network>(
     confirmed: ConfirmedTransaction<N>,
-) -> Result<(ConfirmedTxType, Transaction<N>, Vec<u8>, Option<Rejected<N>>)> {
+) -> Result<(ConfirmedTxType<N>, Transaction<N>, Vec<FinalizeOperation<N>>)> {
     match confirmed {
-        ConfirmedTransaction::AcceptedDeploy(index, tx, finalize) => {
-            // Retrieve the number of finalize operations.
-            let num_finalize = NumFinalizeSize::try_from(finalize.len())?;
+        ConfirmedTransaction::AcceptedDeploy(index, tx, finalize_operations) => {
             // Return the confirmed tuple.
-            Ok((ConfirmedTxType::AcceptedDeploy(index), tx, (num_finalize, finalize).to_bytes_le()?, None))
+            Ok((ConfirmedTxType::AcceptedDeploy(index), tx, finalize_operations))
         }
-        ConfirmedTransaction::AcceptedExecute(index, tx, finalize) => {
-            // Retrieve the number of finalize operations.
-            let num_finalize = NumFinalizeSize::try_from(finalize.len())?;
+        ConfirmedTransaction::AcceptedExecute(index, tx, finalize_operations) => {
             // Return the confirmed tuple.
-            Ok((ConfirmedTxType::AcceptedExecute(index), tx, (num_finalize, finalize).to_bytes_le()?, None))
+            Ok((ConfirmedTxType::AcceptedExecute(index), tx, finalize_operations))
         }
-        ConfirmedTransaction::RejectedDeploy(index, tx, rejected, finalize) => {
-            // Retrieve the number of finalize operations.
-            let num_finalize = NumFinalizeSize::try_from(finalize.len())?;
-
-            // Initialize a vector for the serialized blob.
-            let mut blob = Vec::new();
-            // Serialize the rejected deployment.
-            rejected.write_le(&mut blob)?;
-            // Serialize the number of finalize operations.
-            num_finalize.write_le(&mut blob)?;
-            // Serialize the finalize operations.
-            finalize.write_le(&mut blob)?;
-
+        ConfirmedTransaction::RejectedDeploy(index, tx, rejected, finalize_operations) => {
             // Return the confirmed tuple.
-            Ok((ConfirmedTxType::RejectedDeploy(index), tx, blob, Some(rejected)))
+            Ok((ConfirmedTxType::RejectedDeploy(index, rejected), tx, finalize_operations))
         }
-        ConfirmedTransaction::RejectedExecute(index, tx, rejected, finalize) => {
-            // Retrieve the number of finalize operations.
-            let num_finalize = NumFinalizeSize::try_from(finalize.len())?;
-
-            // Initialize a vector for the serialized blob.
-            let mut blob = Vec::new();
-            // Serialize the rejected deployment.
-            rejected.write_le(&mut blob)?;
-            // Serialize the number of finalize operations.
-            num_finalize.write_le(&mut blob)?;
-            // Serialize the finalize operations.
-            finalize.write_le(&mut blob)?;
-
+        ConfirmedTransaction::RejectedExecute(index, tx, rejected, finalize_operations) => {
             // Return the confirmed tuple.
-            Ok((ConfirmedTxType::RejectedExecute(index), tx, blob, Some(rejected)))
+            Ok((ConfirmedTxType::RejectedExecute(index, rejected), tx, finalize_operations))
         }
     }
 }
 
 fn to_confirmed_transaction<N: Network>(
-    confirmed_type: ConfirmedTxType,
+    confirmed_type: ConfirmedTxType<N>,
     transaction: Transaction<N>,
-    blob: Vec<u8>,
+    finalize_operations: Vec<FinalizeOperation<N>>,
 ) -> Result<ConfirmedTransaction<N>> {
     match confirmed_type {
         ConfirmedTxType::AcceptedDeploy(index) => {
-            // Initialize a cursor.
-            let mut cursor = Cursor::new(blob);
-            // Read the number of finalize operations.
-            let num_finalize = NumFinalizeSize::read_le(&mut cursor)?;
-            // Read the finalize operations.
-            let finalize = (0..num_finalize).map(|_| FromBytes::read_le(&mut cursor)).collect::<Result<Vec<_>, _>>()?;
             // Return the confirmed transaction.
-            ConfirmedTransaction::accepted_deploy(index, transaction, finalize)
+            ConfirmedTransaction::accepted_deploy(index, transaction, finalize_operations)
         }
         ConfirmedTxType::AcceptedExecute(index) => {
-            // Initialize a cursor.
-            let mut cursor = Cursor::new(blob);
-            // Read the number of finalize operations.
-            let num_finalize = NumFinalizeSize::read_le(&mut cursor)?;
-            // Read the finalize operations.
-            let finalize = (0..num_finalize).map(|_| FromBytes::read_le(&mut cursor)).collect::<Result<Vec<_>, _>>()?;
             // Return the confirmed transaction.
-            ConfirmedTransaction::accepted_execute(index, transaction, finalize)
+            ConfirmedTransaction::accepted_execute(index, transaction, finalize_operations)
         }
-        ConfirmedTxType::RejectedDeploy(index) => {
-            // Initialize a cursor.
-            let mut cursor = Cursor::new(blob);
-            // Read the rejected deployment.
-            let rejected = Rejected::read_le(&mut cursor)?;
-            // Read the number of finalize operations.
-            let num_finalize = NumFinalizeSize::read_le(&mut cursor)?;
-            // Read the finalize operations.
-            let finalize = (0..num_finalize).map(|_| FromBytes::read_le(&mut cursor)).collect::<Result<Vec<_>, _>>()?;
+        ConfirmedTxType::RejectedDeploy(index, rejected) => {
             // Return the confirmed transaction.
-            ConfirmedTransaction::rejected_deploy(index, transaction, rejected, finalize)
+            ConfirmedTransaction::rejected_deploy(index, transaction, rejected, finalize_operations)
         }
-        ConfirmedTxType::RejectedExecute(index) => {
-            // Initialize a cursor.
-            let mut cursor = Cursor::new(blob);
-            // Read the rejected deployment.
-            let rejected = Rejected::read_le(&mut cursor)?;
-            // Read the number of finalize operations.
-            let num_finalize = NumFinalizeSize::read_le(&mut cursor)?;
-            // Read the finalize operations.
-            let finalize = (0..num_finalize).map(|_| FromBytes::read_le(&mut cursor)).collect::<Result<Vec<_>, _>>()?;
+        ConfirmedTxType::RejectedExecute(index, rejected) => {
             // Return the confirmed transaction.
-            ConfirmedTransaction::rejected_execute(index, transaction, rejected, finalize)
+            ConfirmedTransaction::rejected_execute(index, transaction, rejected, finalize_operations)
         }
     }
 }
@@ -201,10 +135,8 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
     type AbortedTransactionIDsMap: for<'a> Map<'a, N::BlockHash, Vec<N::TransactionID>>;
     /// The mapping of rejected or aborted `transaction ID` to `block hash`.
     type RejectedOrAbortedTransactionIDMap: for<'a> Map<'a, N::TransactionID, N::BlockHash>;
-    /// The mapping of `transaction ID` to `(block hash, confirmed tx type, confirmed blob)`.
-    /// TODO (howardwu): For mainnet - With recent DB changes, to prevent breaking compatibility,
-    ///  include rejected (d or e) ID into `ConfirmedTxType`, and change from `Vec<u8>` to `Vec<FinalizeOps>`.
-    type ConfirmedTransactionsMap: for<'a> Map<'a, N::TransactionID, (N::BlockHash, ConfirmedTxType, Vec<u8>)>;
+    /// The mapping of `transaction ID` to `(block hash, confirmed tx type, finalize operations)`.
+    type ConfirmedTransactionsMap: for<'a> Map<'a, N::TransactionID, (N::BlockHash, ConfirmedTxType<N>, Vec<FinalizeOperation<N>>)>;
     /// The rejected deployment or execution map.
     type RejectedDeploymentOrExecutionMap: for<'a> Map<'a, Field<N>, Rejected<N>>;
     /// The transaction storage.
@@ -497,11 +429,14 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
             }
 
             // Store the confirmed transactions.
-            for (confirmed_type, transaction, blob, rejected) in confirmed {
+            for (confirmed_type, transaction, finalize_operations) in confirmed {
                 // Store the block hash and confirmed transaction data.
-                self.confirmed_transactions_map().insert(transaction.id(), (block.hash(), confirmed_type, blob))?;
+                self.confirmed_transactions_map()
+                    .insert(transaction.id(), (block.hash(), confirmed_type.clone(), finalize_operations))?;
                 // Store the rejected deployment or execution.
-                if let Some(rejected) = rejected {
+                if let ConfirmedTxType::RejectedDeploy(_, rejected) | ConfirmedTxType::RejectedExecute(_, rejected) =
+                    confirmed_type
+                {
                     self.rejected_deployment_or_execution_map().insert(rejected.to_id()?, rejected)?;
                 }
                 // Store the transaction.
@@ -964,12 +899,13 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
             Err(err) => return Err(err),
         };
         // Retrieve the confirmed attributes.
-        let (_, confirmed_type, blob) = match self.confirmed_transactions_map().get_confirmed(&transaction.id())? {
-            Some(confirmed_attributes) => cow_to_cloned!(confirmed_attributes),
-            None => bail!("Missing confirmed transaction '{transaction_id}' in block storage"),
-        };
+        let (_, confirmed_type, finalize_operations) =
+            match self.confirmed_transactions_map().get_confirmed(&transaction.id())? {
+                Some(confirmed_attributes) => cow_to_cloned!(confirmed_attributes),
+                None => bail!("Missing confirmed transaction '{transaction_id}' in block storage"),
+            };
         // Construct the confirmed transaction.
-        to_confirmed_transaction(confirmed_type, transaction, blob).map(Some)
+        to_confirmed_transaction(confirmed_type, transaction, finalize_operations).map(Some)
     }
 
     /// Returns the unconfirmed transaction for the given `transaction ID`.
