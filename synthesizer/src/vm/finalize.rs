@@ -2009,6 +2009,207 @@ finalize compute:
     }
 
     #[test]
+    fn test_ratify_genesis_is_correct() {
+        const NUM_VALIDATORS: usize = 5;
+        const NUM_DELEGATORS: usize = 8;
+
+        // Sample an RNG.
+        let rng = &mut TestRng::default();
+
+        println!("Initializing VMs.");
+
+        // Initialize the VM.
+        let vm =
+            VM::from(ConsensusStore::<CurrentNetwork, ConsensusMemory<CurrentNetwork>>::open(None).unwrap()).unwrap();
+
+        println!("Constructing validator and delegator sets.");
+
+        // Sample the validators.
+        let validators: IndexMap<_, _> = (0..NUM_VALIDATORS)
+            .map(|_| {
+                let private_key = PrivateKey::new(rng).unwrap();
+                let amount = MIN_VALIDATOR_STAKE;
+                let is_open = true;
+                (private_key, (amount, is_open))
+            })
+            .collect();
+
+        // Sample the delegators, cycling through the validators.
+        let delegators: IndexMap<_, _> = (0..NUM_DELEGATORS)
+            .map(|i| {
+                let private_key = PrivateKey::new(rng).unwrap();
+                let validator = Address::try_from(validators.keys().nth(i % NUM_VALIDATORS).unwrap()).unwrap();
+                let amount = MIN_DELEGATOR_STAKE;
+                (private_key, (validator, amount))
+            })
+            .collect();
+
+        // Sample a genesis block without any delegators.
+        // Specifically, the genesis block will contain a `Ratification` with:
+        //   - the committee state, containing only the validator amounts.
+        //   - the public balances for the delegators, with 10_000_000u64 microcredits each (plus 843_880u64 microcredits for fees).
+        //   - the public balances for the validators dividing up the remaining starting supply.
+        //   - the bonded balances, only containing the validators.
+
+        println!("Initializing the VM.");
+
+        // Track the allocated supply.
+        let mut allocated_supply = 0;
+
+        // Construct the committee.
+        let mut committee_map = IndexMap::new();
+        for (private_key, (amount, _)) in &validators {
+            let address = Address::try_from(private_key).unwrap();
+            committee_map.insert(address, *amount);
+            allocated_supply += *amount;
+        }
+        for (private_key, (validator, amount)) in &delegators {
+            let _address = Address::try_from(private_key).unwrap();
+            let total_amount = committee_map.get(validator).unwrap() + amount;
+            committee_map.insert(*validator, total_amount);
+            allocated_supply += amount;
+        }
+        let committee =
+            Committee::new_genesis(committee_map.iter().map(|(address, amount)| (*address, (*amount, true))).collect())
+                .unwrap();
+
+        // Construct the public balances, allocating the remaining supply to the validators and zero to the delegators.
+        let mut public_balances = IndexMap::new();
+        for (private_key, (_validator, _amount)) in &delegators {
+            let address = Address::try_from(private_key).unwrap();
+            public_balances.insert(address, 0u64);
+        }
+        let remaining_supply = <CurrentNetwork as Network>::STARTING_SUPPLY - allocated_supply;
+        for private_key in validators.keys() {
+            let address = Address::try_from(private_key).unwrap();
+            let amount = remaining_supply / NUM_VALIDATORS as u64;
+            public_balances.insert(address, amount);
+            allocated_supply += amount;
+        }
+        let address = Address::try_from(validators.keys().next().unwrap()).unwrap();
+        let amount = <CurrentNetwork as Network>::STARTING_SUPPLY - allocated_supply;
+        public_balances.entry(address).and_modify(|balance| *balance += amount).or_insert(amount);
+
+        // Construct the bonded balances.
+        let bonded_balances = validators
+            .iter()
+            .map(|(private_key, (amount, _))| {
+                let address = Address::try_from(private_key).unwrap();
+                (address, (address, *amount))
+            })
+            .chain(delegators.iter().map(|(private_key, (validator, amount))| {
+                let address = Address::try_from(private_key).unwrap();
+                (address, (*validator, *amount))
+            }))
+            .collect::<IndexMap<_, _>>();
+
+        println!("Generating the genesis block.");
+
+        let genesis = vm
+            .genesis_quorum(
+                validators.keys().next().unwrap(),
+                committee.clone(),
+                public_balances.clone(),
+                bonded_balances.clone(),
+                rng,
+            )
+            .unwrap();
+
+        println!("Adding the genesis block to the VM.");
+
+        // Add the genesis block to the VM.
+        vm.add_next_block(&genesis).unwrap();
+
+        // Check that the state of the `credits.aleo` program is correct.
+        let program_id = ProgramID::from_str("credits.aleo").unwrap();
+        let committee_mapping_name = Identifier::from_str("committee").unwrap();
+        let account_mapping_name = Identifier::from_str("account").unwrap();
+        let bonded_mapping_name = Identifier::from_str("bonded").unwrap();
+        let metadata_mapping_name = Identifier::from_str("metadata").unwrap();
+        let unbonding_mapping_name = Identifier::from_str("unbonding").unwrap();
+
+        // Get the committee mapping.
+        let actual_committee = vm.finalize_store().get_mapping_confirmed(program_id, committee_mapping_name).unwrap();
+        let expected_committee = committee
+            .members()
+            .iter()
+            .map(|(address, (amount, is_open))| {
+                (
+                    Plaintext::from_str(&address.to_string()).unwrap(),
+                    Value::from_str(&format!("{{ microcredits: {amount}u64, is_open: {is_open} }}")).unwrap(),
+                )
+            })
+            .collect_vec();
+        assert_eq!(actual_committee.len(), expected_committee.len());
+        for entry in actual_committee.iter() {
+            assert!(expected_committee.contains(entry));
+        }
+
+        // Get the account mapping.
+        let actual_account = vm.finalize_store().get_mapping_confirmed(program_id, account_mapping_name).unwrap();
+        let expected_account = public_balances
+            .iter()
+            .map(|(address, amount)| {
+                (Plaintext::from_str(&address.to_string()).unwrap(), Value::from_str(&format!("{amount}u64")).unwrap())
+            })
+            .collect_vec();
+        assert_eq!(actual_account.len(), expected_account.len());
+        // Check that all entries except for the one for the first validator are the same.
+        for entry in actual_account.iter() {
+            if entry.0
+                != Plaintext::from_str(&Address::try_from(validators.keys().next().unwrap()).unwrap().to_string())
+                    .unwrap()
+            {
+                assert!(expected_account.contains(entry));
+            }
+        }
+
+        // Get the bonded mapping.
+        let actual_bonded = vm.finalize_store().get_mapping_confirmed(program_id, bonded_mapping_name).unwrap();
+        let expected_bonded = bonded_balances
+            .iter()
+            .map(|(address, (validator, amount))| {
+                (
+                    Plaintext::from_str(&address.to_string()).unwrap(),
+                    Value::from_str(&format!("{{ validator: {validator}, microcredits: {amount}u64 }}")).unwrap(),
+                )
+            })
+            .collect_vec();
+        assert_eq!(actual_bonded.len(), expected_bonded.len());
+        for entry in actual_bonded.iter() {
+            assert!(expected_bonded.contains(entry));
+        }
+
+        // Get the entry in metadata mapping corresponding to the number of validators.
+        let num_validators = vm
+            .finalize_store()
+            .get_value_confirmed(
+                program_id,
+                metadata_mapping_name,
+                &Plaintext::from_str("aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc").unwrap(),
+            )
+            .unwrap()
+            .unwrap();
+        assert_eq!(num_validators, Value::from_str(&format!("{NUM_VALIDATORS}u32")).unwrap());
+
+        // Get the entry in metadata mapping corresponding to the number of delegators.
+        let num_delegators = vm
+            .finalize_store()
+            .get_value_confirmed(
+                program_id,
+                metadata_mapping_name,
+                &Plaintext::from_str("aleo1qgqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqanmpl0").unwrap(),
+            )
+            .unwrap()
+            .unwrap();
+        assert_eq!(num_delegators, Value::from_str(&format!("{NUM_DELEGATORS}u32")).unwrap());
+
+        // Get the unbonding mapping.
+        let actual_unbonding = vm.finalize_store().get_mapping_confirmed(program_id, unbonding_mapping_name).unwrap();
+        assert!(actual_unbonding.is_empty());
+    }
+
+    #[test]
     fn test_ratify_genesis_is_consistent() {
         const NUM_VALIDATORS: usize = 5;
         const NUM_DELEGATORS: usize = 8;
