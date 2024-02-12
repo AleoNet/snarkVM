@@ -40,7 +40,7 @@ impl<N: Network> Serialize for ConfirmedTxType<N> {
                 }
                 Self::RejectedExecute(index, rejected) => {
                     let mut confirmed_tx_type = serializer.serialize_struct("ConfirmedTxType", 3)?;
-                    confirmed_tx_type.serialize_field("type", "transaction")?;
+                    confirmed_tx_type.serialize_field("type", "RejectedExecute")?;
                     confirmed_tx_type.serialize_field("index", index)?;
                     confirmed_tx_type.serialize_field("rejected", rejected)?;
                     confirmed_tx_type.end()

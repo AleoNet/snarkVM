@@ -43,7 +43,7 @@ impl<N: Network> ToBytes for ConfirmedTxType<N> {
             }
             Self::AcceptedExecute(index) => {
                 // Write the variant.
-                0u8.write_le(&mut writer)?;
+                1u8.write_le(&mut writer)?;
                 // Write the index.
                 index.write_le(&mut writer)
             }
