@@ -2518,8 +2518,8 @@ fn test_long_import_chain() {
     let program = Program::from_str(
         r"
         import test1024.aleo;
-        program test1025.
-        aleo;function c:",
+        program test1025.aleo;
+        function c:",
     )
     .unwrap();
     let result = process.add_program(&program);
