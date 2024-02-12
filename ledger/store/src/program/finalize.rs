@@ -264,6 +264,9 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
             return Ok(None);
         }
 
+        // Compute the key ID.
+        let key_id = to_key_id(&program_id, &mapping_name, key)?;
+
         atomic_batch_scope!(self, {
             // Update the key-value map with the new key.
             self.key_value_map().remove_key(&(program_id, mapping_name), key)?;
@@ -272,7 +275,7 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
         })?;
 
         // Return the finalize operation.
-        Ok(Some(FinalizeOperation::RemoveKeyValue(to_mapping_id(&program_id, &mapping_name)?, 0u64)))
+        Ok(Some(FinalizeOperation::RemoveKeyValue(to_mapping_id(&program_id, &mapping_name)?, key_id)))
     }
 
     /// Replaces the mapping for the given `program ID` and `mapping name` from storage,
