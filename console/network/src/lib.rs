@@ -160,6 +160,11 @@ pub trait Network:
     /// The maximum number of outputs per transition.
     const MAX_OUTPUTS: usize = 16;
 
+    /// The maximum call depth.
+    const MAX_CALL_DEPTH: usize = 1024;
+    /// The maximum import depth.
+    const MAX_IMPORT_DEPTH: usize = 1024;
+
     /// The state root type.
     type StateRoot: Bech32ID<Field<Self>>;
     /// The block hash type.
