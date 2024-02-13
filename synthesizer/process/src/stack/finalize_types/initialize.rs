@@ -558,7 +558,7 @@ impl<N: Network> FinalizeTypes<N> {
             "First operand '{first_operand}' must be a 'Data' type."
         );
 
-        // Check that the following pairs of operands are `data[2]` types and either a 1-D or 2-D array of fields.
+        // Check that the following pairs of operands are `data[2]` types and a two-dimensional array of fields elements.
         let num_pairs = (operands.len() - 1) / 2;
         for i in 0..num_pairs {
             // Get the first and second operands in the pair.
@@ -577,11 +577,12 @@ impl<N: Network> FinalizeTypes<N> {
             match self.get_type_from_operand(stack, second_operand)? {
                 FinalizeType::Plaintext(PlaintextType::Array(array_type)) => {
                     ensure!(
-                        matches!(array_type.base_element_type(), &PlaintextType::Literal(LiteralType::Field)),
-                        "Next operand '{second_operand}' must be a 1-D or 2-D array of fields."
+                        matches!(array_type.base_element_type(), &PlaintextType::Literal(LiteralType::Field))
+                            && array_type.num_dimensions() == 2,
+                        "Next operand '{second_operand}' must be a two-dimensional array of field elements."
                     )
                 }
-                _ => bail!("Next operand '{second_operand}' must be an array of fields."),
+                _ => bail!("Next operand '{second_operand}' must be a two-dimensional array of field elements."),
             }
         }
 

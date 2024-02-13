@@ -40,6 +40,11 @@ version = "=0.16.19"
 default-features = false
 features = [ "account", "network", "program", "types" ]
 
+[dependencies.synthesizer-snark]
+package = "snarkvm-synthesizer-snark"
+path = "../../synthesizer/snark"
+version = "=0.16.19"
+
 [dependencies.indexmap]
 version = "2.0"
 features = [ "serde", "rayon" ]

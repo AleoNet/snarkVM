@@ -18,10 +18,18 @@ use crate::{
     Operand,
     MAX_ADDITIONAL_SEEDS,
 };
-use circuit::prelude::ToFields as CircuitToFields;
 use console::{
     network::prelude::*,
-    program::{Literal, LiteralType, PlaintextType, Register, RegisterType, ToFields as ConsoleToFields},
+    program::{
+        Literal,
+        LiteralType,
+        Plaintext,
+        PlaintextType,
+        Register,
+        RegisterType,
+        ToFields as ConsoleToFields,
+        Value,
+    },
     types::Boolean,
 };
 use core::fmt;
@@ -30,6 +38,7 @@ use std::{
     io::{Read, Write},
     str::FromStr,
 };
+use synthesizer_snark::{Proof, VerifyingKey};
 
 /// Returns true if the Varuna `proof` is valid for the given `vk`s and `input`s and stores the result into `destination`.
 #[derive(Clone, PartialEq, Eq, Hash)]
@@ -50,7 +59,7 @@ impl<N: Network> VarunaVerify<N> {
         // Sanity check the number of operands.
         ensure!(
             Self::is_valid_number_of_operands(operands.len()),
-            "Instruction '{}' has the incorrect number of operands",
+            "Instruction '{}' has an incorrect number of operands",
             Self::opcode()
         );
         // Return the instruction.
@@ -69,7 +78,7 @@ impl<N: Network> VarunaVerify<N> {
         // Sanity check the number of operands.
         debug_assert!(
             Self::is_valid_number_of_operands(self.operands.len()),
-            "Instruction '{}' has the incorrect number of operands",
+            "Instruction '{}' has an incorrect number of operands",
             Self::opcode()
         );
         // Return the operands.
@@ -97,7 +106,89 @@ impl<N: Network> VarunaVerify<N> {
         stack: &(impl StackMatches<N> + StackProgram<N>),
         registers: &mut (impl RegistersLoad<N> + RegistersStore<N>),
     ) -> Result<()> {
-        todo!()
+        // Ensure that the number of operands is correct.
+        ensure!(
+            Self::is_valid_number_of_operands(self.operands.len()),
+            "Instruction '{}' has an incorrect number of operands",
+            Self::opcode()
+        );
+
+        // Load the first operand as a `data[_]` value and serialize it as a `Proof`.
+        let proof = match registers.load(stack, &self.operands[0]) {
+            Ok(Value::Plaintext(Plaintext::Literal(Literal::Data(data), _))) => {
+                let bytes = match data.to_bytes_le() {
+                    Ok(bytes) => bytes,
+                    Err(_) => bail!("Failed to convert the proof data to bytes"),
+                };
+                match Proof::<N>::read_le(&bytes[..]) {
+                    Ok(proof) => proof,
+                    Err(_) => bail!("Failed to read the proof from bytes"),
+                }
+            }
+            _ => bail!("The first operand must be a `data[_]` literal"),
+        };
+
+        // Calculate the number of unique circuits.
+        let num_unique_circuits = (self.operands.len() - 1) / 2;
+
+        // Initialize a vector for the verification keys and inputs.
+        let mut inputs = Vec::with_capacity(num_unique_circuits);
+
+        // Load the verification keys and inputs.
+        for i in 0..num_unique_circuits {
+            // Load the verification key as a `data[2]` value and serialize it as a `VerifyingKey`.
+            let verifying_key = match registers.load(stack, &self.operands[2 * i + 1]) {
+                Ok(Value::Plaintext(Plaintext::Literal(Literal::Data(data), _))) => {
+                    let bytes = match data.to_bytes_le() {
+                        Ok(bytes) => bytes,
+                        Err(_) => bail!("Failed to convert the verification key data to bytes"),
+                    };
+                    match VerifyingKey::<N>::read_le(&bytes[..]) {
+                        Ok(vk) => vk,
+                        Err(_) => bail!("Failed to read the verification key from bytes"),
+                    }
+                }
+                _ => bail!("The verification key must be a `data[2]` literal"),
+            };
+
+            // Load the verifier inputs as a two-dimensional array of field elements.
+            let input = match registers.load(stack, &self.operands[2 * i + 2]) {
+                Ok(Value::Plaintext(Plaintext::Array(outer, _))) => {
+                    let mut input = Vec::with_capacity(outer.len());
+                    for element in outer {
+                        match element {
+                            Plaintext::Array(inner, _) => {
+                                let mut inner_input = Vec::with_capacity(inner.len());
+                                for inner_element in inner {
+                                    match inner_element {
+                                        Plaintext::Literal(Literal::Field(field), _) => {
+                                            inner_input.push(*field);
+                                        }
+                                        _ => bail!("The inputs must be a two-dimensional array of field elements"),
+                                    };
+                                }
+                                input.push(inner_input);
+                            }
+                            _ => bail!("The inputs must be a two-dimensional array of field elements"),
+                        };
+                    }
+                    input
+                }
+                _ => bail!("The inputs must be a two-dimensional array of field elements"),
+            };
+
+            inputs.push((verifying_key, input));
+        }
+
+        // Verify the proof.
+        let is_valid = VerifyingKey::<N>::verify_batch("varuna.verify", inputs, &proof).is_ok();
+
+        // Store the result into the destination register.
+        registers.store(
+            stack,
+            &self.destination,
+            Value::Plaintext(Plaintext::from(Literal::Boolean(Boolean::new(is_valid)))),
+        )
     }
 }
 
