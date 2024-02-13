@@ -107,11 +107,11 @@ impl<N: Network> VarunaVerify<N> {
         // Load the first operand as a `data[_]` value and serialize it as a `Proof`.
         let proof = match registers.load(stack, &self.operands[0]) {
             Ok(Value::Plaintext(Plaintext::Literal(Literal::Data(data), _))) => {
-                let bytes = match data.to_bytes_le() {
+                let bytes_le = match data.decode_as_bytes_le() {
                     Ok(bytes) => bytes,
                     Err(_) => bail!("Failed to convert the proof data to bytes"),
                 };
-                match Proof::<N>::read_le(&bytes[..]) {
+                match Proof::<N>::read_le(&bytes_le[..]) {
                     Ok(proof) => proof,
                     Err(_) => bail!("Failed to read the proof from bytes"),
                 }
@@ -130,11 +130,11 @@ impl<N: Network> VarunaVerify<N> {
             // Load the verification key as a `data[2]` value and serialize it as a `VerifyingKey`.
             let verifying_key = match registers.load(stack, &self.operands[2 * i + 1]) {
                 Ok(Value::Plaintext(Plaintext::Literal(Literal::Data(data), _))) => {
-                    let bytes = match data.to_bytes_le() {
+                    let bytes_le = match data.decode_as_bytes_le() {
                         Ok(bytes) => bytes,
                         Err(_) => bail!("Failed to convert the verification key data to bytes"),
                     };
-                    match VerifyingKey::<N>::read_le(&bytes[..]) {
+                    match VerifyingKey::<N>::read_le(&bytes_le[..]) {
                         Ok(vk) => vk,
                         Err(_) => bail!("Failed to read the verification key from bytes"),
                     }

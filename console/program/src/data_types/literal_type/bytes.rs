@@ -29,7 +29,7 @@ impl<N: Network> FromBytes for LiteralType<N> {
                 } else if *length > N::MAX_DATA_SIZE_IN_FIELDS {
                     Err(error(format!("Data literal exceeds the maximum length of {}.", N::MAX_DATA_SIZE_IN_FIELDS)))
                 } else {
-                    Ok(LiteralType::Data(U32::read_le(&mut reader)?))
+                    Ok(LiteralType::Data(length))
                 }
             }
             3 => Ok(LiteralType::Field),

@@ -46,7 +46,7 @@ impl<N: Network> FromStr for Data<N> {
             bail!("Found a `Data` that is not bech32m encoded: {data_string}");
         }
         // Decode the data from u5 to u8, and into the `Data` object.
-        Ok(Self::read_le(&Vec::from_base32(&data)?[..])?)
+        Ok(Self::encode_from_bytes_le(&Vec::from_base32(&data)?[..])?)
     }
 }
 
@@ -59,8 +59,8 @@ impl<N: Network> Debug for Data<N> {
 impl<N: Network> Display for Data<N> {
     /// Writes the `Data` as a bech32m string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        // Convert the `Data` to bytes.
-        let bytes = self.to_bytes_le().map_err(|_| fmt::Error)?;
+        // Decode the `Data` as bytes.
+        let bytes = self.decode_as_bytes_le().map_err(|_| fmt::Error)?;
         // Encode the bytes into bech32m.
         let string =
             bech32::encode(DATA_PREFIX, bytes.to_base32(), bech32::Variant::Bech32m).map_err(|_| fmt::Error)?;
@@ -131,5 +131,68 @@ mod tests {
             assert_eq!(expected, candidate_recovered);
         }
         Ok(())
+    }
+
+    #[test]
+    fn tmp_test_printing_data() {
+        // [0u8]
+        let bytes = [0u8];
+        let data = Data::<MainnetV0>::encode_from_bytes_le(&bytes).unwrap();
+        let string = data.to_string();
+        println!("{:?}", string);
+        let data_from_string = Data::<MainnetV0>::from_str(&string).unwrap();
+        assert_eq!(data, data_from_string);
+        let decoded_bytes = data_from_string.decode_as_bytes_le().unwrap();
+        assert_eq!(bytes.to_vec(), decoded_bytes);
+
+        // [1u8]
+        let bytes = [1u8];
+        let data = Data::<MainnetV0>::encode_from_bytes_le(&bytes).unwrap();
+        let string = data.to_string();
+        println!("{:?}", string);
+        let data_from_string = Data::<MainnetV0>::from_str(&string).unwrap();
+        assert_eq!(data, data_from_string);
+        let decoded_bytes = data_from_string.decode_as_bytes_le().unwrap();
+        assert_eq!(bytes.to_vec(), decoded_bytes);
+
+        // [0u8, 0u8]
+        let bytes = [0u8, 0u8];
+        let data = Data::<MainnetV0>::encode_from_bytes_le(&bytes).unwrap();
+        let string = data.to_string();
+        println!("{:?}", string);
+        let data_from_string = Data::<MainnetV0>::from_str(&string).unwrap();
+        assert_eq!(data, data_from_string);
+        let decoded_bytes = data_from_string.decode_as_bytes_le().unwrap();
+        assert_eq!(bytes.to_vec(), decoded_bytes);
+
+        // [0u8, 1u8]
+        let bytes = [0u8, 1u8];
+        let data = Data::<MainnetV0>::encode_from_bytes_le(&bytes).unwrap();
+        let string = data.to_string();
+        println!("{:?}", string);
+        let data_from_string = Data::<MainnetV0>::from_str(&string).unwrap();
+        assert_eq!(data, data_from_string);
+        let decoded_bytes = data_from_string.decode_as_bytes_le().unwrap();
+        assert_eq!(bytes.to_vec(), decoded_bytes);
+
+        // [1u8, 0u8]
+        let bytes = [1u8, 0u8];
+        let data = Data::<MainnetV0>::encode_from_bytes_le(&bytes).unwrap();
+        let string = data.to_string();
+        println!("{:?}", string);
+        let data_from_string = Data::<MainnetV0>::from_str(&string).unwrap();
+        assert_eq!(data, data_from_string);
+        let decoded_bytes = data_from_string.decode_as_bytes_le().unwrap();
+        assert_eq!(bytes.to_vec(), decoded_bytes);
+
+        // [1u8, 1u8]
+        let bytes = [1u8, 1u8];
+        let data = Data::<MainnetV0>::encode_from_bytes_le(&bytes).unwrap();
+        let string = data.to_string();
+        println!("{:?}", string);
+        let data_from_string = Data::<MainnetV0>::from_str(&string).unwrap();
+        assert_eq!(data, data_from_string);
+        let decoded_bytes = data_from_string.decode_as_bytes_le().unwrap();
+        assert_eq!(bytes.to_vec(), decoded_bytes);
     }
 }
