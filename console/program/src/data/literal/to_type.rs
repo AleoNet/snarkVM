@@ -16,7 +16,7 @@ use super::*;
 
 impl<N: Network> Literal<N> {
     /// Returns the type name of the literal.
-    pub fn to_type(&self) -> LiteralType {
+    pub fn to_type(&self) -> LiteralType<N> {
         match self {
             Self::Address(..) => LiteralType::Address,
             Self::Boolean(..) => LiteralType::Boolean,

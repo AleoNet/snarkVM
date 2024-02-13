@@ -16,7 +16,7 @@ use super::*;
 
 impl<N: Network> Literal<N> {
     /// Returns a randomly-sampled literal of the given literal type.
-    pub fn sample<R: Rng + CryptoRng>(literal_type: LiteralType, rng: &mut R) -> Self {
+    pub fn sample<R: Rng + CryptoRng>(literal_type: LiteralType<N>, rng: &mut R) -> Self {
         match literal_type {
             LiteralType::Address => Literal::Address(Address::rand(rng)),
             LiteralType::Boolean => Literal::Boolean(Boolean::rand(rng)),

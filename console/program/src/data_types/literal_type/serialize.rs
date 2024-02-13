@@ -14,7 +14,7 @@
 
 use super::*;
 
-impl Serialize for LiteralType {
+impl<N: Network> Serialize for LiteralType<N> {
     /// Serializes the literal type into string or bytes.
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
@@ -24,7 +24,7 @@ impl Serialize for LiteralType {
     }
 }
 
-impl<'de> Deserialize<'de> for LiteralType {
+impl<'de, N: Network> Deserialize<'de> for LiteralType<N> {
     /// Deserializes the literal type from a string or bytes.
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         match deserializer.is_human_readable() {
@@ -37,6 +37,8 @@ impl<'de> Deserialize<'de> for LiteralType {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    type CurrentNetwork = snarkvm_console_network::MainnetV0;
 
     /// Add test cases here to be checked for serialization.
     const TEST_CASES: &[&str] = &[
@@ -92,14 +94,14 @@ mod tests {
     #[test]
     fn test_serde_json() {
         for case in TEST_CASES.iter() {
-            check_serde_json(LiteralType::from_str(case).unwrap());
+            check_serde_json(LiteralType::<CurrentNetwork>::from_str(case).unwrap());
         }
     }
 
     #[test]
     fn test_bincode() {
         for case in TEST_CASES.iter() {
-            check_bincode(LiteralType::from_str(case).unwrap());
+            check_bincode(LiteralType::<CurrentNetwork>::from_str(case).unwrap());
         }
     }
 }

@@ -14,7 +14,7 @@
 
 use super::*;
 
-impl Parser for LiteralType {
+impl<N: Network> Parser for LiteralType<N> {
     /// Parses a string into a literal type.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
@@ -41,7 +41,7 @@ impl Parser for LiteralType {
     }
 }
 
-impl FromStr for LiteralType {
+impl<N: Network> FromStr for LiteralType<N> {
     type Err = Error;
 
     /// Returns a literal type from a string literal.
@@ -58,16 +58,35 @@ impl FromStr for LiteralType {
     }
 }
 
-impl Debug for LiteralType {
+impl<N: Network> Debug for LiteralType<N> {
     /// Prints the literal type as a string.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.type_name())
+        match self {
+            LiteralType::Address => write!(f, "address"),
+            LiteralType::Boolean => write!(f, "boolean"),
+            LiteralType::Bytes(length) => write!(f, "bytes({length})"),
+            LiteralType::Field => write!(f, "field"),
+            LiteralType::Group => write!(f, "group"),
+            LiteralType::I8 => write!(f, "i8"),
+            LiteralType::I16 => write!(f, "i16"),
+            LiteralType::I32 => write!(f, "i32"),
+            LiteralType::I64 => write!(f, "i64"),
+            LiteralType::I128 => write!(f, "i128"),
+            LiteralType::U8 => write!(f, "u8"),
+            LiteralType::U16 => write!(f, "u16"),
+            LiteralType::U32 => write!(f, "u32"),
+            LiteralType::U64 => write!(f, "u64"),
+            LiteralType::U128 => write!(f, "u128"),
+            LiteralType::Scalar => write!(f, "scalar"),
+            LiteralType::Signature => write!(f, "signature"),
+            LiteralType::String => write!(f, "string"),
+        }
     }
 }
 
-impl Display for LiteralType {
+impl<N: Network> Display for LiteralType<N> {
     /// Prints the literal type as a string.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.type_name())
+        write!(f, "{:?}", &self)
     }
 }

@@ -14,11 +14,11 @@
 
 use super::*;
 
-impl LiteralType {
+impl<N: Network> LiteralType<N> {
     /// Returns the number of bits of this literal type.
     ///
     /// For string literals, this method returns the maximum number of bits that can be stored in the string.
-    pub fn size_in_bits<N: Network>(&self) -> u16 {
+    pub fn size_in_bits(&self) -> u16 {
         let size = match self {
             Self::Address => Address::<N>::size_in_bits(),
             Self::Boolean => Boolean::<N>::size_in_bits(),

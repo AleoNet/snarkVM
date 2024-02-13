@@ -24,7 +24,7 @@ use snarkvm_console_network::prelude::*;
 pub enum PlaintextType<N: Network> {
     /// A literal type contains its type name.
     /// The format of the type is `<type_name>`.
-    Literal(LiteralType),
+    Literal(LiteralType<N>),
     /// An struct type contains its identifier.
     /// The format of the type is `<identifier>`.
     Struct(Identifier<N>),
@@ -33,9 +33,9 @@ pub enum PlaintextType<N: Network> {
     Array(ArrayType<N>),
 }
 
-impl<N: Network> From<LiteralType> for PlaintextType<N> {
+impl<N: Network> From<LiteralType<N>> for PlaintextType<N> {
     /// Initializes a plaintext type from a literal type.
-    fn from(literal: LiteralType) -> Self {
+    fn from(literal: LiteralType<N>) -> Self {
         PlaintextType::Literal(literal)
     }
 }

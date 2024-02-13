@@ -23,15 +23,15 @@ use snarkvm_console_network::prelude::*;
 use snarkvm_console_types::{prelude::*, Boolean};
 
 use core::fmt::{self, Debug, Display};
-use num_derive::FromPrimitive;
-use num_traits::FromPrimitive;
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, FromPrimitive)]
-pub enum LiteralType {
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+pub enum LiteralType<N: Network> {
     /// The Aleo address type.
     Address,
     /// The boolean type.
     Boolean,
+    /// The bytes type.
+    Bytes(U32<N>),
     /// The field type (base field).
     Field,
     /// The group type (affine).
@@ -64,32 +64,28 @@ pub enum LiteralType {
     String,
 }
 
-impl LiteralType {
-    /// Returns the literal type name.
-    pub fn type_name(&self) -> &str {
-        match self {
-            Self::Address => "address",
-            Self::Boolean => "boolean",
-            Self::Field => "field",
-            Self::Group => "group",
-            Self::I8 => "i8",
-            Self::I16 => "i16",
-            Self::I32 => "i32",
-            Self::I64 => "i64",
-            Self::I128 => "i128",
-            Self::U8 => "u8",
-            Self::U16 => "u16",
-            Self::U32 => "u32",
-            Self::U64 => "u64",
-            Self::U128 => "u128",
-            Self::Scalar => "scalar",
-            Self::Signature => "signature",
-            Self::String => "string",
-        }
-    }
-
+impl<N: Network> LiteralType<N> {
     /// Returns the unique numeric identifier for the literal type.
     pub fn type_id(&self) -> u8 {
-        *self as u8
+        match &self {
+            Self::Address => 0,
+            Self::Boolean => 1,
+            Self::Bytes(_) => 2,
+            Self::Field => 3,
+            Self::Group => 4,
+            Self::I8 => 5,
+            Self::I16 => 6,
+            Self::I32 => 7,
+            Self::I64 => 8,
+            Self::I128 => 9,
+            Self::U8 => 10,
+            Self::U16 => 11,
+            Self::U32 => 12,
+            Self::U64 => 13,
+            Self::U128 => 14,
+            Self::Scalar => 15,
+            Self::Signature => 16,
+            Self::String => 17,
+        }
     }
 }
