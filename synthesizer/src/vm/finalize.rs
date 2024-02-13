@@ -2128,7 +2128,7 @@ finalize compute:
         let metadata_mapping_name = Identifier::from_str("metadata").unwrap();
         let unbonding_mapping_name = Identifier::from_str("unbonding").unwrap();
 
-        // Get the committee mapping.
+        // Get and check the committee mapping.
         let actual_committee = vm.finalize_store().get_mapping_confirmed(program_id, committee_mapping_name).unwrap();
         let expected_committee = committee
             .members()
@@ -2140,12 +2140,15 @@ finalize compute:
                 )
             })
             .collect_vec();
+        // Note that `actual_committee` and `expected_committee` are vectors and not necessarily in the same order.
+        // By checking that the lengths of the vector are equal and that all entries in `actual_committee` are in `expected_committee`,
+        // we can ensure that the two vectors contain the same data.
         assert_eq!(actual_committee.len(), expected_committee.len());
         for entry in actual_committee.iter() {
             assert!(expected_committee.contains(entry));
         }
 
-        // Get the account mapping.
+        // Get and check the account mapping.
         let actual_account = vm.finalize_store().get_mapping_confirmed(program_id, account_mapping_name).unwrap();
         let expected_account = public_balances
             .iter()
@@ -2153,18 +2156,23 @@ finalize compute:
                 (Plaintext::from_str(&address.to_string()).unwrap(), Value::from_str(&format!("{amount}u64")).unwrap())
             })
             .collect_vec();
+        // Note that `actual_account` and `expected_account` are vectors and not necessarily in the same order.
+        // By checking that the lengths of the vector are equal and that all entries in `actual_account` are in `expected_account`,
+        // we can ensure that the two vectors contain the same data.
         assert_eq!(actual_account.len(), expected_account.len());
         // Check that all entries except for the first validator are the same.
         for entry in actual_account.iter() {
-            if entry.0
-                != Plaintext::from_str(&Address::try_from(validators.keys().next().unwrap()).unwrap().to_string())
-                    .unwrap()
-            {
+            let first_validator = Address::try_from(validators.keys().next().unwrap()).unwrap();
+            // Note that the first validator is used to execute additional transactions in `VM::genesis_quorum`.
+            // Therefore, the balance of the first validator will be different from the expected balance.
+            if entry.0 == Plaintext::from_str(&first_validator.to_string()).unwrap() {
+                assert_eq!(entry.1, Value::from_str(&format!("294999983894244u64")).unwrap());
+            } else {
                 assert!(expected_account.contains(entry));
             }
         }
 
-        // Get the bonded mapping.
+        // Get and check the bonded mapping.
         let actual_bonded = vm.finalize_store().get_mapping_confirmed(program_id, bonded_mapping_name).unwrap();
         let expected_bonded = bonded_balances
             .iter()
@@ -2175,12 +2183,15 @@ finalize compute:
                 )
             })
             .collect_vec();
+        // Note that `actual_bonded` and `expected_bonded` are vectors and not necessarily in the same order.
+        // By checking that the lengths of the vector are equal and that all entries in `actual_bonded` are in `expected_bonded`,
+        // we can ensure that the two vectors contain the same data.
         assert_eq!(actual_bonded.len(), expected_bonded.len());
         for entry in actual_bonded.iter() {
             assert!(expected_bonded.contains(entry));
         }
 
-        // Get the entry in metadata mapping corresponding to the number of validators.
+        // Get and check the entry in metadata mapping corresponding to the number of validators.
         let num_validators = vm
             .finalize_store()
             .get_value_confirmed(
@@ -2192,7 +2203,7 @@ finalize compute:
             .unwrap();
         assert_eq!(num_validators, Value::from_str(&format!("{NUM_VALIDATORS}u32")).unwrap());
 
-        // Get the entry in metadata mapping corresponding to the number of delegators.
+        // Get and check the entry in metadata mapping corresponding to the number of delegators.
         let num_delegators = vm
             .finalize_store()
             .get_value_confirmed(
@@ -2204,7 +2215,7 @@ finalize compute:
             .unwrap();
         assert_eq!(num_delegators, Value::from_str(&format!("{NUM_DELEGATORS}u32")).unwrap());
 
-        // Get the unbonding mapping.
+        // Get and check the unbonding mapping.
         let actual_unbonding = vm.finalize_store().get_mapping_confirmed(program_id, unbonding_mapping_name).unwrap();
         assert!(actual_unbonding.is_empty());
     }
