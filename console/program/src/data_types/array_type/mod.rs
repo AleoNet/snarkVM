@@ -85,6 +85,18 @@ impl<N: Network> ArrayType<N> {
     pub const fn length(&self) -> &U32<N> {
         &self.length
     }
+
+    /// Returns the number of dimensions of the array.
+    pub fn num_dimensions(&self) -> usize {
+        let mut num_dimensions = 1;
+        let mut element_type = self.next_element_type();
+        // Note that this `while` loop must terminate because the number of dimensions of `ArrayType` is checked to be less then N::MAX_DATA_DEPTH.
+        while let PlaintextType::Array(array_type) = element_type {
+            num_dimensions += 1;
+            element_type = array_type.next_element_type();
+        }
+        num_dimensions
+    }
 }
 
 #[cfg(test)]

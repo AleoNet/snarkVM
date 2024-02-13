@@ -20,7 +20,9 @@ impl<N: Network> Literal<N> {
         match self {
             Self::Address(..) => LiteralType::Address,
             Self::Boolean(..) => LiteralType::Boolean,
-            Self::Data(data) => LiteralType::Data(U32::new(data.len() as u32)),
+            Self::Data(data) => {
+                LiteralType::Data(U32::new(u32::try_from(data.len()).or_halt_with::<N>("Data exceeds u32::MAX length")))
+            }
             Self::Field(..) => LiteralType::Field,
             Self::Group(..) => LiteralType::Group,
             Self::I8(..) => LiteralType::I8,

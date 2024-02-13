@@ -18,8 +18,8 @@ pub use access::Access;
 mod ciphertext;
 pub use ciphertext::Ciphertext;
 
-mod data;
-pub use data::Data;
+mod raw_data;
+pub use raw_data::Data;
 
 mod future;
 pub use future::{Argument, Future};

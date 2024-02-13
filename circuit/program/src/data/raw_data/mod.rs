@@ -15,7 +15,6 @@
 mod equal;
 mod from_bits;
 mod from_fields;
-mod num_randomizers;
 mod size_in_fields;
 mod to_bits;
 mod to_fields;

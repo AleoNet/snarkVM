@@ -12,11 +12,28 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use super::*;
+mod bytes;
+mod equal;
+mod from_bits;
+mod from_fields;
+mod parse;
+mod serialize;
+mod size_in_fields;
+mod to_bits;
+mod to_fields;
 
-impl<A: Aleo> Data<A> {
-    /// Returns the number of field elements to encode `self`.
-    pub(crate) fn num_randomizers(&self) -> u16 {
-        self.size_in_fields()
+use snarkvm_console_network::prelude::*;
+use snarkvm_console_types::{Boolean, Field};
+
+use core::ops::Deref;
+
+#[derive(Clone)]
+pub struct Data<N: Network>(Vec<Field<N>>);
+
+impl<N: Network> Deref for Data<N> {
+    type Target = [Field<N>];
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }

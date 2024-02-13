@@ -13,32 +13,23 @@
 // limitations under the License.
 
 use crate::{
-    traits::{RegistersLoad, RegistersLoadCircuit, RegistersStore, RegistersStoreCircuit, StackMatches, StackProgram},
+    traits::{RegistersLoad, RegistersStore, StackMatches, StackProgram},
     Opcode,
     Operand,
-    MAX_ADDITIONAL_SEEDS,
 };
 use console::{
     network::prelude::*,
-    program::{
-        Literal,
-        LiteralType,
-        Plaintext,
-        PlaintextType,
-        Register,
-        RegisterType,
-        ToFields as ConsoleToFields,
-        Value,
-    },
+    program::{Literal, Plaintext, Register, Value},
     types::Boolean,
 };
+use synthesizer_snark::{Proof, VerifyingKey};
+
 use core::fmt;
 use std::{
     fmt::{Debug, Display, Formatter},
     io::{Read, Write},
     str::FromStr,
 };
-use synthesizer_snark::{Proof, VerifyingKey};
 
 /// Returns true if the Varuna `proof` is valid for the given `vk`s and `input`s and stores the result into `destination`.
 #[derive(Clone, PartialEq, Eq, Hash)]

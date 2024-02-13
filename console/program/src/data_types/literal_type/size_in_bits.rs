@@ -23,7 +23,7 @@ impl<N: Network> LiteralType<N> {
             Self::Address => Address::<N>::size_in_bits(),
             Self::Boolean => Boolean::<N>::size_in_bits(),
             // TODO: (@d0cd) Is u16 sufficient? May need to use u32 or u64.
-            Self::Data(length) => (*length).saturating_mul(Field::<N>::size_in_bits() as u32) as usize,
+            Self::Data(length) => (**length as usize).saturating_mul(Field::<N>::size_in_bits()),
             Self::Field => Field::<N>::size_in_bits(),
             Self::Group => Group::<N>::size_in_bits(),
             Self::I8 => I8::<N>::size_in_bits(),
