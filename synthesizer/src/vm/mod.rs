@@ -182,7 +182,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             atomic_lock: Arc::new(Mutex::new(())),
             block_lock: Arc::new(Mutex::new(())),
             partially_verified_transactions: Arc::new(RwLock::new(LruCache::new(
-                NonZeroUsize::new(Transactions::<console::network::Testnet3>::MAX_TRANSACTIONS).unwrap(),
+                NonZeroUsize::new(Transactions::<N>::MAX_TRANSACTIONS).unwrap(),
             ))),
         })
     }
