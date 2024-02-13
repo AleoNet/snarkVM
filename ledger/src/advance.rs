@@ -239,7 +239,17 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         let next_height = previous_block.height().saturating_add(1);
         // Determine the timestamp for the next block.
         let next_timestamp = match subdag {
-            Some(subdag) => subdag.timestamp(&self.latest_committee()?),
+            Some(subdag) => {
+                // Get the committee lookback round.
+                let committee_lookback_round =
+                    subdag.anchor_round().saturating_sub(Committee::<N>::COMMITTEE_LOOKBACK_RANGE);
+                // Retrieve the committee lookback.
+                let committee_lookback = self
+                    .get_committee_for_round(committee_lookback_round)?
+                    .ok_or(anyhow!("Failed to fetch committee for round {committee_lookback_round}"))?;
+                // Return the timestamp for the given committee lookback.
+                subdag.timestamp(&committee_lookback)
+            }
             None => OffsetDateTime::now_utc().unix_timestamp(),
         };
         // Compute the next cumulative weight.
