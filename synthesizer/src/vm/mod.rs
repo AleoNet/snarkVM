@@ -60,8 +60,9 @@ use synthesizer_program::{FinalizeGlobalState, FinalizeOperation, FinalizeStoreT
 
 use aleo_std::prelude::{finish, lap, timer};
 use indexmap::{IndexMap, IndexSet};
+use lru::LruCache;
 use parking_lot::{Mutex, RwLock};
-use std::sync::Arc;
+use std::{num::NonZeroUsize, sync::Arc};
 
 #[cfg(not(feature = "serial"))]
 use rayon::prelude::*;
@@ -76,6 +77,8 @@ pub struct VM<N: Network, C: ConsensusStorage<N>> {
     atomic_lock: Arc<Mutex<()>>,
     /// The lock for ensuring there is no concurrency when advancing blocks.
     block_lock: Arc<Mutex<()>>,
+    /// A cache containing the list of recent partially-verified transactions.
+    partially_verified_transactions: Arc<RwLock<LruCache<N::TransactionID, ()>>>,
 }
 
 impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
@@ -178,6 +181,9 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             store,
             atomic_lock: Arc::new(Mutex::new(())),
             block_lock: Arc::new(Mutex::new(())),
+            partially_verified_transactions: Arc::new(RwLock::new(LruCache::new(
+                NonZeroUsize::new(Transactions::<console::network::Testnet3>::MAX_TRANSACTIONS).unwrap(),
+            ))),
         })
     }
 
@@ -191,6 +197,12 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     #[inline]
     pub fn process(&self) -> Arc<RwLock<Process<N>>> {
         self.process.clone()
+    }
+
+    /// Returns the partially-verified transactions.
+    #[inline]
+    pub fn partially_verified_transactions(&self) -> Arc<RwLock<LruCache<N::TransactionID, ()>>> {
+        self.partially_verified_transactions.clone()
     }
 }
 
