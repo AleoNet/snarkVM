@@ -20,7 +20,18 @@ impl<N: Network> FromBytes for LiteralType<N> {
         match index {
             0 => Ok(LiteralType::Address),
             1 => Ok(LiteralType::Boolean),
-            2 => Ok(LiteralType::Data(U32::read_le(&mut reader)?)),
+            2 => {
+                // Read the length of the data.
+                let length = U32::read_le(&mut reader)?;
+                // Check that the length of the data is valid.
+                if length.is_zero() {
+                    Err(error("Data literal must have a non-zero length".to_string()))
+                } else if *length > N::MAX_DATA_SIZE_IN_FIELDS {
+                    Err(error(format!("Data literal exceeds the maximum length of {}.", N::MAX_DATA_SIZE_IN_FIELDS)))
+                } else {
+                    Ok(LiteralType::Data(U32::read_le(&mut reader)?))
+                }
+            }
             3 => Ok(LiteralType::Field),
             4 => Ok(LiteralType::Group),
             5 => Ok(LiteralType::I8),

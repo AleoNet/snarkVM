@@ -22,7 +22,15 @@ impl<N: Network> Parser for LiteralType<N> {
         alt((
             map(tag("address"), |_| Self::Address),
             map(tag("boolean"), |_| Self::Boolean),
-            map(pair(tag("data["), pair(U32::parse, tag("]"))), |(_, (length, _))| Self::Data(length)),
+            map_res(pair(tag("data["), pair(U32::parse, tag("]"))), |(_, (length, _))| {
+                if length.is_zero() {
+                    Err("Data literal must have a non-zero length".to_string())
+                } else if *length > N::MAX_DATA_SIZE_IN_FIELDS {
+                    Err(format!("Data literal exceeds the maximum length of {}.", N::MAX_DATA_SIZE_IN_FIELDS))
+                } else {
+                    Ok(Self::Data(length))
+                }
+            }),
             map(tag("field"), |_| Self::Field),
             map(tag("group"), |_| Self::Group),
             map(tag("i8"), |_| Self::I8),
