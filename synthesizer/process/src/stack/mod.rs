@@ -224,16 +224,16 @@ impl<N: Network> StackProgram<N> for Stack<N> {
         &self.program
     }
 
-    /// Returns the program depth.
-    #[inline]
-    fn program_depth(&self) -> usize {
-        self.program_depth
-    }
-
     /// Returns the program ID.
     #[inline]
     fn program_id(&self) -> &ProgramID<N> {
         self.program.id()
+    }
+
+    /// Returns the program depth.
+    #[inline]
+    fn program_depth(&self) -> usize {
+        self.program_depth
     }
 
     /// Returns `true` if the stack contains the external record.
