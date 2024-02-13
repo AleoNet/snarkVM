@@ -2154,7 +2154,7 @@ finalize compute:
             })
             .collect_vec();
         assert_eq!(actual_account.len(), expected_account.len());
-        // Check that all entries except for the one for the first validator are the same.
+        // Check that all entries except for the first validator are the same.
         for entry in actual_account.iter() {
             if entry.0
                 != Plaintext::from_str(&Address::try_from(validators.keys().next().unwrap()).unwrap().to_string())
