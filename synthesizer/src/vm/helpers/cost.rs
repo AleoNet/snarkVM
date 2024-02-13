@@ -374,6 +374,10 @@ pub fn cost_in_microcredits<N: Network>(stack: &Stack<N>, function_name: &Identi
         }
         Command::BranchEq(_) | Command::BranchNeq(_) => Ok(500),
         Command::Position(_) => Ok(100),
+        Command::VarunaVerify(_) => {
+            // TODO (@d0cd)
+            todo!()
+        }
     };
 
     // Aggregate the cost of all commands in the program.

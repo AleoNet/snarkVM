@@ -39,6 +39,9 @@ pub use position::*;
 mod set;
 pub use set::*;
 
+mod varuna_verify;
+pub use varuna_verify::*;
+
 use crate::{
     traits::{
         CommandTrait,
@@ -84,6 +87,8 @@ pub enum Command<N: Network> {
     BranchNeq(BranchNeq<N>),
     /// Indicates a position to which the program can branch to.
     Position(Position<N>),
+    /// Returns true if the Varuna `proof` is valid for the given `vk`s and `input`s and stores the result into `destination`.
+    VarunaVerify(VarunaVerify<N>),
 }
 
 impl<N: Network> CommandTrait<N> for Command<N> {
@@ -96,6 +101,7 @@ impl<N: Network> CommandTrait<N> for Command<N> {
             Command::Get(get) => vec![get.destination().clone()],
             Command::GetOrUse(get_or_use) => vec![get_or_use.destination().clone()],
             Command::RandChaCha(rand_chacha) => vec![rand_chacha.destination().clone()],
+            Command::VarunaVerify(varuna_verify) => vec![varuna_verify.destination().clone()],
             Command::Await(_)
             | Command::BranchEq(_)
             | Command::BranchNeq(_)
@@ -176,6 +182,8 @@ impl<N: Network> Command<N> {
             }
             // Finalize the `position` command, and return no finalize operation.
             Command::Position(position) => position.finalize().map(|_| None),
+            // Finalize the `varuna.verify` command, and return no finalize operation.
+            Command::VarunaVerify(varuna_verify) => varuna_verify.finalize(stack, registers).map(|_| None),
         }
     }
 }
@@ -208,8 +216,10 @@ impl<N: Network> FromBytes for Command<N> {
             9 => Ok(Self::BranchNeq(BranchNeq::read_le(&mut reader)?)),
             // Read the `position` command.
             10 => Ok(Self::Position(Position::read_le(&mut reader)?)),
+            // Read the `varuna.verify` command.
+            11 => Ok(Self::VarunaVerify(VarunaVerify::read_le(&mut reader)?)),
             // Invalid variant.
-            11.. => Err(error(format!("Invalid command variant: {variant}"))),
+            12.. => Err(error(format!("Invalid command variant: {variant}"))),
         }
     }
 }
@@ -284,6 +294,12 @@ impl<N: Network> ToBytes for Command<N> {
                 // Write the position command.
                 position.write_le(&mut writer)
             }
+            Self::VarunaVerify(varuna_verify) => {
+                // Write the variant.
+                11u8.write_le(&mut writer)?;
+                // Write the `varuna.verify` command.
+                varuna_verify.write_le(&mut writer)
+            }
         }
     }
 }
@@ -305,6 +321,7 @@ impl<N: Network> Parser for Command<N> {
             map(BranchEq::parse, |branch_eq| Self::BranchEq(branch_eq)),
             map(BranchNeq::parse, |branch_neq| Self::BranchNeq(branch_neq)),
             map(Position::parse, |position| Self::Position(position)),
+            map(VarunaVerify::parse, |varuna_verify| Self::VarunaVerify(varuna_verify)),
             map(Instruction::parse, |instruction| Self::Instruction(instruction)),
         ))(string)
     }
@@ -350,6 +367,7 @@ impl<N: Network> Display for Command<N> {
             Self::BranchEq(branch_eq) => Display::fmt(branch_eq, f),
             Self::BranchNeq(branch_neq) => Display::fmt(branch_neq, f),
             Self::Position(position) => Display::fmt(position, f),
+            Self::VarunaVerify(varuna_verify) => Display::fmt(varuna_verify, f),
         }
     }
 }
@@ -442,6 +460,12 @@ mod tests {
         let command = Command::<CurrentNetwork>::parse(expected).unwrap().1;
         let bytes = command.to_bytes_le().unwrap();
         assert_eq!(command, Command::from_bytes_le(&bytes).unwrap());
+
+        // VarunaVerify
+        let expected = "varuna.verify r0 r1 r2 into r3";
+        let command = Command::<CurrentNetwork>::parse(expected).unwrap().1;
+        let bytes = command.to_bytes_le().unwrap();
+        assert_eq!(command, Command::from_bytes_le(&bytes).unwrap());
     }
 
     #[test]
@@ -518,6 +542,12 @@ mod tests {
         let expected = "position exit;";
         let command = Command::<CurrentNetwork>::parse(expected).unwrap().1;
         assert_eq!(Command::Position(Position::from_str(expected).unwrap()), command);
+        assert_eq!(expected, command.to_string());
+
+        // VarunaVerify
+        let expected = "varuna.verify r0 r1 r2 into r3";
+        let command = Command::<CurrentNetwork>::parse(expected).unwrap().1;
+        assert_eq!(Command::VarunaVerify(VarunaVerify::from_str(expected).unwrap()), command);
         assert_eq!(expected, command.to_string());
     }
 }

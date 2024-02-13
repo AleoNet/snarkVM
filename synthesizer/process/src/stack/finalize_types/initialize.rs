@@ -25,6 +25,7 @@ use synthesizer_program::{
     RandChaCha,
     Remove,
     Set,
+    VarunaVerify,
     MAX_ADDITIONAL_SEEDS,
 };
 
@@ -184,6 +185,7 @@ impl<N: Network> FinalizeTypes<N> {
             Command::BranchNeq(branch_neq) => self.check_branch(stack, finalize, branch_neq)?,
             // Note that the `Position`s are checked for uniqueness when constructing `Finalize`.
             Command::Position(_) => (),
+            Command::VarunaVerify(varuna_verify) => self.check_varuna_verify(stack, varuna_verify)?,
         }
         Ok(())
     }
@@ -535,6 +537,16 @@ impl<N: Network> FinalizeTypes<N> {
             bail!("Key type in `remove` '{key_type}' does not match the key type in the mapping '{mapping_key_type}'.")
         }
         Ok(())
+    }
+
+    /// Ensures the given `varuna.verify` is well-formed.
+    #[inline]
+    fn check_varuna_verify(
+        &self,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
+        remove: &VarunaVerify<N>,
+    ) -> Result<()> {
+        todo!()
     }
 
     /// Ensures the given instruction is well-formed.

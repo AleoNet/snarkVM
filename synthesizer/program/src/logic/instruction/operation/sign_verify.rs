@@ -280,12 +280,12 @@ mod tests {
 
     #[test]
     fn test_parse() {
-        let (string, is) = SignVerify::<CurrentNetwork>::parse("sign.verify r0 r1 r2 into r3").unwrap();
+        let (string, sign_verify) = SignVerify::<CurrentNetwork>::parse("sign.verify r0 r1 r2 into r3").unwrap();
         assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
-        assert_eq!(is.operands.len(), 3, "The number of operands is incorrect");
-        assert_eq!(is.operands[0], Operand::Register(Register::Locator(0)), "The first operand is incorrect");
-        assert_eq!(is.operands[1], Operand::Register(Register::Locator(1)), "The second operand is incorrect");
-        assert_eq!(is.operands[2], Operand::Register(Register::Locator(2)), "The third operand is incorrect");
-        assert_eq!(is.destination, Register::Locator(3), "The destination register is incorrect");
+        assert_eq!(sign_verify.operands.len(), 3, "The number of operands is incorrect");
+        assert_eq!(sign_verify.operands[0], Operand::Register(Register::Locator(0)), "The first operand is incorrect");
+        assert_eq!(sign_verify.operands[1], Operand::Register(Register::Locator(1)), "The second operand is incorrect");
+        assert_eq!(sign_verify.operands[2], Operand::Register(Register::Locator(2)), "The third operand is incorrect");
+        assert_eq!(sign_verify.destination, Register::Locator(3), "The destination register is incorrect");
     }
 }
