@@ -1349,6 +1349,23 @@ finalize transfer_public:
         (committee_map, allocated_amount)
     }
 
+    /// Returns the `bonded_balances` given the validators and delegators.
+    fn sample_bonded_balances<N: Network>(
+        validators: &IndexMap<PrivateKey<N>, (u64, bool)>,
+        delegators: &IndexMap<PrivateKey<N>, (Address<N>, u64)>,
+    ) -> IndexMap<Address<N>, (Address<N>, u64)> {
+        let mut bonded_balances = IndexMap::with_capacity(validators.len() + delegators.len());
+        for (private_key, (amount, _)) in validators {
+            let address = Address::try_from(private_key).unwrap();
+            bonded_balances.insert(address, (address, *amount));
+        }
+        for (private_key, (validator, amount)) in delegators {
+            let address = Address::try_from(private_key).unwrap();
+            bonded_balances.insert(address, (*validator, *amount));
+        }
+        bonded_balances
+    }
+
     #[test]
     fn test_finalize_duplicate_deployment() {
         let rng = &mut TestRng::default();
@@ -1922,13 +1939,7 @@ finalize compute:
         }
 
         // Construct the bonded balances.
-        let bonded_balances = validators
-            .iter()
-            .map(|(private_key, (amount, _))| {
-                let address = Address::try_from(private_key).unwrap();
-                (address, (address, *amount))
-            })
-            .collect();
+        let bonded_balances = sample_bonded_balances(&validators, &IndexMap::new());
 
         // Construct the genesis block, which should pass.
         let block = vm
@@ -1993,17 +2004,7 @@ finalize compute:
         }
 
         // Construct the bonded balances.
-        let mut bonded_balances = validators
-            .iter()
-            .map(|(private_key, (amount, _))| {
-                let address = Address::try_from(private_key).unwrap();
-                (address, (address, *amount))
-            })
-            .collect::<IndexMap<_, _>>();
-        for (private_key, (validator, amount)) in &delegators {
-            let address = Address::try_from(private_key).unwrap();
-            bonded_balances.insert(address, (*validator, *amount));
-        }
+        let bonded_balances = sample_bonded_balances(&validators, &delegators);
 
         // Construct the genesis block, which should fail.
         let result = vm.genesis_quorum(
@@ -2077,17 +2078,7 @@ finalize compute:
         public_balances.entry(address).and_modify(|balance| *balance += amount).or_insert(amount);
 
         // Construct the bonded balances.
-        let bonded_balances = validators
-            .iter()
-            .map(|(private_key, (amount, _))| {
-                let address = Address::try_from(private_key).unwrap();
-                (address, (address, *amount))
-            })
-            .chain(delegators.iter().map(|(private_key, (validator, amount))| {
-                let address = Address::try_from(private_key).unwrap();
-                (address, (*validator, *amount))
-            }))
-            .collect::<IndexMap<_, _>>();
+        let bonded_balances = sample_bonded_balances(&validators, &delegators);
 
         println!("Generating the genesis block.");
 
@@ -2272,13 +2263,7 @@ finalize compute:
         public_balances.entry(address).and_modify(|balance| *balance += amount).or_insert(amount);
 
         // Construct the bonded balances.
-        let bonded_balances = validators
-            .iter()
-            .map(|(private_key, (amount, _))| {
-                let address = Address::try_from(private_key).unwrap();
-                (address, (address, *amount))
-            })
-            .collect();
+        let bonded_balances = sample_bonded_balances(&validators, &IndexMap::new());
 
         println!("[VM1] Generating the genesis block.");
 
@@ -2354,17 +2339,7 @@ finalize compute:
         public_balances.entry(address).and_modify(|balance| *balance += amount).or_insert(amount);
 
         // Construct the bonded balances.
-        let bonded_balances = validators
-            .iter()
-            .map(|(private_key, (amount, _))| {
-                let address = Address::try_from(private_key).unwrap();
-                (address, (address, *amount))
-            })
-            .chain(delegators.iter().map(|(private_key, (validator, amount))| {
-                let address = Address::try_from(private_key).unwrap();
-                (address, (*validator, *amount))
-            }))
-            .collect();
+        let bonded_balances = sample_bonded_balances(&validators, &delegators);
 
         println!("[VM2] Generating the genesis block.");
 
@@ -2481,13 +2456,7 @@ finalize compute:
         public_balances.entry(address).and_modify(|balance| *balance += amount).or_insert(amount);
 
         // Construct the bonded balances.
-        let bonded_balances = validators
-            .iter()
-            .map(|(private_key, (amount, _))| {
-                let address = Address::try_from(private_key).unwrap();
-                (address, (address, *amount))
-            })
-            .collect();
+        let bonded_balances = sample_bonded_balances(&validators, &IndexMap::new());
 
         // Construct the genesis block, which should pass.
         let block = vm
@@ -2550,17 +2519,7 @@ finalize compute:
         public_balances.insert(address, 0);
 
         // Construct the bonded balances.
-        let bonded_balances = validators
-            .iter()
-            .map(|(private_key, (amount, _))| {
-                let address = Address::try_from(private_key).unwrap();
-                (address, (address, *amount))
-            })
-            .chain(delegators.iter().map(|(private_key, (validator, amount))| {
-                let address = Address::try_from(private_key).unwrap();
-                (address, (*validator, *amount))
-            }))
-            .collect();
+        let bonded_balances = sample_bonded_balances(&validators, &delegators);
 
         // Construct the genesis block, which should fail.
         let result =
@@ -2607,17 +2566,7 @@ finalize compute:
         public_balances.insert(address, 0);
 
         // Construct the bonded balances.
-        let bonded_balances = validators
-            .iter()
-            .map(|(private_key, (amount, _))| {
-                let address = Address::try_from(private_key).unwrap();
-                (address, (address, *amount))
-            })
-            .chain(delegators.iter().map(|(private_key, (validator, amount))| {
-                let address = Address::try_from(private_key).unwrap();
-                (address, (*validator, *amount))
-            }))
-            .collect();
+        let bonded_balances = sample_bonded_balances(&validators, &delegators);
 
         // Construct the genesis block, which should pass.
         let block = vm
@@ -2675,17 +2624,7 @@ finalize compute:
         }
 
         // Construct the bonded balances.
-        let bonded_balances: IndexMap<_, _> = validators
-            .iter()
-            .map(|(private_key, (amount, _))| {
-                let address = Address::try_from(private_key).unwrap();
-                (address, (address, *amount))
-            })
-            .chain(delegators.iter().map(|(private_key, (validator, amount))| {
-                let address = Address::try_from(private_key).unwrap();
-                (address, (*validator, *amount))
-            }))
-            .collect();
+        let bonded_balances = sample_bonded_balances(&validators, &delegators);
 
         // Construct the genesis block, which should fail.
         let result = vm.genesis_quorum(
@@ -2763,13 +2702,7 @@ finalize compute:
         public_balances.insert(delegator_address, remaining_supply - remaining_supply / 2);
 
         // Construct the bonded balances.
-        let bonded_balances = validators
-            .iter()
-            .map(|(private_key, (amount, _))| {
-                let address = Address::try_from(private_key).unwrap();
-                (address, (address, *amount))
-            })
-            .collect();
+        let bonded_balances = sample_bonded_balances(&validators, &IndexMap::new());
 
         // Construct the genesis block, which should pass.
         let block = vm
