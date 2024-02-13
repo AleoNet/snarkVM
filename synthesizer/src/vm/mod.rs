@@ -67,9 +67,6 @@ use std::{num::NonZeroUsize, sync::Arc};
 #[cfg(not(feature = "serial"))]
 use rayon::prelude::*;
 
-/// The number of transactions to keep cached in order to not perform redundant checks.
-const NUM_CACHED_TRANSACTIONS: usize = Transactions::<console::network::Testnet3>::MAX_TRANSACTIONS;
-
 #[derive(Clone)]
 pub struct VM<N: Network, C: ConsensusStorage<N>> {
     /// The process.
@@ -80,7 +77,7 @@ pub struct VM<N: Network, C: ConsensusStorage<N>> {
     atomic_lock: Arc<Mutex<()>>,
     /// The lock for ensuring there is no concurrency when advancing blocks.
     block_lock: Arc<Mutex<()>>,
-    /// A cache containing the list of recent succesfully verified transactions.
+    /// A cache containing the list of recent partially-verified transactions.
     partially_verified_transactions: Arc<RwLock<LruCache<N::TransactionID, ()>>>,
 }
 
@@ -185,7 +182,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             atomic_lock: Arc::new(Mutex::new(())),
             block_lock: Arc::new(Mutex::new(())),
             partially_verified_transactions: Arc::new(RwLock::new(LruCache::new(
-                NonZeroUsize::new(NUM_CACHED_TRANSACTIONS).unwrap(),
+                NonZeroUsize::new(Transactions::<console::network::Testnet3>::MAX_TRANSACTIONS).unwrap(),
             ))),
         })
     }
