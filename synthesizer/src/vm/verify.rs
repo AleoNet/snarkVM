@@ -115,6 +115,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 if self.transaction_store().contains_program_id(deployment.program_id())? {
                     bail!("Program ID '{}' is already deployed", deployment.program_id())
                 }
+                // Ensure the program does not already exist in the VM.
                 if self.contains_program(deployment.program_id()) {
                     bail!("Program ID '{}' already exists", deployment.program_id());
                 }
