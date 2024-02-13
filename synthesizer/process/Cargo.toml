@@ -45,6 +45,11 @@ wasm = [
 ]
 timer = [ "aleo-std/timer" ]
 
+[[bench]]
+name = "stack_operations"
+path = "benches/stack_operations.rs"
+harness = false
+
 [dependencies.console]
 package = "snarkvm-console"
 path = "../../console"
@@ -118,6 +123,9 @@ features = [ "preserve_order" ]
 
 [dev-dependencies.bincode]
 version = "1.3"
+
+[dev-dependencies.criterion]
+version = "0.5"
 
 [dev-dependencies.ledger-committee]
 package = "snarkvm-ledger-committee"

@@ -31,7 +31,7 @@ impl<N: Network> Stack<N> {
             program_depth: 0,
         };
 
-        // Add all of the imports into the stack.
+        // Add all the imports into the stack.
         for import in program.imports().keys() {
             // Ensure the program imports all exist in the process already.
             if !process.contains_program(import) {
