@@ -13,10 +13,13 @@
 // limitations under the License.
 
 mod metrics;
+#[allow(unused_imports)]
 pub use metrics::*;
 
 mod scope;
+#[allow(unused_imports)]
 pub use scope::*;
 
 mod witness;
+#[allow(unused_imports)]
 pub use witness::*;

@@ -1,7 +1,7 @@
 version: 2.1
 
 orbs:
-  windows: circleci/windows@2.4.0
+  windows: circleci/windows@5.0
 
 commands:
   check_windows:
@@ -17,11 +17,14 @@ commands:
           name: "Install Rust and run cargo check"
           command: |
             $ProgressPreference = "SilentlyContinue"
+            # Remove the circleci installed rustc.
+            choco uninstall rust
+            # Install rust with rustup.
             Invoke-WebRequest -Uri "https://win.rustup.rs/" -OutFile "C:\rustup-init.exe"
             & C:\rustup-init.exe -y --default-toolchain "stable-x86_64-pc-windows-msvc" --no-modify-path --profile minimal
-            $env:Path += ";C:\Users\circleci\.cargo\bin"
-            rustc -Vv
-            cargo --version
+            $Env:Path += ";$Env:USERPROFILE\.cargo\bin"
+            # Verify the installation.
+            cargo --version --verbose
             rustc --version | Out-File -FilePath "rust-version"
             if (!(Test-Path "Cargo.lock" -PathType Leaf)) {
                 cargo generate-lockfile
@@ -94,7 +97,7 @@ commands:
       - setup_environment:
           cache_key: << parameters.cache_key >>
       - run:
-          no_output_timeout: 30m
+          no_output_timeout: 60m
           command: cd << parameters.workspace_member >> && RUST_MIN_STACK=67108864 cargo test << parameters.flags >>
       - clear_environment:
           cache_key: << parameters.cache_key >>
@@ -114,7 +117,7 @@ commands:
       - setup_environment:
           cache_key: << parameters.cache_key >>
       - run:
-          no_output_timeout: 45m
+          no_output_timeout: 60m
           command: |
             cd << parameters.workspace_member >>
             cargo test -- --list --format terse | sed 's/: test//' > test_names.txt
@@ -675,6 +678,16 @@ jobs:
           workspace_member: synthesizer/program
           cache_key: snarkvm-synthesizer-program-cache
 
+  synthesizer-program-integration:
+    docker:
+      - image: cimg/rust:1.72.1
+    resource_class: 2xlarge
+    steps:
+      - run_serial:
+          flags: --test '*' -- --skip keccak --skip psd --skip sha
+          workspace_member: synthesizer/program
+          cache_key: snarkvm-synthesizer-program-cache
+
   synthesizer-program-integration-keccak:
     docker:
       - image: cimg/rust:1.72.1
@@ -702,16 +715,6 @@ jobs:
     steps:
       - run_serial:
           flags: sha --test '*'
-          workspace_member: synthesizer/program
-          cache_key: snarkvm-synthesizer-program-cache
-
-  synthesizer-program-integration-rest:
-    docker:
-      - image: cimg/rust:1.72.1
-    resource_class: 2xlarge
-    steps:
-      - run_serial:
-          flags: --test '*' -- --skip keccak --skip psd --skip sha
           workspace_member: synthesizer/program
           cache_key: snarkvm-synthesizer-program-cache
 
@@ -886,10 +889,10 @@ workflows:
       - synthesizer-process
       - synthesizer-process-with-rocksdb
       - synthesizer-program
+      - synthesizer-program-integration
       - synthesizer-program-integration-keccak
       - synthesizer-program-integration-psd
       - synthesizer-program-integration-sha
-      - synthesizer-program-integration-rest
       - synthesizer-snark
       - utilities
       - utilities-derives
