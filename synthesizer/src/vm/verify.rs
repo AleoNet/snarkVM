@@ -96,7 +96,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         self.check_fee(transaction, rejected_id)?;
 
         // Check if the transaction exists in the cache.
-        let already_verified = self.verified_transactions.read().peek(&transaction.id()).is_some();
+        let already_verified = self.partially_verified_transactions.read().peek(&transaction.id()).is_some();
 
         // Next, verify the deployment or execution.
         match transaction {
@@ -140,7 +140,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
         // If the check passes and it's not a fee transaction, save its ID to the cache.
         if !matches!(transaction, Transaction::Fee(..)) && !already_verified {
-            self.verified_transactions.write().push(transaction.id(), ());
+            self.partially_verified_transactions.write().push(transaction.id(), ());
         }
 
         finish!(timer, "Verify the transaction");

@@ -87,8 +87,6 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         let mut current_block = self.current_block.write();
         // Update the VM.
         self.vm.add_next_block(block)?;
-        // Update the verified transactions cache.
-        self.update_transaction_cache(block);
         // Update the current block.
         *current_block = block.clone();
         // Drop the write lock on the current block.
@@ -106,20 +104,6 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         }
 
         Ok(())
-    }
-
-    /// Updates the verified transactions cache based on the new block.
-    fn update_transaction_cache(&self, block: &Block<N>) {
-        let verified_transactions = self.vm().verified_transactions();
-        let mut transaction_cache = verified_transactions.write();
-        for transaction_id in block
-            .transactions()
-            .iter()
-            .filter_map(|tx| tx.to_unconfirmed_transaction_id().ok())
-            .chain(block.aborted_transaction_ids().iter().copied())
-        {
-            transaction_cache.pop(&transaction_id);
-        }
     }
 }
 

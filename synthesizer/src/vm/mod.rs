@@ -81,7 +81,7 @@ pub struct VM<N: Network, C: ConsensusStorage<N>> {
     /// The lock for ensuring there is no concurrency when advancing blocks.
     block_lock: Arc<Mutex<()>>,
     /// A cache containing the list of recent succesfully verified transactions.
-    verified_transactions: Arc<RwLock<LruCache<N::TransactionID, ()>>>,
+    partially_verified_transactions: Arc<RwLock<LruCache<N::TransactionID, ()>>>,
 }
 
 impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
@@ -184,7 +184,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             store,
             atomic_lock: Arc::new(Mutex::new(())),
             block_lock: Arc::new(Mutex::new(())),
-            verified_transactions: Arc::new(RwLock::new(LruCache::new(
+            partially_verified_transactions: Arc::new(RwLock::new(LruCache::new(
                 NonZeroUsize::new(NUM_CACHED_TRANSACTIONS).unwrap(),
             ))),
         })
@@ -202,10 +202,10 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         self.process.clone()
     }
 
-    /// Returns the pre-verified transactions.
+    /// Returns the partially-verified transactions.
     #[inline]
-    pub fn verified_transactions(&self) -> Arc<RwLock<LruCache<N::TransactionID, ()>>> {
-        self.verified_transactions.clone()
+    pub fn partially_verified_transactions(&self) -> Arc<RwLock<LruCache<N::TransactionID, ()>>> {
+        self.partially_verified_transactions.clone()
     }
 }
 
