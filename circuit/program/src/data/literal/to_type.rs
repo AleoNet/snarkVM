@@ -17,7 +17,7 @@ use super::*;
 #[cfg(console)]
 impl<A: Aleo> Literal<A> {
     /// Returns the type name of the literal.
-    pub fn to_type(&self) -> console::LiteralType {
+    pub fn to_type(&self) -> console::LiteralType<A::Network> {
         match self {
             Self::Address(..) => console::LiteralType::Address,
             Self::Boolean(..) => console::LiteralType::Boolean,

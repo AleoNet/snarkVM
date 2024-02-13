@@ -20,7 +20,7 @@ impl<N: Network> FromBytes for LiteralType<N> {
         match index {
             0 => Ok(LiteralType::Address),
             1 => Ok(LiteralType::Boolean),
-            2 => Ok(LiteralType::Bytes(U32::read_le(&mut reader)?)),
+            2 => Ok(LiteralType::Data(U32::read_le(&mut reader)?)),
             3 => Ok(LiteralType::Field),
             4 => Ok(LiteralType::Group),
             5 => Ok(LiteralType::I8),
@@ -61,7 +61,7 @@ impl<N: Network> ToBytes for LiteralType<N> {
             | LiteralType::Scalar
             | LiteralType::Signature
             | LiteralType::String => self.type_id().write_le(&mut writer),
-            LiteralType::Bytes(length) => {
+            LiteralType::Data(length) => {
                 self.type_id().write_le(&mut writer)?;
                 length.write_le(&mut writer)
             }

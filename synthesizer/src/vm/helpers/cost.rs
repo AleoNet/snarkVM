@@ -95,7 +95,7 @@ pub fn cost_in_microcredits<N: Network>(stack: &Stack<N>, function_name: &Identi
     /// A helper function to determine the plaintext type in bytes.
     fn plaintext_size_in_bytes<N: Network>(stack: &Stack<N>, plaintext_type: &PlaintextType<N>) -> Result<u64> {
         match plaintext_type {
-            PlaintextType::Literal(literal_type) => Ok(literal_type.size_in_bytes::<N>() as u64),
+            PlaintextType::Literal(literal_type) => Ok(literal_type.size_in_bytes()),
             PlaintextType::Struct(struct_name) => {
                 // Retrieve the struct from the stack.
                 let struct_ = stack.program().get_struct(struct_name)?;

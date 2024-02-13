@@ -30,8 +30,8 @@ pub enum LiteralType<N: Network> {
     Address,
     /// The boolean type.
     Boolean,
-    /// The bytes type.
-    Bytes(U32<N>),
+    /// The data type.
+    Data(U32<N>),
     /// The field type (base field).
     Field,
     /// The group type (affine).
@@ -70,7 +70,7 @@ impl<N: Network> LiteralType<N> {
         match &self {
             Self::Address => 0,
             Self::Boolean => 1,
-            Self::Bytes(_) => 2,
+            Self::Data(_) => 2,
             Self::Field => 3,
             Self::Group => 4,
             Self::I8 => 5,

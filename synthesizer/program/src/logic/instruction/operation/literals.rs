@@ -33,7 +33,7 @@ pub type BinaryLiteral<N, O> = Literals<N, O, 2>;
 pub type TernaryLiteral<N, O> = Literals<N, O, 3>;
 
 #[derive(Clone, PartialEq, Eq, Hash)]
-pub struct Literals<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const NUM_OPERANDS: usize> {
+pub struct Literals<N: Network, O: Operation<N, Literal<N>, LiteralType<N>, NUM_OPERANDS>, const NUM_OPERANDS: usize> {
     /// The operands.
     operands: Vec<Operand<N>>,
     /// The destination register.
@@ -42,7 +42,7 @@ pub struct Literals<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPE
     _phantom: PhantomData<O>,
 }
 
-impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const NUM_OPERANDS: usize>
+impl<N: Network, O: Operation<N, Literal<N>, LiteralType<N>, NUM_OPERANDS>, const NUM_OPERANDS: usize>
     Literals<N, O, NUM_OPERANDS>
 {
     /// Returns the opcode.
@@ -64,7 +64,7 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
     }
 }
 
-impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const NUM_OPERANDS: usize>
+impl<N: Network, O: Operation<N, Literal<N>, LiteralType<N>, NUM_OPERANDS>, const NUM_OPERANDS: usize>
     Literals<N, O, NUM_OPERANDS>
 {
     /// Evaluates the instruction.
@@ -189,7 +189,7 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
     }
 }
 
-impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const NUM_OPERANDS: usize> Parser
+impl<N: Network, O: Operation<N, Literal<N>, LiteralType<N>, NUM_OPERANDS>, const NUM_OPERANDS: usize> Parser
     for Literals<N, O, NUM_OPERANDS>
 {
     /// Parses a string into an operation.
@@ -236,7 +236,7 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
     }
 }
 
-impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const NUM_OPERANDS: usize> FromStr
+impl<N: Network, O: Operation<N, Literal<N>, LiteralType<N>, NUM_OPERANDS>, const NUM_OPERANDS: usize> FromStr
     for Literals<N, O, NUM_OPERANDS>
 {
     type Err = Error;
@@ -256,7 +256,7 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
     }
 }
 
-impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const NUM_OPERANDS: usize> Debug
+impl<N: Network, O: Operation<N, Literal<N>, LiteralType<N>, NUM_OPERANDS>, const NUM_OPERANDS: usize> Debug
     for Literals<N, O, NUM_OPERANDS>
 {
     /// Prints the operation as a string.
@@ -265,7 +265,7 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
     }
 }
 
-impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const NUM_OPERANDS: usize> Display
+impl<N: Network, O: Operation<N, Literal<N>, LiteralType<N>, NUM_OPERANDS>, const NUM_OPERANDS: usize> Display
     for Literals<N, O, NUM_OPERANDS>
 {
     /// Prints the operation to a string.
@@ -285,7 +285,7 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
     }
 }
 
-impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const NUM_OPERANDS: usize> FromBytes
+impl<N: Network, O: Operation<N, Literal<N>, LiteralType<N>, NUM_OPERANDS>, const NUM_OPERANDS: usize> FromBytes
     for Literals<N, O, NUM_OPERANDS>
 {
     /// Reads the operation from a buffer.
@@ -309,7 +309,7 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
     }
 }
 
-impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const NUM_OPERANDS: usize> ToBytes
+impl<N: Network, O: Operation<N, Literal<N>, LiteralType<N>, NUM_OPERANDS>, const NUM_OPERANDS: usize> ToBytes
     for Literals<N, O, NUM_OPERANDS>
 {
     /// Writes the operation to a buffer.

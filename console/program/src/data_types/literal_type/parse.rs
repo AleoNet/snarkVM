@@ -22,6 +22,7 @@ impl<N: Network> Parser for LiteralType<N> {
         alt((
             map(tag("address"), |_| Self::Address),
             map(tag("boolean"), |_| Self::Boolean),
+            map(pair((tag("data["), pair(U32::parse, tag("]"))), |(_, (length, _))| Self::Data(length))),
             map(tag("field"), |_| Self::Field),
             map(tag("group"), |_| Self::Group),
             map(tag("i8"), |_| Self::I8),
@@ -64,7 +65,7 @@ impl<N: Network> Debug for LiteralType<N> {
         match self {
             LiteralType::Address => write!(f, "address"),
             LiteralType::Boolean => write!(f, "boolean"),
-            LiteralType::Bytes(length) => write!(f, "bytes({length})"),
+            LiteralType::Data(length) => write!(f, "data({length})"),
             LiteralType::Field => write!(f, "field"),
             LiteralType::Group => write!(f, "group"),
             LiteralType::I8 => write!(f, "i8"),
