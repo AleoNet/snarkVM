@@ -15,6 +15,7 @@
 use crate::{
     advance::split_candidate_solutions,
     test_helpers::{CurrentLedger, CurrentNetwork},
+    Ledger,
     RecordsFilter,
 };
 use aleo_std::StorageMode;
@@ -23,7 +24,9 @@ use console::{
     network::prelude::*,
     program::{Entry, Identifier, Literal, Plaintext, ProgramID, Value},
 };
+use indexmap::IndexMap;
 use ledger_block::{ConfirmedTransaction, Rejected, Transaction};
+use ledger_committee::{Committee, MIN_VALIDATOR_STAKE};
 use ledger_store::{helpers::memory::ConsensusMemory, ConsensusStore};
 use synthesizer::{program::Program, vm::VM};
 
@@ -544,6 +547,23 @@ fn test_bond_and_unbond_validator() {
     let committee = ledger.latest_committee().unwrap();
     assert!(committee.is_committee_member(new_member_address));
 
+    // Check that number of validators in the `metadata` mapping in `credtis.aleo` is updated.
+    let program_id = ProgramID::<CurrentNetwork>::from_str("credits.aleo").unwrap();
+    let metadata_mapping_name = Identifier::from_str("metadata").unwrap();
+    let key = Plaintext::<CurrentNetwork>::from_str("aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc")
+        .unwrap();
+    let num_validators = match ledger
+        .vm()
+        .finalize_store()
+        .get_value_confirmed(program_id, metadata_mapping_name, &key)
+        .unwrap()
+        .unwrap()
+    {
+        Value::Plaintext(Plaintext::Literal(Literal::U32(num_validators), _)) => *num_validators as usize,
+        _ => panic!("Unexpected value type"),
+    };
+    assert_eq!(num_validators, committee.num_members());
+
     // Construct the bond public
     let unbond_amount = committee.get_stake(new_member_address); // 1 million credits.
     let inputs = [Value::from_str(&format!("{unbond_amount}u64")).unwrap()];
@@ -566,6 +586,23 @@ fn test_bond_and_unbond_validator() {
     // Check that the committee does not include the new member.
     let committee = ledger.latest_committee().unwrap();
     assert!(!committee.is_committee_member(new_member_address));
+
+    // Check that number of validators in the `metadata` mapping in `credtis.aleo` is updated.
+    let program_id = ProgramID::<CurrentNetwork>::from_str("credits.aleo").unwrap();
+    let metadata_mapping_name = Identifier::from_str("metadata").unwrap();
+    let key = Plaintext::<CurrentNetwork>::from_str("aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc")
+        .unwrap();
+    let num_validators = match ledger
+        .vm()
+        .finalize_store()
+        .get_value_confirmed(program_id, metadata_mapping_name, &key)
+        .unwrap()
+        .unwrap()
+    {
+        Value::Plaintext(Plaintext::Literal(Literal::U32(num_validators), _)) => *num_validators as usize,
+        _ => panic!("Unexpected value type"),
+    };
+    assert_eq!(num_validators, committee.num_members());
 }
 
 #[test]
@@ -1300,4 +1337,163 @@ fn test_split_candidate_solutions() {
         let (_accepted, _aborted) =
             split_candidate_solutions(candidate_solutions, max_solutions, |candidate| candidate % 2 == 0);
     }
+}
+
+#[test]
+fn test_max_committee_limit_with_bonds() {
+    // Initialize an RNG.
+    let rng = &mut TestRng::default();
+
+    // Initialize the VM.
+    let vm = VM::from(ConsensusStore::<CurrentNetwork, ConsensusMemory<CurrentNetwork>>::open(None).unwrap()).unwrap();
+
+    // Construct the validators, one less than the maximum committee size.
+    let validators = (0..Committee::<CurrentNetwork>::MAX_COMMITTEE_SIZE - 1)
+        .map(|_| {
+            let private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+            let amount = MIN_VALIDATOR_STAKE;
+            let is_open = true;
+            (private_key, (amount, is_open))
+        })
+        .collect::<IndexMap<_, _>>();
+
+    // Track the allocated amount.
+    let mut allocated_amount = 0;
+
+    // Construct the committee.
+    let mut committee_map = IndexMap::new();
+    for (private_key, (amount, _)) in &validators {
+        let address = Address::try_from(private_key).unwrap();
+        committee_map.insert(address, (*amount, true));
+        allocated_amount += *amount;
+    }
+
+    // Initialize two new validators.
+    let first_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+    let first_address = Address::try_from(&first_private_key).unwrap();
+    let second_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+    let second_address = Address::try_from(&second_private_key).unwrap();
+
+    // Construct the public balances, allocating the remaining supply to the first validator and two new validators.
+    // The remaining validators will have a balance of 0.
+    let mut public_balances = IndexMap::new();
+    for (private_key, _) in &validators {
+        public_balances.insert(Address::try_from(private_key).unwrap(), 0);
+    }
+    let remaining_supply = <CurrentNetwork as Network>::STARTING_SUPPLY - allocated_amount;
+    let amount = remaining_supply / 3;
+    public_balances.insert(Address::try_from(validators.keys().next().unwrap()).unwrap(), amount);
+    public_balances.insert(first_address, amount);
+    public_balances.insert(second_address, remaining_supply - 2 * amount);
+
+    // Construct the bonded balances.
+    let bonded_balances = validators
+        .iter()
+        .map(|(private_key, (amount, _))| {
+            let address = Address::try_from(private_key).unwrap();
+            (address, (address, *amount))
+        })
+        .collect();
+
+    // Construct the genesis block, which should pass.
+    let genesis_block = vm
+        .genesis_quorum(
+            validators.keys().next().unwrap(),
+            Committee::new_genesis(committee_map).unwrap(),
+            public_balances,
+            bonded_balances,
+            rng,
+        )
+        .unwrap();
+
+    // Initialize a Ledger from the genesis block.
+    let ledger =
+        Ledger::<CurrentNetwork, ConsensusMemory<CurrentNetwork>>::load(genesis_block, StorageMode::Production)
+            .unwrap();
+
+    // Bond the first validator.
+    let bond_first_transaction = ledger
+        .vm()
+        .execute(
+            &first_private_key,
+            ("credits.aleo", "bond_public"),
+            vec![
+                Value::<CurrentNetwork>::from_str(&first_address.to_string()).unwrap(),
+                Value::<CurrentNetwork>::from_str(&format!("{MIN_VALIDATOR_STAKE}u64")).unwrap(),
+            ]
+            .iter(),
+            None,
+            0,
+            None,
+            rng,
+        )
+        .unwrap();
+
+    // Create a block.
+    let block = ledger
+        .prepare_advance_to_next_beacon_block(
+            validators.keys().next().unwrap(),
+            vec![],
+            vec![],
+            vec![bond_first_transaction],
+            rng,
+        )
+        .unwrap();
+
+    // Check that the next block is valid.
+    ledger.check_next_block(&block, rng).unwrap();
+
+    // Check that the first validator is not in the committee.
+    let committee = ledger.latest_committee().unwrap();
+    assert!(!committee.is_committee_member(first_address));
+
+    // Add the block to the ledger.
+    ledger.advance_to_next_block(&block).unwrap();
+
+    // Check that the first validator was added to the committee.
+    let committee = ledger.latest_committee().unwrap();
+    assert!(committee.is_committee_member(first_address));
+
+    // Attempt to bond the second validator.
+    let bond_second_transaction = ledger
+        .vm()
+        .execute(
+            &second_private_key,
+            ("credits.aleo", "bond_public"),
+            vec![
+                Value::<CurrentNetwork>::from_str(&second_address.to_string()).unwrap(),
+                Value::<CurrentNetwork>::from_str(&format!("{MIN_VALIDATOR_STAKE}u64")).unwrap(),
+            ]
+            .iter(),
+            None,
+            0,
+            None,
+            rng,
+        )
+        .unwrap();
+
+    // Create a block.
+    let block = ledger
+        .prepare_advance_to_next_beacon_block(
+            validators.keys().next().unwrap(),
+            vec![],
+            vec![],
+            vec![bond_second_transaction],
+            rng,
+        )
+        .unwrap();
+
+    // Check that the next block is valid.
+    ledger.check_next_block(&block, rng).unwrap();
+
+    // Check that the second validator is not in the committee.
+    let committee = ledger.latest_committee().unwrap();
+    assert!(!committee.is_committee_member(second_address));
+
+    // Add the block to the ledger.
+    ledger.advance_to_next_block(&block).unwrap();
+
+    // Check that the second validator was not added to the committee.
+    let committee = ledger.latest_committee().unwrap();
+    assert!(!committee.is_committee_member(second_address));
 }

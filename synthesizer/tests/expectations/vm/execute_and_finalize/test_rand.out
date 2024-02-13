@@ -26,7 +26,7 @@ outputs:
     test_rand.aleo/rand_chacha_check:
       outputs:
       - '{"type":"future","id":"4722955375376605065432422068493514420613444220803270858286854080465504837613field","value":"{\n  program_id: test_rand.aleo,\n  function_name: rand_chacha_check,\n  arguments: [\n    1field,\n    true\n  ]\n}"}'
-  speculate: the execution was accepted
+  speculate: the execution was rejected
   add_next_block: succeeded.
 additional:
 - child_outputs:

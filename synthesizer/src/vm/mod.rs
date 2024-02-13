@@ -256,8 +256,11 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             Address::try_from(private_keys[2])? => remaining_supply / 4,
             Address::try_from(private_keys[3])? => remaining_supply / 4,
         };
+        // Construct the bonded balances.
+        let bonded_balances =
+            committee.members().iter().map(|(address, (amount, _))| (*address, (*address, *amount))).collect();
         // Return the genesis block.
-        self.genesis_quorum(private_key, committee, public_balances, rng)
+        self.genesis_quorum(private_key, committee, public_balances, bonded_balances, rng)
     }
 
     /// Returns a new genesis block for a quorum chain.
@@ -266,6 +269,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         private_key: &PrivateKey<N>,
         committee: Committee<N>,
         public_balances: IndexMap<Address<N>, u64>,
+        bonded_balances: IndexMap<Address<N>, (Address<N>, u64)>,
         rng: &mut R,
     ) -> Result<Block<N>> {
         // Retrieve the total stake.
@@ -275,7 +279,11 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         // Compute the total supply.
         let total_supply = total_stake.checked_add(account_supply).ok_or_else(|| anyhow!("Invalid total supply"))?;
         // Ensure the total supply matches.
-        ensure!(total_supply == N::STARTING_SUPPLY, "Invalid total supply");
+        ensure!(
+            total_supply == N::STARTING_SUPPLY,
+            "Invalid total supply. Found {total_supply}, expected {}",
+            N::STARTING_SUPPLY
+        );
 
         // Prepare the caller.
         let caller = Address::try_from(private_key)?;
@@ -287,7 +295,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         let inputs = [caller.to_string(), format!("{amount}_u64")];
 
         // Prepare the ratifications.
-        let ratifications = vec![Ratify::Genesis(committee, public_balances)];
+        let ratifications =
+            vec![Ratify::Genesis(Box::new(committee), Box::new(public_balances), Box::new(bonded_balances))];
         // Prepare the solutions.
         let solutions = Solutions::<N>::from(None); // The genesis block does not require solutions.
         // Prepare the aborted solution IDs.
