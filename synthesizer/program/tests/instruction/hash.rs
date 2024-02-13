@@ -76,7 +76,7 @@ fn valid_destination_types<N: Network>() -> &'static [PlaintextType<N>] {
 #[allow(clippy::type_complexity)]
 fn sample_stack(
     opcode: Opcode,
-    type_: LiteralType,
+    type_: LiteralType<CurrentNetwork>,
     mode: circuit::Mode,
     destination_type: PlaintextType<CurrentNetwork>,
 ) -> Result<(Stack<CurrentNetwork>, Vec<Operand<CurrentNetwork>>, Register<CurrentNetwork>)> {

@@ -43,8 +43,8 @@ const ITERATIONS: usize = 100;
 #[allow(clippy::type_complexity)]
 fn sample_stack(
     opcode: Opcode,
-    type_a: LiteralType,
-    type_b: LiteralType,
+    type_a: LiteralType<CurrentNetwork>,
+    type_b: LiteralType<CurrentNetwork>,
     mode_a: circuit::Mode,
     mode_b: circuit::Mode,
 ) -> Result<(Stack<CurrentNetwork>, Vec<Operand<CurrentNetwork>>, Register<CurrentNetwork>)> {

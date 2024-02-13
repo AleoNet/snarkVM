@@ -44,7 +44,7 @@ type CurrentAleo = AleoV0;
 const ITERATIONS: usize = 50;
 
 /// **Attention**: When changing this, also update in `src/logic/instruction/commit.rs`.
-fn valid_destination_types() -> &'static [LiteralType] {
+fn valid_destination_types() -> &'static [LiteralType<CurrentNetwork>] {
     &[LiteralType::Address, LiteralType::Field, LiteralType::Group]
 }
 
@@ -52,11 +52,11 @@ fn valid_destination_types() -> &'static [LiteralType] {
 #[allow(clippy::type_complexity)]
 fn sample_stack(
     opcode: Opcode,
-    type_a: LiteralType,
-    type_b: LiteralType,
+    type_a: LiteralType<CurrentNetwork>,
+    type_b: LiteralType<CurrentNetwork>,
     mode_a: circuit::Mode,
     mode_b: circuit::Mode,
-    destination_type: LiteralType,
+    destination_type: LiteralType<CurrentNetwork>,
 ) -> Result<(Stack<CurrentNetwork>, Vec<Operand<CurrentNetwork>>, Register<CurrentNetwork>)> {
     // Initialize the opcode.
     let opcode = opcode.to_string();
@@ -101,14 +101,14 @@ fn check_commit<const VARIANT: u8>(
     operation: impl FnOnce(
         Vec<Operand<CurrentNetwork>>,
         Register<CurrentNetwork>,
-        LiteralType,
+        LiteralType<CurrentNetwork>,
     ) -> CommitInstruction<CurrentNetwork, VARIANT>,
     opcode: Opcode,
     literal_a: &Literal<CurrentNetwork>,
     literal_b: &Literal<CurrentNetwork>,
     mode_a: &circuit::Mode,
     mode_b: &circuit::Mode,
-    destination_type: LiteralType,
+    destination_type: LiteralType<CurrentNetwork>,
 ) {
     println!("Checking '{opcode}' for '{literal_a}.{mode_a}' and '{literal_b}.{mode_b}'");
 

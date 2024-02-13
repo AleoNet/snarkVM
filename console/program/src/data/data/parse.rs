@@ -27,9 +27,7 @@ impl<N: Network> Parser for Data<N> {
         ));
 
         // Parse the data from the string.
-        map_res(parse_data, |data: &str| -> Result<_, Error> {
-            Self::from_str(&data.replace('_', ""))
-        })(string)
+        map_res(parse_data, |data: &str| -> Result<_, Error> { Self::from_str(&data.replace('_', "")) })(string)
     }
 }
 

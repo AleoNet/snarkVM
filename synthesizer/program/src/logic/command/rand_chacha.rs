@@ -42,7 +42,7 @@ pub struct RandChaCha<N: Network> {
     /// The destination register.
     destination: Register<N>,
     /// The destination register type.
-    destination_type: LiteralType,
+    destination_type: LiteralType<N>,
 }
 
 impl<N: Network> RandChaCha<N> {
@@ -66,7 +66,7 @@ impl<N: Network> RandChaCha<N> {
 
     /// Returns the destination register type.
     #[inline]
-    pub const fn destination_type(&self) -> LiteralType {
+    pub const fn destination_type(&self) -> LiteralType<N> {
         self.destination_type
     }
 }
@@ -114,6 +114,7 @@ impl<N: Network> RandChaCha<N> {
         let output = match self.destination_type {
             LiteralType::Address => Literal::Address(Address::new(Group::rand(&mut rng))),
             LiteralType::Boolean => Literal::Boolean(Boolean::rand(&mut rng)),
+            LiteralType::Data(..) => bail!("Cannot 'rand.chacha' into a 'data'"),
             LiteralType::Field => Literal::Field(Field::rand(&mut rng)),
             LiteralType::Group => Literal::Group(Group::rand(&mut rng)),
             LiteralType::I8 => Literal::I8(I8::rand(&mut rng)),
@@ -292,7 +293,7 @@ mod tests {
 
     type CurrentNetwork = MainnetV0;
 
-    fn valid_destination_types() -> &'static [LiteralType] {
+    fn valid_destination_types() -> &'static [LiteralType<CurrentNetwork>] {
         &[
             LiteralType::Address,
             LiteralType::Boolean,

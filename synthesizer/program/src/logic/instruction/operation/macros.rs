@@ -58,7 +58,7 @@ macro_rules! operation {
         #[derive(Clone, PartialEq, Eq, Hash)]
         $vis struct $name<N: Network>(core::marker::PhantomData<N>);
 
-        impl<N: Network> $crate::Operation<N, console::program::Literal<N>, console::program::LiteralType, $num_inputs> for $name<N> {
+        impl<N: Network> $crate::Operation<N, console::program::Literal<N>, console::program::LiteralType<N>, $num_inputs> for $name<N> {
             /// The opcode of the operation.
             const OPCODE: $crate::Opcode = Opcode::Literal($opcode);
 
@@ -82,7 +82,7 @@ macro_rules! operation {
 
             /// Returns the output type from the given input types.
             #[inline]
-            fn output_type(inputs: &[console::program::LiteralType; $num_inputs]) -> Result<console::program::LiteralType> {
+            fn output_type(inputs: &[console::program::LiteralType<N>; $num_inputs]) -> Result<console::program::LiteralType<N>> {
                 // Compute the output type.
                 Ok($crate::output_type!(match inputs { $( ( $($input),+ ) => $output, )+ }))
             }
@@ -113,7 +113,7 @@ macro_rules! operation {
         #[derive(Clone, PartialEq, Eq, Hash)]
         $vis struct $name<N: Network>(core::marker::PhantomData<N>);
 
-        impl<N: Network> $crate::Operation<N, console::program::Literal<N>, console::program::LiteralType, $num_inputs> for $name<N> {
+        impl<N: Network> $crate::Operation<N, console::program::Literal<N>, console::program::LiteralType<N>, $num_inputs> for $name<N> {
             /// The opcode of the operation.
             const OPCODE: $crate::Opcode = Opcode::Literal($opcode);
 
@@ -137,7 +137,7 @@ macro_rules! operation {
 
             /// Returns the output type from the given input types.
             #[inline]
-            fn output_type(inputs: &[console::program::LiteralType; $num_inputs]) -> Result<console::program::LiteralType> {
+            fn output_type(inputs: &[console::program::LiteralType<N>; $num_inputs]) -> Result<console::program::LiteralType<N>> {
                 // Compute the output type.
                 Ok($crate::output_type!(match inputs { $( ( $($input),+ ) => $output, )+ }))
             }

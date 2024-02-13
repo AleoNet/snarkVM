@@ -33,8 +33,8 @@ const ITERATIONS: usize = 100;
 /// Samples the stack. Note: Do not replicate this for real program use, it is insecure.
 fn sample_stack(
     opcode: Opcode,
-    type_a: LiteralType,
-    type_b: LiteralType,
+    type_a: LiteralType<CurrentNetwork>,
+    type_b: LiteralType<CurrentNetwork>,
     mode_a: circuit::Mode,
     mode_b: circuit::Mode,
 ) -> Result<(Stack<CurrentNetwork>, Vec<Operand<CurrentNetwork>>)> {

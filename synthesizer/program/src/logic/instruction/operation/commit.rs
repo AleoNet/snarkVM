@@ -46,7 +46,7 @@ enum Committer {
 }
 
 /// Returns 'true' if the destination type is valid.
-fn is_valid_destination_type(destination_type: LiteralType) -> bool {
+fn is_valid_destination_type<N: Network>(destination_type: LiteralType<N>) -> bool {
     matches!(destination_type, LiteralType::Address | LiteralType::Field | LiteralType::Group)
 }
 
@@ -58,13 +58,13 @@ pub struct CommitInstruction<N: Network, const VARIANT: u8> {
     /// The destination register.
     destination: Register<N>,
     /// The destination register type.
-    destination_type: LiteralType,
+    destination_type: LiteralType<N>,
 }
 
 impl<N: Network, const VARIANT: u8> CommitInstruction<N, VARIANT> {
     /// Initializes a new `commit` instruction.
     #[inline]
-    pub fn new(operands: Vec<Operand<N>>, destination: Register<N>, destination_type: LiteralType) -> Result<Self> {
+    pub fn new(operands: Vec<Operand<N>>, destination: Register<N>, destination_type: LiteralType<N>) -> Result<Self> {
         // Sanity check that the operands is exactly two inputs.
         ensure!(operands.len() == 2, "Commit instructions must have two operands");
         // Sanity check the destination type.
@@ -104,7 +104,7 @@ impl<N: Network, const VARIANT: u8> CommitInstruction<N, VARIANT> {
 
     /// Returns the destination register type.
     #[inline]
-    pub const fn destination_type(&self) -> LiteralType {
+    pub const fn destination_type(&self) -> LiteralType<N> {
         self.destination_type
     }
 }
@@ -354,7 +354,7 @@ mod tests {
     type CurrentNetwork = MainnetV0;
 
     /// **Attention**: When changing this, also update in `tests/instruction/commit.rs`.
-    fn valid_destination_types() -> &'static [LiteralType] {
+    fn valid_destination_types() -> &'static [LiteralType<CurrentNetwork>] {
         &[LiteralType::Address, LiteralType::Field, LiteralType::Group]
     }
 
