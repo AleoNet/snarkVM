@@ -71,6 +71,9 @@ macro_rules! impl_cast_lossy_body {
         match $to_type {
             LiteralType::Address => Ok(Literal::Address($input.$cast_lossy())),
             LiteralType::Boolean => Ok(Literal::Boolean($input.$cast_lossy())),
+            LiteralType::Data(_) => {
+                bail!(concat!("Cannot cast (lossy) a ", stringify!($type_name), " literal to a bytes type."))
+            }
             LiteralType::Field => Ok(Literal::Field($input.$cast_lossy())),
             LiteralType::Group => Ok(Literal::Group($input.$cast_lossy())),
             LiteralType::I8 => Ok(Literal::I8($input.$cast_lossy())),

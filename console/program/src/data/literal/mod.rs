@@ -29,7 +29,7 @@ mod to_bits;
 mod to_type;
 mod variant;
 
-use crate::{LiteralType, ProgramID};
+use crate::{Data, LiteralType, ProgramID};
 use snarkvm_console_account::{ComputeKey, PrivateKey, Signature};
 use snarkvm_console_network::Network;
 use snarkvm_console_types::{prelude::*, Boolean};
@@ -41,6 +41,8 @@ pub enum Literal<N: Network> {
     Address(Address<N>),
     /// The boolean type.
     Boolean(Boolean<N>),
+    /// The data type.
+    Data(Data<N>),
     /// The field type.
     Field(Field<N>),
     /// The group type.

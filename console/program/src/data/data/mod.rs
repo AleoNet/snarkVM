@@ -12,17 +12,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use super::*;
+mod bytes;
+mod equal;
+mod from_bits;
+mod from_fields;
+mod num_randomizers;
+mod parse;
+mod serialize;
+mod size_in_fields;
+mod to_bits;
+mod to_fields;
 
-impl<N: Network> LiteralType<N> {
-    /// Returns the number of bytes of this literal.
-    ///
-    /// For string literals, this method returns the maximum number of bytes that can be stored in the string.
-    #[allow(clippy::cast_possible_truncation)]
-    pub fn size_in_bytes(&self) -> u64 {
-        // Note: This upcast to u32 and downcast to u16 is safe because the size of a literal is
-        // always less than or equal to u16::MAX bits, and we are dividing by 8, so the result will
-        // always fit in a u16.
-        (self.size_in_bits() + 7) / 8
+use snarkvm_console_network::prelude::*;
+use snarkvm_console_types::{Boolean, Field};
+
+use core::ops::Deref;
+
+#[derive(Clone)]
+pub struct Data<N: Network>(Vec<Field<N>>);
+
+impl<N: Network> Deref for Data<N> {
+    type Target = [Field<N>];
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }

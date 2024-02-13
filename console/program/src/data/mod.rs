@@ -15,6 +15,9 @@
 mod access;
 pub use access::Access;
 
+mod data;
+pub use data::Data;
+
 mod ciphertext;
 pub use ciphertext::Ciphertext;
 

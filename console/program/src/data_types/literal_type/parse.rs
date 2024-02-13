@@ -22,7 +22,7 @@ impl<N: Network> Parser for LiteralType<N> {
         alt((
             map(tag("address"), |_| Self::Address),
             map(tag("boolean"), |_| Self::Boolean),
-            map(pair((tag("data["), pair(U32::parse, tag("]"))), |(_, (length, _))| Self::Data(length))),
+            map(pair(tag("data["), pair(U32::parse, tag("]"))), |(_, (length, _))| Self::Data(length)),
             map(tag("field"), |_| Self::Field),
             map(tag("group"), |_| Self::Group),
             map(tag("i8"), |_| Self::I8),

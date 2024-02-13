@@ -20,6 +20,10 @@ impl<N: Network> Literal<N> {
         match literal_type {
             LiteralType::Address => Literal::Address(Address::rand(rng)),
             LiteralType::Boolean => Literal::Boolean(Boolean::rand(rng)),
+            LiteralType::Data(length) => {
+                // TODO (@d0cd)
+                todo!()
+            }
             LiteralType::Field => Literal::Field(Field::rand(rng)),
             LiteralType::Group => Literal::Group(Group::rand(rng)),
             LiteralType::I8 => Literal::I8(I8::rand(rng)),

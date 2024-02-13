@@ -70,6 +70,9 @@ macro_rules! impl_cast_body {
         match $to_type {
             LiteralType::Address => Ok(Literal::Address($input.$cast()?)),
             LiteralType::Boolean => Ok(Literal::Boolean($input.$cast()?)),
+            LiteralType::Data(_) => {
+                bail!(concat!("Cannot cast a ", stringify!($type_name), " literal to a bytes type."))
+            }
             LiteralType::Field => Ok(Literal::Field($input.$cast()?)),
             LiteralType::Group => Ok(Literal::Group($input.$cast()?)),
             LiteralType::I8 => Ok(Literal::I8($input.$cast()?)),

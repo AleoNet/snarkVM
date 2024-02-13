@@ -14,15 +14,18 @@
 
 use super::*;
 
-impl<N: Network> LiteralType<N> {
-    /// Returns the number of bytes of this literal.
-    ///
-    /// For string literals, this method returns the maximum number of bytes that can be stored in the string.
-    #[allow(clippy::cast_possible_truncation)]
-    pub fn size_in_bytes(&self) -> u64 {
-        // Note: This upcast to u32 and downcast to u16 is safe because the size of a literal is
-        // always less than or equal to u16::MAX bits, and we are dividing by 8, so the result will
-        // always fit in a u16.
-        (self.size_in_bits() + 7) / 8
+impl<N: Network> ToBits for Data<N> {
+    /// Returns this `Data` as a list of **little-endian** bits.
+    fn write_bits_le(&self, vec: &mut Vec<bool>) {
+        let initial_len = vec.len();
+        self.0.write_bits_le(vec);
+        assert_eq!(self.0.len() * Field::<N>::size_in_bits(), vec.len() - initial_len);
+    }
+
+    /// Returns this `Data` as a list of **big-endian** bits.
+    fn write_bits_be(&self, vec: &mut Vec<bool>) {
+        let initial_len = vec.len();
+        self.0.write_bits_be(vec);
+        assert_eq!(self.0.len() * Field::<N>::size_in_bits(), vec.len() - initial_len);
     }
 }
