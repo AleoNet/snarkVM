@@ -21,22 +21,23 @@ impl<A: Aleo> Literal<A> {
         match *variant.eject_value() {
             0 => Literal::Address(Address::from_bits_le(literal)),
             1 => Literal::Boolean(Boolean::from_bits_le(literal)),
-            2 => Literal::Field(Field::from_bits_le(literal)),
-            3 => Literal::Group(Group::from_bits_le(literal)),
-            4 => Literal::I8(I8::from_bits_le(literal)),
-            5 => Literal::I16(I16::from_bits_le(literal)),
-            6 => Literal::I32(I32::from_bits_le(literal)),
-            7 => Literal::I64(I64::from_bits_le(literal)),
-            8 => Literal::I128(I128::from_bits_le(literal)),
-            9 => Literal::U8(U8::from_bits_le(literal)),
-            10 => Literal::U16(U16::from_bits_le(literal)),
-            11 => Literal::U32(U32::from_bits_le(literal)),
-            12 => Literal::U64(U64::from_bits_le(literal)),
-            13 => Literal::U128(U128::from_bits_le(literal)),
-            14 => Literal::Scalar(Scalar::from_bits_le(literal)),
-            15 => Literal::Signature(Box::new(Signature::from_bits_le(literal))),
-            16 => Literal::String(StringType::from_bits_le(literal)),
-            17.. => A::halt(format!("Failed to initialize literal variant {} from bits (LE)", variant.eject_value())),
+            2 => Literal::Data(Data::from_bits_le(literal)),
+            3 => Literal::Field(Field::from_bits_le(literal)),
+            4 => Literal::Group(Group::from_bits_le(literal)),
+            5 => Literal::I8(I8::from_bits_le(literal)),
+            6 => Literal::I16(I16::from_bits_le(literal)),
+            7 => Literal::I32(I32::from_bits_le(literal)),
+            8 => Literal::I64(I64::from_bits_le(literal)),
+            9 => Literal::I128(I128::from_bits_le(literal)),
+            10 => Literal::U8(U8::from_bits_le(literal)),
+            11 => Literal::U16(U16::from_bits_le(literal)),
+            12 => Literal::U32(U32::from_bits_le(literal)),
+            13 => Literal::U64(U64::from_bits_le(literal)),
+            14 => Literal::U128(U128::from_bits_le(literal)),
+            15 => Literal::Scalar(Scalar::from_bits_le(literal)),
+            16 => Literal::Signature(Box::new(Signature::from_bits_le(literal))),
+            17 => Literal::String(StringType::from_bits_le(literal)),
+            18.. => A::halt(format!("Failed to initialize literal variant {} from bits (LE)", variant.eject_value())),
         }
     }
 
@@ -46,22 +47,23 @@ impl<A: Aleo> Literal<A> {
         match *variant.eject_value() {
             0 => Literal::Address(Address::from_bits_be(literal)),
             1 => Literal::Boolean(Boolean::from_bits_be(literal)),
-            2 => Literal::Field(Field::from_bits_be(literal)),
-            3 => Literal::Group(Group::from_bits_be(literal)),
-            4 => Literal::I8(I8::from_bits_be(literal)),
-            5 => Literal::I16(I16::from_bits_be(literal)),
-            6 => Literal::I32(I32::from_bits_be(literal)),
-            7 => Literal::I64(I64::from_bits_be(literal)),
-            8 => Literal::I128(I128::from_bits_be(literal)),
-            9 => Literal::U8(U8::from_bits_be(literal)),
-            10 => Literal::U16(U16::from_bits_be(literal)),
-            11 => Literal::U32(U32::from_bits_be(literal)),
-            12 => Literal::U64(U64::from_bits_be(literal)),
-            13 => Literal::U128(U128::from_bits_be(literal)),
-            14 => Literal::Scalar(Scalar::from_bits_be(literal)),
-            15 => Literal::Signature(Box::new(Signature::from_bits_be(literal))),
-            16 => Literal::String(StringType::from_bits_be(literal)),
-            17.. => A::halt(format!("Failed to initialize literal variant {} from bits (BE))", variant.eject_value())),
+            2 => Literal::Data(Data::from_bits_be(literal)),
+            3 => Literal::Field(Field::from_bits_be(literal)),
+            4 => Literal::Group(Group::from_bits_be(literal)),
+            5 => Literal::I8(I8::from_bits_be(literal)),
+            6 => Literal::I16(I16::from_bits_be(literal)),
+            7 => Literal::I32(I32::from_bits_be(literal)),
+            8 => Literal::I64(I64::from_bits_be(literal)),
+            9 => Literal::I128(I128::from_bits_be(literal)),
+            10 => Literal::U8(U8::from_bits_be(literal)),
+            11 => Literal::U16(U16::from_bits_be(literal)),
+            12 => Literal::U32(U32::from_bits_be(literal)),
+            13 => Literal::U64(U64::from_bits_be(literal)),
+            14 => Literal::U128(U128::from_bits_be(literal)),
+            15 => Literal::Scalar(Scalar::from_bits_be(literal)),
+            16 => Literal::Signature(Box::new(Signature::from_bits_be(literal))),
+            17 => Literal::String(StringType::from_bits_be(literal)),
+            18.. => A::halt(format!("Failed to initialize literal variant {} from bits (BE))", variant.eject_value())),
         }
     }
 }
@@ -100,6 +102,8 @@ mod tests {
             check_serialization(Literal::<Circuit>::Address(Address::new(mode, console::Address::rand(rng))));
             // Boolean
             check_serialization(Literal::<Circuit>::Boolean(Boolean::new(mode, Uniform::rand(rng))));
+            // Data
+            // TODO (@d0cd)
             // Field
             check_serialization(Literal::<Circuit>::Field(Field::new(mode, Uniform::rand(rng))));
             // Group

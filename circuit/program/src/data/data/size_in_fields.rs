@@ -12,29 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod access;
-pub use access::Access;
+use super::*;
 
-mod ciphertext;
-pub use ciphertext::Ciphertext;
-
-mod data;
-pub use data::Data;
-
-mod future;
-pub use future::{Argument, Future};
-
-pub(super) mod identifier;
-pub use identifier::Identifier;
-
-mod literal;
-pub use literal::{Cast, CastLossy, Literal};
-
-mod plaintext;
-pub use plaintext::Plaintext;
-
-mod record;
-pub use record::{Entry, Owner, Record};
-
-mod value;
-pub use value::Value;
+impl<A: Aleo> Visibility<A> for Data<A> {
+    /// Returns the number of field elements to encode `self`.
+    fn size_in_fields(&self) -> u16 {
+        // Retrieve the number of field elements.
+        let num_fields = self.0.len();
+        // Ensure the number of field elements does not exceed the maximum allowed size.
+        match num_fields <= A::MAX_DATA_SIZE_IN_FIELDS as usize {
+            // Return the number of field elements.
+            true => num_fields as u16,
+            false => A::halt("Data is too large to encode in field elements."),
+        }
+    }
+}

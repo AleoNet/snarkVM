@@ -25,6 +25,8 @@ mod to_fields;
 mod to_type;
 mod variant;
 
+use crate::Data;
+
 use snarkvm_circuit_account::Signature;
 use snarkvm_circuit_network::Aleo;
 use snarkvm_circuit_types::prelude::*;
@@ -39,6 +41,8 @@ pub enum Literal<A: Aleo> {
     Address(Address<A>),
     /// The boolean type.
     Boolean(Boolean<A>),
+    /// The data type.
+    Data(Data<A>),
     /// The field type (base field).
     Field(Field<A>),
     /// The group type (affine).
@@ -80,6 +84,7 @@ impl<A: Aleo> Inject for Literal<A> {
         match value {
             Self::Primitive::Address(address) => Self::Address(Address::new(mode, address)),
             Self::Primitive::Boolean(boolean) => Self::Boolean(Boolean::new(mode, *boolean)),
+            Self::Primitive::Data(data) => Self::Data(Data::new(mode, data)),
             Self::Primitive::Field(field) => Self::Field(Field::new(mode, field)),
             Self::Primitive::Group(group) => Self::Group(Group::new(mode, group)),
             Self::Primitive::I8(i8) => Self::I8(I8::new(mode, i8)),
@@ -108,6 +113,7 @@ impl<A: Aleo> Eject for Literal<A> {
         match self {
             Self::Address(literal) => literal.eject_mode(),
             Self::Boolean(literal) => literal.eject_mode(),
+            Self::Data(literal) => literal.eject_mode(),
             Self::Field(literal) => literal.eject_mode(),
             Self::Group(literal) => literal.eject_mode(),
             Self::I8(literal) => literal.eject_mode(),
@@ -131,6 +137,7 @@ impl<A: Aleo> Eject for Literal<A> {
         match self {
             Self::Address(literal) => Self::Primitive::Address(literal.eject_value()),
             Self::Boolean(literal) => Self::Primitive::Boolean(console::Boolean::new(literal.eject_value())),
+            Self::Data(literal) => Self::Primitive::Data(literal.eject_value()),
             Self::Field(literal) => Self::Primitive::Field(literal.eject_value()),
             Self::Group(literal) => Self::Primitive::Group(literal.eject_value()),
             Self::I8(literal) => Self::Primitive::I8(literal.eject_value()),
@@ -158,6 +165,7 @@ impl<A: Aleo> Parser for Literal<A> {
         alt((
             map(Address::parse, |literal| Self::Address(literal)),
             map(Boolean::parse, |literal| Self::Boolean(literal)),
+            map(Data::parse, |literal| Self::Data(literal)),
             map(Field::parse, |literal| Self::Field(literal)),
             map(Group::parse, |literal| Self::Group(literal)),
             map(I8::parse, |literal| Self::I8(literal)),
@@ -197,32 +205,6 @@ impl<A: Aleo> FromStr for Literal<A> {
 }
 
 #[cfg(console)]
-impl<A: Aleo> Literal<A> {
-    /// Returns the type name of the literal.
-    pub fn type_name(&self) -> &str {
-        match self {
-            Self::Address(..) => Address::<A>::type_name(),
-            Self::Boolean(..) => Boolean::<A>::type_name(),
-            Self::Field(..) => Field::<A>::type_name(),
-            Self::Group(..) => Group::<A>::type_name(),
-            Self::I8(..) => I8::<A>::type_name(),
-            Self::I16(..) => I16::<A>::type_name(),
-            Self::I32(..) => I32::<A>::type_name(),
-            Self::I64(..) => I64::<A>::type_name(),
-            Self::I128(..) => I128::<A>::type_name(),
-            Self::U8(..) => U8::<A>::type_name(),
-            Self::U16(..) => U16::<A>::type_name(),
-            Self::U32(..) => U32::<A>::type_name(),
-            Self::U64(..) => U64::<A>::type_name(),
-            Self::U128(..) => U128::<A>::type_name(),
-            Self::Scalar(..) => Scalar::<A>::type_name(),
-            Self::Signature(..) => Signature::<A>::type_name(),
-            Self::String(..) => StringType::<A>::type_name(),
-        }
-    }
-}
-
-#[cfg(console)]
 impl<A: Aleo> Debug for Literal<A> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         Display::fmt(self, f)
@@ -235,6 +217,7 @@ impl<A: Aleo> Display for Literal<A> {
         match self {
             Self::Address(literal) => Display::fmt(literal, f),
             Self::Boolean(literal) => Display::fmt(literal, f),
+            Self::Data(literal) => Display::fmt(literal, f),
             Self::Field(literal) => Display::fmt(literal, f),
             Self::Group(literal) => Display::fmt(literal, f),
             Self::I8(literal) => Display::fmt(literal, f),

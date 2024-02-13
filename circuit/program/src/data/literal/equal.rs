@@ -22,6 +22,7 @@ impl<A: Aleo> Equal<Self> for Literal<A> {
         match (self, other) {
             (Self::Address(a), Self::Address(b)) => a.is_equal(b),
             (Self::Boolean(a), Self::Boolean(b)) => a.is_equal(b),
+            (Self::Data(a), Self::Data(b)) => a.is_equal(b),
             (Self::Field(a), Self::Field(b)) => a.is_equal(b),
             (Self::Group(a), Self::Group(b)) => a.is_equal(b),
             (Self::I8(a), Self::I8(b)) => a.is_equal(b),
@@ -46,6 +47,7 @@ impl<A: Aleo> Equal<Self> for Literal<A> {
         match (self, other) {
             (Self::Address(a), Self::Address(b)) => a.is_not_equal(b),
             (Self::Boolean(a), Self::Boolean(b)) => a.is_not_equal(b),
+            (Self::Data(a), Self::Data(b)) => a.is_not_equal(b),
             (Self::Field(a), Self::Field(b)) => a.is_not_equal(b),
             (Self::Group(a), Self::Group(b)) => a.is_not_equal(b),
             (Self::I8(a), Self::I8(b)) => a.is_not_equal(b),

@@ -12,29 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod access;
-pub use access::Access;
+use super::*;
 
-mod ciphertext;
-pub use ciphertext::Ciphertext;
+impl<A: Aleo> ToFields for Data<A> {
+    type Field = Field<A>;
 
-mod data;
-pub use data::Data;
-
-mod future;
-pub use future::{Argument, Future};
-
-pub(super) mod identifier;
-pub use identifier::Identifier;
-
-mod literal;
-pub use literal::{Cast, CastLossy, Literal};
-
-mod plaintext;
-pub use plaintext::Plaintext;
-
-mod record;
-pub use record::{Entry, Owner, Record};
-
-mod value;
-pub use value::Value;
+    /// Returns this `Data` as a list of field elements.
+    fn to_fields(&self) -> Vec<Self::Field> {
+        // Ensure the number of field elements does not exceed the maximum allowed size.
+        match self.0.len() <= A::MAX_DATA_SIZE_IN_FIELDS as usize {
+            true => self.0.clone(),
+            false => A::halt("Data exceeds maximum allowed size"),
+        }
+    }
+}

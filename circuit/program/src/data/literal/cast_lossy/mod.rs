@@ -72,6 +72,7 @@ impl<A: Aleo> Literal<A> {
         match self {
             Self::Address(address) => cast_lossy_group_to_type(&address.to_group(), to_type),
             Self::Boolean(boolean) => cast_lossy_boolean_to_type(boolean, to_type),
+            Self::Data(..) => bail!("Cannot cast a bytes literal to another type."),
             Self::Field(field) => cast_lossy_field_to_type(field, to_type),
             Self::Group(group) => cast_lossy_group_to_type(group, to_type),
             Self::I8(integer) => cast_lossy_integer_to_type(integer, to_type),

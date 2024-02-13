@@ -31,6 +31,7 @@ impl<A: Aleo> ToFields for &Literal<A> {
         match self {
             Literal::Address(literal) => vec![literal.to_field()],
             Literal::Boolean(literal) => vec![Field::from_boolean(literal)],
+            Literal::Data(literal) => literal.to_fields(),
             Literal::Field(literal) => vec![literal.clone()],
             Literal::Group(literal) => vec![literal.to_x_coordinate()],
             Literal::I8(literal) => vec![literal.to_field()],

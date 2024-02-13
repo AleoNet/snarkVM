@@ -12,29 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod access;
-pub use access::Access;
+use super::*;
 
-mod ciphertext;
-pub use ciphertext::Ciphertext;
-
-mod data;
-pub use data::Data;
-
-mod future;
-pub use future::{Argument, Future};
-
-pub(super) mod identifier;
-pub use identifier::Identifier;
-
-mod literal;
-pub use literal::{Cast, CastLossy, Literal};
-
-mod plaintext;
-pub use plaintext::Plaintext;
-
-mod record;
-pub use record::{Entry, Owner, Record};
-
-mod value;
-pub use value::Value;
+impl<A: Aleo> Data<A> {
+    /// Returns the number of field elements to encode `self`.
+    pub(crate) fn num_randomizers(&self) -> u16 {
+        self.size_in_fields()
+    }
+}

@@ -36,6 +36,7 @@ impl<A: Aleo> ToBits for &Literal<A> {
         match self {
             Literal::Address(literal) => literal.write_bits_le(vec),
             Literal::Boolean(literal) => literal.write_bits_le(vec),
+            Literal::Data(literal) => literal.write_bits_le(vec),
             Literal::Field(literal) => literal.write_bits_le(vec),
             Literal::Group(literal) => literal.write_bits_le(vec),
             Literal::I8(literal) => literal.write_bits_le(vec),
@@ -59,6 +60,7 @@ impl<A: Aleo> ToBits for &Literal<A> {
         match self {
             Literal::Address(literal) => literal.write_bits_be(vec),
             Literal::Boolean(literal) => literal.write_bits_be(vec),
+            Literal::Data(literal) => literal.write_bits_le(vec),
             Literal::Field(literal) => literal.write_bits_be(vec),
             Literal::Group(literal) => literal.write_bits_be(vec),
             Literal::I8(literal) => literal.write_bits_be(vec),

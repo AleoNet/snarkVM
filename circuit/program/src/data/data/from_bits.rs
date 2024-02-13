@@ -12,29 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod access;
-pub use access::Access;
+use super::*;
 
-mod ciphertext;
-pub use ciphertext::Ciphertext;
+impl<A: Aleo> FromBits for Data<A> {
+    type Boolean = Boolean<A>;
 
-mod data;
-pub use data::Data;
+    /// Returns this `Data` as a list of **little-endian** bits.
+    fn from_bits_le(bits_le: &[Self::Boolean]) -> Self {
+        Self(bits_le.chunks(A::BaseField::size_in_bits()).map(Field::from_bits_le).collect())
+    }
 
-mod future;
-pub use future::{Argument, Future};
-
-pub(super) mod identifier;
-pub use identifier::Identifier;
-
-mod literal;
-pub use literal::{Cast, CastLossy, Literal};
-
-mod plaintext;
-pub use plaintext::Plaintext;
-
-mod record;
-pub use record::{Entry, Owner, Record};
-
-mod value;
-pub use value::Value;
+    /// Returns this `Data` as a list of **big-endian** bits.
+    fn from_bits_be(bits_be: &[Self::Boolean]) -> Self {
+        Self(bits_be.chunks(A::BaseField::size_in_bits()).map(Field::from_bits_be).collect())
+    }
+}

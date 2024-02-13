@@ -21,6 +21,7 @@ impl<A: Aleo> Literal<A> {
         match self {
             Self::Address(..) => console::LiteralType::Address,
             Self::Boolean(..) => console::LiteralType::Boolean,
+            Self::Data(data) => console::LiteralType::Data(console::U32::new(data.len() as u32)),
             Self::Field(..) => console::LiteralType::Field,
             Self::Group(..) => console::LiteralType::Group,
             Self::I8(..) => console::LiteralType::I8,
