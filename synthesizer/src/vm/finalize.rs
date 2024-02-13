@@ -1305,6 +1305,18 @@ finalize transfer_public:
         }
     }
 
+    /// Samples the validators.
+    fn sample_validators<N: Network>(num_validators: usize, rng: &mut TestRng) -> IndexMap<PrivateKey<N>, (u64, bool)> {
+        (0..num_validators)
+            .map(|_| {
+                let private_key = PrivateKey::new(rng).unwrap();
+                let amount = MIN_VALIDATOR_STAKE;
+                let is_open = true;
+                (private_key, (amount, is_open))
+            })
+            .collect::<IndexMap<_, _>>()
+    }
+
     #[test]
     fn test_finalize_duplicate_deployment() {
         let rng = &mut TestRng::default();
@@ -1839,14 +1851,8 @@ finalize compute:
             VM::from(ConsensusStore::<CurrentNetwork, ConsensusMemory<CurrentNetwork>>::open(None).unwrap()).unwrap();
 
         // Construct the validators, greater than the maximum committee size.
-        let validators = (0..(Committee::<CurrentNetwork>::MAX_COMMITTEE_SIZE + 1))
-            .map(|_| {
-                let private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
-                let amount = MIN_VALIDATOR_STAKE;
-                let is_open = true;
-                (private_key, (amount, is_open))
-            })
-            .collect::<IndexMap<_, _>>();
+        let validators =
+            sample_validators::<CurrentNetwork>(Committee::<CurrentNetwork>::MAX_COMMITTEE_SIZE as usize + 1, rng);
 
         // Construct the committee.
         let mut committee_map = IndexMap::new();
@@ -1860,14 +1866,8 @@ finalize compute:
         assert!(result.is_err());
 
         // Reset the validators.
-        let validators = (0..Committee::<CurrentNetwork>::MAX_COMMITTEE_SIZE)
-            .map(|_| {
-                let private_key = PrivateKey::new(rng).unwrap();
-                let amount = MIN_VALIDATOR_STAKE;
-                let is_open = true;
-                (private_key, (amount, is_open))
-            })
-            .collect::<IndexMap<_, _>>();
+        let validators =
+            sample_validators::<CurrentNetwork>(Committee::<CurrentNetwork>::MAX_COMMITTEE_SIZE as usize, rng);
 
         // Track the allocated amount.
         let mut allocated_amount = 0;
@@ -1930,14 +1930,8 @@ finalize compute:
             VM::from(ConsensusStore::<CurrentNetwork, ConsensusMemory<CurrentNetwork>>::open(None).unwrap()).unwrap();
 
         // Construct the validators.
-        let validators = (0..Committee::<CurrentNetwork>::MAX_COMMITTEE_SIZE)
-            .map(|_| {
-                let private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
-                let amount = MIN_VALIDATOR_STAKE;
-                let is_open = true;
-                (private_key, (amount, is_open))
-            })
-            .collect::<IndexMap<_, _>>();
+        let validators =
+            sample_validators::<CurrentNetwork>(Committee::<CurrentNetwork>::MAX_COMMITTEE_SIZE as usize, rng);
 
         // Construct the delegators, greater than the maximum delegator size.
         let delegators = (0..MAX_DELEGATORS + 1)
@@ -2025,14 +2019,7 @@ finalize compute:
         println!("Constructing validator and delegator sets.");
 
         // Sample the validators.
-        let validators: IndexMap<_, _> = (0..NUM_VALIDATORS)
-            .map(|_| {
-                let private_key = PrivateKey::new(rng).unwrap();
-                let amount = MIN_VALIDATOR_STAKE;
-                let is_open = true;
-                (private_key, (amount, is_open))
-            })
-            .collect();
+        let validators = sample_validators(NUM_VALIDATORS, rng);
 
         // Sample the delegators, cycling through the validators.
         let delegators: IndexMap<_, _> = (0..NUM_DELEGATORS)
@@ -2239,14 +2226,7 @@ finalize compute:
         println!("Constructing validator and delegator sets.");
 
         // Sample the validators.
-        let validators: IndexMap<_, _> = (0..NUM_VALIDATORS)
-            .map(|_| {
-                let private_key = PrivateKey::new(rng).unwrap();
-                let amount = MIN_VALIDATOR_STAKE;
-                let is_open = true;
-                (private_key, (amount, is_open))
-            })
-            .collect();
+        let validators = sample_validators(NUM_VALIDATORS, rng);
 
         // Sample the delegators, cycling through the validators.
         let delegators: IndexMap<_, _> = (0..NUM_DELEGATORS)
@@ -2496,14 +2476,7 @@ finalize compute:
         let mut allocated_amount = 0;
 
         // Reset the validators.
-        let validators = (0..4)
-            .map(|_| {
-                let private_key = PrivateKey::new(rng).unwrap();
-                let amount = MIN_VALIDATOR_STAKE;
-                let is_open = true;
-                (private_key, (amount, is_open))
-            })
-            .collect::<IndexMap<_, _>>();
+        let validators = sample_validators(4, rng);
 
         // Construct the committee.
         let committee = Committee::new_genesis(
@@ -2561,16 +2534,10 @@ finalize compute:
         // Track the allocated amount.
         let mut allocated_amount = 0;
 
-        // Attempt to construct a genesis quorum, with a delegator with an insufficient amount.
-        let validators = (0..4)
-            .map(|_| {
-                let private_key = PrivateKey::new(rng).unwrap();
-                let amount = MIN_VALIDATOR_STAKE;
-                let is_open = true;
-                (private_key, (amount, is_open))
-            })
-            .collect::<IndexMap<_, _>>();
+        // Sample the validators.
+        let validators = sample_validators(4, rng);
 
+        // Attempt to construct a genesis quorum, with a delegator with an insufficient amount.
         let mut delegators = IndexMap::new();
         delegators.insert(
             PrivateKey::new(rng).unwrap(),
@@ -2698,14 +2665,7 @@ finalize compute:
         let mut allocated_amount = 0;
 
         // Initialize the validators.
-        let validators = (0..4)
-            .map(|_| {
-                let private_key = PrivateKey::new(rng).unwrap();
-                let amount = MIN_VALIDATOR_STAKE;
-                let is_open = true;
-                (private_key, (amount, is_open))
-            })
-            .collect::<IndexMap<_, _>>();
+        let validators = sample_validators(4, rng);
 
         // Initialize the delegators.
         let delegators = (0..4)
