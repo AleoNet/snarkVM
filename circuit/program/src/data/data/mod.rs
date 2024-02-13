@@ -34,10 +34,10 @@ impl<A: Aleo> Inject for Data<A> {
     type Primitive = console::Data<A::Network>;
 
     /// Initializes a new `Data` circuit from a primitive.
-    fn new(mode: Mode, ciphertext: Self::Primitive) -> Self {
+    fn new(mode: Mode, data: Self::Primitive) -> Self {
         // Ensure the number of field elements does not exceed the maximum allowed size.
-        match (*ciphertext).len() <= A::MAX_DATA_SIZE_IN_FIELDS as usize {
-            true => Self(Inject::new(mode, (*ciphertext).to_vec())),
+        match (*data).len() <= A::MAX_DATA_SIZE_IN_FIELDS as usize {
+            true => Self(Inject::new(mode, (*data).to_vec())),
             false => A::halt("Data exceeds maximum allowed size"),
         }
     }

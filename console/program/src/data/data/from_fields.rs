@@ -39,7 +39,7 @@ impl<N: Network> TryFrom<&[Field<N>]> for Data<N> {
 impl<N: Network> FromFields for Data<N> {
     type Field = Field<N>;
 
-    /// Initializes a ciphertext from a list of base field elements.
+    /// Initializes a `Data` from a list of base field elements.
     fn from_fields(fields: &[Self::Field]) -> Result<Self> {
         Self::try_from(fields.to_vec())
     }

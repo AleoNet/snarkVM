@@ -20,7 +20,7 @@ impl<A: Aleo> Literal<A> {
         U16::constant(console::U16::new(match self {
             Self::Address(..) => console::Address::<A::Network>::size_in_bits() as u16,
             Self::Boolean(..) => console::Boolean::<A::Network>::size_in_bits() as u16,
-            Self::Data(..) => todo!(),
+            Self::Data(data) => data.to_bits_le().len() as u16,
             Self::Field(..) => console::Field::<A::Network>::size_in_bits() as u16,
             Self::Group(..) => console::Group::<A::Network>::size_in_bits() as u16,
             Self::I8(..) => console::I8::<A::Network>::size_in_bits() as u16,

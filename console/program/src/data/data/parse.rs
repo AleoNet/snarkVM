@@ -21,14 +21,14 @@ impl<N: Network> Parser for Data<N> {
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
         // Prepare a parser for the `Data`.
-        let parse_ciphertext = recognize(pair(
+        let parse_data = recognize(pair(
             pair(tag(DATA_PREFIX), tag("1")),
             many1(terminated(one_of("qpzry9x8gf2tvdw0s3jn54khce6mua7l"), many0(char('_')))),
         ));
 
-        // Parse the ciphertext from the string.
-        map_res(parse_ciphertext, |ciphertext: &str| -> Result<_, Error> {
-            Self::from_str(&ciphertext.replace('_', ""))
+        // Parse the data from the string.
+        map_res(parse_data, |data: &str| -> Result<_, Error> {
+            Self::from_str(&data.replace('_', ""))
         })(string)
     }
 }
@@ -37,15 +37,15 @@ impl<N: Network> FromStr for Data<N> {
     type Err = Error;
 
     /// Reads in the `Data` string.
-    fn from_str(ciphertext: &str) -> Result<Self, Self::Err> {
+    fn from_str(data_string: &str) -> Result<Self, Self::Err> {
         // Decode the `Data` string from bech32m.
-        let (hrp, data, variant) = bech32::decode(ciphertext)?;
+        let (hrp, data, variant) = bech32::decode(data_string)?;
         if hrp != DATA_PREFIX {
             bail!("Failed to decode `Data`: '{hrp}' is an invalid prefix")
         } else if data.is_empty() {
             bail!("Failed to decode `Data`: data field is empty")
         } else if variant != bech32::Variant::Bech32m {
-            bail!("Found a `Data` that is not bech32m encoded: {ciphertext}");
+            bail!("Found a `Data` that is not bech32m encoded: {data_string}");
         }
         // Decode the data from u5 to u8, and into the `Data` object.
         Ok(Self::read_le(&Vec::from_base32(&data)?[..])?)
@@ -90,9 +90,9 @@ mod tests {
 
         for _ in 0..ITERATIONS {
             // Sample a new `Data`.
-            let ciphertext = Data::<CurrentNetwork>((0..100).map(|_| Uniform::rand(&mut rng)).collect::<Vec<_>>());
+            let data = Data::<CurrentNetwork>((0..100).map(|_| Uniform::rand(&mut rng)).collect::<Vec<_>>());
 
-            let expected = format!("{ciphertext}");
+            let expected = format!("{data}");
             let (remainder, candidate) = Data::<CurrentNetwork>::parse(&expected).unwrap();
             assert_eq!(format!("{expected}"), candidate.to_string());
             assert_eq!(DATA_PREFIX, candidate.to_string().split('1').next().unwrap());

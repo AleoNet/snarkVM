@@ -48,7 +48,7 @@ mod tests {
         let mut rng = TestRng::default();
 
         for _ in 0..ITERATIONS {
-            // Sample a new ciphertext.
+            // Sample a new `Data`.
             let expected = Data::<CurrentNetwork>((0..100).map(|_| Uniform::rand(&mut rng)).collect::<Vec<_>>());
 
             // Serialize
@@ -68,7 +68,7 @@ mod tests {
         let mut rng = TestRng::default();
 
         for _ in 0..ITERATIONS {
-            // Sample a new ciphertext.
+            // Sample a new `Data`.
             let expected = Data::<CurrentNetwork>((0..100).map(|_| Uniform::rand(&mut rng)).collect::<Vec<_>>());
 
             // Serialize
