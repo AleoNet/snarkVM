@@ -95,6 +95,9 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         // First, verify the fee.
         self.check_fee(transaction, rejected_id)?;
 
+        // Check if the transaction exists in the partially-verified cache.
+        let is_partially_verified = self.partially_verified_transactions.read().peek(&transaction.id()).is_some();
+
         // Next, verify the deployment or execution.
         match transaction {
             Transaction::Deploy(id, owner, deployment, _) => {
@@ -108,12 +111,18 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 if deployment.edition() != N::EDITION {
                     bail!("Invalid deployment transaction '{id}' - expected edition {}", N::EDITION)
                 }
-                // Ensure the program ID does not already exist..
+                // Ensure the program ID does not already exist in the store.
                 if self.transaction_store().contains_program_id(deployment.program_id())? {
                     bail!("Program ID '{}' is already deployed", deployment.program_id())
                 }
-                // Verify the deployment.
-                self.check_deployment_internal(deployment, rng)?;
+                // Ensure the program does not already exist in the process.
+                if self.contains_program(deployment.program_id()) {
+                    bail!("Program ID '{}' already exists", deployment.program_id());
+                }
+                // Verify the deployment if it has not been verified before.
+                if !is_partially_verified {
+                    self.check_deployment_internal(deployment, rng)?;
+                }
             }
             Transaction::Execute(id, execution, _) => {
                 // Compute the execution ID.
@@ -125,9 +134,15 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     bail!("Transaction '{id}' contains a previously rejected execution")
                 }
                 // Verify the execution.
-                self.check_execution_internal(execution)?;
+                self.check_execution_internal(execution, is_partially_verified)?;
             }
             Transaction::Fee(..) => { /* no-op */ }
+        }
+
+        // If the above checks have passed and this is not a fee transaction,
+        // then add the transaction ID to the partially-verified transactions cache.
+        if !matches!(transaction, Transaction::Fee(..)) && !is_partially_verified {
+            self.partially_verified_transactions.write().push(transaction.id(), ());
         }
 
         finish!(timer, "Verify the transaction");
@@ -229,11 +244,14 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// Note: This is an internal check only. To ensure all components of the execution are checked,
     /// use `VM::check_transaction` instead.
     #[inline]
-    fn check_execution_internal(&self, execution: &Execution<N>) -> Result<()> {
+    fn check_execution_internal(&self, execution: &Execution<N>, is_partially_verified: bool) -> Result<()> {
         let timer = timer!("VM::check_execution");
 
-        // Verify the execution.
-        let verification = self.process.read().verify_execution(execution);
+        // Verify the execution proof, if it has not been partially-verified before.
+        let verification = match is_partially_verified {
+            true => Ok(()),
+            false => self.process.read().verify_execution(execution),
+        };
         lap!(timer, "Verify the execution");
 
         // Ensure the global state root exists in the block store.
@@ -241,10 +259,10 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             // Ensure the global state root exists in the block store.
             Ok(()) => match self.block_store().contains_state_root(&execution.global_state_root()) {
                 Ok(true) => Ok(()),
-                Ok(false) => bail!("Execution verification failed: global state root not found"),
-                Err(error) => bail!("Execution verification failed: {error}"),
+                Ok(false) => bail!("Execution verification failed - global state root does not exist (yet)"),
+                Err(error) => bail!("Execution verification failed - {error}"),
             },
-            Err(error) => bail!("Execution verification failed: {error}"),
+            Err(error) => bail!("Execution verification failed - {error}"),
         };
         finish!(timer, "Check the global state root");
         result
@@ -373,13 +391,13 @@ mod tests {
                     // Ensure the proof exists.
                     assert!(execution.proof().is_some());
                     // Verify the execution.
-                    vm.check_execution_internal(&execution).unwrap();
+                    vm.check_execution_internal(&execution, false).unwrap();
 
                     // Ensure that deserialization doesn't break the transaction verification.
                     let serialized_execution = execution.to_string();
                     let recovered_execution: Execution<CurrentNetwork> =
                         serde_json::from_str(&serialized_execution).unwrap();
-                    vm.check_execution_internal(&recovered_execution).unwrap();
+                    vm.check_execution_internal(&recovered_execution, false).unwrap();
                 }
                 _ => panic!("Expected an execution transaction"),
             }

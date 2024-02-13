@@ -188,23 +188,18 @@ impl<N: Network> Subdag<N> {
 
     /// Returns the timestamp of the anchor round, defined as the weighted median timestamp of the subdag.
     pub fn timestamp(&self, committee: &Committee<N>) -> i64 {
-        match self.leader_certificate() {
-            BatchCertificate::V1 { .. } => self.leader_certificate().timestamp(),
-            BatchCertificate::V2 { .. } => {
-                // Retrieve the anchor round.
-                let anchor_round = self.anchor_round();
-                // Retrieve the timestamps and stakes of the certificates for `anchor_round` - 1.
-                let timestamps_and_stakes = self
-                    .values()
-                    .flatten()
-                    .filter(|certificate| certificate.round() == anchor_round.saturating_sub(1))
-                    .map(|certificate| (certificate.timestamp(), committee.get_stake(certificate.author())))
-                    .collect::<Vec<_>>();
+        // Retrieve the anchor round.
+        let anchor_round = self.anchor_round();
+        // Retrieve the timestamps and stakes of the certificates for `anchor_round` - 1.
+        let timestamps_and_stakes = self
+            .values()
+            .flatten()
+            .filter(|certificate| certificate.round() == anchor_round.saturating_sub(1))
+            .map(|certificate| (certificate.timestamp(), committee.get_stake(certificate.author())))
+            .collect::<Vec<_>>();
 
-                // Return the weighted median timestamp.
-                weighted_median(timestamps_and_stakes)
-            }
-        }
+        // Return the weighted median timestamp.
+        weighted_median(timestamps_and_stakes)
     }
 
     /// Returns the subdag root of the certificates.
