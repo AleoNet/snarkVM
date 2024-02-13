@@ -1366,6 +1366,24 @@ finalize transfer_public:
         bonded_balances
     }
 
+    /// Returns the `public_balances` given the addresses and total amount.
+    /// Note that the balances are evenly distributed among the addresses.
+    fn sample_public_balances<N: Network>(addresses: &[Address<N>], total_amount: u64) -> IndexMap<Address<N>, u64> {
+        // Check that the addresses are not empty.
+        assert!(!addresses.is_empty(), "must provide at least one address");
+        // Distribute the total amount evenly among the addresses.
+        let amount_per_address = total_amount / addresses.len() as u64;
+        let mut public_balances: IndexMap<_, _> =
+            addresses.iter().map(|address| (*address, amount_per_address)).collect();
+        // Distribute the remainder to the first address.
+        let remaining = total_amount % addresses.len() as u64;
+        if remaining > 0 {
+            *public_balances.get_mut(&addresses[0]).unwrap() += remaining;
+        }
+        // Return the public balances.
+        public_balances
+    }
+
     #[test]
     fn test_finalize_duplicate_deployment() {
         let rng = &mut TestRng::default();
@@ -1920,23 +1938,14 @@ finalize compute:
 
         // Construct the committee.
         // Track the allocated amount.
-        let (committee_map, mut allocated_amount) =
+        let (committee_map, allocated_amount) =
             sample_committee_map_and_allocated_amount(&validators, &IndexMap::new());
 
         // Construct the public balances, allocating the remaining supply.
-        let mut public_balances = IndexMap::new();
-        let remaining_supply = <CurrentNetwork as Network>::STARTING_SUPPLY - allocated_amount;
-        for (private_key, _) in &validators {
-            let address = Address::try_from(private_key).unwrap();
-            let amount = remaining_supply / validators.len() as u64;
-            allocated_amount += amount;
-            public_balances.insert(address, amount);
-        }
-        let remaining_supply = <CurrentNetwork as Network>::STARTING_SUPPLY - allocated_amount;
-        if remaining_supply > 0 {
-            let address = Address::try_from(&PrivateKey::<CurrentNetwork>::new(rng).unwrap()).unwrap();
-            public_balances.insert(address, remaining_supply);
-        }
+        let public_balances = sample_public_balances(
+            &validators.keys().map(|private_key| Address::try_from(private_key).unwrap()).collect::<Vec<_>>(),
+            <CurrentNetwork as Network>::STARTING_SUPPLY - allocated_amount,
+        );
 
         // Construct the bonded balances.
         let bonded_balances = sample_bonded_balances(&validators, &IndexMap::new());
@@ -1982,26 +1991,17 @@ finalize compute:
 
         // Construct the committee.
         // Track the allocated amount.
-        let (committee_map, mut allocated_amount) = sample_committee_map_and_allocated_amount(&validators, &delegators);
+        let (committee_map, allocated_amount) = sample_committee_map_and_allocated_amount(&validators, &delegators);
 
         // Construct the public balances, allocating the remaining supply to the validators and zero to the delegators.
-        let mut public_balances = IndexMap::new();
-        for (private_key, _) in &delegators {
-            let address = Address::try_from(private_key).unwrap();
-            public_balances.insert(address, 0);
-        }
-        let remaining_supply = <CurrentNetwork as Network>::STARTING_SUPPLY - allocated_amount;
-        for (private_key, _) in &validators {
-            let address = Address::try_from(private_key).unwrap();
-            let amount = remaining_supply / validators.len() as u64;
-            allocated_amount += amount;
-            public_balances.insert(address, amount);
-        }
-        let remaining_supply = <CurrentNetwork as Network>::STARTING_SUPPLY - allocated_amount;
-        if remaining_supply > 0 {
-            let address = Address::try_from(&PrivateKey::<CurrentNetwork>::new(rng).unwrap()).unwrap();
-            public_balances.insert(address, remaining_supply);
-        }
+        let mut public_balances = sample_public_balances(
+            &validators.keys().map(|private_key| Address::try_from(private_key).unwrap()).collect::<Vec<_>>(),
+            <CurrentNetwork as Network>::STARTING_SUPPLY - allocated_amount,
+        );
+        public_balances.extend(sample_public_balances(
+            &delegators.keys().map(|private_key| Address::try_from(private_key).unwrap()).collect::<Vec<_>>(),
+            0,
+        ));
 
         // Construct the bonded balances.
         let bonded_balances = sample_bonded_balances(&validators, &delegators);
@@ -2057,25 +2057,18 @@ finalize compute:
 
         // Construct the committee.
         // Track the allocated amount.
-        let (committee_map, mut allocated_amount) = sample_committee_map_and_allocated_amount(&validators, &delegators);
+        let (committee_map, allocated_amount) = sample_committee_map_and_allocated_amount(&validators, &delegators);
         let committee = Committee::new_genesis(committee_map).unwrap();
 
         // Construct the public balances, allocating the remaining supply to the validators and zero to the delegators.
-        let mut public_balances = IndexMap::new();
-        for (private_key, (_validator, _amount)) in &delegators {
-            let address = Address::try_from(private_key).unwrap();
-            public_balances.insert(address, 0u64);
-        }
-        let remaining_supply = <CurrentNetwork as Network>::STARTING_SUPPLY - allocated_amount;
-        for private_key in validators.keys() {
-            let address = Address::try_from(private_key).unwrap();
-            let amount = remaining_supply / NUM_VALIDATORS as u64;
-            public_balances.insert(address, amount);
-            allocated_amount += amount;
-        }
-        let address = Address::try_from(validators.keys().next().unwrap()).unwrap();
-        let amount = <CurrentNetwork as Network>::STARTING_SUPPLY - allocated_amount;
-        public_balances.entry(address).and_modify(|balance| *balance += amount).or_insert(amount);
+        let mut public_balances = sample_public_balances(
+            &validators.keys().map(|private_key| Address::try_from(private_key).unwrap()).collect::<Vec<_>>(),
+            <CurrentNetwork as Network>::STARTING_SUPPLY - allocated_amount,
+        );
+        public_balances.extend(sample_public_balances(
+            &delegators.keys().map(|private_key| Address::try_from(private_key).unwrap()).collect::<Vec<_>>(),
+            0,
+        ));
 
         // Construct the bonded balances.
         let bonded_balances = sample_bonded_balances(&validators, &delegators);
@@ -2251,16 +2244,10 @@ finalize compute:
             public_balances.insert(address, amount);
             allocated_amount += amount;
         }
-        let remaining_supply = <CurrentNetwork as Network>::STARTING_SUPPLY - allocated_amount;
-        for private_key in validators.keys() {
-            let address = Address::try_from(private_key).unwrap();
-            let amount = remaining_supply / NUM_VALIDATORS as u64;
-            public_balances.insert(address, amount);
-            allocated_amount += amount;
-        }
-        let address = Address::try_from(validators.keys().next().unwrap()).unwrap();
-        let amount = <CurrentNetwork as Network>::STARTING_SUPPLY - allocated_amount;
-        public_balances.entry(address).and_modify(|balance| *balance += amount).or_insert(amount);
+        public_balances.extend(sample_public_balances(
+            &validators.keys().map(|private_key| Address::try_from(private_key).unwrap()).collect::<Vec<_>>(),
+            <CurrentNetwork as Network>::STARTING_SUPPLY - allocated_amount,
+        ));
 
         // Construct the bonded balances.
         let bonded_balances = sample_bonded_balances(&validators, &IndexMap::new());
@@ -2318,25 +2305,18 @@ finalize compute:
 
         // Construct the committee.
         // Track the allocated amount.
-        let (committee_map, mut allocated_amount) = sample_committee_map_and_allocated_amount(&validators, &delegators);
+        let (committee_map, allocated_amount) = sample_committee_map_and_allocated_amount(&validators, &delegators);
         let committee = Committee::new_genesis(committee_map).unwrap();
 
         // Construct the public balances, allocating the remaining supply to the validators and zero to the delegators.
-        let mut public_balances = IndexMap::new();
-        for (private_key, (_validator, _amount)) in &delegators {
-            let address = Address::try_from(private_key).unwrap();
-            public_balances.insert(address, 0u64);
-        }
-        let remaining_supply = <CurrentNetwork as Network>::STARTING_SUPPLY - allocated_amount;
-        for private_key in validators.keys() {
-            let address = Address::try_from(private_key).unwrap();
-            let amount = remaining_supply / NUM_VALIDATORS as u64;
-            public_balances.insert(address, amount);
-            allocated_amount += amount;
-        }
-        let address = Address::try_from(validators.keys().next().unwrap()).unwrap();
-        let amount = <CurrentNetwork as Network>::STARTING_SUPPLY - allocated_amount;
-        public_balances.entry(address).and_modify(|balance| *balance += amount).or_insert(amount);
+        let mut public_balances = sample_public_balances(
+            &validators.keys().map(|private_key| Address::try_from(private_key).unwrap()).collect::<Vec<_>>(),
+            <CurrentNetwork as Network>::STARTING_SUPPLY - allocated_amount,
+        );
+        public_balances.extend(sample_public_balances(
+            &delegators.keys().map(|private_key| Address::try_from(private_key).unwrap()).collect::<Vec<_>>(),
+            0,
+        ));
 
         // Construct the bonded balances.
         let bonded_balances = sample_bonded_balances(&validators, &delegators);
@@ -2443,17 +2423,10 @@ finalize compute:
         .unwrap();
 
         // Construct the public balances, allocating the remaining supply to rest of the validators.
-        let mut public_balances = IndexMap::new();
-        let remaining_supply = <CurrentNetwork as Network>::STARTING_SUPPLY - allocated_amount;
-        for (private_key, _) in &validators {
-            let address = Address::try_from(private_key).unwrap();
-            let amount = remaining_supply / validators.len() as u64;
-            allocated_amount += amount;
-            public_balances.insert(address, amount);
-        }
-        let address = Address::try_from(validators.keys().next().unwrap()).unwrap();
-        let amount = <CurrentNetwork as Network>::STARTING_SUPPLY - allocated_amount;
-        public_balances.entry(address).and_modify(|balance| *balance += amount).or_insert(amount);
+        let public_balances = sample_public_balances(
+            &validators.keys().map(|private_key| Address::try_from(private_key).unwrap()).collect::<Vec<_>>(),
+            <CurrentNetwork as Network>::STARTING_SUPPLY - allocated_amount,
+        );
 
         // Construct the bonded balances.
         let bonded_balances = sample_bonded_balances(&validators, &IndexMap::new());
@@ -2504,19 +2477,12 @@ finalize compute:
         let committee = Committee::new_genesis(committee_map).unwrap();
 
         // Construct the public balances, allocating the remaining supply to rest of the validators.
-        let mut public_balances = IndexMap::new();
-        let remaining_supply = <CurrentNetwork as Network>::STARTING_SUPPLY - allocated_amount;
-        for (private_key, _) in &validators {
-            let address = Address::try_from(private_key).unwrap();
-            let amount = remaining_supply / validators.len() as u64;
-            allocated_amount += amount;
-            public_balances.insert(address, amount);
-        }
-        let address = Address::try_from(validators.keys().next().unwrap()).unwrap();
-        let amount = <CurrentNetwork as Network>::STARTING_SUPPLY - allocated_amount;
-        public_balances.entry(address).and_modify(|balance| *balance += amount).or_insert(amount);
-        let address = Address::try_from(delegators.keys().next().unwrap()).unwrap();
-        public_balances.insert(address, 0);
+        let mut public_balances = sample_public_balances(
+            &validators.keys().map(|private_key| Address::try_from(private_key).unwrap()).collect::<Vec<_>>(),
+            <CurrentNetwork as Network>::STARTING_SUPPLY - allocated_amount,
+        );
+        public_balances
+            .extend(sample_public_balances(&[Address::try_from(delegators.keys().next().unwrap()).unwrap()], 0));
 
         // Construct the bonded balances.
         let bonded_balances = sample_bonded_balances(&validators, &delegators);
@@ -2551,19 +2517,12 @@ finalize compute:
         let committee = Committee::new_genesis(committee_map).unwrap();
 
         // Construct the public balances, allocating the remaining supply to rest of the validators.
-        let mut public_balances = IndexMap::new();
-        let remaining_supply = <CurrentNetwork as Network>::STARTING_SUPPLY - allocated_amount;
-        for (private_key, _) in &validators {
-            let address = Address::try_from(private_key).unwrap();
-            let amount = remaining_supply / validators.len() as u64;
-            allocated_amount += amount;
-            public_balances.insert(address, amount);
-        }
-        let address = Address::try_from(validators.keys().next().unwrap()).unwrap();
-        let amount = <CurrentNetwork as Network>::STARTING_SUPPLY - allocated_amount;
-        public_balances.entry(address).and_modify(|balance| *balance += amount).or_insert(amount);
-        let address = Address::try_from(delegators.keys().next().unwrap()).unwrap();
-        public_balances.insert(address, 0);
+        let mut public_balances = sample_public_balances(
+            &validators.keys().map(|private_key| Address::try_from(private_key).unwrap()).collect::<Vec<_>>(),
+            <CurrentNetwork as Network>::STARTING_SUPPLY - allocated_amount,
+        );
+        public_balances
+            .extend(sample_public_balances(&[Address::try_from(delegators.keys().next().unwrap()).unwrap()], 0));
 
         // Construct the bonded balances.
         let bonded_balances = sample_bonded_balances(&validators, &delegators);
@@ -2602,26 +2561,19 @@ finalize compute:
         // Construct the **incorrect** committee.
         // Track the allocated amount.
         // Note: this committee is missing the additional stake from the delegators.
-        let (committee_map, mut allocated_amount) =
+        let (committee_map, allocated_amount) =
             sample_committee_map_and_allocated_amount(&validators, &IndexMap::new());
         let committee = Committee::new_genesis(committee_map).unwrap();
 
         // Construct the public balances, allocating the remaining supply to rest of the validators.
-        let mut public_balances = IndexMap::new();
-        let remaining_supply = <CurrentNetwork as Network>::STARTING_SUPPLY - allocated_amount;
-        for (private_key, _) in &validators {
-            let address = Address::try_from(private_key).unwrap();
-            let amount = remaining_supply / validators.len() as u64;
-            allocated_amount += amount;
-            public_balances.insert(address, amount);
-        }
-        let address = Address::try_from(validators.keys().next().unwrap()).unwrap();
-        let amount = <CurrentNetwork as Network>::STARTING_SUPPLY - allocated_amount;
-        public_balances.entry(address).and_modify(|balance| *balance += amount).or_insert(amount);
-        for (private_key, _) in &delegators {
-            let address = Address::try_from(private_key).unwrap();
-            public_balances.insert(address, 0);
-        }
+        let mut public_balances = sample_public_balances(
+            &validators.keys().map(|private_key| Address::try_from(private_key).unwrap()).collect::<Vec<_>>(),
+            <CurrentNetwork as Network>::STARTING_SUPPLY - allocated_amount,
+        );
+        public_balances.extend(sample_public_balances(
+            &delegators.keys().map(|private_key| Address::try_from(private_key).unwrap()).collect::<Vec<_>>(),
+            0,
+        ));
 
         // Construct the bonded balances.
         let bonded_balances = sample_bonded_balances(&validators, &delegators);
@@ -2638,25 +2590,18 @@ finalize compute:
 
         // Construct the **correct** committee.
         // Reset the tracked amount.
-        let (committee_map, mut allocated_amount) = sample_committee_map_and_allocated_amount(&validators, &delegators);
+        let (committee_map, allocated_amount) = sample_committee_map_and_allocated_amount(&validators, &delegators);
         let committee = Committee::new_genesis(committee_map).unwrap();
 
         // Construct the public balances, allocating the remaining supply to rest of the validators.
-        let mut public_balances = IndexMap::new();
-        let remaining_supply = <CurrentNetwork as Network>::STARTING_SUPPLY - allocated_amount;
-        for (private_key, _) in &validators {
-            let address = Address::try_from(private_key).unwrap();
-            let amount = remaining_supply / validators.len() as u64;
-            allocated_amount += amount;
-            public_balances.insert(address, amount);
-        }
-        let address = Address::try_from(validators.keys().next().unwrap()).unwrap();
-        let amount = <CurrentNetwork as Network>::STARTING_SUPPLY - allocated_amount;
-        public_balances.entry(address).and_modify(|balance| *balance += amount).or_insert(amount);
-        for (private_key, _) in &delegators {
-            let address = Address::try_from(private_key).unwrap();
-            public_balances.insert(address, 0);
-        }
+        let mut public_balances = sample_public_balances(
+            &validators.keys().map(|private_key| Address::try_from(private_key).unwrap()).collect::<Vec<_>>(),
+            <CurrentNetwork as Network>::STARTING_SUPPLY - allocated_amount,
+        );
+        public_balances.extend(sample_public_balances(
+            &delegators.keys().map(|private_key| Address::try_from(private_key).unwrap()).collect::<Vec<_>>(),
+            0,
+        ));
 
         // Construct the genesis block, which should pass.
         let block = vm
@@ -2696,10 +2641,10 @@ finalize compute:
             sample_committee_map_and_allocated_amount(&validators, &IndexMap::new());
 
         // Construct the public balances, allocating half to the first validator and the remaining to the delegator.
-        let mut public_balances = IndexMap::new();
-        let remaining_supply = <CurrentNetwork as Network>::STARTING_SUPPLY - allocated_amount;
-        public_balances.insert(Address::try_from(validators.keys().next().unwrap()).unwrap(), remaining_supply / 2);
-        public_balances.insert(delegator_address, remaining_supply - remaining_supply / 2);
+        let public_balances = sample_public_balances(
+            &[Address::try_from(validators.keys().next().unwrap()).unwrap(), delegator_address],
+            <CurrentNetwork as Network>::STARTING_SUPPLY - allocated_amount,
+        );
 
         // Construct the bonded balances.
         let bonded_balances = sample_bonded_balances(&validators, &IndexMap::new());
