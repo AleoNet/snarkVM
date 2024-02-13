@@ -28,6 +28,7 @@ impl<N: Network> core::hash::Hash for Literal<N> {
         match self {
             Self::Address(a) => a.hash(state),
             Self::Boolean(a) => a.hash(state),
+            Self::Data(a) => a.hash(state),
             Self::Field(a) => a.hash(state),
             Self::Group(a) => a.hash(state),
             Self::I8(a) => a.hash(state),
@@ -55,6 +56,7 @@ impl<N: Network> Equal for Literal<N> {
         match (self, other) {
             (Self::Address(a), Self::Address(b)) => a.is_equal(b),
             (Self::Boolean(a), Self::Boolean(b)) => a.is_equal(b),
+            (Self::Data(a), Self::Data(b)) => a.is_equal(b),
             (Self::Field(a), Self::Field(b)) => a.is_equal(b),
             (Self::Group(a), Self::Group(b)) => a.is_equal(b),
             (Self::I8(a), Self::I8(b)) => a.is_equal(b),
@@ -79,6 +81,7 @@ impl<N: Network> Equal for Literal<N> {
         match (self, other) {
             (Self::Address(a), Self::Address(b)) => a.is_not_equal(b),
             (Self::Boolean(a), Self::Boolean(b)) => a.is_not_equal(b),
+            (Self::Data(a), Self::Data(b)) => a.is_not_equal(b),
             (Self::Field(a), Self::Field(b)) => a.is_not_equal(b),
             (Self::Group(a), Self::Group(b)) => a.is_not_equal(b),
             (Self::I8(a), Self::I8(b)) => a.is_not_equal(b),

@@ -16,10 +16,14 @@ use super::*;
 
 impl<N: Network> Literal<N> {
     /// Returns the number of bits of this literal.
-    pub fn size_in_bits(&self) -> u16 {
+    pub fn size_in_bits(&self) -> u64 {
         let size = match self {
             Self::Address(..) => Address::<N>::size_in_bits(),
             Self::Boolean(..) => Boolean::<N>::size_in_bits(),
+            Self::Data(data) => match data.len().checked_mul(Field::<N>::size_in_bits()) {
+                Some(size) => size,
+                None => N::halt("Data exceeds usize::MAX bits."),
+            },
             Self::Field(..) => Field::<N>::size_in_bits(),
             Self::Group(..) => Group::<N>::size_in_bits(),
             Self::I8(..) => I8::<N>::size_in_bits(),
@@ -39,6 +43,6 @@ impl<N: Network> Literal<N> {
                 None => N::halt("String exceeds usize::MAX bits."),
             },
         };
-        u16::try_from(size).or_halt_with::<N>("Literal exceeds u16::MAX bits.")
+        u64::try_from(size).or_halt_with::<N>("Literal exceeds u64::MAX bits.")
     }
 }

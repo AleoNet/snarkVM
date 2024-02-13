@@ -24,21 +24,22 @@ impl<N: Network> Literal<N> {
                 1 => Literal::Boolean(Boolean::new(literal[0])),
                 _ => bail!("Expected a boolean literal, but found a list of {} bits.", bits_le.len()),
             },
-            2 => Literal::Field(Field::from_bits_le(literal)?),
-            3 => Literal::Group(Group::from_bits_le(literal)?),
-            4 => Literal::I8(I8::from_bits_le(literal)?),
-            5 => Literal::I16(I16::from_bits_le(literal)?),
-            6 => Literal::I32(I32::from_bits_le(literal)?),
-            7 => Literal::I64(I64::from_bits_le(literal)?),
-            8 => Literal::I128(I128::from_bits_le(literal)?),
-            9 => Literal::U8(U8::from_bits_le(literal)?),
-            10 => Literal::U16(U16::from_bits_le(literal)?),
-            11 => Literal::U32(U32::from_bits_le(literal)?),
-            12 => Literal::U64(U64::from_bits_le(literal)?),
-            13 => Literal::U128(U128::from_bits_le(literal)?),
-            14 => Literal::Scalar(Scalar::from_bits_le(literal)?),
-            15 => Literal::Signature(Box::new(Signature::from_bits_le(literal)?)),
-            16 => {
+            2 => Literal::Data(Data::from_bits_le(literal)?),
+            3 => Literal::Field(Field::from_bits_le(literal)?),
+            4 => Literal::Group(Group::from_bits_le(literal)?),
+            5 => Literal::I8(I8::from_bits_le(literal)?),
+            6 => Literal::I16(I16::from_bits_le(literal)?),
+            7 => Literal::I32(I32::from_bits_le(literal)?),
+            8 => Literal::I64(I64::from_bits_le(literal)?),
+            9 => Literal::I128(I128::from_bits_le(literal)?),
+            10 => Literal::U8(U8::from_bits_le(literal)?),
+            11 => Literal::U16(U16::from_bits_le(literal)?),
+            12 => Literal::U32(U32::from_bits_le(literal)?),
+            13 => Literal::U64(U64::from_bits_le(literal)?),
+            14 => Literal::U128(U128::from_bits_le(literal)?),
+            15 => Literal::Scalar(Scalar::from_bits_le(literal)?),
+            16 => Literal::Signature(Box::new(Signature::from_bits_le(literal)?)),
+            17 => {
                 let buffer = Vec::<u8>::from_bits_le(literal)?;
                 match buffer.len() <= N::MAX_STRING_BYTES as usize {
                     true => {
@@ -48,7 +49,7 @@ impl<N: Network> Literal<N> {
                     false => bail!("String literal exceeds maximum length of {} bytes.", N::MAX_STRING_BYTES),
                 }
             }
-            17.. => bail!("Failed to initialize literal variant {} from bits (LE)", variant),
+            18.. => bail!("Failed to initialize literal variant {} from bits (LE)", variant),
         };
         Ok(literal)
     }
@@ -62,21 +63,22 @@ impl<N: Network> Literal<N> {
                 1 => Literal::Boolean(Boolean::new(literal[0])),
                 _ => bail!("Expected a boolean literal, but found a list of {} bits.", bits_be.len()),
             },
-            2 => Literal::Field(Field::from_bits_be(literal)?),
-            3 => Literal::Group(Group::from_bits_be(literal)?),
-            4 => Literal::I8(I8::from_bits_be(literal)?),
-            5 => Literal::I16(I16::from_bits_be(literal)?),
-            6 => Literal::I32(I32::from_bits_be(literal)?),
-            7 => Literal::I64(I64::from_bits_be(literal)?),
-            8 => Literal::I128(I128::from_bits_be(literal)?),
-            9 => Literal::U8(U8::from_bits_be(literal)?),
-            10 => Literal::U16(U16::from_bits_be(literal)?),
-            11 => Literal::U32(U32::from_bits_be(literal)?),
-            12 => Literal::U64(U64::from_bits_be(literal)?),
-            13 => Literal::U128(U128::from_bits_be(literal)?),
-            14 => Literal::Scalar(Scalar::from_bits_be(literal)?),
-            15 => Literal::Signature(Box::new(Signature::from_bits_be(literal)?)),
-            16 => {
+            2 => Literal::Data(Data::from_bits_be(literal)?),
+            3 => Literal::Field(Field::from_bits_be(literal)?),
+            4 => Literal::Group(Group::from_bits_be(literal)?),
+            5 => Literal::I8(I8::from_bits_be(literal)?),
+            6 => Literal::I16(I16::from_bits_be(literal)?),
+            7 => Literal::I32(I32::from_bits_be(literal)?),
+            8 => Literal::I64(I64::from_bits_be(literal)?),
+            9 => Literal::I128(I128::from_bits_be(literal)?),
+            10 => Literal::U8(U8::from_bits_be(literal)?),
+            11 => Literal::U16(U16::from_bits_be(literal)?),
+            12 => Literal::U32(U32::from_bits_be(literal)?),
+            13 => Literal::U64(U64::from_bits_be(literal)?),
+            14 => Literal::U128(U128::from_bits_be(literal)?),
+            15 => Literal::Scalar(Scalar::from_bits_be(literal)?),
+            16 => Literal::Signature(Box::new(Signature::from_bits_be(literal)?)),
+            17 => {
                 let buffer = Vec::<u8>::from_bits_be(literal)?;
                 match buffer.len() <= N::MAX_STRING_BYTES as usize {
                     true => {
@@ -86,7 +88,7 @@ impl<N: Network> Literal<N> {
                     false => bail!("String literal exceeds maximum length of {} bytes.", N::MAX_STRING_BYTES),
                 }
             }
-            17.. => bail!("Failed to initialize literal variant {} from bits (BE)", variant),
+            18.. => bail!("Failed to initialize literal variant {} from bits (BE)", variant),
         };
         Ok(literal)
     }

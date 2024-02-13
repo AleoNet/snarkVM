@@ -21,6 +21,7 @@ impl<N: Network> Parser for Literal<N> {
         alt((
             map(Address::<N>::parse, |literal| Self::Address(literal)),
             map(Boolean::<N>::parse, |literal| Self::Boolean(literal)),
+            map(Data::<N>::parse, |literal| Self::Data(literal)),
             map(Field::<N>::parse, |literal| Self::Field(literal)),
             map(Group::<N>::parse, |literal| Self::Group(literal)),
             map(I8::<N>::parse, |literal| Self::I8(literal)),
@@ -71,6 +72,7 @@ impl<N: Network> Display for Literal<N> {
         match self {
             Self::Address(literal) => Display::fmt(literal, f),
             Self::Boolean(literal) => Display::fmt(literal, f),
+            Self::Data(literal) => Display::fmt(literal, f),
             Self::Field(literal) => Display::fmt(literal, f),
             Self::Group(literal) => Display::fmt(literal, f),
             Self::I8(literal) => Display::fmt(literal, f),

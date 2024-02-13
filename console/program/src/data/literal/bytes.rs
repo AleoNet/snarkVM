@@ -21,22 +21,23 @@ impl<N: Network> FromBytes for Literal<N> {
         let literal = match index {
             0 => Self::Address(Address::read_le(&mut reader)?),
             1 => Self::Boolean(Boolean::read_le(&mut reader)?),
-            2 => Self::Field(Field::read_le(&mut reader)?),
-            3 => Self::Group(Group::read_le(&mut reader)?),
-            4 => Self::I8(I8::read_le(&mut reader)?),
-            5 => Self::I16(I16::read_le(&mut reader)?),
-            6 => Self::I32(I32::read_le(&mut reader)?),
-            7 => Self::I64(I64::read_le(&mut reader)?),
-            8 => Self::I128(I128::read_le(&mut reader)?),
-            9 => Self::U8(U8::read_le(&mut reader)?),
-            10 => Self::U16(U16::read_le(&mut reader)?),
-            11 => Self::U32(U32::read_le(&mut reader)?),
-            12 => Self::U64(U64::read_le(&mut reader)?),
-            13 => Self::U128(U128::read_le(&mut reader)?),
-            14 => Self::Scalar(Scalar::read_le(&mut reader)?),
-            15 => Self::Signature(Box::new(Signature::read_le(&mut reader)?)),
-            16 => Self::String(StringType::read_le(&mut reader)?),
-            17.. => return Err(error(format!("Failed to decode literal variant {index}"))),
+            2 => Self::Data(Data::read_le(&mut reader)?),
+            3 => Self::Field(Field::read_le(&mut reader)?),
+            4 => Self::Group(Group::read_le(&mut reader)?),
+            5 => Self::I8(I8::read_le(&mut reader)?),
+            6 => Self::I16(I16::read_le(&mut reader)?),
+            7 => Self::I32(I32::read_le(&mut reader)?),
+            8 => Self::I64(I64::read_le(&mut reader)?),
+            9 => Self::I128(I128::read_le(&mut reader)?),
+            10 => Self::U8(U8::read_le(&mut reader)?),
+            11 => Self::U16(U16::read_le(&mut reader)?),
+            12 => Self::U32(U32::read_le(&mut reader)?),
+            13 => Self::U64(U64::read_le(&mut reader)?),
+            14 => Self::U128(U128::read_le(&mut reader)?),
+            15 => Self::Scalar(Scalar::read_le(&mut reader)?),
+            16 => Self::Signature(Box::new(Signature::read_le(&mut reader)?)),
+            17 => Self::String(StringType::read_le(&mut reader)?),
+            18.. => return Err(error(format!("Failed to decode literal variant {index}"))),
         };
         Ok(literal)
     }
@@ -55,64 +56,68 @@ impl<N: Network> ToBytes for Literal<N> {
                 (1 as Size).write_le(&mut writer)?;
                 primitive.write_le(&mut writer)
             }
-            Self::Field(primitive) => {
+            Self::Data(primitive) => {
                 (2 as Size).write_le(&mut writer)?;
                 primitive.write_le(&mut writer)
             }
-            Self::Group(primitive) => {
+            Self::Field(primitive) => {
                 (3 as Size).write_le(&mut writer)?;
                 primitive.write_le(&mut writer)
             }
-            Self::I8(primitive) => {
+            Self::Group(primitive) => {
                 (4 as Size).write_le(&mut writer)?;
                 primitive.write_le(&mut writer)
             }
-            Self::I16(primitive) => {
+            Self::I8(primitive) => {
                 (5 as Size).write_le(&mut writer)?;
                 primitive.write_le(&mut writer)
             }
-            Self::I32(primitive) => {
+            Self::I16(primitive) => {
                 (6 as Size).write_le(&mut writer)?;
                 primitive.write_le(&mut writer)
             }
-            Self::I64(primitive) => {
+            Self::I32(primitive) => {
                 (7 as Size).write_le(&mut writer)?;
                 primitive.write_le(&mut writer)
             }
-            Self::I128(primitive) => {
+            Self::I64(primitive) => {
                 (8 as Size).write_le(&mut writer)?;
                 primitive.write_le(&mut writer)
             }
-            Self::U8(primitive) => {
+            Self::I128(primitive) => {
                 (9 as Size).write_le(&mut writer)?;
                 primitive.write_le(&mut writer)
             }
-            Self::U16(primitive) => {
+            Self::U8(primitive) => {
                 (10 as Size).write_le(&mut writer)?;
                 primitive.write_le(&mut writer)
             }
-            Self::U32(primitive) => {
+            Self::U16(primitive) => {
                 (11 as Size).write_le(&mut writer)?;
                 primitive.write_le(&mut writer)
             }
-            Self::U64(primitive) => {
+            Self::U32(primitive) => {
                 (12 as Size).write_le(&mut writer)?;
                 primitive.write_le(&mut writer)
             }
-            Self::U128(primitive) => {
+            Self::U64(primitive) => {
                 (13 as Size).write_le(&mut writer)?;
                 primitive.write_le(&mut writer)
             }
-            Self::Scalar(primitive) => {
+            Self::U128(primitive) => {
                 (14 as Size).write_le(&mut writer)?;
                 primitive.write_le(&mut writer)
             }
-            Self::Signature(primitive) => {
+            Self::Scalar(primitive) => {
                 (15 as Size).write_le(&mut writer)?;
                 primitive.write_le(&mut writer)
             }
-            Self::String(primitive) => {
+            Self::Signature(primitive) => {
                 (16 as Size).write_le(&mut writer)?;
+                primitive.write_le(&mut writer)
+            }
+            Self::String(primitive) => {
+                (17 as Size).write_le(&mut writer)?;
                 primitive.write_le(&mut writer)
             }
         }
@@ -146,6 +151,8 @@ mod tests {
             check_bytes(Literal::<CurrentNetwork>::Address(Address::try_from(private_key)?))?;
             // Boolean
             check_bytes(Literal::<CurrentNetwork>::Boolean(Boolean::new(Uniform::rand(rng))))?;
+            // Data
+            // TODO (@d0cd)
             // Field
             check_bytes(Literal::<CurrentNetwork>::Field(Uniform::rand(rng)))?;
             // Group

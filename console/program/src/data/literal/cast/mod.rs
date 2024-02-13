@@ -45,6 +45,7 @@ impl<N: Network> Literal<N> {
         match self {
             Self::Address(address) => cast_group_to_type(address.to_group(), to_type),
             Self::Boolean(boolean) => cast_boolean_to_type(boolean, to_type),
+            Self::Data(..) => bail!("Cannot cast a data literal to another type."),
             Self::Field(field) => cast_field_to_type(field, to_type),
             Self::Group(group) => cast_group_to_type(group, to_type),
             Self::I8(integer) => cast_integer_to_type(integer, to_type),

@@ -20,6 +20,7 @@ impl<N: Network> Literal<N> {
         match self {
             Self::Address(..) => LiteralType::Address,
             Self::Boolean(..) => LiteralType::Boolean,
+            Self::Data(data) => LiteralType::Data(U32::new(data.len() as u32)),
             Self::Field(..) => LiteralType::Field,
             Self::Group(..) => LiteralType::Group,
             Self::I8(..) => LiteralType::I8,
