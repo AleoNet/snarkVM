@@ -16,6 +16,7 @@ use crate::{
     traits::{RegistersLoad, RegistersLoadCircuit, RegistersStore, RegistersStoreCircuit, StackMatches, StackProgram},
     Opcode,
     Operand,
+    MAX_ADDITIONAL_SEEDS,
 };
 use circuit::prelude::ToFields as CircuitToFields;
 use console::{
@@ -40,11 +41,18 @@ pub struct VarunaVerify<N: Network> {
 }
 
 impl<N: Network> VarunaVerify<N> {
+    /// The maximum number of unique circuits that can be verified in a single Varuna proof.
+    pub const MAX_UNIQUE_CIRCUITS: u8 = 32;
+
     /// Initializes a new `varuna.verify` instruction.
     #[inline]
     pub fn new(operands: Vec<Operand<N>>, destination: Register<N>) -> Result<Self> {
         // Sanity check the number of operands.
-        ensure!(operands.len() % 2 == 1, "Instruction '{}' must have an odd number of operands", Self::opcode());
+        ensure!(
+            Self::is_valid_number_of_operands(operands.len()),
+            "Instruction '{}' has the incorrect number of operands",
+            Self::opcode()
+        );
         // Return the instruction.
         Ok(Self { operands, destination })
     }
@@ -58,8 +66,12 @@ impl<N: Network> VarunaVerify<N> {
     /// Returns the operands in the operation.
     #[inline]
     pub fn operands(&self) -> &[Operand<N>] {
-        // Sanity check that there is an odd number of operands.
-        debug_assert!(self.operands.len() == 3, "Instruction '{}' must have an odd number of operands", Self::opcode());
+        // Sanity check the number of operands.
+        debug_assert!(
+            Self::is_valid_number_of_operands(self.operands.len()),
+            "Instruction '{}' has the incorrect number of operands",
+            Self::opcode()
+        );
         // Return the operands.
         &self.operands
     }
@@ -69,45 +81,15 @@ impl<N: Network> VarunaVerify<N> {
     pub fn destination(&self) -> &Register<N> {
         &self.destination
     }
+
+    /// Return whether the number of operands is valid.
+    #[inline]
+    pub fn is_valid_number_of_operands(num_operands: usize) -> bool {
+        num_operands % 2 == 1 && num_operands <= 2 * Self::MAX_UNIQUE_CIRCUITS as usize + 1
+    }
 }
 
 impl<N: Network> VarunaVerify<N> {
-    /// Evaluates the instruction.
-    #[inline]
-    pub fn evaluate(
-        &self,
-        stack: &(impl StackMatches<N> + StackProgram<N>),
-        registers: &mut (impl RegistersLoad<N> + RegistersStore<N>),
-    ) -> Result<()> {
-        // Ensure the number of operands is correct.
-        if self.operands.len() % 2 != 1 {
-            bail!(
-                "Instruction '{}' expects an odd number of operands, found {} operands",
-                Self::opcode(),
-                self.operands.len()
-            )
-        }
-
-        // Retrieve the inputs.
-        let data = match registers.load_literal(stack, &self.operands[0])? {
-            Literal::Data(data) => data,
-            _ => bail!("Expected the first operand to be a data object."),
-        };
-
-        // TODO: (@d0cd) Get VKs and verifiier inputs.
-        todo!()
-    }
-
-    /// Executes the instruction.
-    #[inline]
-    pub fn execute<A: circuit::Aleo<Network = N>>(
-        &self,
-        stack: &(impl StackMatches<N> + StackProgram<N>),
-        registers: &mut (impl RegistersLoadCircuit<N, A> + RegistersStoreCircuit<N, A>),
-    ) -> Result<()> {
-        todo!()
-    }
-
     /// Finalizes the instruction.
     #[inline]
     pub fn finalize(
@@ -115,16 +97,6 @@ impl<N: Network> VarunaVerify<N> {
         stack: &(impl StackMatches<N> + StackProgram<N>),
         registers: &mut (impl RegistersLoad<N> + RegistersStore<N>),
     ) -> Result<()> {
-        self.evaluate(stack, registers)
-    }
-
-    /// Returns the output type from the given program and input types.
-    #[inline]
-    pub fn output_types(
-        &self,
-        _stack: &impl StackProgram<N>,
-        input_types: &[RegisterType<N>],
-    ) -> Result<Vec<RegisterType<N>>> {
         todo!()
     }
 }
@@ -133,7 +105,42 @@ impl<N: Network> Parser for VarunaVerify<N> {
     /// Parses a string into an operation.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
-        todo!()
+        /// Parses an operand from the string.
+        fn parse_operand<N: Network>(string: &str) -> ParserResult<Operand<N>> {
+            // Parse the whitespace from the string.
+            let (string, _) = Sanitizer::parse_whitespaces(string)?;
+            // Parse the operand from the string.
+            Operand::parse(string)
+        }
+
+        // Parse the whitespace and comments from the string.
+        let (string, _) = Sanitizer::parse(string)?;
+        // Parse the opcode from the string.
+        let (string, _) = tag(*Self::opcode())(string)?;
+        // Parse the operands from the string.
+        let (string, operands) = many1(parse_operand)(string)?;
+
+        // Parse the whitespace from the string.
+        let (string, _) = Sanitizer::parse_whitespaces(string)?;
+        // Parse the "into" keyword from the string.
+        let (string, _) = tag("into")(string)?;
+        // Parse the whitespace from the string.
+        let (string, _) = Sanitizer::parse_whitespaces(string)?;
+        // Parse the destination register from the string.
+        let (string, destination) = Register::parse(string)?;
+
+        // Parse the whitespace from the string.
+        let (string, _) = Sanitizer::parse_whitespaces(string)?;
+        // Parse the ";" from the string.
+        let (string, _) = tag(";")(string)?;
+
+        // Check the number of operands.
+        match Self::is_valid_number_of_operands(operands.len()) {
+            true => Ok((string, Self { operands, destination })),
+            false => map_res(fail, |_: ParserResult<Self>| {
+                Err(error("Failed to parse 'varuna.verify' opcode: incorrect number of operands"))
+            })(string),
+        }
     }
 }
 
@@ -165,21 +172,66 @@ impl<N: Network> Debug for VarunaVerify<N> {
 impl<N: Network> Display for VarunaVerify<N> {
     /// Prints the operation to a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        todo!()
+        // Check that the number of operands is correct
+        if !Self::is_valid_number_of_operands(self.operands.len()) {
+            return Err(fmt::Error);
+        }
+
+        // Print the opcode.
+        write!(f, "{} ", Self::opcode())?;
+        // Print the operands.
+        for operand in &self.operands {
+            write!(f, "{} ", operand)?;
+        }
+        // Print the destination register.
+        write!(f, "into {}", self.destination)
     }
 }
 
 impl<N: Network> FromBytes for VarunaVerify<N> {
     /// Reads the operation from a buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        todo!()
+        // Read the number of operands.
+        let num_operands = u8::read_le(&mut reader)? as usize;
+
+        // Ensure that the number of operands is correct.
+        if !Self::is_valid_number_of_operands(num_operands) {
+            return Err(error("The number of operands is incorrect"));
+        }
+
+        // Initialize the vector for the operands.
+        let mut operands = Vec::with_capacity(num_operands);
+        // Read the operands.
+        for _ in 0..num_operands {
+            operands.push(Operand::read_le(&mut reader)?);
+        }
+
+        // Read the destination register.
+        let destination = Register::read_le(&mut reader)?;
+
+        // Return the command.
+        Ok(Self { operands, destination })
     }
 }
 
 impl<N: Network> ToBytes for VarunaVerify<N> {
     /// Writes the operation to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        todo!()
+        // Ensure that the number of operands is correct.
+        if Self::is_valid_number_of_operands(self.operands().len()) {
+            return Err(error("The number of operands must be odd"));
+        }
+
+        // Write the number of operands.
+        u8::try_from(self.operands.len()).or_halt::<N>().write_le(&mut writer)?;
+
+        // Write the operands.
+        for operand in &self.operands {
+            operand.write_le(&mut writer)?;
+        }
+
+        // Write the destination register.
+        self.destination.write_le(&mut writer)
     }
 }
 

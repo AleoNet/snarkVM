@@ -542,11 +542,56 @@ impl<N: Network> FinalizeTypes<N> {
     /// Ensures the given `varuna.verify` is well-formed.
     #[inline]
     fn check_varuna_verify(
-        &self,
+        &mut self,
         stack: &(impl StackMatches<N> + StackProgram<N>),
-        remove: &VarunaVerify<N>,
+        varuna_verify: &VarunaVerify<N>,
     ) -> Result<()> {
-        todo!()
+        // Ensure the number of operands is valid.
+        let operands = varuna_verify.operands();
+        ensure!(VarunaVerify::<N>::is_valid_number_of_operands(operands.len()), "Invalid number of operands.");
+
+        // Check that the first operand is a `Data` type.
+        let first_operand = operands.get(0).unwrap();
+        let first_operand_type = self.get_type_from_operand(stack, first_operand)?;
+        ensure!(
+            matches!(first_operand_type, FinalizeType::Plaintext(PlaintextType::Literal(LiteralType::Data(_)))),
+            "First operand '{first_operand}' must be a 'Data' type."
+        );
+
+        // Check that the following pairs of operands are `data[2]` types and either a 1-D or 2-D array of fields.
+        let num_pairs = (operands.len() - 1) / 2;
+        for i in 0..num_pairs {
+            // Get the first and second operands in the pair.
+            let first_operand = operands.get(2 * i + 1).unwrap();
+            let second_operand = operands.get(2 * i + 2).unwrap();
+
+            // Check that the first operand is a `data[2]` type.
+            if let FinalizeType::Plaintext(PlaintextType::Literal(LiteralType::Data(data))) =
+                self.get_type_from_operand(stack, first_operand)?
+            {
+                ensure!(*data == 2, "Operand '{first_operand}' must be a 'data[2]' type.");
+            } else {
+                bail!("Operand '{first_operand}' must be a 'data[2]' type.");
+            }
+            // Check that the second operand is an array of fields.
+            match self.get_type_from_operand(stack, second_operand)? {
+                FinalizeType::Plaintext(PlaintextType::Array(array_type)) => {
+                    ensure!(
+                        matches!(array_type.base_element_type(), &PlaintextType::Literal(LiteralType::Field)),
+                        "Next operand '{second_operand}' must be a 1-D or 2-D array of fields."
+                    )
+                }
+                _ => bail!("Next operand '{second_operand}' must be an array of fields."),
+            }
+        }
+
+        // Get the destination register.
+        let destination = varuna_verify.destination().clone();
+        // Ensure the destination register is a locator (and does not reference an access).
+        ensure!(matches!(destination, Register::Locator(..)), "Destination '{destination}' must be a locator.");
+        // Insert the destination register.
+        self.add_destination(destination, FinalizeType::Plaintext(PlaintextType::Literal(LiteralType::Boolean)))?;
+        Ok(())
     }
 
     /// Ensures the given instruction is well-formed.
