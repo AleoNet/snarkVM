@@ -34,6 +34,15 @@ struct committee_state:
 
 /**********************************************************************************************************************/
 
+/// The `commission` mapping contains the active validator address and their corresponding commission rate.
+mapping commission:
+    // The key represents the address of the validator.
+    key as address.public;
+    // The value represents the commission rate of the validator.
+    value as u8.public;
+
+/**********************************************************************************************************************/
+
 /// The `metadata` mapping stores:
 ///   - The number of members in the committee.
 ///   - The number of delegators.
@@ -152,6 +161,11 @@ finalize bond_public:
     assert.eq r7 true;
     // Set the new committee size.
     set r6 into metadata[aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc];
+
+    /* Commission */
+
+    // Set the commission rate to 0 for the new validator.
+    set 0u8 into commission[r1];
 
     // Continues the rest of the `bond_validator` logic.
     position continue_bond_validator;
@@ -404,6 +418,11 @@ finalize unbond_public:
     sub r15 1u32 into r16;
     // Set the new committee size.
     set r16 into metadata[aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc];
+
+    /* Commission */
+
+    // Remove the commission for the validator.
+    remove commission[r0];
 
     /* Bonded */
 
