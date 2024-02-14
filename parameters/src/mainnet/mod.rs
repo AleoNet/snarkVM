@@ -85,6 +85,9 @@ impl_local!(ClaimUnbondPublicVerifier, "resources/", "claim_unbond_public", "ver
 // SetValidatorState
 impl_remote!(SetValidatorStateProver, REMOTE_URL, "resources/", "set_validator_state", "prover");
 impl_local!(SetValidatorStateVerifier, "resources/", "set_validator_state", "verifier");
+// SetCommissionRate
+impl_remote!(SetCommissionRateProver, REMOTE_URL, "resources/", "set_commission_rate", "prover");
+impl_local!(SetCommissionRateVerifier, "resources/", "set_commission_rate", "verifier");
 // TransferPrivate
 impl_remote!(TransferPrivateProver, REMOTE_URL, "resources/", "transfer_private", "prover");
 impl_local!(TransferPrivateVerifier, "resources/", "transfer_private", "verifier");
@@ -120,6 +123,7 @@ macro_rules! insert_credit_keys {
             $crate::insert_key!($map, string, $type<$network>, ("unbond_delegator_as_validator", $crate::mainnet::[<UnbondDelegatorAsValidator $variant>]::load_bytes()));
             $crate::insert_key!($map, string, $type<$network>, ("claim_unbond_public", $crate::mainnet::[<ClaimUnbondPublic $variant>]::load_bytes()));
             $crate::insert_key!($map, string, $type<$network>, ("set_validator_state", $crate::mainnet::[<SetValidatorState $variant>]::load_bytes()));
+            $crate::insert_key!($map, string, $type<$network>, ("set_commission_rate", $crate::mainnet::[<SetCommissionRate $variant>]::load_bytes()));
             $crate::insert_key!($map, string, $type<$network>, ("transfer_private", $crate::mainnet::[<TransferPrivate $variant>]::load_bytes()));
             $crate::insert_key!($map, string, $type<$network>, ("transfer_public", $crate::mainnet::[<TransferPublic $variant>]::load_bytes()));
             $crate::insert_key!($map, string, $type<$network>, ("transfer_private_to_public", $crate::mainnet::[<TransferPrivateToPublic $variant>]::load_bytes()));
@@ -177,6 +181,7 @@ mod tests {
             .expect("Failed to load unbond_delegator_as_validator verifier");
         ClaimUnbondPublicVerifier::load_bytes().expect("Failed to load claim_unbond_public verifier");
         SetValidatorStateVerifier::load_bytes().expect("Failed to load set_validator_state verifier");
+        SetCommissionRateVerifier::load_bytes().expect("Failed to load set_commission_rate verifier");
         TransferPrivateVerifier::load_bytes().expect("Failed to load transfer_private verifier");
         TransferPublicVerifier::load_bytes().expect("Failed to load transfer_public verifier");
         TransferPrivateToPublicVerifier::load_bytes().expect("Failed to load transfer_private_to_public verifier");
