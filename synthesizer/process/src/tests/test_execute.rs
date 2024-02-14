@@ -25,7 +25,7 @@ use console::{
     program::{Identifier, Literal, Plaintext, ProgramID, Record, Value},
     types::{Field, U64},
 };
-use ledger_block::Fee;
+use ledger_block::{Fee, Transaction};
 use ledger_query::Query;
 use ledger_store::{
     helpers::memory::{BlockMemory, FinalizeMemory},
@@ -2497,8 +2497,8 @@ fn test_long_import_chain() {
     // Construct the process.
     let mut process = crate::test_helpers::sample_process(&program);
 
-    // Add 64 programs to the process.
-    for i in 1..=64 {
+    // Add `MAX_PROGRAM_DEPTH` programs to the process.
+    for i in 1..=CurrentNetwork::MAX_PROGRAM_DEPTH {
         println!("Adding program {i}");
         // Initialize a new program.
         let program = Program::from_str(&format!(
@@ -2514,13 +2514,15 @@ fn test_long_import_chain() {
         process.add_program(&program).unwrap();
     }
 
-    // Add the 1025th program to the process, which should fail.
-    let program = Program::from_str(
-        r"
-        import test64.aleo;
-        program test65.aleo;
+    // Add the `MAX_PROGRAM_DEPTH + 1` program to the process, which should fail.
+    let program = Program::from_str(&format!(
+        "
+        import test{}.aleo;
+        program test{}.aleo;
         function c:",
-    )
+        CurrentNetwork::MAX_PROGRAM_DEPTH,
+        CurrentNetwork::MAX_PROGRAM_DEPTH + 1
+    ))
     .unwrap();
     let result = process.add_program(&program);
     assert!(result.is_err());
@@ -2539,8 +2541,8 @@ fn test_long_import_chain_with_calls() {
     // Construct the process.
     let mut process = crate::test_helpers::sample_process(&program);
 
-    // Check that the number of calls is correct.
-    for i in 1..31 {
+    // Check that the number of calls, up to `Transaction::MAX_TRANSITIONS`, is correct.
+    for i in 1..Transaction::<CurrentNetwork>::MAX_TRANSITIONS {
         println!("Adding program {}", i);
         // Initialize a new program.
         let program = Program::from_str(&format!(
@@ -2562,15 +2564,50 @@ fn test_long_import_chain_with_calls() {
         assert_eq!(number_of_calls, i + 1);
     }
 
-    // Check that an additional level of import will fail.
-    let program = Program::from_str(
-        r"
-        import test30.aleo;
-        program test31.aleo;
+    // Check that `Transaction::MAX_TRANSITIONS + 1` calls fails.
+    let program = Program::from_str(&format!(
+        "
+        import test{}.aleo;
+        program test{}.aleo;
         function c:
-            call test30.aleo/c;",
-    )
+            call test{}.aleo/c;",
+        Transaction::<CurrentNetwork>::MAX_TRANSITIONS - 1,
+        Transaction::<CurrentNetwork>::MAX_TRANSITIONS,
+        Transaction::<CurrentNetwork>::MAX_TRANSITIONS - 1
+    ))
     .unwrap();
     let result = process.add_program(&program);
     assert!(result.is_err())
+}
+
+#[test]
+fn test_max_imports() {
+    // Construct the process.
+    let mut process = Process::<CurrentNetwork>::load().unwrap();
+
+    // Add `MAX_IMPORTS` programs to the process.
+    for i in 0..CurrentNetwork::MAX_IMPORTS {
+        println!("Adding program {i}");
+        // Initialize a new program.
+        let program = Program::from_str(&format!("program test{i}.aleo; function c:")).unwrap();
+        // Add the program to the process.
+        process.add_program(&program).unwrap();
+    }
+
+    // Add a program importing all `MAX_IMPORTS` programs, which should pass.
+    let import_string =
+        (0..CurrentNetwork::MAX_IMPORTS).map(|i| format!("import test{}.aleo;", i)).collect::<Vec<_>>().join(" ");
+    let program =
+        Program::from_str(&format!("{import_string}program test{}.aleo; function c:", CurrentNetwork::MAX_IMPORTS))
+            .unwrap();
+    process.add_program(&program).unwrap();
+
+    // Attempt to construct a program importing `MAX_IMPORTS + 1` programs, which should fail.
+    let import_string =
+        (0..CurrentNetwork::MAX_IMPORTS + 1).map(|i| format!("import test{}.aleo;", i)).collect::<Vec<_>>().join(" ");
+    let result = Program::<CurrentNetwork>::from_str(&format!(
+        "{import_string}program test{}.aleo; function c:",
+        CurrentNetwork::MAX_IMPORTS + 1
+    ));
+    assert!(result.is_err());
 }
