@@ -2497,8 +2497,8 @@ fn test_long_import_chain() {
     // Construct the process.
     let mut process = crate::test_helpers::sample_process(&program);
 
-    // Add 1024 programs to the process.
-    for i in 1..=1024 {
+    // Add 64 programs to the process.
+    for i in 1..=64 {
         println!("Adding program {i}");
         // Initialize a new program.
         let program = Program::from_str(&format!(
@@ -2517,8 +2517,8 @@ fn test_long_import_chain() {
     // Add the 1025th program to the process, which should fail.
     let program = Program::from_str(
         r"
-        import test1024.aleo;
-        program test1025.aleo;
+        import test64.aleo;
+        program test65.aleo;
         function c:",
     )
     .unwrap();

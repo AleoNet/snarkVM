@@ -161,9 +161,9 @@ pub trait Network:
     const MAX_OUTPUTS: usize = 16;
 
     /// The maximum program depth.
-    const MAX_PROGRAM_DEPTH: usize = 1024;
+    const MAX_PROGRAM_DEPTH: usize = 64;
     /// The maximum number of imports.
-    const MAX_IMPORTS: usize = 2048;
+    const MAX_IMPORTS: usize = 64;
 
     /// The state root type.
     type StateRoot: Bech32ID<Field<Self>>;
