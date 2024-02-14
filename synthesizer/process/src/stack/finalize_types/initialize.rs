@@ -58,7 +58,6 @@ impl<N: Network> FinalizeTypes<N> {
                 }
             }
         }
-
         Ok(finalize_types)
     }
 }
