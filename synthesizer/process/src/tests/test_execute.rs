@@ -2541,8 +2541,8 @@ fn test_long_import_chain_with_calls() {
     // Construct the process.
     let mut process = crate::test_helpers::sample_process(&program);
 
-    // Check that the number of calls, up to `Transaction::MAX_TRANSITIONS`, is correct.
-    for i in 1..Transaction::<CurrentNetwork>::MAX_TRANSITIONS {
+    // Check that the number of calls, up to `Transaction::MAX_TRANSITIONS - 1`, is correct.
+    for i in 1..(Transaction::<CurrentNetwork>::MAX_TRANSITIONS - 1) {
         println!("Adding program {}", i);
         // Initialize a new program.
         let program = Program::from_str(&format!(
@@ -2564,16 +2564,16 @@ fn test_long_import_chain_with_calls() {
         assert_eq!(number_of_calls, i + 1);
     }
 
-    // Check that `Transaction::MAX_TRANSITIONS + 1` calls fails.
+    // Check that `Transaction::MAX_TRANSITIONS - 1`-th call fails.
     let program = Program::from_str(&format!(
         "
         import test{}.aleo;
         program test{}.aleo;
         function c:
             call test{}.aleo/c;",
+        Transaction::<CurrentNetwork>::MAX_TRANSITIONS - 2,
         Transaction::<CurrentNetwork>::MAX_TRANSITIONS - 1,
-        Transaction::<CurrentNetwork>::MAX_TRANSITIONS,
-        Transaction::<CurrentNetwork>::MAX_TRANSITIONS - 1
+        Transaction::<CurrentNetwork>::MAX_TRANSITIONS - 2
     ))
     .unwrap();
     let result = process.add_program(&program);
