@@ -19,7 +19,7 @@ use console::{
     network::Network,
     prelude::{cfg_into_iter, cfg_iter, cfg_reduce},
     program::{Identifier, Literal, Plaintext, Value},
-    types::{Boolean, U64},
+    types::{Boolean, U64, U8},
 };
 use ledger_committee::Committee;
 
@@ -259,6 +259,18 @@ pub fn to_next_commitee_map_and_bonded_map<N: Network>(
     (committee_map, bonded_map)
 }
 
+/// Returns the commission map, given the validator and commission rates.
+pub fn to_commission_map<N: Network>(commission_rates: &IndexMap<Address<N>, u8>) -> Vec<(Plaintext<N>, Value<N>)> {
+    cfg_iter!(commission_rates)
+        .map(|(validator, rate)| {
+            (
+                Plaintext::from(Literal::Address(*validator)),
+                Value::Plaintext(Plaintext::Literal(Literal::U8(U8::new(*rate)), Default::default())),
+            )
+        })
+        .collect()
+}
+
 #[cfg(test)]
 pub(crate) mod test_helpers {
     use super::*;
@@ -325,7 +337,7 @@ pub(crate) mod test_helpers {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use console::{prelude::TestRng, types::U8};
+    use console::prelude::TestRng;
 
     #[allow(unused_imports)]
     use rayon::prelude::*;
@@ -364,19 +376,6 @@ mod tests {
                 (
                     Plaintext::from(Literal::Address(*staker)),
                     Value::Plaintext(Plaintext::Struct(bonded_state, Default::default())),
-                )
-            })
-            .collect()
-    }
-
-    /// Returns the commission map, given the validator and commission rates.
-    fn to_commission_map<N: Network>(commission_rates: &IndexMap<Address<N>, u8>) -> Vec<(Plaintext<N>, Value<N>)> {
-        commission_rates
-            .par_iter()
-            .map(|(validator, rate)| {
-                (
-                    Plaintext::from(Literal::Address(*validator)),
-                    Value::Plaintext(Plaintext::Literal(Literal::U8(U8::new(*rate)), Default::default())),
                 )
             })
             .collect()

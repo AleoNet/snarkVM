@@ -756,6 +756,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         let program_id = ProgramID::from_str("credits.aleo")?;
         // Construct the committee mapping name.
         let committee_mapping = Identifier::from_str("committee")?;
+        // Construct the commission mapping name.
+        let commission_mapping = Identifier::from_str("commission")?;
         // Construct the bonded mapping name.
         let bonded_mapping = Identifier::from_str("bonded")?;
         // Construct the account mapping name.
@@ -859,6 +861,12 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     let (next_committee_map, next_bonded_map) =
                         to_next_commitee_map_and_bonded_map(committee, bonded_balances);
 
+                    // Construct the default validator commission rates.
+                    let validator_commission_rates =
+                        committee.members().iter().map(|(address, _)| (*address, 0u8)).collect::<IndexMap<_, _>>();
+                    // Construct the commission map.
+                    let commission_map = to_commission_map(&validator_commission_rates);
+
                     // Insert the next committee into storage.
                     store.committee_store().insert(state.block_height(), *(committee.clone()))?;
                     // Store the finalize operations for updating the committee and bonded mapping.
@@ -867,6 +875,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                         store.replace_mapping(program_id, committee_mapping, next_committee_map)?,
                         // Replace the bonded mapping in storage.
                         store.replace_mapping(program_id, bonded_mapping, next_bonded_map)?,
+                        // Replace the commission mapping in storage.
+                        store.replace_mapping(program_id, commission_mapping, commission_map)?,
                     ]);
 
                     // Update the number of validators.
@@ -2104,6 +2114,7 @@ finalize compute:
         // Check that the state of the `credits.aleo` program is correct.
         let program_id = ProgramID::from_str("credits.aleo").unwrap();
         let committee_mapping_name = Identifier::from_str("committee").unwrap();
+        let commission_mapping_name = Identifier::from_str("commission").unwrap();
         let account_mapping_name = Identifier::from_str("account").unwrap();
         let bonded_mapping_name = Identifier::from_str("bonded").unwrap();
         let metadata_mapping_name = Identifier::from_str("metadata").unwrap();
@@ -2127,6 +2138,25 @@ finalize compute:
         assert_eq!(actual_committee.len(), expected_committee.len());
         for entry in actual_committee.iter() {
             assert!(expected_committee.contains(entry));
+        }
+
+        // Get and check the commission mapping.
+        let actual_commission = vm.finalize_store().get_mapping_confirmed(program_id, commission_mapping_name).unwrap();
+        let expected_commission = validators
+            .iter()
+            .map(|(private_key, _)| {
+                (
+                    Plaintext::from_str(&Address::try_from(private_key).unwrap().to_string()).unwrap(),
+                    Value::from_str("0u64").unwrap(),
+                )
+            })
+            .collect_vec();
+        // Note that `actual_commission` and `expected_commission` are vectors and not necessarily in the same order.
+        // By checking that the lengths of the vector are equal and that all entries in `actual_commission` are in `expected_commission`,
+        // we can ensure that the two vectors contain the same data.
+        assert_eq!(actual_commission.len(), expected_commission.len());
+        for entry in actual_commission.iter() {
+            assert!(expected_commission.contains(entry));
         }
 
         // Get and check the account mapping.
@@ -2349,6 +2379,7 @@ finalize compute:
         // Check that all mappings in `credits.aleo` are equal across the two VMs.
         let program_id = ProgramID::from_str("credits.aleo").unwrap();
         let committee_mapping_name = Identifier::from_str("committee").unwrap();
+        let commission_mapping_name = Identifier::from_str("commission").unwrap();
         let bonded_mapping_name = Identifier::from_str("bonded").unwrap();
         let unbonding_mapping_name = Identifier::from_str("unbonding").unwrap();
         let account_mapping_name = Identifier::from_str("account").unwrap();
@@ -2357,6 +2388,10 @@ finalize compute:
         let committee_1 = vm_1.finalize_store().get_mapping_confirmed(program_id, committee_mapping_name).unwrap();
         let committee_2 = vm_2.finalize_store().get_mapping_confirmed(program_id, committee_mapping_name).unwrap();
         assert_eq!(committee_1, committee_2);
+
+        let commission_1 = vm_1.finalize_store().get_mapping_confirmed(program_id, commission_mapping_name).unwrap();
+        let commission_2 = vm_2.finalize_store().get_mapping_confirmed(program_id, commission_mapping_name).unwrap();
+        assert_eq!(commission_1, commission_2);
 
         let bonded_1 = vm_1.finalize_store().get_mapping_confirmed(program_id, bonded_mapping_name).unwrap();
         let bonded_2 = vm_2.finalize_store().get_mapping_confirmed(program_id, bonded_mapping_name).unwrap();
