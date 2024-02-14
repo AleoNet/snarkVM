@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use indexmap::IndexSet;
 use super::*;
+use indexmap::IndexSet;
 use synthesizer_program::CastType;
 
 impl<N: Network> RegisterTypes<N> {
@@ -162,7 +162,7 @@ impl<N: Network> RegisterTypes<N> {
         // - All futures produces before the `async` call must be consumed by the `async` call.
 
         // Get all registers containing futures.
-        let mut future_registers:IndexSet<(Register<N>,Locator<N>)> = register_types
+        let mut future_registers: IndexSet<(Register<N>, Locator<N>)> = register_types
             .destinations
             .iter()
             .filter_map(|(index, register_type)| match register_type {
@@ -188,7 +188,7 @@ impl<N: Network> RegisterTypes<N> {
                 for operand in async_.operands() {
                     if let Operand::Register(register) = operand {
                         if let Ok(RegisterType::Future(locator)) = register_types.get_type(stack, register) {
-                            assert!(future_registers.remove(&(register, locator)));
+                            assert!(future_registers.remove(&(register.clone(), locator)));
                         }
                     }
                 }
