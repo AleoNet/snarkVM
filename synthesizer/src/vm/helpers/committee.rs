@@ -311,11 +311,12 @@ pub(crate) mod test_helpers {
 
     pub(crate) fn sample_commission_rates<N: Network, R: Rng + CryptoRng>(
         committee: &Committee<N>,
+        fixed_rate: Option<u8>,
         rng: &mut R,
     ) -> IndexMap<Address<N>, u8> {
         let mut commission_rates = IndexMap::with_capacity(committee.members().len());
         for (validator, _) in committee.members() {
-            commission_rates.insert(*validator, rng.gen_range(0..=100));
+            commission_rates.insert(*validator, fixed_rate.unwrap_or(rng.gen_range(0..=100)));
         }
         commission_rates
     }
@@ -324,7 +325,7 @@ pub(crate) mod test_helpers {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use console::prelude::TestRng;
+    use console::{prelude::TestRng, types::U8};
 
     #[allow(unused_imports)]
     use rayon::prelude::*;
@@ -363,6 +364,19 @@ mod tests {
                 (
                     Plaintext::from(Literal::Address(*staker)),
                     Value::Plaintext(Plaintext::Struct(bonded_state, Default::default())),
+                )
+            })
+            .collect()
+    }
+
+    /// Returns the commission map, given the validator and commission rates.
+    fn to_commission_map<N: Network>(commission_rates: &IndexMap<Address<N>, u8>) -> Vec<(Plaintext<N>, Value<N>)> {
+        commission_rates
+            .par_iter()
+            .map(|(validator, rate)| {
+                (
+                    Plaintext::from(Literal::Address(*validator)),
+                    Value::Plaintext(Plaintext::Literal(Literal::U8(U8::new(*rate)), Default::default())),
                 )
             })
             .collect()
@@ -407,6 +421,26 @@ mod tests {
     }
 
     #[test]
+    fn test_commission_rate_into_commission_map() {
+        let rng = &mut TestRng::default();
+
+        // Sample a committee.
+        let committee = ledger_committee::test_helpers::sample_committee_for_round_and_size(1, 100, rng);
+        // Sample validator commission rates.
+        let expected_commission_rates = crate::committee::test_helpers::sample_commission_rates(&committee, None, rng);
+        // Construct the commission map.
+        let commission_map = to_commission_map(&expected_commission_rates);
+
+        // Start a timer.
+        let timer = std::time::Instant::now();
+        // Convert the bonded map into stakers.
+        let candidate_commission_rates = commission_map_into_commission_rates(commission_map).unwrap();
+        println!("commission_map_into_commission_rates: {}ms", timer.elapsed().as_millis());
+        assert_eq!(candidate_commission_rates.len(), expected_commission_rates.len());
+        assert_eq!(candidate_commission_rates, expected_commission_rates);
+    }
+
+    #[test]
     fn test_ensure_stakers_matches() {
         let rng = &mut TestRng::default();
 
@@ -415,7 +449,7 @@ mod tests {
         // Convert the committee into stakers.
         let stakers = crate::committee::test_helpers::to_stakers(committee.members(), rng);
         // Sample validator commission rates.
-        let commission_rates = crate::committee::test_helpers::sample_commission_rates(&committee, rng);
+        let commission_rates = crate::committee::test_helpers::sample_commission_rates(&committee, None, rng);
 
         // Start a timer.
         let timer = std::time::Instant::now();

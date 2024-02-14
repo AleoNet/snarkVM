@@ -971,7 +971,12 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     ensure_stakers_matches(&current_committee, &current_stakers, &validator_commission_rates)?;
 
                     // Compute the updated stakers, using the committee and block reward.
-                    let next_stakers = staking_rewards(&current_stakers, &current_committee, *block_reward);
+                    let next_stakers = staking_rewards(
+                        &current_stakers,
+                        &current_committee,
+                        &validator_commission_rates,
+                        *block_reward,
+                    );
                     // Compute the updated committee, using the stakers.
                     let next_committee = to_next_committee(&current_committee, state.block_round(), &next_stakers)?;
 

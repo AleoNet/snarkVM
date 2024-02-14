@@ -25,7 +25,12 @@ const MAX_COINBASE_REWARD: u64 = ledger_block::MAX_COINBASE_REWARD; // Coinbase 
 
 /// Returns the updated stakers reflecting the staking rewards for the given committee, block reward,
 /// and validator commission rates.
-/// The staking reward is defined as: `block_reward * stake / total_stake`.
+///
+/// The staking reward for validators is defined as: `block_reward * stake / total_stake + commission_to_recieve`.
+/// The commission to receive for validators is defined as: `block_reward * (total_stake_delegated / total_stake) * (rate / 100)`.
+///
+/// The staking reward for delegators is defined as: `block_reward * stake / total_stake - commission_to_pay`.
+/// The commission to pay for delegators is defined as: `block_reward * (stake / total_stake) * (rate / 100)`
 ///
 /// This method ensures that stakers who are bonded to validators with more than **25%**
 /// of the total stake will not receive a staking reward. In addition, this method
@@ -37,7 +42,7 @@ const MAX_COINBASE_REWARD: u64 = ledger_block::MAX_COINBASE_REWARD; // Coinbase 
 pub fn staking_rewards<N: Network>(
     stakers: &IndexMap<Address<N>, (Address<N>, u64)>,
     committee: &Committee<N>,
-    // validator_commission_rates: &IndexMap<Address<N>, u8>,
+    commission_rates: &IndexMap<Address<N>, u8>,
     block_reward: u64,
 ) -> IndexMap<Address<N>, (Address<N>, u64)> {
     // If the list of stakers is empty, there is no stake, or the block reward is 0, return the stakers.
@@ -49,7 +54,8 @@ pub fn staking_rewards<N: Network>(
     cfg_iter!(stakers)
         .map(|(staker, (validator, stake))| {
             // If the validator has more than 25% of the total stake, skip the staker.
-            if committee.get_stake(*validator) > committee.total_stake().saturating_div(4) {
+            let total_validator_stake = committee.get_stake(*validator);
+            if total_validator_stake > committee.total_stake().saturating_div(4) {
                 trace!("Validator {validator} has more than 25% of the total stake - skipping {staker}");
                 return (*staker, (*validator, *stake));
             }
@@ -74,8 +80,45 @@ pub fn staking_rewards<N: Network>(
             // Cast the staking reward as a u64.
             // Note: This '.expect' is guaranteed to be safe, as we ensure the quotient is within a safe bound.
             let staking_reward = u64::try_from(quotient).expect("Staking reward is too large");
+
+            // Get the commission rate for the validator.
+            let commission_rate = commission_rates.get(validator).copied().unwrap_or(0) as u128;
+
+            // Update the staking reward with the commission.
+            let staking_reward_after_commission = match staker == validator {
+                // If the staker is the validator, add the total commission to the staking reward.
+                true => {
+                    // Calculate the total stake delegated to the validator.
+                    let total_delegated_stake = total_validator_stake.saturating_sub(*stake);
+                    // Compute the numerator.
+                    let numerator = (block_reward as u128).saturating_mul(total_delegated_stake as u128);
+                    // Compute the quotient. This quotient is the total staking reward recieved by delegators.
+                    let quotient = numerator.saturating_div(denominator);
+                    // Compute the commission.
+                    let total_commission_to_receive = quotient.saturating_mul(commission_rate).saturating_div(100u128);
+                    // Cast the commission as a u64.
+                    // Note: This '.expect' is guaranteed to be safe, as we ensure the commission is within a safe bound.
+                    let total_commission_to_receive =
+                        u64::try_from(total_commission_to_receive).expect("Commission is too large");
+
+                    // Add the commission to the validator staking reward.
+                    staking_reward.saturating_add(total_commission_to_receive)
+                }
+                // If the staker is a delegator, subtract the commission from the staking reward.
+                false => {
+                    // Calculate the commission.
+                    let commission = quotient.saturating_mul(commission_rate).saturating_div(100u128);
+
+                    // Cast the commission as a u64.
+                    // Note: This '.expect' is guaranteed to be safe, as we ensure the quotient is within a safe bound.
+                    let commission_to_pay = u64::try_from(commission).expect("Commission is too large");
+
+                    // Subtract the commission from the delegator staking reward.
+                    staking_reward.saturating_sub(commission_to_pay)
+                }
+            };
             // Return the staker and the updated stake.
-            (*staker, (*validator, stake.saturating_add(staking_reward)))
+            (*staker, (*validator, stake.saturating_add(staking_reward_after_commission)))
         })
         .collect()
 }
@@ -142,6 +185,8 @@ mod tests {
         let rng = &mut TestRng::default();
         // Sample a random committee.
         let committee = ledger_committee::test_helpers::sample_committee(rng);
+        // Construct commission rates with fixed rate of 0.
+        let commission_rates = crate::committee::test_helpers::sample_commission_rates(&committee, Some(0), rng);
         // Sample a random block reward.
         let block_reward = rng.gen_range(0..MAX_COINBASE_REWARD);
         // Retrieve an address.
@@ -152,7 +197,7 @@ mod tests {
             let stake = rng.gen_range(MIN_DELEGATOR_STAKE..committee.total_stake());
             // Construct the stakers.
             let stakers = indexmap! {address => (address, stake)};
-            let next_stakers = staking_rewards::<CurrentNetwork>(&stakers, &committee, block_reward);
+            let next_stakers = staking_rewards::<CurrentNetwork>(&stakers, &committee, &commission_rates, block_reward);
             assert_eq!(next_stakers.len(), 1);
             let (candidate_address, (candidate_validator, candidate_stake)) = next_stakers.into_iter().next().unwrap();
             assert_eq!(candidate_address, address);
@@ -172,11 +217,13 @@ mod tests {
         let committee = ledger_committee::test_helpers::sample_committee_for_round_and_size(1, 100, rng);
         // Convert the committee into stakers.
         let stakers = crate::committee::test_helpers::to_stakers(committee.members(), rng);
+        // Construct commission rates with fixed rate of 0.
+        let commission_rates = crate::committee::test_helpers::sample_commission_rates(&committee, Some(0), rng);
 
         // Start a timer.
         let timer = std::time::Instant::now();
         // Compute the staking rewards.
-        let next_stakers = staking_rewards::<CurrentNetwork>(&stakers, &committee, block_reward);
+        let next_stakers = staking_rewards::<CurrentNetwork>(&stakers, &committee, &commission_rates, block_reward);
         println!("staking_rewards: {}ms", timer.elapsed().as_millis());
         assert_eq!(next_stakers.len(), stakers.len());
         for ((staker, (validator, stake)), (next_staker, (next_validator, next_stake))) in
@@ -194,6 +241,8 @@ mod tests {
         let rng = &mut TestRng::default();
         // Sample a random committee.
         let committee = ledger_committee::test_helpers::sample_committee(rng);
+        // Construct commission rates with fixed rate of 0.
+        let commission_rates = crate::committee::test_helpers::sample_commission_rates(&committee, Some(0), rng);
         // Sample a random block reward.
         let block_reward = rng.gen_range(0..MAX_COINBASE_REWARD);
         // Retrieve an address.
@@ -204,7 +253,7 @@ mod tests {
             let stake = rng.gen_range(0..MIN_DELEGATOR_STAKE);
             // Construct the stakers.
             let stakers = indexmap! {address => (address, stake)};
-            let next_stakers = staking_rewards::<CurrentNetwork>(&stakers, &committee, block_reward);
+            let next_stakers = staking_rewards::<CurrentNetwork>(&stakers, &committee, &commission_rates, block_reward);
             assert_eq!(next_stakers.len(), 1);
             let (candidate_address, (candidate_validator, candidate_stake)) = next_stakers.into_iter().next().unwrap();
             assert_eq!(candidate_address, address);
@@ -218,13 +267,15 @@ mod tests {
         let rng = &mut TestRng::default();
         // Sample a random committee.
         let committee = ledger_committee::test_helpers::sample_committee(rng);
+        // Construct commission rates with fixed rate of 0.
+        let commission_rates = crate::committee::test_helpers::sample_commission_rates(&committee, Some(0), rng);
         // Retrieve an address.
         let address = *committee.members().iter().next().unwrap().0;
 
         // Construct the stakers.
         let stakers = indexmap![address => (address, MIN_DELEGATOR_STAKE)];
         // Check that a maxed out coinbase reward, returns empty.
-        let next_stakers = staking_rewards::<CurrentNetwork>(&stakers, &committee, u64::MAX);
+        let next_stakers = staking_rewards::<CurrentNetwork>(&stakers, &committee, &commission_rates, u64::MAX);
         assert_eq!(stakers, next_stakers);
 
         // Ensure a staking reward that is too large, renders no rewards.
@@ -236,7 +287,7 @@ mod tests {
             // Construct the stakers.
             let stakers = indexmap![address => (address, stake)];
             // Check that an overly large block reward fails.
-            let next_stakers = staking_rewards::<CurrentNetwork>(&stakers, &committee, block_reward);
+            let next_stakers = staking_rewards::<CurrentNetwork>(&stakers, &committee, &commission_rates, block_reward);
             assert_eq!(stakers, next_stakers);
         }
     }
@@ -246,9 +297,11 @@ mod tests {
         let rng = &mut TestRng::default();
         // Sample a random committee.
         let committee = ledger_committee::test_helpers::sample_committee(rng);
+        // Construct commission rates with fixed rate of 0.
+        let commission_rates = crate::committee::test_helpers::sample_commission_rates(&committee, Some(0), rng);
 
         // Compute the staking rewards (empty).
-        let rewards = staking_rewards::<CurrentNetwork>(&indexmap![], &committee, rng.gen());
+        let rewards = staking_rewards::<CurrentNetwork>(&indexmap![], &committee, &commission_rates, rng.gen());
         assert!(rewards.is_empty());
     }
 
