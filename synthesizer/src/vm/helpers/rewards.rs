@@ -23,7 +23,8 @@ use rayon::prelude::*;
 /// A safety bound (sanity-check) for the coinbase reward.
 const MAX_COINBASE_REWARD: u64 = ledger_block::MAX_COINBASE_REWARD; // Coinbase reward at block 1.
 
-/// Returns the updated stakers reflecting the staking rewards for the given committee and block reward.
+/// Returns the updated stakers reflecting the staking rewards for the given committee, block reward,
+/// and validator commission rates.
 /// The staking reward is defined as: `block_reward * stake / total_stake`.
 ///
 /// This method ensures that stakers who are bonded to validators with more than **25%**
@@ -36,6 +37,7 @@ const MAX_COINBASE_REWARD: u64 = ledger_block::MAX_COINBASE_REWARD; // Coinbase 
 pub fn staking_rewards<N: Network>(
     stakers: &IndexMap<Address<N>, (Address<N>, u64)>,
     committee: &Committee<N>,
+    // validator_commission_rates: &IndexMap<Address<N>, u8>,
     block_reward: u64,
 ) -> IndexMap<Address<N>, (Address<N>, u64)> {
     // If the list of stakers is empty, there is no stake, or the block reward is 0, return the stakers.

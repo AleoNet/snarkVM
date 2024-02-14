@@ -931,6 +931,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         let program_id = ProgramID::from_str("credits.aleo")?;
         // Construct the committee mapping name.
         let committee_mapping = Identifier::from_str("committee")?;
+        // Construct the commission mapping name.
+        let commission_mapping = Identifier::from_str("commission")?;
         // Construct the bonded mapping name.
         let bonded_mapping = Identifier::from_str("bonded")?;
         // Construct the account mapping name.
@@ -960,9 +962,13 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     let current_bonded_map = store.get_mapping_speculative(program_id, bonded_mapping)?;
                     // Convert the bonded map into stakers.
                     let current_stakers = bonded_map_into_stakers(current_bonded_map)?;
+                    // Retrieve the commission mapping from storage.
+                    let current_commission_map = store.get_mapping_speculative(program_id, commission_mapping)?;
+                    // Convert the commission mapping into validator commission rates.
+                    let validator_commission_rates = commission_map_into_commission_rates(current_commission_map)?;
 
                     // Ensure the committee matches the bonded mapping.
-                    ensure_stakers_matches(&current_committee, &current_stakers)?;
+                    ensure_stakers_matches(&current_committee, &current_stakers, &validator_commission_rates)?;
 
                     // Compute the updated stakers, using the committee and block reward.
                     let next_stakers = staking_rewards(&current_stakers, &current_committee, *block_reward);

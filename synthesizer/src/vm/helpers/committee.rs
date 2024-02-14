@@ -112,10 +112,37 @@ pub fn bonded_map_into_stakers<N: Network>(
     bonded_map.into_iter().map(|(key, value)| convert(key, value)).collect::<Result<IndexMap<_, _>>>()
 }
 
-/// Checks that the given committee from committee storage matches the given stakers.
+/// Returns the validator commission rates given the commission map from finalize storage.
+pub fn commission_map_into_commission_rates<N: Network>(
+    commission_map: Vec<(Plaintext<N>, Value<N>)>,
+) -> Result<IndexMap<Address<N>, u8>> {
+    // Convert the given key and value into a commission entry.
+    let convert = |key, value| {
+        // Extract the validator from the key.
+        let address = match key {
+            Plaintext::Literal(Literal::Address(address), _) => address,
+            _ => bail!("Invalid commission key (missing validator) - {key}"),
+        };
+
+        // Extract the commission rate from the value.
+        let rate = match value {
+            Value::Plaintext(Plaintext::Literal(Literal::U8(rate), _)) => *rate,
+            _ => bail!("Invalid commission value - {value}"),
+        };
+
+        // Return the commission rate.
+        Ok((address, rate))
+    };
+
+    // Convert the commission map into commission rates.
+    commission_map.into_iter().map(|(key, value)| convert(key, value)).collect::<Result<IndexMap<_, _>>>()
+}
+
+/// Checks that the given committee from committee storage matches the given stakers and commission rates.
 pub fn ensure_stakers_matches<N: Network>(
     committee: &Committee<N>,
     stakers: &IndexMap<Address<N>, (Address<N>, u64)>,
+    commission_rates: &IndexMap<Address<N>, u8>,
 ) -> Result<()> {
     // Construct the validator map.
     let validator_map: IndexMap<_, _> = cfg_reduce!(
@@ -139,6 +166,8 @@ pub fn ensure_stakers_matches<N: Network>(
 
     // Ensure the committee and committee map match.
     ensure!(committee.members().len() == validator_map.len(), "Committee and validator map length do not match");
+    // Ensure the committee and the commission rates match.
+    ensure!(committee.members().len() == commission_rates.len(), "Committee and commission rates length do not match");
     // Ensure the total microcredits match.
     ensure!(committee.total_stake() == total_microcredits, "Committee and validator map total stake do not match");
 
@@ -150,6 +179,7 @@ pub fn ensure_stakers_matches<N: Network>(
             *microcredits == *candidate_microcredits.unwrap(),
             "Committee contains an incorrect 'microcredits' amount from stakers"
         );
+        ensure!(commission_rates.contains_key(validator), "A validator is missing in commission rates");
     }
 
     Ok(())
@@ -278,6 +308,17 @@ pub(crate) mod test_helpers {
             })
             .collect()
     }
+
+    pub(crate) fn sample_commission_rates<N: Network, R: Rng + CryptoRng>(
+        committee: &Committee<N>,
+        rng: &mut R,
+    ) -> IndexMap<Address<N>, u8> {
+        let mut commission_rates = IndexMap::with_capacity(committee.members().len());
+        for (validator, _) in committee.members() {
+            commission_rates.insert(*validator, rng.gen_range(0..=100));
+        }
+        commission_rates
+    }
 }
 
 #[cfg(test)]
@@ -373,11 +414,13 @@ mod tests {
         let committee = ledger_committee::test_helpers::sample_committee_for_round_and_size(1, 100, rng);
         // Convert the committee into stakers.
         let stakers = crate::committee::test_helpers::to_stakers(committee.members(), rng);
+        // Sample validator commission rates.
+        let commission_rates = crate::committee::test_helpers::sample_commission_rates(&committee, rng);
 
         // Start a timer.
         let timer = std::time::Instant::now();
         // Ensure the stakers matches.
-        let result = ensure_stakers_matches(&committee, &stakers);
+        let result = ensure_stakers_matches(&committee, &stakers, &commission_rates);
         println!("ensure_stakers_matches: {}ms", timer.elapsed().as_millis());
         assert!(result.is_ok());
     }
