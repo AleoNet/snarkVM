@@ -6,13 +6,13 @@ cases:
     inputs: [data1dpjkcmr049vt4z, data1wahhymry9kmx0s]
   - program: pass_in_data.aleo
     function: test_data_is_equal
-    inputs: [data1qa, data1qc]
+    inputs: [data1dpjkcmr049vt4z, data1dpjkcmr049vt4z]
   - program: pass_in_data.aleo
     function: test_data_is_equal_to_literal
-    inputs: [data1qa]
+    inputs: [data1wahhymry9kmx0s]
   - program: pass_in_data.aleo
     function: test_data_is_equal_to_literal
-    inputs: [data1qa]
+    inputs: [data1dpjkcmr0ypmk7unvvs2rhz3v]
 */
 
 program pass_in_data.aleo;
@@ -27,8 +27,8 @@ function test_data_is_equal:
 
 function test_data_is_equal_to_literal:
     input r0 as $DATA[1u32].private;
-    is.eq r0 data1qa into r2;
-    is.neq r0 data1qa into r3;
+    is.eq r0 data1dpjkcmr0ypmk7unvvs2rhz3v into r1;
+    is.neq r0 data1dpjkcmr0ypmk7unvvs2rhz3v into r2;
+    output r1 as boolean.private;
     output r2 as boolean.private;
-    output r3 as boolean.private;
 

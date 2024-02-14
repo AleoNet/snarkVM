@@ -216,6 +216,11 @@ mod tests {
         assert_eq!("5u8", candidate.to_string());
         assert_eq!("", remainder);
 
+        // Data literal
+        let (remainder, candidate) = Plaintext::<CurrentNetwork>::parse("data1dpjkcmr049vt4z")?;
+        assert_eq!("data1dpjkcmr049vt4z", candidate.to_string());
+        assert_eq!("", remainder);
+
         Ok(())
     }
 
