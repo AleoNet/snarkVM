@@ -706,9 +706,9 @@ function set_commission_rate:
     assert.eq r1 true;
 
     // Set the validator commission rate.
-    async set_commission_rate self.caller r0 into r1;
+    async set_commission_rate self.caller r0 into r2;
     // Output the finalize future.
-    output r1 as credits.aleo/set_commission_rate.future;
+    output r2 as credits.aleo/set_commission_rate.future;
 
 finalize set_commission_rate:
     // Input the validator's address.
