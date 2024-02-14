@@ -77,8 +77,6 @@ impl<N: Network> Data<N> {
     }
 }
 
-
-
 impl<N: Network> Deref for Data<N> {
     type Target = [Field<N>];
 

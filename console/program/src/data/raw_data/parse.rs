@@ -134,12 +134,12 @@ mod tests {
     }
 
     #[test]
-    fn tmp_test_printing_data() {
+    fn test_parse_end_to_end() {
         // [0u8]
         let bytes = [0u8];
         let data = Data::<MainnetV0>::encode_from_bytes_le(&bytes).unwrap();
         let string = data.to_string();
-        println!("{:?}", string);
+        assert_eq!(string, "data1qqk73cky");
         let data_from_string = Data::<MainnetV0>::from_str(&string).unwrap();
         assert_eq!(data, data_from_string);
         let decoded_bytes = data_from_string.decode_as_bytes_le().unwrap();
@@ -149,7 +149,7 @@ mod tests {
         let bytes = [1u8];
         let data = Data::<MainnetV0>::encode_from_bytes_le(&bytes).unwrap();
         let string = data.to_string();
-        println!("{:?}", string);
+        assert_eq!(string, "data1qye5n7e7");
         let data_from_string = Data::<MainnetV0>::from_str(&string).unwrap();
         assert_eq!(data, data_from_string);
         let decoded_bytes = data_from_string.decode_as_bytes_le().unwrap();
@@ -159,7 +159,7 @@ mod tests {
         let bytes = [0u8, 0u8];
         let data = Data::<MainnetV0>::encode_from_bytes_le(&bytes).unwrap();
         let string = data.to_string();
-        println!("{:?}", string);
+        assert_eq!(string, "data1qqqqkrn0ty");
         let data_from_string = Data::<MainnetV0>::from_str(&string).unwrap();
         assert_eq!(data, data_from_string);
         let decoded_bytes = data_from_string.decode_as_bytes_le().unwrap();
@@ -169,7 +169,7 @@ mod tests {
         let bytes = [0u8, 1u8];
         let data = Data::<MainnetV0>::encode_from_bytes_le(&bytes).unwrap();
         let string = data.to_string();
-        println!("{:?}", string);
+        assert_eq!(string, "data1qqqsrzmh7h");
         let data_from_string = Data::<MainnetV0>::from_str(&string).unwrap();
         assert_eq!(data, data_from_string);
         let decoded_bytes = data_from_string.decode_as_bytes_le().unwrap();
@@ -179,7 +179,7 @@ mod tests {
         let bytes = [1u8, 0u8];
         let data = Data::<MainnetV0>::encode_from_bytes_le(&bytes).unwrap();
         let string = data.to_string();
-        println!("{:?}", string);
+        assert_eq!(string, "data1qyqq7t7p5l");
         let data_from_string = Data::<MainnetV0>::from_str(&string).unwrap();
         assert_eq!(data, data_from_string);
         let decoded_bytes = data_from_string.decode_as_bytes_le().unwrap();
@@ -189,7 +189,37 @@ mod tests {
         let bytes = [1u8, 1u8];
         let data = Data::<MainnetV0>::encode_from_bytes_le(&bytes).unwrap();
         let string = data.to_string();
-        println!("{:?}", string);
+        assert_eq!(string, "data1qyqst2kepv");
+        let data_from_string = Data::<MainnetV0>::from_str(&string).unwrap();
+        assert_eq!(data, data_from_string);
+        let decoded_bytes = data_from_string.decode_as_bytes_le().unwrap();
+        assert_eq!(bytes.to_vec(), decoded_bytes);
+
+        // "hello"
+        let bytes = "hello".as_bytes();
+        let data = Data::<MainnetV0>::encode_from_bytes_le(&bytes).unwrap();
+        let string = data.to_string();
+        assert_eq!(string, "data1dpjkcmr049vt4z");
+        let data_from_string = Data::<MainnetV0>::from_str(&string).unwrap();
+        assert_eq!(data, data_from_string);
+        let decoded_bytes = data_from_string.decode_as_bytes_le().unwrap();
+        assert_eq!(bytes.to_vec(), decoded_bytes);
+
+        // "world"
+        let bytes = "world".as_bytes();
+        let data = Data::<MainnetV0>::encode_from_bytes_le(&bytes).unwrap();
+        let string = data.to_string();
+        assert_eq!(string, "data1wahhymry9kmx0s");
+        let data_from_string = Data::<MainnetV0>::from_str(&string).unwrap();
+        assert_eq!(data, data_from_string);
+        let decoded_bytes = data_from_string.decode_as_bytes_le().unwrap();
+        assert_eq!(bytes.to_vec(), decoded_bytes);
+
+        // "hello world"
+        let bytes = "hello world".as_bytes();
+        let data = Data::<MainnetV0>::encode_from_bytes_le(&bytes).unwrap();
+        let string = data.to_string();
+        assert_eq!(string, "data1dpjkcmr0ypmk7unvvs2rhz3v");
         let data_from_string = Data::<MainnetV0>::from_str(&string).unwrap();
         assert_eq!(data, data_from_string);
         let decoded_bytes = data_from_string.decode_as_bytes_le().unwrap();

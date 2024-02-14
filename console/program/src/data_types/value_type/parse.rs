@@ -91,6 +91,10 @@ mod tests {
             Ok(("", ValueType::<CurrentNetwork>::from_str("field.private")?)),
             ValueType::<CurrentNetwork>::parse("field.private")
         );
+        assert_eq!(
+            Ok(("", ValueType::<CurrentNetwork>::from_str("$DATA[1u32].private")?)),
+            ValueType::<CurrentNetwork>::parse("$DATA[1u32].private")
+        );
 
         // Struct type.
         assert_eq!(
