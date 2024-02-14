@@ -18,13 +18,13 @@ extern crate criterion;
 use console::{
     network::{
         prelude::{TestRng, Uniform},
-        Testnet3,
+        MainnetV0,
     },
     prelude::{FromBytes, Network},
     program::{Identifier, Literal, Plaintext, ProgramID, Value},
     types::Address,
 };
-use ledger_block::{Block, Ratify, Solutions};
+use ledger_block::{Block, MAX_COINBASE_REWARD, Ratify, Solutions};
 use ledger_store::ConsensusStore;
 use std::str::FromStr;
 use synthesizer::{
@@ -34,8 +34,9 @@ use synthesizer::{
 
 use criterion::{BatchSize, Criterion};
 use std::time::Duration;
+use ledger_committee::MIN_DELEGATOR_STAKE;
 
-type CurrentNetwork = Testnet3;
+type CurrentNetwork = MainnetV0;
 
 #[cfg(not(feature = "rocks"))]
 type ConsensusType<N> = ledger_store::helpers::memory::ConsensusMemory<N>;
@@ -54,27 +55,31 @@ fn bench_atomic_post_ratify(c: &mut Criterion) {
     // Initialize the VM.
     println!("Initializing the VM...");
     let vm = VM::<CurrentNetwork, _>::from(storage).unwrap();
-    let genesis_block = &Block::read_le(Testnet3::genesis_bytes()).unwrap();
+    let genesis_block = &Block::read_le(MainnetV0::genesis_bytes()).unwrap();
     vm.add_next_block(genesis_block).unwrap();
 
     // Construct the program ID.
     let program_id = ProgramID::from_str("credits.aleo").unwrap();
     // Construct the committee mapping name.
     let committee_mapping_id = Identifier::from_str("committee").unwrap();
+    // Construct the commission mapping name.
+    let commission_mapping_id = Identifier::from_str("commission").unwrap();
     // Construct the bonded mapping name.
     let bonded_mapping_id = Identifier::from_str("bonded").unwrap();
     // Construct the account mapping name.
     let account_mapping_id = Identifier::from_str("account").unwrap();
+    // Construct the metadata mapping name.
+    let metadata_mapping_id = Identifier::from_str("metadata").unwrap();
 
     // Get the finalize store.
     let finalize_store = vm.finalize_store();
 
     // Retrieve the committee mapping from storage.
-    let mut current_committee_map = finalize_store.get_mapping_speculative(program_id, committee_mapping_id).unwrap();
+    let mut current_committee_map = finalize_store.get_mapping_confirmed(program_id, committee_mapping_id).unwrap();
     // Retrieve the bonded mapping from storage.
-    let mut current_bonded_map = finalize_store.get_mapping_speculative(program_id, bonded_mapping_id).unwrap();
+    let mut current_bonded_map = finalize_store.get_mapping_confirmed(program_id, bonded_mapping_id).unwrap();
     // Retrieve the account mapping from storage.
-    let mut current_account_map = finalize_store.get_mapping_speculative(program_id, account_mapping_id).unwrap();
+    let mut current_account_map = finalize_store.get_mapping_confirmed(program_id, account_mapping_id).unwrap();
 
     // Add the validators directly to the storage.
     println!("Adding the validators to storage...");
@@ -113,6 +118,22 @@ fn bench_atomic_post_ratify(c: &mut Criterion) {
     finalize_store.replace_mapping(program_id, bonded_mapping_id, current_bonded_map).unwrap();
     finalize_store.replace_mapping(program_id, account_mapping_id, current_account_map).unwrap();
 
+    // Update the commission rates for each validator to 5%.
+    let current_commission_map = validators.iter().map(|address| {
+        let key = Plaintext::from(Literal::Address(*address));
+        let value = Value::from_str("5u8").unwrap();
+        (key, value)
+    }).collect::<Vec<_>>();
+    finalize_store.replace_mapping(program_id, commission_mapping_id, current_commission_map).unwrap();
+
+    // Update the entry in the metadata mapping to reflect the current number of validators.
+    finalize_store.update_key_value(
+        program_id,
+        metadata_mapping_id,
+        Plaintext::from_str("aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc").unwrap(),
+        Value::from_str(&format!("{}u32", validators.len())).unwrap(),
+    ).unwrap();
+
     // Initialize a counter for the number of delegators.
     let mut total_delegators = 0;
     let mut round = genesis_block.round() + 1;
@@ -130,8 +151,8 @@ fn bench_atomic_post_ratify(c: &mut Criterion) {
         for i in total_delegators..num_delegators {
             let address = Address::rand(rng);
             let validator = validators[(i as usize) % validators.len()];
-            let bonded_balance = 10_000_000u64;
-            let account_balance = 10_000_000u64;
+            let bonded_balance = MIN_DELEGATOR_STAKE;
+            let account_balance = 2 * MIN_DELEGATOR_STAKE;
 
             let bond_state =
                 Value::from_str(&format!("{{ validator: {validator}, microcredits: {bonded_balance}u64 }}")).unwrap();
@@ -172,6 +193,16 @@ fn bench_atomic_post_ratify(c: &mut Criterion) {
         finalize_store.replace_mapping(program_id, bonded_mapping_id, current_bonded_map).unwrap();
         finalize_store.replace_mapping(program_id, account_mapping_id, current_account_map).unwrap();
 
+        // Update the entry in the metadata mapping to reflect the current number of delegators.
+        finalize_store.update_key_value(
+            program_id,
+            metadata_mapping_id,
+            Plaintext::from_str("aleo1qgqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqanmpl0").unwrap(),
+            Value::from_str(&format!(
+                "{total_delegators}u32",
+            )).unwrap(),
+        ).unwrap();
+
         // Bench the `staking_rewards` function.
         println!("Benching `atomic_post_ratify`...");
         #[cfg(not(feature = "rocks"))]
@@ -205,7 +236,7 @@ fn bench_atomic_post_ratify(c: &mut Criterion) {
                         let _ = VM::<CurrentNetwork, ConsensusType<CurrentNetwork>>::atomic_post_ratify(
                             finalize_store,
                             finalize_state,
-                            [Ratify::BlockReward(1_000_000_000)].iter(),
+                            [Ratify::BlockReward(MAX_COINBASE_REWARD)].iter(),
                             &Solutions::from(None),
                         )
                         .unwrap();

@@ -18,7 +18,7 @@ extern crate criterion;
 use console::{
     network::{
         prelude::{TestRng, Uniform},
-        Testnet3,
+        MainnetV0,
     },
     types::Address,
 };
@@ -26,10 +26,11 @@ use snarkvm_synthesizer::staking_rewards;
 
 use criterion::Criterion;
 use indexmap::IndexMap;
+use ledger_block::MAX_COINBASE_REWARD;
 use ledger_committee::Committee;
 use std::time::Duration;
 
-type CurrentNetwork = Testnet3;
+type CurrentNetwork = MainnetV0;
 
 const NUM_DELEGATORS: [u64; 7] = [0, 1000, 10_000, 100_000, 1_000_000, 10_000_000, 100_000_000];
 
@@ -47,6 +48,10 @@ fn bench_staking_rewards(c: &mut Criterion) {
         })
         .collect::<IndexMap<Address<CurrentNetwork>, (u64, bool)>>();
     let committee = Committee::new(1, validators.clone()).unwrap();
+
+    // Initialize the validator commission rates. Set to a default of 5% for all validators.
+    let mut validator_commission_rates =
+        validators.iter().map(|(address, _)| (*address, 5)).collect::<IndexMap<Address<CurrentNetwork>, u8>>();
 
     // Initialize the stakers.
     println!("Initializing the stakers...");
@@ -72,7 +77,7 @@ fn bench_staking_rewards(c: &mut Criterion) {
 
         // Run one round of staking rewards.
         println!("Running one round of staking rewards...");
-        staking_rewards::<CurrentNetwork>(&stakers, &committee, 1_000_000_000);
+        staking_rewards::<CurrentNetwork>(&stakers, &committee, &validator_commission_rates, MAX_COINBASE_REWARD);
 
         // Bench the `staking_rewards` function.
         println!("Benching the `staking_rewards` function...");
@@ -80,7 +85,12 @@ fn bench_staking_rewards(c: &mut Criterion) {
             &format!("staking_rewards with {total_delegators} delegators and {} validators", validators.len()),
             |b| {
                 b.iter_with_large_drop(|| {
-                    let _ = staking_rewards::<CurrentNetwork>(&stakers, &committee, 1_000_000_000);
+                    let _ = staking_rewards::<CurrentNetwork>(
+                        &stakers,
+                        &committee,
+                        &validator_commission_rates,
+                        MAX_COINBASE_REWARD,
+                    );
                 })
             },
         );
