@@ -691,6 +691,41 @@ finalize set_validator_state:
 
 /**********************************************************************************************************************/
 
+// This function allows a validator to set their commission rate.
+// The commission rate is a percentage of a delegator's rewards that the validator takes as commission.
+//
+// The commission rate must be at least 0 and at most 100.
+// The higher the commission rate, the more rewards the validator takes as commission.
+function set_commission_rate:
+    // Input the 'is_open' state.
+    input r0 as u8.public;
+
+    // Determine if the commission is at most 100.
+    lte r0 100u64 into r1;
+    // Enforce the commission is at most 100.
+    assert.eq r1 true;
+
+    // Set the validator commission rate.
+    async set_commission_rate self.caller r0 into r1;
+    // Output the finalize future.
+    output r1 as credits.aleo/set_commission_rate.future;
+
+finalize set_commission_rate:
+    // Input the validator's address.
+    input r0 as address.public;
+    // Input the commission rate.
+    input r1 as u8.public;
+
+    // Check if the caller is a validator.
+    contains committee[r0] into r2;
+    // Enforce the caller is a validator.
+    assert.eq r2 true;
+
+    // Update the commission for the specified validator.
+    set r1 into commission[r0];
+
+/**********************************************************************************************************************/
+
 // The `transfer_public` function sends the specified amount
 // from the sender's `account` to the receiver's `account`.
 function transfer_public:
