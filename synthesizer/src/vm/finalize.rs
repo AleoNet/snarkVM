@@ -2147,7 +2147,7 @@ finalize compute:
             .map(|(private_key, _)| {
                 (
                     Plaintext::from_str(&Address::try_from(private_key).unwrap().to_string()).unwrap(),
-                    Value::from_str("0u64").unwrap(),
+                    Value::from_str("0u8").unwrap(),
                 )
             })
             .collect_vec();

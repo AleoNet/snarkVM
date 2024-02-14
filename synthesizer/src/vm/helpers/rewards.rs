@@ -172,7 +172,7 @@ pub fn proving_rewards<N: Network>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use console::prelude::TestRng;
+    use console::{account::PrivateKey, prelude::TestRng};
 
     use indexmap::indexmap;
 
@@ -204,6 +204,138 @@ mod tests {
             assert_eq!(candidate_validator, address);
             let reward = block_reward as u128 * stake as u128 / committee.total_stake() as u128;
             assert_eq!(candidate_stake, stake + u64::try_from(reward).unwrap(), "stake: {stake}, reward: {reward}");
+        }
+    }
+
+    #[test]
+    fn test_staking_rewards_with_commission() {
+        let rng = &mut TestRng::default();
+        // Sample a random committee.
+        let committee = ledger_committee::test_helpers::sample_committee(rng);
+        // Get the total stake of the committee.
+        let total_stake = committee.total_stake();
+        // Sample a random block reward.
+        let block_reward = rng.gen_range(0..MAX_COINBASE_REWARD);
+        // Retrieve an address.
+        let validator_address = *committee.members().iter().next().unwrap().0;
+
+        // Generate a delegator.
+        let delegator_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+        let delegator_address = Address::<CurrentNetwork>::try_from(&delegator_private_key).unwrap();
+
+        // Helper method to check that the delegator and validator stakes are calculated correctly.
+        let check_expected_stake =
+            |delegator_stake: u64,
+             validator_stake: u64,
+             commission_rate: u8,
+             next_stakers: &IndexMap<Address<CurrentNetwork>, (Address<CurrentNetwork>, u64)>| {
+                // Calculate the rewards.
+                let delegator_reward = block_reward as u128 * delegator_stake as u128 / total_stake as u128;
+                let validator_reward = block_reward as u128 * validator_stake as u128 / total_stake as u128;
+                let delegator_commission = delegator_reward * commission_rate as u128 / 100;
+                let expected_next_delegator_stake = delegator_stake + u64::try_from(delegator_reward).unwrap()
+                    - u64::try_from(delegator_commission).unwrap();
+                let expected_next_validator_stake = validator_stake
+                    + u64::try_from(validator_reward).unwrap()
+                    + u64::try_from(delegator_commission).unwrap();
+
+                // Check that the rewards are as expected.
+                assert_eq!(expected_next_delegator_stake, next_stakers.get(&delegator_address).unwrap().1);
+                assert_eq!(expected_next_validator_stake, next_stakers.get(&validator_address).unwrap().1);
+            };
+
+        for _ in 0..ITERATIONS {
+            // Sample a random stake.
+            let delegator_stake = rng.gen_range(MIN_DELEGATOR_STAKE..committee.get_stake(validator_address));
+            let validator_stake = committee.get_stake(validator_address) - delegator_stake;
+            // Construct the stakers.
+            let stakers = indexmap! {validator_address => (validator_address, validator_stake), delegator_address => (validator_address, delegator_stake)};
+
+            // Construct commission rates with fixed rate of 0.
+            {
+                let commission_rates =
+                    crate::committee::test_helpers::sample_commission_rates(&committee, Some(0), rng);
+                let next_stakers =
+                    staking_rewards::<CurrentNetwork>(&stakers, &committee, &commission_rates, block_reward);
+
+                // Check that the rewards are as expected.
+                check_expected_stake(
+                    delegator_stake,
+                    validator_stake,
+                    *commission_rates.get(&validator_address).unwrap(),
+                    &next_stakers,
+                );
+            }
+
+            // Construct commission rates with fixed rate of 100.
+            {
+                let commission_rates =
+                    crate::committee::test_helpers::sample_commission_rates(&committee, Some(100), rng);
+                let next_stakers =
+                    staking_rewards::<CurrentNetwork>(&stakers, &committee, &commission_rates, block_reward);
+
+                // Check that the rewards are as expected.
+                assert_eq!(delegator_stake, next_stakers.get(&delegator_address).unwrap().1);
+                check_expected_stake(
+                    delegator_stake,
+                    validator_stake,
+                    *commission_rates.get(&validator_address).unwrap(),
+                    &next_stakers,
+                );
+            }
+
+            // Check that a higher commission rate results in less rewards for the delegator and more rewards for the validator.
+            {
+                let lower_commission_rate = rng.gen_range(0..100) / 2;
+                let higher_commission_rate = rng.gen_range((lower_commission_rate + 1)..=100);
+
+                let lower_commission_rates = crate::committee::test_helpers::sample_commission_rates(
+                    &committee,
+                    Some(lower_commission_rate),
+                    rng,
+                );
+                let higher_commission_rates = crate::committee::test_helpers::sample_commission_rates(
+                    &committee,
+                    Some(higher_commission_rate),
+                    rng,
+                );
+
+                // Calculate the rewards for the lower commission rate.
+                let next_stakers_lower_commission =
+                    staking_rewards::<CurrentNetwork>(&stakers, &committee, &lower_commission_rates, block_reward);
+                // Check that the rewards are as expected.
+                check_expected_stake(
+                    delegator_stake,
+                    validator_stake,
+                    *lower_commission_rates.get(&validator_address).unwrap(),
+                    &next_stakers_lower_commission,
+                );
+
+                // Calculate the rewards for the higher commission rate.
+                let next_stakers_higher_commission =
+                    staking_rewards::<CurrentNetwork>(&stakers, &committee, &higher_commission_rates, block_reward);
+                // Check that the rewards are as expected.
+                check_expected_stake(
+                    delegator_stake,
+                    validator_stake,
+                    *higher_commission_rates.get(&validator_address).unwrap(),
+                    &next_stakers_higher_commission,
+                );
+
+                // Get the delegator and validator stakes for the lower commission rate.
+                let delegator_stake_lower_commission = next_stakers_lower_commission.get(&delegator_address).unwrap().1;
+                let validator_stake_lower_commission = next_stakers_lower_commission.get(&validator_address).unwrap().1;
+                // Get the delegator and validator stakes for the higher commission rate.
+                let delegator_stake_higher_commission =
+                    next_stakers_higher_commission.get(&delegator_address).unwrap().1;
+                let validator_stake_higher_commission =
+                    next_stakers_higher_commission.get(&validator_address).unwrap().1;
+
+                // Check that the delegator stake is lower for the higher commission rate.
+                assert!(delegator_stake_higher_commission < delegator_stake_lower_commission);
+                // Check that the validator stake is higher for the higher commission rate.
+                assert!(validator_stake_higher_commission > validator_stake_lower_commission);
+            }
         }
     }
 
