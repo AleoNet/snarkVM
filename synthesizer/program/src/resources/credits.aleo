@@ -701,7 +701,7 @@ function set_commission_rate:
     input r0 as u8.public;
 
     // Determine if the commission is at most 100.
-    lte r0 100u64 into r1;
+    lte r0 100u8 into r1;
     // Enforce the commission is at most 100.
     assert.eq r1 true;
 
