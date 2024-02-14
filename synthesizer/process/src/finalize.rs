@@ -217,7 +217,6 @@ fn finalize_transition<N: Network, P: FinalizeStorage<N>>(
         mut registers,
         stack,
         mut call_counter,
-        mut recent_call_locator,
         mut awaited,
     }) = states.pop()
     {
@@ -256,18 +255,10 @@ fn finalize_transition<N: Network, P: FinalizeStorage<N>>(
                     }
                 }
                 Command::Await(await_) => {
-                    // Check that the `await` register's locator is greater than the last seen call locator.
-                    // This ensures that futures are invoked in the order they are declared.
-                    let locator = *match await_.register() {
-                        Register::Locator(locator) => locator,
-                        Register::Access(..) => bail!("The 'await' register must be a locator"),
+                    // Check that the `await` register's is a locator.
+                    if let Register::Access(_, _) = await_.register() {
+                        bail!("The 'await' register must be a locator")
                     };
-                    if let Some(recent_call_locator) = recent_call_locator {
-                        ensure!(
-                            locator > recent_call_locator,
-                            "Await register's locator '{locator}' must be greater than the last seen call locator '{recent_call_locator}'",
-                        )
-                    }
                     // Check that the future has not previously been awaited.
                     ensure!(
                         !awaited.contains(await_.register()),
@@ -297,8 +288,6 @@ fn finalize_transition<N: Network, P: FinalizeStorage<N>>(
                         Err(_) => bail!("'finalize' failed to evaluate command ({command})"),
                     };
 
-                    // Set the last seen call locator.
-                    recent_call_locator = Some(locator);
                     // Increment the call counter.
                     call_counter += 1;
                     // Increment the counter.
@@ -307,15 +296,7 @@ fn finalize_transition<N: Network, P: FinalizeStorage<N>>(
                     awaited.insert(await_.register().clone());
 
                     // Aggregate the caller state.
-                    let caller_state = FinalizeState {
-                        counter,
-                        finalize,
-                        registers,
-                        stack,
-                        call_counter,
-                        recent_call_locator,
-                        awaited,
-                    };
+                    let caller_state = FinalizeState { counter, finalize, registers, stack, call_counter, awaited };
 
                     // Push the caller state onto the stack.
                     states.push(caller_state);
@@ -371,8 +352,6 @@ struct FinalizeState<'a, N: Network> {
     stack: &'a Stack<N>,
     // Call counter.
     call_counter: usize,
-    // Recent call register.
-    recent_call_locator: Option<u64>,
     // Awaited futures.
     awaited: HashSet<Register<N>>,
 }
@@ -417,15 +396,7 @@ fn initialize_finalize_state<'a, N: Network>(
         },
     )?;
 
-    Ok(FinalizeState {
-        counter: 0,
-        finalize,
-        registers,
-        stack,
-        call_counter: 0,
-        recent_call_locator: None,
-        awaited: Default::default(),
-    })
+    Ok(FinalizeState { counter: 0, finalize, registers, stack, call_counter: 0, awaited: Default::default() })
 }
 
 // A helper function that sets up the await operation.
