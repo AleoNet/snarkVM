@@ -697,12 +697,12 @@ finalize set_validator_state:
 // The commission rate must be at least 0 and at most 100.
 // The higher the commission rate, the more rewards the validator takes as commission.
 function set_commission_rate:
-    // Input the 'is_open' state.
+    // Input the commission rate.
     input r0 as u8.public;
 
-    // Determine if the commission is at most 100.
+    // Determine if the commission rate is at most 100.
     lte r0 100u8 into r1;
-    // Enforce the commission is at most 100.
+    // Enforce the commission rate is at most 100.
     assert.eq r1 true;
 
     // Set the validator commission rate.
