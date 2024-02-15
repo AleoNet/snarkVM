@@ -259,9 +259,8 @@ mod tests {
     fn test_from_bytes() {
         let (string, get) = Get::<CurrentNetwork>::parse("get account[r0] into r1;").unwrap();
         assert!(string.is_empty());
-        let get_bytes = get.to_bytes_le().unwrap();
-
-        let result = Get::<CurrentNetwork>::from_bytes_le(&get_bytes[..]);
+        let bytes_le = get.to_bytes_le().unwrap();
+        let result = Get::<CurrentNetwork>::from_bytes_le(&bytes_le[..]);
         assert!(result.is_ok())
     }
 }

@@ -282,8 +282,8 @@ mod tests {
     fn test_from_bytes() {
         let (string, get_or_use) = GetOrUse::<CurrentNetwork>::parse("get.or_use account[r0] r1 into r2;").unwrap();
         assert!(string.is_empty());
-        let get_or_use_bytes = get_or_use.to_bytes_le().unwrap();
-        let result = GetOrUse::<CurrentNetwork>::from_bytes_le(&get_or_use_bytes[..]);
+        let bytes_le = get_or_use.to_bytes_le().unwrap();
+        let result = GetOrUse::<CurrentNetwork>::from_bytes_le(&bytes_le[..]);
         assert!(result.is_ok());
     }
 }
