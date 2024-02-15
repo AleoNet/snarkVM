@@ -65,6 +65,9 @@ pub trait StackProgram<N: Network> {
     /// Returns the program ID.
     fn program_id(&self) -> &ProgramID<N>;
 
+    /// Returns the program depth.
+    fn program_depth(&self) -> usize;
+
     /// Returns `true` if the stack contains the external record.
     fn contains_external_record(&self, locator: &Locator<N>) -> bool;
 
