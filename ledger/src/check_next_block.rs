@@ -99,10 +99,13 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         let penultimate_round = block.round().saturating_sub(1);
         // Get the round number for the previous committee. Note, we subtract 2 from odd rounds,
         // because committees are updated in even rounds.
-        let penultimate_committee_lookback_round = match penultimate_round % 2 == 0 {
+        let previous_penultimate_round = match penultimate_round % 2 == 0 {
             true => penultimate_round.saturating_sub(1),
             false => penultimate_round.saturating_sub(2),
         };
+        // Get the previous committee lookback round.
+        let penultimate_committee_lookback_round =
+            previous_penultimate_round.saturating_sub(Committee::<N>::COMMITTEE_LOOKBACK_RANGE);
         // Retrieve the previous committee lookback.
         let previous_committee_lookback = self
             .get_committee_for_round(penultimate_committee_lookback_round)?
