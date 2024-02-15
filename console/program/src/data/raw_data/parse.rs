@@ -197,7 +197,7 @@ mod tests {
 
         // "hello"
         let bytes = "hello".as_bytes();
-        let data = Data::<MainnetV0>::encode_from_bytes_le(&bytes).unwrap();
+        let data = Data::<MainnetV0>::encode_from_bytes_le(bytes).unwrap();
         let string = data.to_string();
         assert_eq!(string, "data1dpjkcmr049vt4z");
         let data_from_string = Data::<MainnetV0>::from_str(&string).unwrap();
@@ -207,7 +207,7 @@ mod tests {
 
         // "world"
         let bytes = "world".as_bytes();
-        let data = Data::<MainnetV0>::encode_from_bytes_le(&bytes).unwrap();
+        let data = Data::<MainnetV0>::encode_from_bytes_le(bytes).unwrap();
         let string = data.to_string();
         assert_eq!(string, "data1wahhymry9kmx0s");
         let data_from_string = Data::<MainnetV0>::from_str(&string).unwrap();
@@ -217,7 +217,7 @@ mod tests {
 
         // "hello world"
         let bytes = "hello world".as_bytes();
-        let data = Data::<MainnetV0>::encode_from_bytes_le(&bytes).unwrap();
+        let data = Data::<MainnetV0>::encode_from_bytes_le(bytes).unwrap();
         let string = data.to_string();
         assert_eq!(string, "data1dpjkcmr0ypmk7unvvs2rhz3v");
         let data_from_string = Data::<MainnetV0>::from_str(&string).unwrap();

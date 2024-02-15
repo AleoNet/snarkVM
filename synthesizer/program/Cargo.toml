@@ -62,6 +62,10 @@ version = "0.3"
 version = "1.0"
 features = [ "preserve_order" ]
 
+[dev-dependencies.algorithms]
+package = "snarkvm-algorithms"
+path = "../../algorithms"
+
 [dev-dependencies.bincode]
 version = "1"
 

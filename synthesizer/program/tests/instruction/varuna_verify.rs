@@ -26,38 +26,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::helpers::sample::{
-    sample_assignment,
-    sample_finalize_registers,
-    sample_keys,
-    sample_proof,
-    sample_registers,
-};
+use crate::helpers::sample::{sample_assignment, sample_keys};
 
-use circuit::{AleoV0, Eject, Mode};
 use console::{
     network::MainnetV0,
     prelude::*,
     program::{ArrayType, Data, Identifier, Literal, LiteralType, Plaintext, PlaintextType, Register, Value, U32},
     types::Field,
 };
-use snarkvm_synthesizer_program::{
-    FinalizeGlobalState,
-    Opcode,
-    Operand,
-    Program,
-    RegistersLoad,
-    RegistersLoadCircuit,
-    RegistersStore,
-    VarunaVerify,
-};
+use snarkvm_synthesizer_program::{FinalizeGlobalState, Operand, Program, RegistersLoad, RegistersStore, VarunaVerify};
 use synthesizer_process::{FinalizeRegisters, Process, Stack, StackProgramTypes};
-use synthesizer_snark::{Proof, VerifyingKey};
+use synthesizer_snark::{Proof, ProvingKey, VerifyingKey};
 
 type CurrentNetwork = MainnetV0;
-type CurrentAleo = AleoV0;
-
-const ITERATIONS: usize = 100;
 
 /// Samples the stack. Note: Do not replicate this for real program use, it is insecure.
 #[allow(clippy::type_complexity)]
@@ -113,16 +94,11 @@ fn sample_stack(
 }
 
 fn check_varuna_verify(
-    proof: Proof<CurrentNetwork>,
-    vk: VerifyingKey<CurrentNetwork>,
-    inputs: Vec<Vec<<CurrentNetwork as Environment>::Field>>,
-    expected: bool,
-) -> Result<()> {
-    println!(
-        "Checking 'varuna.verify' for {} instances and is expected to {}",
-        inputs.len(),
-        if expected { "succeed" } else { "fail" }
-    );
+    proof: &Proof<CurrentNetwork>,
+    vk: &VerifyingKey<CurrentNetwork>,
+    inputs: &Vec<Vec<<CurrentNetwork as Environment>::Field>>,
+) -> Result<bool> {
+    println!("Checking 'varuna.verify' for {} instances", inputs.len(),);
 
     // Check that the inputs are at most 32 by 32.
     ensure!(inputs.len() <= 32, "The number of inputs must be at most 32");
@@ -169,9 +145,9 @@ fn check_varuna_verify(
 
     // Add the inputs to the 2-th register.
     let outer = inputs
-        .into_iter()
+        .iter()
         .map(|input| {
-            let inner = input.into_iter().map(|field| Plaintext::from(Literal::Field(Field::new(field)))).collect();
+            let inner = input.iter().map(|field| Plaintext::from(Literal::Field(Field::new(*field)))).collect();
             Plaintext::Array(inner, Default::default())
         })
         .collect();
@@ -179,25 +155,105 @@ fn check_varuna_verify(
     finalize_registers.store(&stack, &Register::Locator(2), Value::Plaintext(inputs))?;
 
     // Attempt to finalize.
-    let result = instruction.finalize(&stack, &mut finalize_registers);
+    instruction.finalize(&stack, &mut finalize_registers).unwrap();
 
-    // Check that the result is as expected.
-    ensure!(result.is_ok() == expected);
+    // Get the result from the destination register.
+    let result = match finalize_registers.load(&stack, &Operand::Register(Register::Locator(4)))? {
+        Value::Plaintext(Plaintext::Literal(Literal::Boolean(result), _)) => *result,
+        _ => bail!("The result must be a boolean"),
+    };
 
-    Ok(())
+    Ok(result)
 }
 
 #[test]
-fn test_varuna_verify() {
-    // Sample a proof.
-    let proof = sample_proof();
+fn test_single_instance_varuna_verify() {
+    // Sample an RNG.
+    let rng = &mut TestRng::default();
 
-    // Sample the verifying key.
-    let (_, verifying_key) = sample_keys();
+    // Sample the first set of keys.
+    let (first_proving_key, first_verifying_key) = sample_keys(&[5]).pop().unwrap();
 
-    // Sample the public inputs.
-    let assignment = vec![sample_assignment().public_inputs().iter().map(|(_, field)| *field).collect_vec()];
+    // Sample the first assignment.
+    let first_assignment = sample_assignment(Field::from_u64(2), 5);
+
+    // Get the first set of public inputs.
+    let first_inputs = vec![first_assignment.public_inputs().iter().map(|(_, field)| *field).collect_vec()];
+
+    // Generate the first proof.
+    let first_proof = first_proving_key.prove("test_varuna_verify", &first_assignment, rng).unwrap();
+
+    // Sample the second set of keys.
+    let (second_proving_key, second_verifying_key) = sample_keys(&[10]).pop().unwrap();
+
+    // Sample the second assignment.
+    let second_assignment = sample_assignment(Field::from_u64(3), 10);
+
+    // Get the second set of public inputs.
+    let second_inputs = vec![second_assignment.public_inputs().iter().map(|(_, field)| *field).collect_vec()];
+
+    // Generate the second proof.
+    let second_proof = second_proving_key.prove("test_varuna_verify", &second_assignment, rng).unwrap();
+
+    // For these circuits,
+    //  - check that the proofs are different.
+    //  - check that the verifying keys are different.
+    //  - check that the first and second verifier inputs are the same.
+    // This is the case for this particular circuit.
+    assert_ne!(first_proof, second_proof);
+    assert_ne!(first_verifying_key, second_verifying_key);
+    assert_eq!(first_inputs, second_inputs);
+
+    // Check that varuna.verify succeeds for appropriate combinations of proofs and verifying keys.
+    assert!(check_varuna_verify(&first_proof, &first_verifying_key, &first_inputs).unwrap());
+    assert!(check_varuna_verify(&second_proof, &second_verifying_key, &second_inputs).unwrap());
+    assert!(check_varuna_verify(&first_proof, &first_verifying_key, &first_inputs).unwrap());
+    assert!(check_varuna_verify(&second_proof, &second_verifying_key, &first_inputs).unwrap());
+
+    // Check that the varuna.verify fails for improper combinations of proofs and verifying keys.
+    assert!(!check_varuna_verify(&first_proof, &second_verifying_key, &first_inputs).unwrap());
+    assert!(!check_varuna_verify(&first_proof, &second_verifying_key, &second_inputs).unwrap());
+    assert!(!check_varuna_verify(&second_proof, &first_verifying_key, &second_inputs).unwrap());
+    assert!(!check_varuna_verify(&second_proof, &first_verifying_key, &first_inputs).unwrap());
+}
+
+#[test]
+fn test_maximum_instances_varuna_verify() {
+    // Sample the keys.
+    let (proving_key, verifying_key) = sample_keys(&[10]).pop().unwrap();
+
+    // Sample 32 valid assignments.
+    let assignments = (0..32).map(|i| sample_assignment(Field::from_u64(i), 10)).collect_vec();
+
+    // Extract the public inputs.
+    let inputs = assignments
+        .iter()
+        .map(|assignment| assignment.public_inputs().iter().map(|(_, field)| *field).collect_vec())
+        .collect_vec();
+
+    // Batch prove the assignments.
+    let proof =
+        ProvingKey::prove_batch("test_varuna_verify", &[(proving_key.clone(), assignments)], &mut TestRng::default())
+            .unwrap();
 
     // Check that varuna.verify succeeds for the sample proof and verifying key.
-    check_varuna_verify(proof, verifying_key, assignment, true).unwrap();
+    assert!(check_varuna_verify(&proof, &verifying_key, &inputs).unwrap());
+
+    // Sample 33 assignments.
+    let assignments = (0..33).map(|i| sample_assignment(Field::from_u64(i), 10)).collect_vec();
+
+    // Extract the public inputs.
+    let inputs = assignments
+        .iter()
+        .map(|assignment| assignment.public_inputs().iter().map(|(_, field)| *field).collect_vec())
+        .collect_vec();
+
+    // Batch prove the assignments.
+    let proof =
+        ProvingKey::prove_batch("test_varuna_verify", &[(proving_key, assignments)], &mut TestRng::default()).unwrap();
+
+    // Check that varuna.verify fails for the sample proof and verifying key.
+    // Note: The maximum number of instances is 32 because the maximum length of an array is bounded to 32.
+    let result = check_varuna_verify(&proof, &verifying_key, &inputs);
+    assert!(result.is_err());
 }

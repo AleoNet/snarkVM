@@ -3407,6 +3407,7 @@ dependencies = [
  "rand",
  "rand_chacha",
  "serde_json",
+ "snarkvm-algorithms",
  "snarkvm-circuit",
  "snarkvm-console",
  "snarkvm-synthesizer-process",
