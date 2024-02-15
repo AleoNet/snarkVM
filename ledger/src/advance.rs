@@ -240,9 +240,14 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         // Determine the timestamp for the next block.
         let next_timestamp = match subdag {
             Some(subdag) => {
-                // Get the committee lookback round.
-                let committee_lookback_round =
-                    subdag.anchor_round().saturating_sub(Committee::<N>::COMMITTEE_LOOKBACK_RANGE);
+                // Calculate the penultimate round, which is the round before the anchor round.
+                let penultimate_round = subdag.anchor_round().saturating_sub(1);
+                // Get the round number for the previous committee. Note, we subtract 2 from odd rounds,
+                // because committees are updated in even rounds.
+                let committee_lookback_round = match penultimate_round % 2 == 0 {
+                    true => penultimate_round.saturating_sub(1),
+                    false => penultimate_round.saturating_sub(2),
+                };
                 // Retrieve the committee lookback.
                 let committee_lookback = self
                     .get_committee_for_round(committee_lookback_round)?
