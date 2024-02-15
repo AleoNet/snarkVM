@@ -185,6 +185,10 @@ pub struct Stack<N: Network> {
     proving_keys: Arc<RwLock<IndexMap<Identifier<N>, ProvingKey<N>>>>,
     /// The mapping of function name to verifying key.
     verifying_keys: Arc<RwLock<IndexMap<Identifier<N>, VerifyingKey<N>>>>,
+    /// The mapping of function names to the number of calls.
+    number_of_calls: IndexMap<Identifier<N>, usize>,
+    /// The program depth.
+    program_depth: usize,
 }
 
 impl<N: Network> Stack<N> {
@@ -224,6 +228,12 @@ impl<N: Network> StackProgram<N> for Stack<N> {
     #[inline]
     fn program_id(&self) -> &ProgramID<N> {
         self.program.id()
+    }
+
+    /// Returns the program depth.
+    #[inline]
+    fn program_depth(&self) -> usize {
+        self.program_depth
     }
 
     /// Returns `true` if the stack contains the external record.
@@ -279,23 +289,10 @@ impl<N: Network> StackProgram<N> for Stack<N> {
     /// Returns the expected number of calls for the given function name.
     #[inline]
     fn get_number_of_calls(&self, function_name: &Identifier<N>) -> Result<usize> {
-        // Determine the number of calls for this function (including the function itself).
-        let mut num_calls = 1;
-        for instruction in self.get_function(function_name)?.instructions() {
-            if let Instruction::Call(call) = instruction {
-                // Determine if this is a function call.
-                if call.is_function_call(self)? {
-                    // Increment by the number of calls.
-                    num_calls += match call.operator() {
-                        CallOperator::Locator(locator) => {
-                            self.get_external_stack(locator.program_id())?.get_number_of_calls(locator.resource())?
-                        }
-                        CallOperator::Resource(resource) => self.get_number_of_calls(resource)?,
-                    };
-                }
-            }
-        }
-        Ok(num_calls)
+        self.number_of_calls
+            .get(function_name)
+            .copied()
+            .ok_or_else(|| anyhow!("Function '{function_name}' does not exist"))
     }
 
     /// Returns a value for the given value type.
