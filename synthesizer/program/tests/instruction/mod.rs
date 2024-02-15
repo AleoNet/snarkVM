@@ -16,3 +16,4 @@ mod assert;
 mod commit;
 mod hash;
 mod is;
+mod varuna_verify;
