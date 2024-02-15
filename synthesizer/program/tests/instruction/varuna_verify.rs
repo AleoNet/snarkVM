@@ -257,3 +257,5 @@ fn test_maximum_instances_varuna_verify() {
     let result = check_varuna_verify(&proof, &verifying_key, &inputs);
     assert!(result.is_err());
 }
+
+// TODO (@d0cd). Test multiple different circuits.
