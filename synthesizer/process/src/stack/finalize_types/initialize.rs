@@ -558,20 +558,21 @@ impl<N: Network> FinalizeTypes<N> {
             "First operand '{first_operand}' must be a 'Data' type."
         );
 
-        // Check that the following pairs of operands are `data[2]` types and a two-dimensional array of fields elements.
+        // Check that the following pairs of operands are `$DATA[_]` types and a two-dimensional array of fields elements.
         let num_pairs = (operands.len() - 1) / 2;
         for i in 0..num_pairs {
             // Get the first and second operands in the pair.
             let first_operand = operands.get(2 * i + 1).unwrap();
             let second_operand = operands.get(2 * i + 2).unwrap();
 
-            // Check that the first operand is a `data[2]` type.
+            // Check that the first operand is a `$DATA[_]` type.
             if let FinalizeType::Plaintext(PlaintextType::Literal(LiteralType::Data(data))) =
                 self.get_type_from_operand(stack, first_operand)?
             {
-                ensure!(*data == 2, "Operand '{first_operand}' must be a 'data[2]' type.");
+                // TODO (@d0cd): Do VKs have a fixed length since we have circuit ID and CircuitInfo?
+                // ensure!(*data == 2, "Operand '{first_operand}' must be a '$DATA[_]' type.");
             } else {
-                bail!("Operand '{first_operand}' must be a 'data[2]' type.");
+                bail!("Operand '{first_operand}' must be a '$DATA[_]' type.");
             }
             // Check that the second operand is an array of fields.
             match self.get_type_from_operand(stack, second_operand)? {

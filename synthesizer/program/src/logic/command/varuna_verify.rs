@@ -85,7 +85,7 @@ impl<N: Network> VarunaVerify<N> {
     /// Return whether the number of operands is valid.
     #[inline]
     pub fn is_valid_number_of_operands(num_operands: usize) -> bool {
-        num_operands % 2 == 1 && num_operands <= 2 * Self::MAX_UNIQUE_CIRCUITS as usize + 1
+        (num_operands % 2 == 1) && (num_operands <= (2 * Self::MAX_UNIQUE_CIRCUITS as usize + 1))
     }
 }
 
@@ -104,7 +104,7 @@ impl<N: Network> VarunaVerify<N> {
             Self::opcode()
         );
 
-        // Load the first operand as a `data[_]` value and serialize it as a `Proof`.
+        // Load the first operand as a `$DATA[_]` value and serialize it as a `Proof`.
         let proof = match registers.load(stack, &self.operands[0]) {
             Ok(Value::Plaintext(Plaintext::Literal(Literal::Data(data), _))) => {
                 let bytes_le = match data.decode_as_bytes_le() {
@@ -116,7 +116,7 @@ impl<N: Network> VarunaVerify<N> {
                     Err(_) => bail!("Failed to read the proof from bytes"),
                 }
             }
-            _ => bail!("The first operand must be a `data[_]` literal"),
+            _ => bail!("The first operand must be a `$DATA[_]` literal"),
         };
 
         // Calculate the number of unique circuits.
@@ -127,7 +127,7 @@ impl<N: Network> VarunaVerify<N> {
 
         // Load the verification keys and inputs.
         for i in 0..num_unique_circuits {
-            // Load the verification key as a `data[2]` value and serialize it as a `VerifyingKey`.
+            // Load the verification key as a `$DATA[_]` value and serialize it as a `VerifyingKey`.
             let verifying_key = match registers.load(stack, &self.operands[2 * i + 1]) {
                 Ok(Value::Plaintext(Plaintext::Literal(Literal::Data(data), _))) => {
                     let bytes_le = match data.decode_as_bytes_le() {
@@ -139,7 +139,7 @@ impl<N: Network> VarunaVerify<N> {
                         Err(_) => bail!("Failed to read the verification key from bytes"),
                     }
                 }
-                _ => bail!("The verification key must be a `data[2]` literal"),
+                _ => bail!("The verification key must be a `$DATA[_]` literal"),
             };
 
             // Load the verifier inputs as a two-dimensional array of field elements.
@@ -266,7 +266,7 @@ impl<N: Network> Display for VarunaVerify<N> {
             write!(f, "{} ", operand)?;
         }
         // Print the destination register.
-        write!(f, "into {}", self.destination)
+        write!(f, "into {};", self.destination)
     }
 }
 
@@ -300,7 +300,7 @@ impl<N: Network> ToBytes for VarunaVerify<N> {
     /// Writes the operation to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Ensure that the number of operands is correct.
-        if Self::is_valid_number_of_operands(self.operands().len()) {
+        if !Self::is_valid_number_of_operands(self.operands().len()) {
             return Err(error("The number of operands must be odd"));
         }
 
@@ -326,7 +326,7 @@ mod tests {
 
     #[test]
     fn test_parse() {
-        let (string, varuna_verify) = VarunaVerify::<CurrentNetwork>::parse("varuna.verify r0 r1 r2 into r3").unwrap();
+        let (string, varuna_verify) = VarunaVerify::<CurrentNetwork>::parse("varuna.verify r0 r1 r2 into r3;").unwrap();
         assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
         assert_eq!(varuna_verify.operands.len(), 3, "The number of operands is incorrect");
         assert_eq!(
