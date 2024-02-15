@@ -95,10 +95,24 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             .get_committee_for_round(committee_lookback_round)?
             .ok_or(anyhow!("Failed to fetch committee for round {committee_lookback_round}"))?;
 
+        // Calculate the penultimate round, which is the round before the anchor round.
+        let penultimate_round = block.round().saturating_sub(1);
+        // Get the round number for the previous committee. Note, we subtract 2 from odd rounds,
+        // because committees are updated in even rounds.
+        let penultimate_committee_lookback_round = match penultimate_round % 2 == 0 {
+            true => penultimate_round.saturating_sub(1),
+            false => penultimate_round.saturating_sub(2),
+        };
+        // Retrieve the previous committee lookback.
+        let previous_committee_lookback = self
+            .get_committee_for_round(penultimate_committee_lookback_round)?
+            .ok_or(anyhow!("Failed to fetch committee for round {penultimate_committee_lookback_round}"))?;
+
         // Ensure the block is correct.
         let (expected_existing_solution_ids, expected_existing_transaction_ids) = block.verify(
             &self.latest_block(),
             self.latest_state_root(),
+            &previous_committee_lookback,
             &committee_lookback,
             self.coinbase_puzzle(),
             &self.latest_epoch_challenge()?,
