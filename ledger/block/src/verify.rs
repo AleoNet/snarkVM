@@ -30,6 +30,7 @@ impl<N: Network> Block<N> {
         &self,
         previous_block: &Block<N>,
         current_state_root: N::StateRoot,
+        previous_committee_lookback: &Committee<N>,
         current_committee_lookback: &Committee<N>,
         current_puzzle: &CoinbasePuzzle<N>,
         current_epoch_challenge: &EpochChallenge<N>,
@@ -46,7 +47,12 @@ impl<N: Network> Block<N> {
             expected_timestamp,
             expected_existing_solution_ids,
             expected_existing_transaction_ids,
-        ) = self.verify_authority(previous_block.round(), previous_block.height(), current_committee_lookback)?;
+        ) = self.verify_authority(
+            previous_block.round(),
+            previous_block.height(),
+            previous_committee_lookback,
+            current_committee_lookback,
+        )?;
 
         // Ensure the block solutions are correct.
         let (
@@ -143,6 +149,7 @@ impl<N: Network> Block<N> {
         &self,
         previous_round: u64,
         previous_height: u32,
+        previous_committee_lookback: &Committee<N>,
         current_committee_lookback: &Committee<N>,
     ) -> Result<(u64, u32, i64, Vec<PuzzleCommitment<N>>, Vec<N::TransactionID>)> {
         // Note: Do not remove this. This ensures that all blocks after genesis are quorum blocks.
@@ -223,7 +230,7 @@ impl<N: Network> Block<N> {
             // Beacon blocks do not have a timestamp check.
             Authority::Beacon(..) => self.timestamp(),
             // Quorum blocks use the weighted median timestamp from the subdag.
-            Authority::Quorum(subdag) => subdag.timestamp(current_committee_lookback),
+            Authority::Quorum(subdag) => subdag.timestamp(previous_committee_lookback),
         };
 
         // Return success.
