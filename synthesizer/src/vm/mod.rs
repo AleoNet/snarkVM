@@ -26,7 +26,7 @@ use console::{
     account::{Address, PrivateKey},
     network::prelude::*,
     program::{Identifier, Literal, Locator, Plaintext, ProgramID, ProgramOwner, Record, Value},
-    types::{Field, U64},
+    types::{Field, Group, U64},
 };
 use ledger_block::{
     Block,
@@ -60,8 +60,9 @@ use synthesizer_program::{FinalizeGlobalState, FinalizeOperation, FinalizeStoreT
 
 use aleo_std::prelude::{finish, lap, timer};
 use indexmap::{IndexMap, IndexSet};
+use lru::LruCache;
 use parking_lot::{Mutex, RwLock};
-use std::sync::Arc;
+use std::{num::NonZeroUsize, sync::Arc};
 
 #[cfg(not(feature = "serial"))]
 use rayon::prelude::*;
@@ -76,6 +77,8 @@ pub struct VM<N: Network, C: ConsensusStorage<N>> {
     atomic_lock: Arc<Mutex<()>>,
     /// The lock for ensuring there is no concurrency when advancing blocks.
     block_lock: Arc<Mutex<()>>,
+    /// A cache containing the list of recent partially-verified transactions.
+    partially_verified_transactions: Arc<RwLock<LruCache<N::TransactionID, ()>>>,
 }
 
 impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
@@ -178,6 +181,9 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             store,
             atomic_lock: Arc::new(Mutex::new(())),
             block_lock: Arc::new(Mutex::new(())),
+            partially_verified_transactions: Arc::new(RwLock::new(LruCache::new(
+                NonZeroUsize::new(Transactions::<console::network::Testnet3>::MAX_TRANSACTIONS).unwrap(),
+            ))),
         })
     }
 
@@ -191,6 +197,12 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     #[inline]
     pub fn process(&self) -> Arc<RwLock<Process<N>>> {
         self.process.clone()
+    }
+
+    /// Returns the partially-verified transactions.
+    #[inline]
+    pub fn partially_verified_transactions(&self) -> Arc<RwLock<LruCache<N::TransactionID, ()>>> {
+        self.partially_verified_transactions.clone()
     }
 }
 
@@ -1090,6 +1102,46 @@ function check:
 
         // Check that program is deployed.
         assert!(vm.contains_program(&ProgramID::from_str("parent_program.aleo").unwrap()));
+    }
+
+    #[test]
+    fn test_deployment_with_external_records() {
+        let rng = &mut TestRng::default();
+
+        // Initialize a private key.
+        let private_key = sample_genesis_private_key(rng);
+
+        // Initialize the genesis block.
+        let genesis = sample_genesis_block(rng);
+
+        // Initialize the VM.
+        let vm = sample_vm();
+        // Update the VM.
+        vm.add_next_block(&genesis).unwrap();
+
+        // Deploy the program.
+        let program = Program::from_str(
+            r"
+import credits.aleo;
+program test_program.aleo;
+
+function transfer:
+    input r0 as credits.aleo/credits.record;
+    input r1 as u64.private;
+    input r2 as u64.private;
+    input r3 as [address; 10u32].private;
+    call credits.aleo/transfer_private r0 r3[0u32] r1 into r4 r5;
+    call credits.aleo/transfer_private r5 r3[0u32] r2 into r6 r7;
+",
+        )
+        .unwrap();
+
+        let deployment = vm.deploy(&private_key, &program, None, 0, None, rng).unwrap();
+        assert!(vm.check_transaction(&deployment, None, rng).is_ok());
+        vm.add_next_block(&sample_next_block(&vm, &private_key, &[deployment], rng).unwrap()).unwrap();
+
+        // Check that program is deployed.
+        assert!(vm.contains_program(&ProgramID::from_str("test_program.aleo").unwrap()));
     }
 
     #[test]

@@ -24,6 +24,7 @@ pub use nested_map::*;
 #[cfg(test)]
 mod tests;
 
+use aleo_std_storage::StorageMode;
 use anyhow::{bail, Result};
 use once_cell::sync::OnceCell;
 use parking_lot::Mutex;
@@ -43,26 +44,32 @@ pub const PREFIX_LEN: usize = 4; // N::ID (u16) + DataID (u16)
 
 pub trait Database {
     /// Opens the database.
-    fn open(network_id: u16, dev: Option<u16>) -> Result<Self>
+    fn open<S: Clone + Into<StorageMode>>(network_id: u16, storage: S) -> Result<Self>
     where
         Self: Sized;
 
-    /// Opens the map with the given `network_id`, `(optional) development ID`, and `map_id` from storage.
-    fn open_map<K: Serialize + DeserializeOwned, V: Serialize + DeserializeOwned, T: Into<u16>>(
+    /// Opens the map with the given `network_id`, `storage mode`, and `map_id` from storage.
+    fn open_map<
+        S: Clone + Into<StorageMode>,
+        K: Serialize + DeserializeOwned,
+        V: Serialize + DeserializeOwned,
+        T: Into<u16>,
+    >(
         network_id: u16,
-        dev: Option<u16>,
+        storage: S,
         map_id: T,
     ) -> Result<DataMap<K, V>>;
 
-    /// Opens the nested map with the given `network_id`, `(optional) development ID`, and `map_id` from storage.
+    /// Opens the nested map with the given `network_id`, `storage mode`, and `map_id` from storage.
     fn open_nested_map<
+        S: Clone + Into<StorageMode>,
         M: Serialize + DeserializeOwned,
         K: Serialize + DeserializeOwned,
         V: Serialize + DeserializeOwned,
         T: Into<u16>,
     >(
         network_id: u16,
-        dev: Option<u16>,
+        storage: S,
         map_id: T,
     ) -> Result<NestedDataMap<M, K, V>>;
 }
@@ -74,8 +81,8 @@ pub struct RocksDB {
     rocksdb: Arc<rocksdb::DB>,
     /// The network ID.
     network_id: u16,
-    /// The optional development ID.
-    dev: Option<u16>,
+    /// The storage mode.
+    storage_mode: StorageMode,
     /// The low-level database transaction that gets executed atomically at the end
     /// of a real-run `atomic_finalize` or the outermost `atomic_batch_scope`.
     pub(super) atomic_batch: Arc<Mutex<rocksdb::WriteBatch>>,
@@ -99,7 +106,7 @@ impl Database for RocksDB {
     ///
     /// In production mode, the database opens directory `~/.aleo/storage/ledger-{network}`.
     /// In development mode, the database opens directory `/path/to/repo/.ledger-{network}-{id}`.
-    fn open(network_id: u16, dev: Option<u16>) -> Result<Self> {
+    fn open<S: Clone + Into<StorageMode>>(network_id: u16, storage: S) -> Result<Self> {
         static DB: OnceCell<RocksDB> = OnceCell::new();
 
         // Retrieve the database.
@@ -113,7 +120,7 @@ impl Database for RocksDB {
                 let prefix_extractor = rocksdb::SliceTransform::create_fixed_prefix(PREFIX_LEN);
                 options.set_prefix_extractor(prefix_extractor);
 
-                let primary = aleo_std::aleo_ledger_dir(network_id, dev);
+                let primary = aleo_std_storage::aleo_ledger_dir(network_id, storage.clone().into());
                 let rocksdb = {
                     options.increase_parallelism(2);
                     options.set_max_background_jobs(4);
@@ -125,7 +132,7 @@ impl Database for RocksDB {
                 Ok::<_, anyhow::Error>(RocksDB {
                     rocksdb,
                     network_id,
-                    dev,
+                    storage_mode: storage.clone().into(),
                     atomic_batch: Default::default(),
                     atomic_depth: Default::default(),
                     atomic_override: Default::default(),
@@ -133,21 +140,26 @@ impl Database for RocksDB {
             })?
             .clone();
 
-        // Ensure the database network ID and development ID match.
-        match database.network_id == network_id && database.dev == dev {
+        // Ensure the database network ID and storage mode match.
+        match database.network_id == network_id && database.storage_mode == storage.into() {
             true => Ok(database),
-            false => bail!("Mismatching network ID or development ID in the database"),
+            false => bail!("Mismatching network ID or storage mode in the database"),
         }
     }
 
-    /// Opens the map with the given `network_id`, `(optional) development ID`, and `map_id` from storage.
-    fn open_map<K: Serialize + DeserializeOwned, V: Serialize + DeserializeOwned, T: Into<u16>>(
+    /// Opens the map with the given `network_id`, `storage mode`, and `map_id` from storage.
+    fn open_map<
+        S: Clone + Into<StorageMode>,
+        K: Serialize + DeserializeOwned,
+        V: Serialize + DeserializeOwned,
+        T: Into<u16>,
+    >(
         network_id: u16,
-        dev: Option<u16>,
+        storage: S,
         map_id: T,
     ) -> Result<DataMap<K, V>> {
         // Open the RocksDB database.
-        let database = Self::open(network_id, dev)?;
+        let database = Self::open(network_id, storage)?;
 
         // Combine contexts to create a new scope.
         let mut context = database.network_id.to_le_bytes().to_vec();
@@ -163,19 +175,20 @@ impl Database for RocksDB {
         })))
     }
 
-    /// Opens the nested map with the given `network_id`, `(optional) development ID`, and `map_id` from storage.
+    /// Opens the nested map with the given `network_id`, `storage mode`, and `map_id` from storage.
     fn open_nested_map<
+        S: Clone + Into<StorageMode>,
         M: Serialize + DeserializeOwned,
         K: Serialize + DeserializeOwned,
         V: Serialize + DeserializeOwned,
         T: Into<u16>,
     >(
         network_id: u16,
-        dev: Option<u16>,
+        storage: S,
         map_id: T,
     ) -> Result<NestedDataMap<M, K, V>> {
         // Open the RocksDB database.
-        let database = Self::open(network_id, dev)?;
+        let database = Self::open(network_id, storage)?;
 
         // Combine contexts to create a new scope.
         let mut context = database.network_id.to_le_bytes().to_vec();
@@ -228,6 +241,18 @@ impl RocksDB {
     pub fn open_testing(temp_dir: std::path::PathBuf, dev: Option<u16>) -> Result<Self> {
         use console::prelude::{Rng, TestRng};
 
+        // Ensure the `temp_dir` is unique.
+        let temp_dir = temp_dir.join(Rng::gen::<u64>(&mut TestRng::default()).to_string());
+
+        // Construct the directory for the test database.
+        let primary = match dev {
+            Some(dev) => temp_dir.join(dev.to_string()),
+            None => temp_dir,
+        };
+
+        // Prepare the storage mode.
+        let storage_mode = StorageMode::from(primary.clone());
+
         let database = {
             // Customize database options.
             let mut options = rocksdb::Options::default();
@@ -236,15 +261,6 @@ impl RocksDB {
             // Register the prefix length.
             let prefix_extractor = rocksdb::SliceTransform::create_fixed_prefix(PREFIX_LEN);
             options.set_prefix_extractor(prefix_extractor);
-
-            // Ensure the `temp_dir` is unique.
-            let temp_dir = temp_dir.join(Rng::gen::<u64>(&mut TestRng::default()).to_string());
-
-            // Construct the directory for the test database.
-            let primary = match dev {
-                Some(dev) => temp_dir.join(dev.to_string()),
-                None => temp_dir,
-            };
 
             let rocksdb = {
                 options.increase_parallelism(2);
@@ -269,17 +285,17 @@ impl RocksDB {
             Ok::<_, anyhow::Error>(RocksDB {
                 rocksdb,
                 network_id: u16::MAX,
-                dev,
+                storage_mode: storage_mode.clone(),
                 atomic_batch: Default::default(),
                 atomic_depth: Default::default(),
                 atomic_override: Default::default(),
             })
         }?;
 
-        // Ensure the database development ID match.
-        match database.dev == dev {
+        // Ensure the database storage mode match.
+        match database.storage_mode == storage_mode {
             true => Ok(database),
-            false => bail!("Mismatching development ID in the test database"),
+            false => bail!("Mismatching storage mode in the test database"),
         }
     }
 

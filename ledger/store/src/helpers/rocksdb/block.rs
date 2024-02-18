@@ -30,6 +30,8 @@ use ledger_authority::Authority;
 use ledger_block::{Header, Ratifications, Rejected};
 use ledger_coinbase::{CoinbaseSolution, PuzzleCommitment};
 
+use aleo_std_storage::StorageMode;
+
 /// A RocksDB block storage.
 #[derive(Clone)]
 pub struct BlockDB<N: Network> {
@@ -88,28 +90,28 @@ impl<N: Network> BlockStorage<N> for BlockDB<N> {
     type TransitionStorage = TransitionDB<N>;
 
     /// Initializes the block storage.
-    fn open(dev: Option<u16>) -> Result<Self> {
+    fn open<S: Clone + Into<StorageMode>>(storage: S) -> Result<Self> {
         // Initialize the transition store.
-        let transition_store = TransitionStore::<N, TransitionDB<N>>::open(dev)?;
+        let transition_store = TransitionStore::<N, TransitionDB<N>>::open(storage.clone())?;
         // Initialize the transaction store.
         let transaction_store = TransactionStore::<N, TransactionDB<N>>::open(transition_store)?;
         // Return the block storage.
         Ok(Self {
-            state_root_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::StateRoot))?,
-            reverse_state_root_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::ReverseStateRoot))?,
-            id_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::ID))?,
-            reverse_id_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::ReverseID))?,
-            header_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::Header))?,
-            authority_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::Authority))?,
-            certificate_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::Certificate))?,
-            ratifications_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::Ratifications))?,
-            solutions_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::Solutions))?,
-            puzzle_commitments_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::PuzzleCommitments))?,
-            transactions_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::Transactions))?,
-            aborted_transaction_ids_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::AbortedTransactionIDs))?,
-            rejected_or_aborted_transaction_id_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::RejectedOrAbortedTransactionID))?,
-            confirmed_transactions_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::ConfirmedTransactions))?,
-            rejected_deployment_or_execution_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::RejectedDeploymentOrExecution))?,
+            state_root_map: internal::RocksDB::open_map(N::ID, storage.clone(), MapID::Block(BlockMap::StateRoot))?,
+            reverse_state_root_map: internal::RocksDB::open_map(N::ID, storage.clone(), MapID::Block(BlockMap::ReverseStateRoot))?,
+            id_map: internal::RocksDB::open_map(N::ID, storage.clone(), MapID::Block(BlockMap::ID))?,
+            reverse_id_map: internal::RocksDB::open_map(N::ID, storage.clone(), MapID::Block(BlockMap::ReverseID))?,
+            header_map: internal::RocksDB::open_map(N::ID, storage.clone(), MapID::Block(BlockMap::Header))?,
+            authority_map: internal::RocksDB::open_map(N::ID, storage.clone(), MapID::Block(BlockMap::Authority))?,
+            certificate_map: internal::RocksDB::open_map(N::ID, storage.clone(), MapID::Block(BlockMap::Certificate))?,
+            ratifications_map: internal::RocksDB::open_map(N::ID, storage.clone(), MapID::Block(BlockMap::Ratifications))?,
+            solutions_map: internal::RocksDB::open_map(N::ID, storage.clone(), MapID::Block(BlockMap::Solutions))?,
+            puzzle_commitments_map: internal::RocksDB::open_map(N::ID, storage.clone(), MapID::Block(BlockMap::PuzzleCommitments))?,
+            transactions_map: internal::RocksDB::open_map(N::ID, storage.clone(), MapID::Block(BlockMap::Transactions))?,
+            aborted_transaction_ids_map: internal::RocksDB::open_map(N::ID, storage.clone(), MapID::Block(BlockMap::AbortedTransactionIDs))?,
+            rejected_or_aborted_transaction_id_map: internal::RocksDB::open_map(N::ID, storage.clone(), MapID::Block(BlockMap::RejectedOrAbortedTransactionID))?,
+            confirmed_transactions_map: internal::RocksDB::open_map(N::ID, storage.clone(), MapID::Block(BlockMap::ConfirmedTransactions))?,
+            rejected_deployment_or_execution_map: internal::RocksDB::open_map(N::ID, storage, MapID::Block(BlockMap::RejectedDeploymentOrExecution))?,
             transaction_store,
         })
     }

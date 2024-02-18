@@ -29,7 +29,8 @@ impl<N: Network, Private: Visibility> FromBytes for Record<N, Private> {
             // Read the entry value (in 2 steps to prevent infinite recursion).
             let num_bytes = u16::read_le(&mut reader)?;
             // Read the entry bytes.
-            let bytes = (0..num_bytes).map(|_| u8::read_le(&mut reader)).collect::<Result<Vec<_>, _>>()?;
+            let mut bytes = Vec::new();
+            (&mut reader).take(num_bytes as u64).read_to_end(&mut bytes)?;
             // Recover the entry value.
             let entry = Entry::read_le(&mut bytes.as_slice())?;
             // Add the entry.

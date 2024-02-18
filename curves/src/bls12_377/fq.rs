@@ -24,6 +24,7 @@ use snarkvm_utilities::biginteger::BigInteger384 as BigInteger;
 
 pub type Fq = Fp384<FqParameters>;
 
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct FqParameters;
 
 impl Fp384Parameters for FqParameters {}

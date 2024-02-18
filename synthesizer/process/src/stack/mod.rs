@@ -307,16 +307,32 @@ impl<N: Network> StackProgram<N> for Stack<N> {
             | ValueType::Public(plaintext_type)
             | ValueType::Private(plaintext_type) => Ok(Value::Plaintext(self.sample_plaintext(plaintext_type, rng)?)),
             ValueType::Record(record_name) => {
-                Ok(Value::Record(self.sample_record(burner_address, record_name, rng)?))
+                Ok(Value::Record(self.sample_record(burner_address, record_name, Group::rand(rng), rng)?))
             }
             ValueType::ExternalRecord(locator) => {
                 // Retrieve the external stack.
                 let stack = self.get_external_stack(locator.program_id())?;
                 // Sample the output.
-                Ok(Value::Record(stack.sample_record(burner_address, locator.resource(), rng)?))
+                Ok(Value::Record(stack.sample_record(burner_address, locator.resource(), Group::rand(rng), rng)?))
             }
             ValueType::Future(locator) => Ok(Value::Future(self.sample_future(locator, rng)?)),
         }
+    }
+
+    /// Returns a record for the given record name, with the given burner address and nonce.
+    fn sample_record<R: Rng + CryptoRng>(
+        &self,
+        burner_address: &Address<N>,
+        record_name: &Identifier<N>,
+        nonce: Group<N>,
+        rng: &mut R,
+    ) -> Result<Record<N, Plaintext<N>>> {
+        // Sample a record.
+        let record = self.sample_record_internal(burner_address, record_name, nonce, 0, rng)?;
+        // Ensure the record matches the value type.
+        self.matches_record(&record, record_name)?;
+        // Return the record.
+        Ok(record)
     }
 }
 
@@ -402,13 +418,13 @@ impl<N: Network> Stack<N> {
     /// Removes the proving key for the given function name.
     #[inline]
     pub fn remove_proving_key(&self, function_name: &Identifier<N>) {
-        self.proving_keys.write().remove(function_name);
+        self.proving_keys.write().shift_remove(function_name);
     }
 
     /// Removes the verifying key for the given function name.
     #[inline]
     pub fn remove_verifying_key(&self, function_name: &Identifier<N>) {
-        self.verifying_keys.write().remove(function_name);
+        self.verifying_keys.write().shift_remove(function_name);
     }
 }
 

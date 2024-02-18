@@ -52,7 +52,6 @@ use console::{
     types::{Field, Group},
 };
 use ledger_authority::Authority;
-use ledger_block::{Block, ConfirmedTransaction, Header, Metadata, Ratify, Transaction, Transactions};
 use ledger_coinbase::{CoinbasePuzzle, CoinbaseSolution, EpochChallenge, ProverSolution, PuzzleCommitment};
 use ledger_committee::Committee;
 use ledger_narwhal::{BatchCertificate, Subdag, Transmission, TransmissionID};
@@ -63,7 +62,10 @@ use synthesizer::{
     vm::VM,
 };
 
-use aleo_std::prelude::{finish, lap, timer};
+use aleo_std::{
+    prelude::{finish, lap, timer},
+    StorageMode,
+};
 use anyhow::Result;
 use core::ops::Range;
 use indexmap::IndexMap;
@@ -109,13 +111,13 @@ pub struct Ledger<N: Network, C: ConsensusStorage<N>> {
 
 impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
     /// Loads the ledger from storage.
-    pub fn load(genesis_block: Block<N>, dev: Option<u16>) -> Result<Self> {
+    pub fn load(genesis_block: Block<N>, storage_mode: StorageMode) -> Result<Self> {
         let timer = timer!("Ledger::load");
 
         // Retrieve the genesis hash.
         let genesis_hash = genesis_block.hash();
         // Initialize the ledger.
-        let ledger = Self::load_unchecked(genesis_block, dev)?;
+        let ledger = Self::load_unchecked(genesis_block, storage_mode)?;
 
         // Ensure the ledger contains the correct genesis block.
         if !ledger.contains_block_hash(&genesis_hash)? {
@@ -141,12 +143,12 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
     }
 
     /// Loads the ledger from storage, without performing integrity checks.
-    pub fn load_unchecked(genesis_block: Block<N>, dev: Option<u16>) -> Result<Self> {
+    pub fn load_unchecked(genesis_block: Block<N>, storage_mode: StorageMode) -> Result<Self> {
         let timer = timer!("Ledger::load_unchecked");
 
         info!("Loading the ledger from storage...");
         // Initialize the consensus store.
-        let store = match ConsensusStore::<N, C>::open(dev) {
+        let store = match ConsensusStore::<N, C>::open(storage_mode) {
             Ok(store) => store,
             Err(e) => bail!("Failed to load ledger (run 'snarkos clean' and try again)\n\n{e}\n"),
         };
@@ -384,6 +386,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
 #[cfg(test)]
 pub(crate) mod test_helpers {
     use crate::Ledger;
+    use aleo_std::StorageMode;
     use console::{
         account::{Address, PrivateKey, ViewKey},
         network::Testnet3,
@@ -440,7 +443,7 @@ pub(crate) mod test_helpers {
         // Create a genesis block.
         let genesis = VM::from(store).unwrap().genesis_beacon(&private_key, rng).unwrap();
         // Initialize the ledger with the genesis block.
-        let ledger = CurrentLedger::load(genesis.clone(), None).unwrap();
+        let ledger = CurrentLedger::load(genesis.clone(), StorageMode::Production).unwrap();
         // Ensure the genesis block is correct.
         assert_eq!(genesis, ledger.get_block(0).unwrap());
         // Return the ledger.

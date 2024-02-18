@@ -26,6 +26,7 @@ use console::{
 };
 use synthesizer_program::{FinalizeOperation, FinalizeStoreTrait};
 
+use aleo_std_storage::StorageMode;
 use anyhow::Result;
 use core::marker::PhantomData;
 use indexmap::IndexSet;
@@ -78,7 +79,7 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
     type KeyValueMap: for<'a> NestedMap<'a, (ProgramID<N>, Identifier<N>), Plaintext<N>, Value<N>>;
 
     /// Initializes the program state storage.
-    fn open(dev: Option<u16>) -> Result<Self>;
+    fn open<S: Clone + Into<StorageMode>>(storage: S) -> Result<Self>;
 
     /// Initializes the test-variant of the storage.
     #[cfg(any(test, feature = "test"))]
@@ -91,8 +92,8 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
     /// Returns the key-value map.
     fn key_value_map(&self) -> &Self::KeyValueMap;
 
-    /// Returns the optional development ID.
-    fn dev(&self) -> Option<u16>;
+    /// Returns the storage mode.
+    fn storage_mode(&self) -> &StorageMode;
 
     /// Starts an atomic batch write operation.
     fn start_atomic(&self) {
@@ -313,7 +314,7 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
             None => bail!("Illegal operation: program ID '{program_id}' is not initialized - cannot remove mapping."),
         };
         // Remove the mapping name.
-        if !mapping_names.remove(&mapping_name) {
+        if !mapping_names.shift_remove(&mapping_name) {
             bail!("Illegal operation: mapping '{mapping_name}' does not exist in storage - cannot remove mapping.");
         }
 
@@ -530,8 +531,8 @@ pub struct FinalizeStore<N: Network, P: FinalizeStorage<N>> {
 
 impl<N: Network, P: FinalizeStorage<N>> FinalizeStore<N, P> {
     /// Initializes the finalize store.
-    pub fn open(dev: Option<u16>) -> Result<Self> {
-        Self::from(P::open(dev)?)
+    pub fn open<S: Clone + Into<StorageMode>>(storage: S) -> Result<Self> {
+        Self::from(P::open(storage)?)
     }
 
     /// Initializes the test-variant of the storage.
@@ -581,9 +582,9 @@ impl<N: Network, P: FinalizeStorage<N>> FinalizeStore<N, P> {
         self.storage.finish_atomic()
     }
 
-    /// Returns the optional development ID.
-    pub fn dev(&self) -> Option<u16> {
-        self.storage.dev()
+    /// Returns the storage mode.
+    pub fn storage_mode(&self) -> &StorageMode {
+        self.storage.storage_mode()
     }
 }
 

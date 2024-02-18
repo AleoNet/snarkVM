@@ -14,7 +14,11 @@
 
 use crate::{stack::Address, CallStack, Registers, RegistersCall, StackEvaluate, StackExecute};
 use aleo_std::prelude::{finish, lap, timer};
-use console::{network::prelude::*, program::Request};
+use console::{
+    account::Field,
+    network::prelude::*,
+    program::{Register, Request, Value, ValueType},
+};
 use synthesizer_program::{
     Call,
     CallOperator,
@@ -62,8 +66,7 @@ impl<N: Network> CallTrait<N> for Call<N> {
         let timer = timer!("Call::evaluate");
 
         // Load the operands values.
-        let inputs: Vec<_> =
-            self.operands().iter().map(|operand| registers.load(stack.deref(), operand)).try_collect()?;
+        let inputs: Vec<_> = self.operands().iter().map(|operand| registers.load(stack, operand)).try_collect()?;
 
         // Retrieve the substack and resource.
         let (substack, resource) = match self.operator() {
@@ -281,7 +284,26 @@ impl<N: Network> CallTrait<N> for Call<N> {
                         let outputs = function
                             .outputs()
                             .iter()
-                            .map(|output| substack.sample_value(&address, output.value_type(), rng))
+                            .map(|output| match output.value_type() {
+                                ValueType::Record(record_name) => {
+                                    // Get the register index containing the record.
+                                    let index = match output.operand() {
+                                        Operand::Register(Register::Locator(index)) => Field::from_u64(*index),
+                                        _ => bail!("Expected a `Register::Locator` operand for a record output."),
+                                    };
+                                    // Compute the encryption randomizer as `HashToScalar(tvk || index)`.
+                                    let randomizer = N::hash_to_scalar_psd2(&[*request.tvk(), index])?;
+                                    // Construct the record nonce.
+                                    let record_nonce = N::g_scalar_multiply(&randomizer);
+                                    Ok(Value::Record(substack.sample_record(
+                                        &address,
+                                        record_name,
+                                        record_nonce,
+                                        rng,
+                                    )?))
+                                }
+                                _ => substack.sample_value(&address, output.value_type(), rng),
+                            })
                             .collect::<Result<Vec<_>>>()?;
                         // Map the output operands to registers.
                         let output_registers = function
