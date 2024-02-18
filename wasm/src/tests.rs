@@ -19,6 +19,8 @@ use snarkvm_console::{
 use snarkvm_utilities::TestRng;
 use wasm_bindgen_test::*;
 
+use std::str::FromStr; // Add this import to resolve E0599
+
 const ALEO_PRIVATE_KEY: &str = "APrivateKey1zkp8cC4jgHEBnbtu3xxs1Ndja2EMizcvTRDq5Nikdkukg1p";
 const ALEO_VIEW_KEY: &str = "AViewKey1n1n3ZbnVEtXVe3La2xWkUvY3EY7XaCG6RZJJ3tbvrrrD";
 const ALEO_ADDRESS: &str = "aleo1wvgwnqvy46qq0zemj0k6sfp3zv0mp77rw97khvwuhac05yuwscxqmfyhwf";
@@ -57,6 +59,7 @@ fn test_account_sign() {
         assert!(result, "Failed to execute signature verification");
     }
 }
+
 
 
 #[wasm_bindgen_test]
