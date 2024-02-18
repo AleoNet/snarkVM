@@ -332,9 +332,6 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             block.previous_hash(),
         )?;
 
-        // Attention: The following order is crucial because if 'finalize' fails, we can rollback the block.
-        // If one first calls 'finalize', then calls 'insert(block)' and it fails, there is no way to rollback 'finalize'.
-
         // Enable the atomic batch override, so that both the insertion and finalization belong to a single batch.
         #[cfg(feature = "rocks")]
         assert!(self.block_store().flip_atomic_override()?);
@@ -350,17 +347,15 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 Ok(())
             }
             Err(finalize_error) => {
-                // Clear all the pending atomic operations so that disabling the atomic batch override
-                // doesn't execute any storage operation that has accumulated since it was enabled.
-                // This only applies to persistent storage - the in-memory one needs to roll back the
-                // latest block.
                 #[cfg(feature = "rocks")]
-                self.block_store().atomic_abort();
-                #[cfg(feature = "rocks")]
-                self.finalize_store().atomic_abort();
-                // Disable the atomic batch override.
-                #[cfg(feature = "rocks")]
-                assert!(!self.block_store().flip_atomic_override()?);
+                {
+                    // Clear all pending atomic operations so that disabling the atomic batch override
+                    // doesn't execute any storage operation that accumulated after it was enabled.
+                    self.block_store().atomic_abort();
+                    self.finalize_store().atomic_abort();
+                    // Disable the atomic batch override.
+                    assert!(!self.block_store().flip_atomic_override()?);
+                }
                 // Rollback the block.
                 self.block_store().remove_last_n(1).map_err(|removal_error| {
                     // Log the finalize error.
