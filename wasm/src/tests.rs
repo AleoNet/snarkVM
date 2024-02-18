@@ -19,7 +19,7 @@ use snarkvm_console::{
 use snarkvm_utilities::TestRng;
 use wasm_bindgen_test::*;
 
-use std::str::FromStr; // Add this import to resolve E0599
+use std::str::FromStr;
 
 const ALEO_PRIVATE_KEY: &str = "APrivateKey1zkp8cC4jgHEBnbtu3xxs1Ndja2EMizcvTRDq5Nikdkukg1p";
 const ALEO_VIEW_KEY: &str = "AViewKey1n1n3ZbnVEtXVe3La2xWkUvY3EY7XaCG6RZJJ3tbvrrrD";
@@ -46,36 +46,12 @@ fn test_account_sign() {
     let mut rng = TestRng::default();
 
     for _ in 0..ITERATIONS {
-        let private_key = PrivateKey::<MainnetV0>::new(&mut rng)
-            .expect("Failed to generate private key");
-        let address = Address::try_from(&private_key)
-            .expect("Failed to derive address from private key");
+        let private_key = PrivateKey::<MainnetV0>::new(&mut rng).expect("Failed to generate private key");
+        let address = Address::try_from(&private_key).expect("Failed to derive address from private key");
 
         let result = private_key.sign_bytes("hello world!".as_bytes(), &mut rng);
         assert!(result.is_ok(), "Failed to generate a signature");
 
-        let signature = result.unwrap();
-        let result = signature.verify_bytes(&address, "hello world!".as_bytes());
-        assert!(result, "Failed to execute signature verification");
-    }
-}
-
-
-
-#[wasm_bindgen_test]
-fn test_account_sign() {
-    let mut rng = TestRng::default();
-
-    for _ in 0..ITERATIONS {
-        // Sample a new private key and address.
-        let private_key = PrivateKey::<MainnetV0>::new(&mut rng).unwrap();
-        let address = Address::try_from(&private_key).unwrap();
-
-        // Sign a message with the account private key.
-        let result = private_key.sign_bytes("hello world!".as_bytes(), &mut rng);
-        assert!(result.is_ok(), "Failed to generate a signature");
-
-        // Verify the signed message.
         let signature = result.unwrap();
         let result = signature.verify_bytes(&address, "hello world!".as_bytes());
         assert!(result, "Failed to execute signature verification");
