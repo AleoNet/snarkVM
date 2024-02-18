@@ -6,35 +6,22 @@ description = "Collections circuit library for a decentralized virtual machine"
 license = "Apache-2.0"
 edition = "2021"
 
-[dependencies.console]
-package = "snarkvm-console-collections"
-path = "../../console/collections"
-version = "=0.16.19"
-optional = true
+# Dependencies
+[dependencies]
+console = { package = "snarkvm-console-collections", path = "../../console/collections", version = "=0.16.19", optional = true }
+snarkvm-circuit-algorithms = { path = "../algorithms", version = "=0.16.19" }
+snarkvm-circuit-types = { path = "../types", version = "=0.16.19" }
 
-[dependencies.snarkvm-circuit-algorithms]
-path = "../algorithms"
-version = "=0.16.19"
+# Dev dependencies
+[dev-dependencies]
+snarkvm-circuit-network = { path = "../network" }
+snarkvm-console-algorithms = { path = "../../console/algorithms" }
+snarkvm-console-network = { path = "../../console/network" }
+snarkvm-utilities = { path = "../../utilities" }
+anyhow = "1.0.73"
 
-[dependencies.snarkvm-circuit-types]
-path = "../types"
-version = "=0.16.19"
-
-[dev-dependencies.snarkvm-circuit-network]
-path = "../network"
-
-[dev-dependencies.snarkvm-console-algorithms]
-path = "../../console/algorithms"
-
-[dev-dependencies.snarkvm-console-network]
-path = "../../console/network"
-
-[dev-dependencies.snarkvm-utilities]
-path = "../../utilities"
-
-[dev-dependencies.anyhow]
-version = "1.0.73"
-
+# Features
 [features]
-default = [ "enable_console" ]
-enable_console = [ "console" ]
+default = ["enable_console"]
+enable_console = ["console"]
+
