@@ -236,6 +236,11 @@ impl RocksDB {
         Ok(!previous_value)
     }
 
+    /// Checks whether the atomic override is currently in force.
+    fn is_atomic_override_active(&self) -> bool {
+        self.atomic_override.load(Ordering::SeqCst)
+    }
+
     /// Opens the test database.
     #[cfg(any(test, feature = "test"))]
     pub fn open_testing(temp_dir: std::path::PathBuf, dev: Option<u16>) -> Result<Self> {
