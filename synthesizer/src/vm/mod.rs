@@ -275,7 +275,9 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         // Retrieve the total stake.
         let total_stake = committee.total_stake();
         // Compute the account supply.
-        let account_supply = public_balances.values().fold(0u64, |acc, x| acc.saturating_add(*x));
+        let account_supply = public_balances
+            .values()
+            .try_fold(0u64, |acc, x| acc.checked_add(*x).ok_or(anyhow!("Invalid account supply")))?;
         // Compute the total supply.
         let total_supply = total_stake.checked_add(account_supply).ok_or_else(|| anyhow!("Invalid total supply"))?;
         // Ensure the total supply matches.
