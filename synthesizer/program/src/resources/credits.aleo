@@ -88,6 +88,15 @@ mapping account:
 
 /**********************************************************************************************************************/
 
+// The `withdraw` mapping is used to store withdrawal address publicly.
+mapping withdraw:
+    // The key represents the hot address of the owner.
+    key as address.public;
+    // The value represents the withdrawal address of the owner.
+    value as address.public;
+
+/**********************************************************************************************************************/
+
 // The `credits` record is used to store credits privately.
 record credits:
     // The address of the owner.
@@ -627,16 +636,59 @@ finalize claim_unbond_public:
     // Enforce the unbonding is complete.
     assert.eq r2 true;
 
+    // Get the withdrawal address for the caller, or default initial withdrawal address.
+    get.or_use withdraw[r0] r0 into r3;
     // Add the unbonded amount to the stakers's public balance.
-    // Increments `account[r0]` by `r1`.
-    // If `account[r0]` does not exist, 0u64 is used.
-    // If `account[r0] + r2` overflows, `claim_unbond_public` is reverted.
-    get.or_use account[r0] 0u64 into r3;
-    add r1.microcredits r3 into r4;
-    set r4 into account[r0];
+    // Increments `account[r3]` by `r1`.
+    // If `account[r3]` does not exist, 0u64 is used.
+    // If `account[r3] + r4` overflows, `claim_unbond_public` is reverted.
+    get.or_use account[r3] 0u64 into r4;
+    add r1.microcredits r4 into r5;
+    set r5 into account[r3];
 
     // Remove the unbond state for the caller.
     remove unbonding[r0];
+    // Check caller is a staker
+    contains bonded[r0] into r6;
+
+    branch.eq r6 false to remove_withdraw_map;
+    branch.eq r6 true to end;
+
+    position remove_withdraw_map;
+    // Remove the withdraw state for the caller.
+    remove withdraw[r0];
+
+    // The terminus.
+    position end;
+
+/**********************************************************************************************************************/
+
+// This function allows a staker to set their withdraw address
+function set_withdraw_address:
+    // Input the withdrawal address for the caller.
+    input r0 as address.public;
+    // Set the withdrawal address to bond.
+    async set_withdraw_address self.caller r0 into r1;
+    // Output the finalize future.
+    output r1 as credits.aleo/set_withdraw_address.future;
+
+finalize set_withdraw_address:
+    // Input the caller's address.
+    input r0 as address.public;
+    // Input the withdrawal address
+    input r1 as address.public;
+    // Check caller is a staker
+    contains bonded[r0] into r2;
+    // Prevent attacks let withdraw map too big
+    assert.eq r2 true;
+    // Get the withdrawal address for caller.
+    // If the withdrawal address does not exist, set caller is default withdrawal address.
+    contains withdraw[r0] into r3;
+    // If other addresses have been specified as withdrawal addresses, this finalize scope will fail.
+    assert.eq r2 false;
+
+    // Update the withdraw for the caller.
+    set r1 into withdraw[r0];
 
 /**********************************************************************************************************************/
 
