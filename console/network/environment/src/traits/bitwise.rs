@@ -66,3 +66,13 @@ pub trait Ternary {
     where
         Self: Sized;
 }
+
+impl<T: Ternary> Ternary for Box<T> {
+    type Boolean = T::Boolean;
+    type Output = Box<T::Output>;
+
+    /// Returns `first` if `condition` is `true`, otherwise returns `second`.
+    fn ternary(condition: &Self::Boolean, first: &Self, second: &Self) -> Self::Output {
+        Box::new(T::ternary(condition, first, second))
+    }
+}

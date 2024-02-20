@@ -28,16 +28,6 @@ impl<A: Aleo> Ternary for Signature<A> {
     }
 }
 
-impl<A: Aleo> Ternary for Box<Signature<A>> {
-    type Boolean = Boolean<A>;
-    type Output = Box<Signature<A>>;
-
-    /// Returns `first` if `condition` is `true`, otherwise returns `second`.
-    fn ternary(condition: &Self::Boolean, first: &Self, second: &Self) -> Self::Output {
-        Box::new(Signature::ternary(condition, first, second))
-    }
-}
-
 impl<A: Aleo> Metrics<dyn Ternary<Boolean = Boolean<A>, Output = Signature<A>>> for Signature<A> {
     type Case = (Mode, Mode, Mode);
 
