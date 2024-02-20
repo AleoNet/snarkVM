@@ -20,7 +20,7 @@ mod helpers;
 pub use helpers::*;
 
 mod hash;
-use hash::*;
+pub use hash::*;
 
 #[cfg(test)]
 mod tests;
