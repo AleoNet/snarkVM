@@ -14,12 +14,13 @@
 
 use crate::{
     traits::{FinalizeStoreTrait, RegistersLoad, RegistersStore, StackMatches, StackProgram},
+    CallOperator,
     Opcode,
     Operand,
 };
 use console::{
     network::prelude::*,
-    program::{Identifier, Literal, Register, Value},
+    program::{Literal, Register, Value},
     types::Boolean,
 };
 
@@ -28,7 +29,7 @@ use console::{
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Contains<N: Network> {
     /// The mapping name.
-    mapping: Identifier<N>,
+    mapping: CallOperator<N>,
     /// The key to access the mapping.
     key: Operand<N>,
     /// The destination register.
@@ -48,9 +49,9 @@ impl<N: Network> Contains<N> {
         vec![self.key.clone()]
     }
 
-    /// Returns the mapping name.
+    /// Returns the mapping.
     #[inline]
-    pub const fn mapping_name(&self) -> &Identifier<N> {
+    pub const fn mapping(&self) -> &CallOperator<N> {
         &self.mapping
     }
 
@@ -76,16 +77,22 @@ impl<N: Network> Contains<N> {
         store: &impl FinalizeStoreTrait<N>,
         registers: &mut (impl RegistersLoad<N> + RegistersStore<N>),
     ) -> Result<()> {
+        // Determine the program ID and mapping name.
+        let (program_id, mapping_name) = match self.mapping {
+            CallOperator::Locator(locator) => (*locator.program_id(), *locator.resource()),
+            CallOperator::Resource(mapping_name) => (*stack.program_id(), mapping_name),
+        };
+
         // Ensure the mapping exists in storage.
-        if !store.contains_mapping_confirmed(stack.program_id(), &self.mapping)? {
-            bail!("Mapping '{}/{}' does not exist in storage", stack.program_id(), self.mapping);
+        if !store.contains_mapping_confirmed(&program_id, &mapping_name)? {
+            bail!("Mapping '{program_id}/{mapping_name}' does not exist in storage");
         }
 
         // Load the operand as a plaintext.
         let key = registers.load_plaintext(stack, &self.key)?;
 
         // Determine if the key exists in the mapping.
-        let contains_key = store.contains_key_speculative(*stack.program_id(), self.mapping, &key)?;
+        let contains_key = store.contains_key_speculative(program_id, mapping_name, &key)?;
 
         // Assign the value to the destination register.
         registers.store(stack, &self.destination, Value::from(Literal::Boolean(Boolean::new(contains_key))))?;
@@ -106,7 +113,7 @@ impl<N: Network> Parser for Contains<N> {
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
 
         // Parse the mapping name from the string.
-        let (string, mapping) = Identifier::parse(string)?;
+        let (string, mapping) = CallOperator::parse(string)?;
         // Parse the "[" from the string.
         let (string, _) = tag("[")(string)?;
         // Parse the whitespace from the string.
@@ -177,7 +184,7 @@ impl<N: Network> FromBytes for Contains<N> {
     /// Reads the command from a buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         // Read the mapping name.
-        let mapping = Identifier::read_le(&mut reader)?;
+        let mapping = CallOperator::read_le(&mut reader)?;
         // Read the key operand.
         let key = Operand::read_le(&mut reader)?;
         // Read the destination register.
@@ -210,9 +217,26 @@ mod tests {
     fn test_parse() {
         let (string, contains) = Contains::<CurrentNetwork>::parse("contains account[r0] into r1;").unwrap();
         assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
-        assert_eq!(contains.mapping, Identifier::from_str("account").unwrap());
+        assert_eq!(contains.mapping, CallOperator::from_str("account").unwrap());
         assert_eq!(contains.operands().len(), 1, "The number of operands is incorrect");
         assert_eq!(contains.key, Operand::Register(Register::Locator(0)), "The first operand is incorrect");
         assert_eq!(contains.destination, Register::Locator(1), "The second operand is incorrect");
+
+        let (string, contains) =
+            Contains::<CurrentNetwork>::parse("contains credits.aleo/account[r0] into r1;").unwrap();
+        assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
+        assert_eq!(contains.mapping, CallOperator::from_str("credits.aleo/account").unwrap());
+        assert_eq!(contains.operands().len(), 1, "The number of operands is incorrect");
+        assert_eq!(contains.key, Operand::Register(Register::Locator(0)), "The first operand is incorrect");
+        assert_eq!(contains.destination, Register::Locator(1), "The second operand is incorrect");
+    }
+
+    #[test]
+    fn test_from_bytes() {
+        let (string, contains) = Contains::<CurrentNetwork>::parse("contains account[r0] into r1;").unwrap();
+        assert!(string.is_empty());
+        let bytes_le = contains.to_bytes_le().unwrap();
+        let result = Contains::<CurrentNetwork>::from_bytes_le(&bytes_le[..]);
+        assert!(result.is_ok())
     }
 }

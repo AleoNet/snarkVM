@@ -9,10 +9,16 @@ cases:
   - program: relay.aleo
     function: send_without_check
     inputs: [aleo1f6eg623knp66cwx0926w3plgdgzcmfpgyrzgnjz90mucgs3z7s9qls4upm, 0u8]
+  - program: relay.aleo
+    function: check_has_registered
+    inputs: [aleo1f6eg623knp66cwx0926w3plgdgzcmfpgyrzgnjz90mucgs3z7s9qls4upm]
   - program: registry.aleo
     function: register
     inputs: []
     private_key: APrivateKey1zkpABon5degxuW8JnBniSXgN1C4eAGKfDH8qRPZe1geHpWp
+  - program: relay.aleo
+    function: check_has_registered
+    inputs: [aleo1f6eg623knp66cwx0926w3plgdgzcmfpgyrzgnjz90mucgs3z7s9qls4upm]
   - program: relay.aleo
     function: send
     inputs: [aleo1f6eg623knp66cwx0926w3plgdgzcmfpgyrzgnjz90mucgs3z7s9qls4upm, 1u8]
@@ -56,6 +62,16 @@ program relay.aleo;
 record message:
     owner as address.private;
     data as u8.private;
+
+function check_has_registered:
+    input r0 as address.public;
+    async check_has_registered r0 into r1;
+    output r1 as relay.aleo/check_has_registered.future;
+
+finalize check_has_registered:
+    input r0 as address.public;
+    contains registry.aleo/users[r0] into r1;
+    assert.eq r1 true;
 
 function send:
     input r0 as address.public;
