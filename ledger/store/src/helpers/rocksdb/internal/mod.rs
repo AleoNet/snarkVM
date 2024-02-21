@@ -89,8 +89,8 @@ pub struct RocksDB {
     /// The depth of the current atomic write batch; it gets incremented with every call
     /// to `start_atomic` and decremented with each call to `finish_atomic`.
     pub(super) atomic_depth: Arc<AtomicUsize>,
-    /// A flag indicating whether the atomic override is currently in effect.
-    pub(super) atomic_override: Arc<AtomicBool>,
+    /// A flag indicating whether the atomic writes are currently paused.
+    pub(super) atomic_writes_paused: Arc<AtomicBool>,
 }
 
 impl Deref for RocksDB {
@@ -135,7 +135,7 @@ impl Database for RocksDB {
                     storage_mode: storage.clone().into(),
                     atomic_batch: Default::default(),
                     atomic_depth: Default::default(),
-                    atomic_override: Default::default(),
+                    atomic_writes_paused: Default::default(),
                 })
             })?
             .clone();
@@ -206,39 +206,51 @@ impl Database for RocksDB {
 }
 
 impl RocksDB {
-    /// Toggles the atomic override; if it becomes disabled, the pending
-    /// operations get executed.
-    fn flip_atomic_override(&self) -> Result<bool> {
-        // The override is only intended to be toggled before or after
+    /// Pause the execution of atomic writes for the entire database.
+    fn pause_atomic_writes(&self) -> Result<()> {
+        // This operation is only intended to be performed before or after
+        // atomic batches - never in the middle of them.
+        assert_eq!(self.atomic_depth.load(Ordering::SeqCst), 0);
+
+        // Set the flag indicating that the pause is in effect.
+        let already_paused = self.atomic_writes_paused.swap(true, Ordering::SeqCst);
+        // Make sure that we haven't already paused atomic writes (which would
+        // indicate a logic bug).
+        assert!(!already_paused);
+
+        Ok(())
+    }
+
+    /// Unpause the execution of atomic writes for the entire database; this
+    /// executes all the writes that have been queued since they were paused.
+    fn unpause_atomic_writes(&self) -> Result<()> {
+        // This operation is only intended to be performed before or after
         // atomic batches - never in the middle of them.
         assert_eq!(self.atomic_depth.load(Ordering::SeqCst), 0);
 
         // https://github.com/rust-lang/rust/issues/98485
-        let previous_value = self.atomic_override.load(Ordering::SeqCst);
+        let currently_paused = self.atomic_writes_paused.load(Ordering::SeqCst);
+        // Make sure we are currently paused (otherwise there is likely some
+        // logic bug involved.
+        assert!(currently_paused);
 
-        // A flip from enabled to disabled executes all pending operations
-        // and makes the storage function in the usual fashion again.
-        if previous_value {
-            let batch = mem::take(&mut *self.atomic_batch.lock());
-            // In order to ensure that all the operations that are intended
-            // to be atomic via the usual macro approach are still performed
-            // atomically (just as a part of a larger batch), every atomic
-            // storage operation that has accumulated from the moment the
-            // override was enabled becomes executed as a single atomic batch
-            // when the override is disabled (i.e. `previous_value == true`).
-            self.rocksdb.write(batch)?;
-        }
+        // In order to ensure that all the operations that are intended
+        // to be atomic via the usual macro approach are still performed
+        // atomically (just as a part of a larger batch), every atomic
+        // storage operation that has accumulated from the moment the
+        // writes have been paused becomes executed as a single atomic batch.
+        let batch = mem::take(&mut *self.atomic_batch.lock());
+        self.rocksdb.write(batch)?;
 
-        // Flip the flag.
-        self.atomic_override.store(!previous_value, Ordering::SeqCst);
+        // Unset the flag indicating that the pause is in effect.
+        self.atomic_writes_paused.store(false, Ordering::SeqCst);
 
-        // Return the current value of the flag.
-        Ok(!previous_value)
+        Ok(())
     }
 
-    /// Checks whether the atomic override is currently in force.
-    fn is_atomic_override_active(&self) -> bool {
-        self.atomic_override.load(Ordering::SeqCst)
+    /// Checks whether the atomic writes are currently paused.
+    fn are_atomic_writes_paused(&self) -> bool {
+        self.atomic_writes_paused.load(Ordering::SeqCst)
     }
 
     /// Opens the test database.
@@ -293,7 +305,7 @@ impl RocksDB {
                 storage_mode: storage_mode.clone(),
                 atomic_batch: Default::default(),
                 atomic_depth: Default::default(),
-                atomic_override: Default::default(),
+                atomic_writes_paused: Default::default(),
             })
         }?;
 

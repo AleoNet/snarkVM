@@ -393,11 +393,18 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         self.transaction_store().finish_atomic()
     }
 
-    /// Either enables or disables the atomic override.
-    fn flip_atomic_override(&self) -> Result<bool> {
-        // Since the atomic override applies to the entire storage, any map
-        // can be used to toggle it.
-        self.state_root_map().flip_atomic_override()
+    /// Pauses atomic writes.
+    fn pause_atomic_writes(&self) -> Result<()> {
+        // Since this applies to the entire storage, any map can be used; this
+        // one is just the first one in the list.
+        self.state_root_map().pause_atomic_writes()
+    }
+
+    /// Unpauses atomic writes.
+    fn unpause_atomic_writes(&self) -> Result<()> {
+        // Since this applies to the entire storage, any map can be used; this
+        // one is just the first one in the list.
+        self.state_root_map().unpause_atomic_writes()
     }
 
     /// Stores the given `(state root, block)` pair into storage.
@@ -1166,11 +1173,14 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
         self.storage.storage_mode()
     }
 
-    /// Either enables or disables the atomic override.
-    pub fn flip_atomic_override(&self) -> Result<bool> {
-        // Since the atomic override applies to the entire storage, any store
-        // can be used to toggle it.
-        self.storage.flip_atomic_override()
+    /// Pauses atomic writes.
+    pub fn pause_atomic_writes(&self) -> Result<()> {
+        self.storage.pause_atomic_writes()
+    }
+
+    /// Unpauses atomic writes.
+    pub fn unpause_atomic_writes(&self) -> Result<()> {
+        self.storage.unpause_atomic_writes()
     }
 }
 

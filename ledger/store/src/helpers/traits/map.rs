@@ -75,14 +75,17 @@ pub trait Map<
     fn finish_atomic(&self) -> Result<()>;
 
     ///
-    /// The atomic override can be used to merge disjoint atomic write batches.
-    /// When enabled, the subsequent atomic write batches no longer automatically
-    /// perform a write at the end of their scope; instead, they only extend the
-    /// pending write batch until `flip_atomic_override` is called again.
-    /// The returned boolean indicates the current state of the override (`true`
-    /// means it was enabled, `false` that it was disabled).
+    /// Once called, the subsequent atomic write batches will be queued instead of being executed
+    /// at the end of their scope. `unpause_atomic_writes` needs to be called in order to
+    /// restore the usual behavior.
     ///
-    fn flip_atomic_override(&self) -> Result<bool>;
+    fn pause_atomic_writes(&self) -> Result<()>;
+
+    ///
+    /// Executes all of the queued writes as a single atomic operation and restores the usual
+    /// behavior of atomic write batches that was altered by calling `pause_atomic_writes`.
+    ///
+    fn unpause_atomic_writes(&self) -> Result<()>;
 }
 
 /// A trait representing map-like storage operations with read-only capabilities.

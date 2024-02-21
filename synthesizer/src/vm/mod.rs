@@ -344,29 +344,29 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             block.previous_hash(),
         )?;
 
-        // Enable the atomic batch override, so that both the insertion and finalization belong to a single batch.
+        // Pause the atomic writes, so that both the insertion and finalization belong to a single batch.
         #[cfg(feature = "rocks")]
-        assert!(self.block_store().flip_atomic_override()?);
+        self.block_store().pause_atomic_writes()?;
 
         // First, insert the block.
         self.block_store().insert(block)?;
         // Next, finalize the transactions.
         match self.finalize(state, block.ratifications(), block.solutions(), block.transactions()) {
             Ok(_ratified_finalize_operations) => {
-                // Disable the atomic batch override, executing it.
+                // Unpause the atomic writes, executing the ones queued from block insertion and finalization.
                 #[cfg(feature = "rocks")]
-                assert!(!self.block_store().flip_atomic_override()?);
+                self.block_store().unpause_atomic_writes()?;
                 Ok(())
             }
             Err(finalize_error) => {
                 #[cfg(feature = "rocks")]
                 {
-                    // Clear all pending atomic operations so that disabling the atomic batch override
-                    // doesn't execute any storage operation that accumulated after it was enabled.
-                    self.block_store().atomic_abort();
-                    self.finalize_store().atomic_abort();
+                    // Clear all pending atomic operations so that unpausing the atomic writes
+                    // doesn't execute any of the queued storage operations.
+                    self.block_store().abort_atomic();
+                    self.finalize_store().abort_atomic();
                     // Disable the atomic batch override.
-                    assert!(!self.block_store().flip_atomic_override()?);
+                    self.block_store().unpause_atomic_writes()?;
                 }
                 // Rollback the block.
                 #[cfg(not(feature = "rocks"))]

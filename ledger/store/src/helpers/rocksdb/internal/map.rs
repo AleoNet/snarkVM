@@ -108,8 +108,8 @@ impl<
         // Ensure that the atomic batch is empty.
         assert!(self.atomic_batch.lock().is_empty());
         // Ensure that the database atomic batch is empty; skip this check if the atomic
-        // override is enabled, as there may be pending storage operations.
-        if !self.database.is_atomic_override_active() {
+        // writes are paused, as there may be pending operations.
+        if !self.database.are_atomic_writes_paused() {
             assert!(self.database.atomic_batch.lock().is_empty());
         }
     }
@@ -221,9 +221,8 @@ impl<
 
         // If we're at depth 0, it is the final call to `finish_atomic` and the
         // atomic write batch can be physically executed. This is skipped if the
-        // atomic override is in force, as the pending operations are executed
-        // when it is disabled.
-        if previous_atomic_depth == 1 && !self.database.is_atomic_override_active() {
+        // atomic writes are paused.
+        if previous_atomic_depth == 1 && !self.database.are_atomic_writes_paused() {
             // Empty the collection of pending operations.
             let batch = mem::take(&mut *self.database.atomic_batch.lock());
             // Execute all the operations atomically.
@@ -236,15 +235,20 @@ impl<
     }
 
     ///
-    /// The atomic override can be used to merge disjoint atomic write batches.
-    /// When enabled, the subsequent atomic write batches no longer automatically
-    /// perform a write at the end of their scope; instead, they only extend the
-    /// pending write batch until `flip_atomic_override` is called again.
-    /// The returned boolean indicates the current state of the override (`true`
-    /// means it was enabled, `false` that it was disabled).
+    /// Once called, the subsequent atomic write batches will be queued instead of being executed
+    /// at the end of their scope. `unpause_atomic_writes` needs to be called in order to
+    /// restore the usual behavior.
     ///
-    fn flip_atomic_override(&self) -> Result<bool> {
-        self.database.flip_atomic_override()
+    fn pause_atomic_writes(&self) -> Result<()> {
+        self.database.pause_atomic_writes()
+    }
+
+    ///
+    /// Executes all of the queued writes as a single atomic operation and restores the usual
+    /// behavior of atomic write batches that was altered by calling `pause_atomic_writes`.
+    ///
+    fn unpause_atomic_writes(&self) -> Result<()> {
+        self.database.unpause_atomic_writes()
     }
 }
 
