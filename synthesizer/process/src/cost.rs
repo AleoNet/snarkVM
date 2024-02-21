@@ -12,10 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::{
-    prelude::{Stack, StackProgramTypes},
-    VM,
-};
+use crate::{Process, Stack, StackProgramTypes};
+
 use console::{
     prelude::*,
     program::{FinalizeType, Identifier, LiteralType, PlaintextType},
@@ -59,10 +57,7 @@ pub fn deployment_cost<N: Network>(deployment: &Deployment<N>) -> Result<(u64, (
 }
 
 /// Returns the *minimum* cost in microcredits to publish the given execution (total cost, (storage cost, finalize cost)).
-pub fn execution_cost<N: Network, C: ConsensusStorage<N>>(
-    vm: &VM<N, C>,
-    execution: &Execution<N>,
-) -> Result<(u64, (u64, u64))> {
+pub fn execution_cost<N: Network>(process: &Process<N>, execution: &Execution<N>) -> Result<(u64, (u64, u64))> {
     // Compute the storage cost in microcredits.
     let storage_cost = execution.size_in_bytes()?;
 
@@ -73,7 +68,7 @@ pub fn execution_cost<N: Network, C: ConsensusStorage<N>>(
         // Retrieve the program ID and function name.
         let (program_id, function_name) = (transition.program_id(), transition.function_name());
         // Retrieve the finalize cost.
-        let cost = cost_in_microcredits(vm.process().read().get_stack(program_id)?, function_name)?;
+        let cost = cost_in_microcredits(process.get_stack(program_id)?, function_name)?;
         // Accumulate the finalize cost.
         if cost > 0 {
             finalize_cost = finalize_cost
