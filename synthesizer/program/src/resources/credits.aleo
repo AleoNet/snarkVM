@@ -685,7 +685,7 @@ finalize set_withdraw_address:
     // If the withdrawal address does not exist, set caller is default withdrawal address.
     contains withdraw[r0] into r3;
     // If other addresses have been specified as withdrawal addresses, this finalize scope will fail.
-    assert.eq r2 false;
+    assert.eq r3 false;
 
     // Update the withdraw for the caller.
     set r1 into withdraw[r0];
