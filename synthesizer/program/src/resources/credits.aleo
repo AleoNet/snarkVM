@@ -681,8 +681,7 @@ finalize set_withdraw_address:
     contains bonded[r0] into r2;
     // Prevent attacks let withdraw map too big
     assert.eq r2 true;
-    // Get the withdrawal address for caller.
-    // If the withdrawal address does not exist, set caller is default withdrawal address.
+    // Check if the withdrawal address has been set
     contains withdraw[r0] into r3;
     // If other addresses have been specified as withdrawal addresses, this finalize scope will fail.
     assert.eq r3 false;
