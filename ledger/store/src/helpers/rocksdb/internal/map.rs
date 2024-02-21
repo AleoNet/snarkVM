@@ -107,8 +107,11 @@ impl<
 
         // Ensure that the atomic batch is empty.
         assert!(self.atomic_batch.lock().is_empty());
-        // Ensure that the database atomic batch is empty.
-        assert!(self.database.atomic_batch.lock().is_empty());
+        // Ensure that the database atomic batch is empty; skip this check if the atomic
+        // writes are paused, as there may be pending operations.
+        if !self.database.are_atomic_writes_paused() {
+            assert!(self.database.atomic_batch.lock().is_empty());
+        }
     }
 
     ///
@@ -217,8 +220,9 @@ impl<
         assert!(previous_atomic_depth != 0);
 
         // If we're at depth 0, it is the final call to `finish_atomic` and the
-        // atomic write batch can be physically executed.
-        if previous_atomic_depth == 1 {
+        // atomic write batch can be physically executed. This is skipped if the
+        // atomic writes are paused.
+        if previous_atomic_depth == 1 && !self.database.are_atomic_writes_paused() {
             // Empty the collection of pending operations.
             let batch = mem::take(&mut *self.database.atomic_batch.lock());
             // Execute all the operations atomically.
@@ -228,6 +232,23 @@ impl<
         }
 
         Ok(())
+    }
+
+    ///
+    /// Once called, the subsequent atomic write batches will be queued instead of being executed
+    /// at the end of their scope. `unpause_atomic_writes` needs to be called in order to
+    /// restore the usual behavior.
+    ///
+    fn pause_atomic_writes(&self) -> Result<()> {
+        self.database.pause_atomic_writes()
+    }
+
+    ///
+    /// Executes all of the queued writes as a single atomic operation and restores the usual
+    /// behavior of atomic write batches that was altered by calling `pause_atomic_writes`.
+    ///
+    fn unpause_atomic_writes<const DISCARD_BATCH: bool>(&self) -> Result<()> {
+        self.database.unpause_atomic_writes::<DISCARD_BATCH>()
     }
 }
 
