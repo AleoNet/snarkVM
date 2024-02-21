@@ -401,10 +401,10 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
     }
 
     /// Unpauses atomic writes.
-    fn unpause_atomic_writes(&self) -> Result<()> {
+    fn unpause_atomic_writes<const DISCARD_BATCH: bool>(&self) -> Result<()> {
         // Since this applies to the entire storage, any map can be used; this
         // one is just the first one in the list.
-        self.state_root_map().unpause_atomic_writes()
+        self.state_root_map().unpause_atomic_writes::<DISCARD_BATCH>()
     }
 
     /// Stores the given `(state root, block)` pair into storage.
@@ -1064,7 +1064,9 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
     }
 
     /// Reverts the Merkle tree to its shape before the insertion of the last 'n' blocks.
-    pub fn remove_last_n_from_tree(&self, n: u32) -> Result<()> {
+    pub fn remove_last_n_from_tree_only(&self, n: u32) -> Result<()> {
+        // Ensure 'n' is non-zero.
+        ensure!(n > 0, "Cannot remove zero blocks");
         // Acquire the write lock on the block tree.
         let mut tree = self.tree.write();
         // Prepare an updated Merkle tree removing the last 'n' block hashes.
@@ -1075,8 +1077,14 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
         Ok(())
     }
 
-    /// Reverts the block store to its shape before the insertion of the last 'n' blocks.
-    pub fn remove_last_n_from_store(&self, n: u32) -> Result<()> {
+    /// Removes the last 'n' blocks from storage.
+    pub fn remove_last_n(&self, n: u32) -> Result<()> {
+        // Ensure 'n' is non-zero.
+        ensure!(n > 0, "Cannot remove zero blocks");
+
+        // Acquire the write lock on the block tree.
+        let mut tree = self.tree.write();
+
         // Determine the block heights to remove.
         let heights = match self.storage.id_map().keys_confirmed().max() {
             Some(height) => {
@@ -1087,13 +1095,12 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
                     .checked_sub(n - 1)
                     .ok_or_else(|| anyhow!("Failed to remove last '{n}' blocks: block height underflow"))?;
                 // Ensure the block height matches the number of leaves in the Merkle tree.
-                ensure!(end_height == u32::try_from(self.tree.read().number_of_leaves())? - 1, "Block height mismatch");
+                ensure!(end_height == u32::try_from(tree.number_of_leaves())? - 1, "Block height mismatch");
                 // Output the block heights.
                 start_height..=end_height
             }
             None => bail!("Failed to remove last '{n}' blocks: no blocks in storage"),
         };
-
         // Fetch the block hashes to remove.
         let hashes = cfg_into_iter!(heights)
             .map(|height| match self.storage.get_block_hash(height)? {
@@ -1102,25 +1109,21 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
             })
             .collect::<Result<Vec<_>>>()?;
 
+        // Prepare an updated Merkle tree removing the last 'n' block hashes.
+        let updated_tree = tree.prepare_remove_last_n(usize::try_from(n)?)?;
+
         atomic_batch_scope!(self, {
             // Remove the blocks, in descending order.
             for block_hash in hashes.iter().rev() {
                 self.storage.remove(block_hash)?;
             }
             Ok(())
-        })
-    }
+        })?;
 
-    /// Removes the last 'n' blocks from storage.
-    pub fn remove_last_n(&self, n: u32) -> Result<()> {
-        // Ensure 'n' is non-zero.
-        ensure!(n > 0, "Cannot remove zero blocks");
-
-        // Update the block store.
-        self.remove_last_n_from_store(n)?;
-
-        // Update the Merkle tree.
-        self.remove_last_n_from_tree(n)
+        // Update the block tree.
+        *tree = updated_tree;
+        // Return success.
+        Ok(())
     }
 
     /// Returns the transaction store.
@@ -1179,8 +1182,8 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
     }
 
     /// Unpauses atomic writes.
-    pub fn unpause_atomic_writes(&self) -> Result<()> {
-        self.storage.unpause_atomic_writes()
+    pub fn unpause_atomic_writes<const DISCARD_BATCH: bool>(&self) -> Result<()> {
+        self.storage.unpause_atomic_writes::<DISCARD_BATCH>()
     }
 }
 

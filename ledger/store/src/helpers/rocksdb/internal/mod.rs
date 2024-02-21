@@ -25,7 +25,7 @@ pub use nested_map::*;
 mod tests;
 
 use aleo_std_storage::StorageMode;
-use anyhow::{bail, Result};
+use anyhow::{bail, ensure, Result};
 use once_cell::sync::OnceCell;
 use parking_lot::Mutex;
 use serde::{de::DeserializeOwned, Serialize};
@@ -223,16 +223,17 @@ impl RocksDB {
 
     /// Unpause the execution of atomic writes for the entire database; this
     /// executes all the writes that have been queued since they were paused.
-    fn unpause_atomic_writes(&self) -> Result<()> {
-        // This operation is only intended to be performed before or after
-        // atomic batches - never in the middle of them.
-        assert_eq!(self.atomic_depth.load(Ordering::SeqCst), 0);
+    fn unpause_atomic_writes<const DISCARD_BATCH: bool>(&self) -> Result<()> {
+        // Ensure the call to unpause is only performed before or after an atomic batch scope
+        // - and never in the middle of one (otherwise there is a fundamental logic bug).
+        // Note: In production, this `ensure` is a safety-critical invariant that never fails.
+        ensure!(self.atomic_depth.load(Ordering::SeqCst) == 0, "Atomic depth must be 0 to unpause atomic writes");
 
         // https://github.com/rust-lang/rust/issues/98485
         let currently_paused = self.atomic_writes_paused.load(Ordering::SeqCst);
-        // Make sure we are currently paused (otherwise there is likely some
-        // logic bug involved.
-        assert!(currently_paused);
+        // Ensure the database is paused (otherwise there is a fundamental logic bug).
+        // Note: In production, this `ensure` is a safety-critical invariant that never fails.
+        ensure!(currently_paused, "Atomic writes must be paused to unpause them");
 
         // In order to ensure that all the operations that are intended
         // to be atomic via the usual macro approach are still performed
@@ -240,7 +241,9 @@ impl RocksDB {
         // storage operation that has accumulated from the moment the
         // writes have been paused becomes executed as a single atomic batch.
         let batch = mem::take(&mut *self.atomic_batch.lock());
-        self.rocksdb.write(batch)?;
+        if !DISCARD_BATCH {
+            self.rocksdb.write(batch)?;
+        }
 
         // Unset the flag indicating that the pause is in effect.
         self.atomic_writes_paused.store(false, Ordering::SeqCst);
