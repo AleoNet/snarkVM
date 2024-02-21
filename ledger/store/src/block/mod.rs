@@ -393,6 +393,20 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         self.transaction_store().finish_atomic()
     }
 
+    /// Pauses atomic writes.
+    fn pause_atomic_writes(&self) -> Result<()> {
+        // Since this applies to the entire storage, any map can be used; this
+        // one is just the first one in the list.
+        self.state_root_map().pause_atomic_writes()
+    }
+
+    /// Unpauses atomic writes.
+    fn unpause_atomic_writes<const DISCARD_BATCH: bool>(&self) -> Result<()> {
+        // Since this applies to the entire storage, any map can be used; this
+        // one is just the first one in the list.
+        self.state_root_map().unpause_atomic_writes::<DISCARD_BATCH>()
+    }
+
     /// Stores the given `(state root, block)` pair into storage.
     fn insert(&self, state_root: N::StateRoot, block: &Block<N>) -> Result<()> {
         // Prepare the confirmed transactions.
@@ -1049,6 +1063,20 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
         Ok(())
     }
 
+    /// Reverts the Merkle tree to its shape before the insertion of the last 'n' blocks.
+    pub fn remove_last_n_from_tree_only(&self, n: u32) -> Result<()> {
+        // Ensure 'n' is non-zero.
+        ensure!(n > 0, "Cannot remove zero blocks");
+        // Acquire the write lock on the block tree.
+        let mut tree = self.tree.write();
+        // Prepare an updated Merkle tree removing the last 'n' block hashes.
+        let updated_tree = tree.prepare_remove_last_n(usize::try_from(n)?)?;
+        // Update the block tree.
+        *tree = updated_tree;
+        // Return success.
+        Ok(())
+    }
+
     /// Removes the last 'n' blocks from storage.
     pub fn remove_last_n(&self, n: u32) -> Result<()> {
         // Ensure 'n' is non-zero.
@@ -1073,7 +1101,6 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
             }
             None => bail!("Failed to remove last '{n}' blocks: no blocks in storage"),
         };
-
         // Fetch the block hashes to remove.
         let hashes = cfg_into_iter!(heights)
             .map(|height| match self.storage.get_block_hash(height)? {
@@ -1147,6 +1174,16 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
     /// Returns the storage mode.
     pub fn storage_mode(&self) -> &StorageMode {
         self.storage.storage_mode()
+    }
+
+    /// Pauses atomic writes.
+    pub fn pause_atomic_writes(&self) -> Result<()> {
+        self.storage.pause_atomic_writes()
+    }
+
+    /// Unpauses atomic writes.
+    pub fn unpause_atomic_writes<const DISCARD_BATCH: bool>(&self) -> Result<()> {
+        self.storage.unpause_atomic_writes::<DISCARD_BATCH>()
     }
 }
 

@@ -73,6 +73,19 @@ pub trait Map<
     /// Finishes an atomic operation, performing all the queued writes.
     ///
     fn finish_atomic(&self) -> Result<()>;
+
+    ///
+    /// Once called, the subsequent atomic write batches will be queued instead of being executed
+    /// at the end of their scope. `unpause_atomic_writes` needs to be called in order to
+    /// restore the usual behavior.
+    ///
+    fn pause_atomic_writes(&self) -> Result<()>;
+
+    ///
+    /// Executes all of the queued writes as a single atomic operation and restores the usual
+    /// behavior of atomic write batches that was altered by calling `pause_atomic_writes`.
+    ///
+    fn unpause_atomic_writes<const DISCARD_BATCH: bool>(&self) -> Result<()>;
 }
 
 /// A trait representing map-like storage operations with read-only capabilities.

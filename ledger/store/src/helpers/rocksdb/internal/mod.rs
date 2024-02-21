@@ -25,16 +25,17 @@ pub use nested_map::*;
 mod tests;
 
 use aleo_std_storage::StorageMode;
-use anyhow::{bail, Result};
+use anyhow::{bail, ensure, Result};
 use once_cell::sync::OnceCell;
 use parking_lot::Mutex;
 use serde::{de::DeserializeOwned, Serialize};
 use std::{
     borrow::Borrow,
     marker::PhantomData,
+    mem,
     ops::Deref,
     sync::{
-        atomic::{AtomicBool, AtomicUsize},
+        atomic::{AtomicBool, AtomicUsize, Ordering},
         Arc,
     },
 };
@@ -88,6 +89,8 @@ pub struct RocksDB {
     /// The depth of the current atomic write batch; it gets incremented with every call
     /// to `start_atomic` and decremented with each call to `finish_atomic`.
     pub(super) atomic_depth: Arc<AtomicUsize>,
+    /// A flag indicating whether the atomic writes are currently paused.
+    pub(super) atomic_writes_paused: Arc<AtomicBool>,
 }
 
 impl Deref for RocksDB {
@@ -132,6 +135,7 @@ impl Database for RocksDB {
                     storage_mode: storage.clone().into(),
                     atomic_batch: Default::default(),
                     atomic_depth: Default::default(),
+                    atomic_writes_paused: Default::default(),
                 })
             })?
             .clone();
@@ -202,6 +206,56 @@ impl Database for RocksDB {
 }
 
 impl RocksDB {
+    /// Pause the execution of atomic writes for the entire database.
+    fn pause_atomic_writes(&self) -> Result<()> {
+        // This operation is only intended to be performed before or after
+        // atomic batches - never in the middle of them.
+        assert_eq!(self.atomic_depth.load(Ordering::SeqCst), 0);
+
+        // Set the flag indicating that the pause is in effect.
+        let already_paused = self.atomic_writes_paused.swap(true, Ordering::SeqCst);
+        // Make sure that we haven't already paused atomic writes (which would
+        // indicate a logic bug).
+        assert!(!already_paused);
+
+        Ok(())
+    }
+
+    /// Unpause the execution of atomic writes for the entire database; this
+    /// executes all the writes that have been queued since they were paused.
+    fn unpause_atomic_writes<const DISCARD_BATCH: bool>(&self) -> Result<()> {
+        // Ensure the call to unpause is only performed before or after an atomic batch scope
+        // - and never in the middle of one (otherwise there is a fundamental logic bug).
+        // Note: In production, this `ensure` is a safety-critical invariant that never fails.
+        ensure!(self.atomic_depth.load(Ordering::SeqCst) == 0, "Atomic depth must be 0 to unpause atomic writes");
+
+        // https://github.com/rust-lang/rust/issues/98485
+        let currently_paused = self.atomic_writes_paused.load(Ordering::SeqCst);
+        // Ensure the database is paused (otherwise there is a fundamental logic bug).
+        // Note: In production, this `ensure` is a safety-critical invariant that never fails.
+        ensure!(currently_paused, "Atomic writes must be paused to unpause them");
+
+        // In order to ensure that all the operations that are intended
+        // to be atomic via the usual macro approach are still performed
+        // atomically (just as a part of a larger batch), every atomic
+        // storage operation that has accumulated from the moment the
+        // writes have been paused becomes executed as a single atomic batch.
+        let batch = mem::take(&mut *self.atomic_batch.lock());
+        if !DISCARD_BATCH {
+            self.rocksdb.write(batch)?;
+        }
+
+        // Unset the flag indicating that the pause is in effect.
+        self.atomic_writes_paused.store(false, Ordering::SeqCst);
+
+        Ok(())
+    }
+
+    /// Checks whether the atomic writes are currently paused.
+    fn are_atomic_writes_paused(&self) -> bool {
+        self.atomic_writes_paused.load(Ordering::SeqCst)
+    }
+
     /// Opens the test database.
     #[cfg(any(test, feature = "test"))]
     pub fn open_testing(temp_dir: std::path::PathBuf, dev: Option<u16>) -> Result<Self> {
@@ -254,6 +308,7 @@ impl RocksDB {
                 storage_mode: storage_mode.clone(),
                 atomic_batch: Default::default(),
                 atomic_depth: Default::default(),
+                atomic_writes_paused: Default::default(),
             })
         }?;
 
