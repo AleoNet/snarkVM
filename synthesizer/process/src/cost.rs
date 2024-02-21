@@ -19,7 +19,6 @@ use console::{
     program::{FinalizeType, Identifier, LiteralType, PlaintextType},
 };
 use ledger_block::{Deployment, Execution};
-use ledger_store::ConsensusStorage;
 use synthesizer_program::{CastType, Command, Finalize, Instruction, Operand, StackProgram};
 
 /// Returns the *minimum* cost in microcredits to publish the given deployment (total cost, (storage cost, synthesis cost, namespace cost)).
