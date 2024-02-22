@@ -1396,6 +1396,4 @@ finalize do:
         // Verify.
         vm.check_transaction(&transaction, None, rng).unwrap();
     }
-
-
 }

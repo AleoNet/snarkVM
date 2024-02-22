@@ -109,7 +109,6 @@ pub trait Network:
     /// The maximum number of microcredits that can be spent finalizing executions in a block.
     const BLOCK_SPEND_LIMIT: u64 = Self::TRANSACTION_SPEND_LIMIT * 100;
 
-
     /// The anchor height, defined as the expected number of blocks to reach the coinbase target.
     const ANCHOR_HEIGHT: u32 = Self::ANCHOR_TIME as u32 / Self::BLOCK_TIME as u32;
     /// The anchor time in seconds.
