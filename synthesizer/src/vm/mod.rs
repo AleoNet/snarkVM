@@ -397,7 +397,6 @@ pub(crate) mod test_helpers {
     use indexmap::IndexMap;
     use once_cell::sync::OnceCell;
     use std::borrow::Borrow;
-    use synthesizer_process::{cost_in_microcredits, Stack};
     use synthesizer_snark::VerifyingKey;
 
     pub(crate) type CurrentNetwork = MainnetV0;

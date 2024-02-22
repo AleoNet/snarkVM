@@ -108,6 +108,8 @@ pub trait Network:
     const TRANSACTION_SPEND_LIMIT: u64 = 100_000_000;
     /// The maximum number of microcredits that can be spent finalizing executions in a block.
     const BLOCK_SPEND_LIMIT: u64 = Self::TRANSACTION_SPEND_LIMIT * 100;
+    /// The maximum number of constraints in all deployments in a block.
+    const BLOCK_DEPLOYMENT_LIMIT: u64 = Self::MAX_DEPLOYMENT_LIMIT * 10;
 
     /// The anchor height, defined as the expected number of blocks to reach the coinbase target.
     const ANCHOR_HEIGHT: u32 = Self::ANCHOR_TIME as u32 / Self::BLOCK_TIME as u32;

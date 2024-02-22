@@ -245,6 +245,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             let mut tpks: IndexSet<Group<N>> = IndexSet::new();
             // Initialize a counter for the total microcredits spent on finalizing executions.
             let mut total_finalize_cost = 0u64;
+            // Initialize a counter for the total constraints found in deployments.
+            let mut total_constraints = 0u64;
 
             // Finalize the transactions.
             'outer: for transaction in transactions {
@@ -331,6 +333,35 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                                             .map_err(|e| e.to_string())
                                     })
                             };
+
+                        // Get the number of constraints.
+                        let num_constraints = match deployment.num_combined_constraints() {
+                            Ok(num_constraints) => num_constraints,
+                            Err(error) => {
+                                // Note: On failure, skip this transaction, and continue speculation.
+                                #[cfg(debug_assertions)]
+                                eprintln!("Failed to determine the number of constraints in a deployment - {error}");
+                                // Store the aborted transaction.
+                                aborted.push((transaction.clone(), error.to_string()));
+                                // Continue to the next transaction.
+                                continue 'outer;
+                            }
+                        };
+
+                        // Check that the number of constraints does not exceed the maximum.
+                        match num_constraints + total_constraints > N::BLOCK_DEPLOYMENT_LIMIT {
+                            // If the transaction does not exceed the block constraint limit, add the constraints to the total.
+                            false => {
+                                total_constraints += num_constraints;
+                            }
+                            // If the transaction exceeds the block constraint limit, abort the transaction.
+                            true => {
+                                // Store the aborted transaction.
+                                aborted.push((transaction.clone(), "Exceeds block constraint limit".to_string()));
+                                // Continue to the next transaction.
+                                continue 'outer;
+                            }
+                        }
 
                         // Check if the program has already been deployed in this block.
                         match deployments.contains(deployment.program_id()) {
