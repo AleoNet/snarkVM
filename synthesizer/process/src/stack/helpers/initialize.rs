@@ -28,6 +28,7 @@ impl<N: Network> Stack<N> {
             proving_keys: Default::default(),
             verifying_keys: Default::default(),
             number_of_calls: Default::default(),
+            finalize_costs: Default::default(),
             program_depth: 0,
         };
 
@@ -82,6 +83,10 @@ impl<N: Network> Stack<N> {
             );
             // Add the number of calls to the stack.
             stack.number_of_calls.insert(*function.name(), num_calls);
+
+            // Add the finalize cost to the stack.
+            let finalize_cost = cost_in_microcredits(&stack, function.name())?;
+            stack.finalize_costs.insert(*function.name(), finalize_cost);
         }
 
         // Return the stack.
