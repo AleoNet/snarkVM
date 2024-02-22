@@ -1665,9 +1665,76 @@ fn test_transactions_exceed_block_spend_limit() {
     assert_eq!(block.transactions().num_accepted(), num_transactions);
     assert_eq!(block.aborted_transaction_ids().len(), 1);
 
+    // Check that the next block is valid.
+    ledger.check_next_block(&block, rng).unwrap();
+
+    // Add the block.
+    ledger.advance_to_next_block(&block).unwrap();
+}
+
+#[test]
+fn test_exceed_block_deployment_limit() {
+    let rng = &mut TestRng::default();
+
+    // Initialize the test environment.
+    let crate::test_helpers::TestEnv { ledger, private_key, .. } = crate::test_helpers::sample_test_env(rng);
+
+    // Construct a program with 7 SHA3 hashes, which is just under the deployment spend limit.
+    let program = Program::from_str(
+        r"program test_max_deployment_limit_0.aleo;
+          function foo:
+          input r0 as [field; 20u32].private;
+          hash.sha3_256 r0 into r1 as field;",
+    )
+    .unwrap();
+
+    // Deploy the program.
+    let deployment = ledger.vm().deploy(&private_key, &program, None, 0, None, rng).unwrap();
+
+    // Get the number of constraints.
+    let num_constraints = deployment.deployment().unwrap().num_combined_constraints().unwrap();
+
+    println!("num_constraints: {num_constraints}");
+
+    // Construct the next block.
+    let block =
+        ledger.prepare_advance_to_next_beacon_block(&private_key, vec![], vec![], vec![deployment], rng).unwrap();
+
+    // Check that the next block is valid.
+    ledger.check_next_block(&block, rng).unwrap();
+
     // Add the block to the ledger.
     ledger.advance_to_next_block(&block).unwrap();
 
-    // Add the block.
+    // Construct enough deployment transactions to exceed the block deployment limit.
+    let mut transactions = Vec::new();
+    for i in 0..(<CurrentNetwork as Network>::BLOCK_DEPLOYMENT_LIMIT / num_constraints + 1) {
+        let program = Program::from_str(&format!(
+            r"program test_max_deployment_limit_{}.aleo;
+              function foo:
+              input r0 as [field; 20u32].private;
+              hash.sha3_256 r0 into r1 as field;",
+            i + 1
+        ))
+        .unwrap();
+
+        let deployment = ledger.vm().deploy(&private_key, &program, None, 0, None, rng).unwrap();
+        transactions.push(deployment)
+    }
+
+    // Get the number of transactions.
+    let num_transactions = transactions.len();
+
+    // Construct the next block.
+    let block = ledger.prepare_advance_to_next_beacon_block(&private_key, vec![], vec![], transactions, rng).unwrap();
+
+    // Check that all but one transaction is accepted.
+    assert_eq!(block.transactions().num_accepted(), num_transactions - 1);
+    assert_eq!(block.aborted_transaction_ids().len(), 1);
+
+    // Check that the next block is valid.
+    ledger.check_next_block(&block, rng).unwrap();
+
+    // Add the block to the ledger.
     ledger.advance_to_next_block(&block).unwrap();
 }
