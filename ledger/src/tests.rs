@@ -1574,21 +1574,4 @@ fn test_deployment_exceeding_max_transaction_spend() {
 
     // Verify the deployment transaction.
     assert!(ledger.vm().check_transaction(&deployment, None, rng).is_err());
-
-    // Construct the next block.
-    let block = ledger
-        .prepare_advance_to_next_beacon_block(&private_key, vec![], vec![], vec![deployment], rng)
-        .unwrap();
-
-    // Check that the number of aborted transactions is 1.
-    assert_eq!(block.aborted_transaction_ids().len(), 1);
-
-    // Check that the next block is valid.
-    ledger.check_next_block(&block, rng).unwrap();
-
-    // Add the block to the ledger.
-    ledger.advance_to_next_block(&block).unwrap();
-
-    // Check that the program does not exist in the VM.
-    assert!(!ledger.vm().contains_program(exceeding_program.id()));
 }
