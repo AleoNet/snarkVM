@@ -60,21 +60,11 @@ pub fn execution_cost<N: Network>(process: &Process<N>, execution: &Execution<N>
     // Compute the storage cost in microcredits.
     let storage_cost = execution.size_in_bytes()?;
 
-    // Compute the finalize cost in microcredits.
-    let mut finalize_cost = 0u64;
-    // Iterate over the transitions to accumulate the finalize cost.
-    for transition in execution.transitions() {
-        // Retrieve the program ID and function name.
-        let (program_id, function_name) = (transition.program_id(), transition.function_name());
-        // Retrieve the finalize cost.
-        let cost = cost_in_microcredits(process.get_stack(program_id)?, function_name)?;
-        // Accumulate the finalize cost.
-        if cost > 0 {
-            finalize_cost = finalize_cost
-                .checked_add(cost)
-                .ok_or(anyhow!("The finalize cost computation overflowed on '{program_id}/{function_name}'"))?;
-        }
-    }
+    // Get the root transition.
+    let transition = execution.peek()?;
+
+    // Get the finalize cost for the root transition.
+    let finalize_cost = process.get_stack(transition.program_id())?.get_finalize_cost(transition.function_name())?;
 
     // Compute the total cost in microcredits.
     let total_cost = storage_cost
@@ -370,10 +360,19 @@ pub fn cost_in_microcredits<N: Network>(stack: &Stack<N>, function_name: &Identi
         Command::Position(_) => Ok(100),
     };
 
+    // Get the cost of finalizing all futures.
+    let mut future_cost = 0u64;
+    for input in finalize.inputs() {
+        if let FinalizeType::Future(future) = input.finalize_type() {
+            // Get the external stack for the future.
+            let stack = stack.get_external_stack(future.program_id())?;
+            // Accumulate the finalize cost of the future.
+            future_cost += cost_in_microcredits(stack, future.resource())?;
+        }
+    }
+
     // Aggregate the cost of all commands in the program.
-    finalize
-        .commands()
-        .iter()
-        .map(cost)
-        .try_fold(0u64, |acc, res| res.and_then(|x| acc.checked_add(x).ok_or(anyhow!("Finalize cost overflowed"))))
+    finalize.commands().iter().map(cost).try_fold(future_cost, |acc, res| {
+        res.and_then(|x| acc.checked_add(x).ok_or(anyhow!("Finalize cost overflowed")))
+    })
 }
