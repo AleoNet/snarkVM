@@ -45,7 +45,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         let fee = match is_fee_required || is_priority_fee_declared {
             true => {
                 // Compute the minimum execution cost.
-                let (minimum_execution_cost, (_, _)) = process::execution_cost(&self.process().read(), &execution)?;
+                let (minimum_execution_cost, (_, _)) = execution_cost(&self.process().read(), &execution)?;
                 // Compute the execution ID.
                 let execution_id = execution.to_execution_id()?;
                 // Authorize the fee.

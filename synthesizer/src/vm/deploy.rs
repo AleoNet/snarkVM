@@ -40,7 +40,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         let owner = ProgramOwner::new(private_key, deployment_id, rng)?;
 
         // Compute the minimum deployment cost.
-        let (minimum_deployment_cost, _) = process::deployment_cost(&deployment)?;
+        let (minimum_deployment_cost, _) = deployment_cost(&deployment)?;
         // Authorize the fee.
         let fee_authorization = match fee_record {
             Some(record) => self.authorize_fee_private(

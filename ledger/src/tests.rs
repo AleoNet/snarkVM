@@ -28,8 +28,7 @@ use indexmap::IndexMap;
 use ledger_block::{ConfirmedTransaction, Rejected, Transaction};
 use ledger_committee::{Committee, MIN_VALIDATOR_STAKE};
 use ledger_store::{helpers::memory::ConsensusMemory, ConsensusStore};
-use synthesizer::{program::Program, Stack, vm::VM};
-use synthesizer::prelude::cost_in_microcredits;
+use synthesizer::{prelude::cost_in_microcredits, program::Program, vm::VM, Stack};
 
 #[test]
 fn test_load() {
@@ -1422,7 +1421,7 @@ fn test_max_committee_limit_with_bonds() {
                 Value::<CurrentNetwork>::from_str(&first_address.to_string()).unwrap(),
                 Value::<CurrentNetwork>::from_str(&format!("{MIN_VALIDATOR_STAKE}u64")).unwrap(),
             ]
-                .iter(),
+            .iter(),
             None,
             0,
             None,
@@ -1465,7 +1464,7 @@ fn test_max_committee_limit_with_bonds() {
                 Value::<CurrentNetwork>::from_str(&second_address.to_string()).unwrap(),
                 Value::<CurrentNetwork>::from_str(&format!("{MIN_VALIDATOR_STAKE}u64")).unwrap(),
             ]
-                .iter(),
+            .iter(),
             None,
             0,
             None,
@@ -1524,7 +1523,7 @@ fn test_deployment_exceeding_max_transaction_spend() {
 
           finalize foo:{finalize_body}",
         ))
-            .unwrap();
+        .unwrap();
 
         // Initialize a stack for the program.
         let stack = Stack::<CurrentNetwork>::new(&ledger.vm().process().read(), &program).unwrap();
@@ -1556,9 +1555,8 @@ fn test_deployment_exceeding_max_transaction_spend() {
     assert!(ledger.vm().check_transaction(&deployment, None, rng).is_ok());
 
     // Construct the next block.
-    let block = ledger
-        .prepare_advance_to_next_beacon_block(&private_key, vec![], vec![], vec![deployment], rng)
-        .unwrap();
+    let block =
+        ledger.prepare_advance_to_next_beacon_block(&private_key, vec![], vec![], vec![deployment], rng).unwrap();
 
     // Check that the next block is valid.
     ledger.check_next_block(&block, rng).unwrap();
