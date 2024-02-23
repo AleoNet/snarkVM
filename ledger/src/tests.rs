@@ -28,7 +28,7 @@ use indexmap::IndexMap;
 use ledger_block::{ConfirmedTransaction, Rejected, Transaction};
 use ledger_committee::{Committee, MIN_VALIDATOR_STAKE};
 use ledger_store::{helpers::memory::ConsensusMemory, ConsensusStore};
-use synthesizer::{prelude::cost_in_microcredits, program::Program, vm::VM, Stack};
+use synthesizer::{program::Program, vm::VM, Stack};
 
 #[test]
 fn test_load() {
