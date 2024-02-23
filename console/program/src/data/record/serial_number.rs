@@ -16,7 +16,7 @@ use super::*;
 
 impl<N: Network, Private: Visibility> Record<N, Private> {
     /// A helper method to derive the serial number from the private key and commitment.
-    pub fn serial_number(private_key: PrivateKey<N>, commitment: Field<N>) -> Result<Field<N>> {
+    pub fn serial_number(private_key: &PrivateKey<N>, commitment: Field<N>) -> Result<Field<N>> {
         // Compute the generator `H` as `HashToGroup(commitment)`.
         let h = N::hash_to_group_psd2(&[N::serial_number_domain(), commitment])?;
         // Compute `gamma` as `sk_sig * H`.

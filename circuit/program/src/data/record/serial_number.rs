@@ -16,7 +16,7 @@ use super::*;
 
 impl<A: Aleo, Private: Visibility<A>> Record<A, Private> {
     /// A helper method to derive the serial number from the private key and commitment.
-    pub fn serial_number(private_key: PrivateKey<A>, commitment: Field<A>) -> Field<A> {
+    pub fn serial_number(private_key: &PrivateKey<A>, commitment: Field<A>) -> Field<A> {
         // Compute the generator `H` as `HashToGroup(commitment)`.
         let h = A::hash_to_group_psd2(&[A::serial_number_domain(), commitment.clone()]);
         // Compute `gamma` as `sk_sig * H`.

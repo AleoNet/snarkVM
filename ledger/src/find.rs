@@ -90,7 +90,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                     })
                 }),
                 RecordsFilter::SlowSpent(private_key) => {
-                    Record::<N, Plaintext<N>>::serial_number(private_key, commitment).and_then(|serial_number| {
+                    Record::<N, Plaintext<N>>::serial_number(&private_key, commitment).and_then(|serial_number| {
                         // Determine if the record is spent.
                         self.contains_serial_number(&serial_number).map(|is_spent| match is_spent {
                             true => Some(commitment),
@@ -99,7 +99,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                     })
                 }
                 RecordsFilter::SlowUnspent(private_key) => {
-                    Record::<N, Plaintext<N>>::serial_number(private_key, commitment).and_then(|serial_number| {
+                    Record::<N, Plaintext<N>>::serial_number(&private_key, commitment).and_then(|serial_number| {
                         // Determine if the record is spent.
                         self.contains_serial_number(&serial_number).map(|is_spent| match is_spent {
                             true => None,
