@@ -367,7 +367,9 @@ pub fn cost_in_microcredits<N: Network>(stack: &Stack<N>, function_name: &Identi
             // Get the external stack for the future.
             let stack = stack.get_external_stack(future.program_id())?;
             // Accumulate the finalize cost of the future.
-            future_cost += stack.get_finalize_cost(future.resource())?;
+            future_cost = future_cost
+                .checked_add(stack.get_finalize_cost(future.resource())?)
+                .ok_or(anyhow!("Finalize cost overflowed"))?;
         }
     }
 

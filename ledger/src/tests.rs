@@ -1525,15 +1525,9 @@ fn test_deployment_exceeding_max_transaction_spend() {
         ))
         .unwrap();
 
-        // Initialize a stack for the program.
-        let stack = Stack::<CurrentNetwork>::new(&ledger.vm().process().read(), &program).unwrap();
-
-        // Check the finalize cost.
-        let finalize_cost = cost_in_microcredits(&stack, &Identifier::from_str("foo").unwrap()).unwrap();
-
-        // If the finalize cost exceeds the maximum transaction spend, assign the program to the exceeding program and break.
-        // Otherwise, assign the program to the allowed program and continue.
-        if finalize_cost > <CurrentNetwork as Network>::TRANSACTION_SPEND_LIMIT {
+        // Attempt to initialize a `Stack` for the program.
+        // If this fails, then by `Stack::initialize` the finalize cost exceeds the `TRANSACTION_SPEND_LIMIT`.
+        if Stack::<CurrentNetwork>::new(&ledger.vm().process().read(), &program).is_err() {
             exceeding_program = Some(program);
             break;
         } else {
@@ -1567,9 +1561,9 @@ fn test_deployment_exceeding_max_transaction_spend() {
     // Check that the program exists in the VM.
     assert!(ledger.vm().contains_program(allowed_program.id()));
 
-    // Deploy the exceeding program.
-    let deployment = ledger.vm().deploy(&private_key, &exceeding_program, None, 0, None, rng).unwrap();
+    // Attempt to deploy the exceeding program.
+    let result = ledger.vm().deploy(&private_key, &exceeding_program, None, 0, None, rng);
 
-    // Verify the deployment transaction.
-    assert!(ledger.vm().check_transaction(&deployment, None, rng).is_err());
+    // Check that the deployment failed.
+    assert!(result.is_err());
 }
