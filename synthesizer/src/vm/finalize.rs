@@ -1312,7 +1312,7 @@ finalize transfer_public:
 
         // Prepare the additional fee.
         let view_key = ViewKey::<CurrentNetwork>::try_from(caller_private_key).unwrap();
-        let credits = Some(unspent_records.pop().unwrap().decrypt(&view_key).unwrap());
+        let credits = unspent_records.pop().and_then(|record| record.decrypt(&view_key).ok());
 
         // Execute.
         let transaction = vm
