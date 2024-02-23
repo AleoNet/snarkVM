@@ -1662,7 +1662,7 @@ fn test_transactions_exceed_block_spend_limit() {
     let block = ledger.prepare_advance_to_next_beacon_block(&private_key, vec![], vec![], transactions, rng).unwrap();
 
     // Check that all but one transaction is accepted.
-    assert_eq!(block.transactions().num_accepted(), num_transactions);
+    assert_eq!(block.transactions().num_accepted(), num_transactions - 1);
     assert_eq!(block.aborted_transaction_ids().len(), 1);
 
     // Check that the next block is valid.
