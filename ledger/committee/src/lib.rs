@@ -83,6 +83,11 @@ impl<N: Network> Committee<N> {
         // Return the new committee.
         Ok(Self { starting_round, members, total_stake })
     }
+
+    /// Returns the committee ID.
+    pub fn to_id(&self) -> Result<Field<N>> {
+        Ok(N::hash_bhp1024(&self.to_bytes_le()?.to_bits_le())?.into())
+    }
 }
 
 impl<N: Network> Committee<N> {
