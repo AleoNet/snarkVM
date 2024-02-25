@@ -14,11 +14,9 @@
 
 use super::*;
 
-use rand::{rngs::StdRng, SeedableRng};
-
 impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
     /// Checks the given block is valid next block.
-    pub fn check_next_block<R: CryptoRng + Rng>(&self, block: &Block<N>, rng: &mut R) -> Result<()> {
+    pub fn check_next_block<R: CryptoRng + Rng>(&self, block: &Block<N>, _rng: &mut R) -> Result<()> {
         let height = block.height();
 
         // Ensure the block hash does not already exist.
@@ -37,14 +35,6 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                 bail!("Solution ID {solution_id} already exists in the ledger");
             }
         }
-
-        // Ensure each transaction is well-formed and unique.
-        let transactions = block.transactions();
-        let rngs = (0..transactions.len()).map(|_| StdRng::from_seed(rng.gen())).collect::<Vec<_>>();
-        cfg_iter!(transactions).zip(rngs).try_for_each(|(transaction, mut rng)| {
-            self.check_transaction_basic(transaction, transaction.to_rejected_id()?, &mut rng)
-                .map_err(|e| anyhow!("Invalid transaction found in the transactions list: {e}"))
-        })?;
 
         // TODO (howardwu): Remove this after moving the total supply into credits.aleo.
         {

@@ -15,6 +15,7 @@
 use super::*;
 
 use ledger_committee::{MAX_DELEGATORS, MIN_DELEGATOR_STAKE, MIN_VALIDATOR_STAKE};
+use rand::{rngs::StdRng, SeedableRng};
 
 impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// Speculates on the given list of transactions in the VM.
@@ -161,6 +162,18 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         Vec<(Transaction<N>, String)>,
         Vec<FinalizeOperation<N>>,
     )> {
+        // Ensure each transaction is well-formed.
+        let rng = &mut rand::thread_rng();
+        let rngs = (0..transactions.len()).map(|_| StdRng::from_seed(rng.gen())).collect::<Vec<_>>();
+        let transactions = transactions.collect::<Vec<_>>();
+        let check_fail_reasons = cfg_iter!(transactions)
+            .zip(rngs)
+            .flat_map(|(transaction, mut rng)| match self.check_transaction(transaction, None, &mut rng) {
+                Ok(_) => None,
+                Err(e) => Some((transaction.id(), format!("Check failed - {e}"))),
+            })
+            .collect::<IndexMap<_, _>>();
+
         // Acquire the atomic lock, which is needed to ensure this function is not called concurrently
         // with other `atomic_finalize!` macro calls, which will cause a `bail!` to be triggered erroneously.
         // Note: This lock must be held for the entire scope of the call to `atomic_finalize!`.
@@ -245,6 +258,14 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
             // Finalize the transactions.
             'outer: for transaction in transactions {
+                // Ensure each transaction is well-formed.
+                if let Some(fail_reason) = check_fail_reasons.get(&transaction.id()) {
+                    // Store the aborted transaction.
+                    aborted.push((transaction.clone(), fail_reason.clone()));
+                    // Continue to the next transaction.
+                    continue 'outer;
+                }
+
                 // Ensure the number of confirmed transactions does not exceed the maximum.
                 // Upon reaching the maximum number of confirmed transactions, all remaining transactions are aborted.
                 if confirmed.len() >= Self::MAXIMUM_CONFIRMED_TRANSACTIONS {
