@@ -18,6 +18,7 @@
 mod bytes;
 mod serialize;
 mod string;
+mod to_id;
 
 #[cfg(any(test, feature = "prop-tests"))]
 pub mod prop_tests;
@@ -41,6 +42,8 @@ pub const MAX_DELEGATORS: u32 = 100_000u32;
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct Committee<N: Network> {
+    /// The committee ID, defined as the hash of the starting round, members, and total stake.
+    id: Field<N>,
     /// The starting round number for this committee.
     starting_round: u64,
     /// A map of `address` to `(stake, is_open)` state.
@@ -78,19 +81,21 @@ impl<N: Network> Committee<N> {
         );
         // Compute the total stake of the committee for this round.
         let total_stake = Self::compute_total_stake(&members)?;
+        // Compute the committee ID.
+        let id = Self::compute_committee_id(starting_round, &members, total_stake)?;
         #[cfg(feature = "metrics")]
         metrics::gauge(metrics::committee::TOTAL_STAKE, total_stake as f64);
         // Return the new committee.
-        Ok(Self { starting_round, members, total_stake })
-    }
-
-    /// Returns the committee ID.
-    pub fn to_id(&self) -> Result<Field<N>> {
-        Ok(N::hash_bhp1024(&self.to_bytes_le()?.to_bits_le())?.into())
+        Ok(Self { id, starting_round, members, total_stake })
     }
 }
 
 impl<N: Network> Committee<N> {
+    /// Returns the committee ID.
+    pub const fn id(&self) -> Field<N> {
+        self.id
+    }
+
     /// Returns the starting round number for this committee.
     pub const fn starting_round(&self) -> u64 {
         self.starting_round
