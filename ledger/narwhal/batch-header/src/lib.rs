@@ -32,7 +32,7 @@ use narwhal_transmission_id::TransmissionID;
 #[derive(Clone, PartialEq, Eq)]
 pub struct BatchHeader<N: Network> {
     /// The batch ID, defined as the hash of the author, round number, timestamp, transmission IDs,
-    /// previous batch certificate IDs, and last election certificate IDs.
+    /// committee ID, previous batch certificate IDs, and last election certificate IDs.
     batch_id: Field<N>,
     /// The author of the batch.
     author: Address<N>,
@@ -40,6 +40,8 @@ pub struct BatchHeader<N: Network> {
     round: u64,
     /// The timestamp.
     timestamp: i64,
+    /// The committee ID.
+    committee_id: Field<N>,
     /// The set of `transmission IDs`.
     transmission_ids: IndexSet<TransmissionID<N>>,
     /// The batch certificate IDs of the previous round.
@@ -66,6 +68,7 @@ impl<N: Network> BatchHeader<N> {
         private_key: &PrivateKey<N>,
         round: u64,
         timestamp: i64,
+        committee_id: Field<N>,
         transmission_ids: IndexSet<TransmissionID<N>>,
         previous_certificate_ids: IndexSet<Field<N>>,
         rng: &mut R,
@@ -95,11 +98,27 @@ impl<N: Network> BatchHeader<N> {
         // Retrieve the address.
         let author = Address::try_from(private_key)?;
         // Compute the batch ID.
-        let batch_id = Self::compute_batch_id(author, round, timestamp, &transmission_ids, &previous_certificate_ids)?;
+        let batch_id = Self::compute_batch_id(
+            author,
+            round,
+            timestamp,
+            committee_id,
+            &transmission_ids,
+            &previous_certificate_ids,
+        )?;
         // Sign the preimage.
         let signature = private_key.sign(&[batch_id], rng)?;
         // Return the batch header.
-        Ok(Self { author, batch_id, round, timestamp, transmission_ids, previous_certificate_ids, signature })
+        Ok(Self {
+            author,
+            batch_id,
+            round,
+            timestamp,
+            committee_id,
+            transmission_ids,
+            previous_certificate_ids,
+            signature,
+        })
     }
 
     /// Initializes a new batch header.
@@ -107,6 +126,7 @@ impl<N: Network> BatchHeader<N> {
         author: Address<N>,
         round: u64,
         timestamp: i64,
+        committee_id: Field<N>,
         transmission_ids: IndexSet<TransmissionID<N>>,
         previous_certificate_ids: IndexSet<Field<N>>,
         signature: Signature<N>,
@@ -134,13 +154,29 @@ impl<N: Network> BatchHeader<N> {
         );
 
         // Compute the batch ID.
-        let batch_id = Self::compute_batch_id(author, round, timestamp, &transmission_ids, &previous_certificate_ids)?;
+        let batch_id = Self::compute_batch_id(
+            author,
+            round,
+            timestamp,
+            committee_id,
+            &transmission_ids,
+            &previous_certificate_ids,
+        )?;
         // Verify the signature.
         if !signature.verify(&author, &[batch_id]) {
             bail!("Invalid signature for the batch header");
         }
         // Return the batch header.
-        Ok(Self { author, batch_id, round, timestamp, transmission_ids, previous_certificate_ids, signature })
+        Ok(Self {
+            author,
+            batch_id,
+            round,
+            timestamp,
+            committee_id,
+            transmission_ids,
+            previous_certificate_ids,
+            signature,
+        })
     }
 }
 
@@ -163,6 +199,11 @@ impl<N: Network> BatchHeader<N> {
     /// Returns the timestamp.
     pub const fn timestamp(&self) -> i64 {
         self.timestamp
+    }
+
+    /// Returns the committee ID.
+    pub const fn committee_id(&self) -> Field<N> {
+        self.committee_id
     }
 
     /// Returns the transmission IDs.
@@ -228,13 +269,16 @@ pub mod test_helpers {
     ) -> BatchHeader<CurrentNetwork> {
         // Sample a private key.
         let private_key = PrivateKey::new(rng).unwrap();
+        // Sample the committee ID.
+        let committee_id = Field::<CurrentNetwork>::rand(rng);
         // Sample transmission IDs.
         let transmission_ids =
             narwhal_transmission_id::test_helpers::sample_transmission_ids(rng).into_iter().collect::<IndexSet<_>>();
         // Checkpoint the timestamp for the batch.
         let timestamp = OffsetDateTime::now_utc().unix_timestamp();
         // Return the batch header.
-        BatchHeader::new(&private_key, round, timestamp, transmission_ids, previous_certificate_ids, rng).unwrap()
+        BatchHeader::new(&private_key, round, timestamp, committee_id, transmission_ids, previous_certificate_ids, rng)
+            .unwrap()
     }
 
     /// Returns a list of sample batch headers, sampled at random.
