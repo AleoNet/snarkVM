@@ -233,6 +233,28 @@ impl<N: Network> Block<N> {
             Authority::Quorum(subdag) => subdag.timestamp(previous_committee_lookback),
         };
 
+        // Check that the committee IDs are correct.
+        if let Authority::Quorum(subdag) = &self.authority {
+            // Check that the committee ID of the leader certificate is correct.
+            ensure!(
+                subdag.leader_certificate().committee_id() == current_committee_lookback.id(),
+                "Leader certificate has an incorrect committee ID"
+            );
+
+            // Check that all all certificates on each round have the same committee ID.
+            for (round, certificates) in subdag.iter() {
+                // Check that every certificate for a given round shares the same committee ID.
+                let expected_committee_id = certificates
+                    .first()
+                    .map(|certificate| certificate.committee_id())
+                    .ok_or(anyhow!("No certificates found for round {round}"))?;
+                ensure!(
+                    certificates.iter().all(|certificate| certificate.committee_id() == expected_committee_id),
+                    "All certificates on round {round} do not have the same committee ID",
+                );
+            }
+        }
+
         // Return success.
         Ok((
             expected_round,

@@ -121,6 +121,11 @@ impl<N: Network> BatchCertificate<N> {
         self.batch_header().round()
     }
 
+    /// Returns the committee ID.
+    pub const fn committee_id(&self) -> Field<N> {
+        self.batch_header().committee_id()
+    }
+
     /// Returns the transmission IDs.
     pub const fn transmission_ids(&self) -> &IndexSet<TransmissionID<N>> {
         self.batch_header().transmission_ids()
