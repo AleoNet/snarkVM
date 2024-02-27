@@ -33,7 +33,7 @@ outputs:
     branch_with_future.aleo/baz:
       outputs:
       - '{"type":"future","id":"1843413419196646420029804437148613039974077777445552833060053892958356613072field","value":"{\n  program_id: branch_with_future.aleo,\n  function_name: baz,\n  arguments: [\n    false,\n    false,\n    {\n      program_id: child.aleo,\n      function_name: foo,\n      arguments: [\n        true,\n        true\n      ]\n    },\n    {\n      program_id: child.aleo,\n      function_name: foo,\n      arguments: [\n        true,\n        true\n      ]\n    }\n  \n  ]\n}"}'
-  speculate: the execution was rejected
+  speculate: the execution was accepted
   add_next_block: succeeded.
 - verified: true
   execute:
