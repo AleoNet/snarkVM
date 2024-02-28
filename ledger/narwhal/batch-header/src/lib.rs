@@ -52,7 +52,7 @@ impl<N: Network> BatchHeader<N> {
     /// The maximum number of certificates in a batch.
     pub const MAX_CERTIFICATES: u16 = 200;
     /// The maximum number of rounds to store before garbage collecting.
-    pub const MAX_GC_ROUNDS: usize = 100;
+    pub const MAX_GC_ROUNDS: usize = 400;
     /// The maximum number of transmissions in a batch.
     /// Note: This limit is set to 50 as part of safety measures to prevent DoS attacks.
     /// This limit can be increased in the future as performance improves. Alternatively,
