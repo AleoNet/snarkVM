@@ -102,7 +102,7 @@ impl<N: Network> Parser for Record<N, Plaintext<N>> {
         // Parse the '}' from the string.
         let (string, _) = tag("}")(string)?;
         // Output the record.
-        Ok((string, Record { owner, data: IndexMap::from_iter(entries.into_iter()), nonce }))
+        Ok((string, Record { owner, data: IndexMap::from_iter(entries), nonce }))
     }
 }
 
@@ -178,9 +178,9 @@ impl<N: Network> Record<N, Plaintext<N>> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_console_network::Testnet3;
+    use snarkvm_console_network::MainnetV0;
 
-    type CurrentNetwork = Testnet3;
+    type CurrentNetwork = MainnetV0;
 
     #[test]
     fn test_parse_without_data_entries() -> Result<()> {

@@ -257,9 +257,9 @@ impl<N: Network> Output<N> {
 #[cfg(test)]
 pub(crate) mod test_helpers {
     use super::*;
-    use console::{network::Testnet3, program::Literal};
+    use console::{network::MainnetV0, program::Literal};
 
-    type CurrentNetwork = Testnet3;
+    type CurrentNetwork = MainnetV0;
 
     /// Sample the transition outputs.
     pub(crate) fn sample_outputs() -> Vec<(<CurrentNetwork as Network>::TransitionID, Output<CurrentNetwork>)> {
@@ -277,7 +277,8 @@ pub(crate) mod test_helpers {
         let plaintext = Plaintext::Literal(Literal::Field(Uniform::rand(rng)), Default::default());
         let plaintext_hash = CurrentNetwork::hash_bhp1024(&plaintext.to_bits_le()).unwrap();
         // Sample a random ciphertext.
-        let ciphertext = Ciphertext::from_fields(&vec![Uniform::rand(rng); 10]).unwrap();
+        let fields: Vec<_> = (0..10).map(|_| Uniform::rand(rng)).collect();
+        let ciphertext = Ciphertext::from_fields(&fields).unwrap();
         let ciphertext_hash = CurrentNetwork::hash_bhp1024(&ciphertext.to_bits_le()).unwrap();
         // Sample a random record.
         let randomizer = Uniform::rand(rng);

@@ -38,7 +38,7 @@ impl<E: Environment> Not for &Boolean<E> {
             // Public and private cases.
             // Note: We directly instantiate a public variable to correctly represent a boolean in a linear combination.
             // For more information, see `LinearCombination::is_boolean_type`.
-            false => Boolean(Variable::Public(0, Rc::new(E::BaseField::one())) - &self.0),
+            false => Boolean(Variable::Public(Rc::new((0, E::BaseField::one()))) - &self.0),
         }
     }
 }

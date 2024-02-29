@@ -144,7 +144,7 @@ impl<E: Environment, I: IntegerType> Integer<E, I> {
             Boolean::assert_bits_are_zero(&z_1_upper_bits);
 
             // Check that `z2` is zero.
-            E::assert_eq(&z2, E::zero());
+            E::assert_eq(z2, E::zero());
 
             // Return the product of `self` and `other`.
             product

@@ -145,6 +145,11 @@ impl<'de, T: FromBytes> FromBytesDeserializer<T> {
             false => (size_b, size_a),
         };
 
+        // Ensure 'size_b' is within bounds.
+        if size_b > i32::MAX as usize {
+            return Err(D::Error::custom(format!("size_b ({size_b}) exceeds maximum")));
+        }
+
         // Reserve a new `Vec` with the larger size capacity.
         let mut buffer = Vec::with_capacity(size_b);
 

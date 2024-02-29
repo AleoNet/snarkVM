@@ -122,11 +122,10 @@ impl<N: Network> CoinbasePuzzle<N> {
 
         let product_evaluations = {
             let polynomial_evaluations = pk.product_domain.in_order_fft_with_pc(&polynomial, &pk.fft_precomputation);
-            let product_evaluations = pk.product_domain.mul_polynomials_in_evaluation_domain(
+            pk.product_domain.mul_polynomials_in_evaluation_domain(
                 polynomial_evaluations,
                 &epoch_challenge.epoch_polynomial_evaluations().evaluations,
-            );
-            product_evaluations
+            )?
         };
         let (commitment, _rand) = KZG10::commit_lagrange(&pk.lagrange_basis(), &product_evaluations, None, None)?;
 
@@ -171,11 +170,11 @@ impl<N: Network> CoinbasePuzzle<N> {
         ensure!(!solutions.is_empty(), "There are no solutions to verify for the coinbase puzzle");
 
         // Ensure the number of partial solutions does not exceed `MAX_PROVER_SOLUTIONS`.
-        if solutions.len() > N::MAX_PROVER_SOLUTIONS {
+        if solutions.len() > N::MAX_SOLUTIONS {
             bail!(
                 "The solutions exceed the allowed number of partial solutions. ({} > {})",
                 solutions.len(),
-                N::MAX_PROVER_SOLUTIONS
+                N::MAX_SOLUTIONS
             );
         }
 

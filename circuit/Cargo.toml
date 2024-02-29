@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-circuit"
-version = "0.16.6"
+version = "0.16.19"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Circuits for a decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -25,35 +25,35 @@ edition = "2021"
 
 [dependencies.snarkvm-circuit-account]
 path = "./account"
-version = "=0.16.6"
+version = "=0.16.19"
 
 [dependencies.snarkvm-circuit-algorithms]
 path = "./algorithms"
-version = "=0.16.6"
+version = "=0.16.19"
 
 [dependencies.snarkvm-circuit-collections]
 path = "./collections"
-version = "=0.16.6"
+version = "=0.16.19"
 
 [dependencies.snarkvm-circuit-environment]
 path = "./environment"
-version = "=0.16.6"
+version = "=0.16.19"
 
 [dependencies.snarkvm-circuit-network]
 path = "./network"
-version = "=0.16.6"
+version = "=0.16.19"
 
 [dependencies.snarkvm-circuit-program]
 path = "./program"
-version = "=0.16.6"
+version = "=0.16.19"
 
 [dependencies.snarkvm-circuit-types]
 path = "./types"
-version = "=0.16.6"
+version = "=0.16.19"
 
 [dependencies.snarkvm-console-types-field]
 path = "../console/types/field"
-version = "0.16.6"
+version = "0.16.19"
 
 [dependencies.serde_json]
 version = "1.0"
@@ -63,20 +63,20 @@ version = "1.0"
 
 [dev-dependencies.snarkvm-console-types-integers]
 path = "../console/types/integers"
-version = "=0.16.6"
+version = "=0.16.19"
 
 [dev-dependencies.snarkvm-console-types-field]
 path = "../console/types/field"
-version = "0.16.6"
+version = "0.16.19"
 
 [dev-dependencies.snarkvm-console-types-group]
 path = "../console/types/group"
-version = "=0.16.6"
+version = "=0.16.19"
 
 [dev-dependencies.snarkvm-console-types-scalar]
 path = "../console/types/scalar"
-version = "=0.16.6"
+version = "=0.16.19"
 
 [dev-dependencies.snarkvm-console-types-address]
 path = "../console/types/address"
-version = "=0.16.6"
+version = "=0.16.19"

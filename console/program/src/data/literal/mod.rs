@@ -24,11 +24,12 @@ mod parse;
 mod sample;
 mod serialize;
 mod size_in_bits;
+mod size_in_bytes;
 mod to_bits;
 mod to_type;
 mod variant;
 
-use crate::LiteralType;
+use crate::{LiteralType, ProgramID};
 use snarkvm_console_account::{ComputeKey, PrivateKey, Signature};
 use snarkvm_console_network::Network;
 use snarkvm_console_types::{prelude::*, Boolean};

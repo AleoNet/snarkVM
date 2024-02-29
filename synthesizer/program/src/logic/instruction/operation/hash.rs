@@ -107,7 +107,10 @@ fn check_number_of_operands(variant: u8, opcode: Opcode, num_operands: usize) ->
 fn is_valid_destination_type<N: Network>(destination_type: &PlaintextType<N>) -> bool {
     !matches!(
         destination_type,
-        PlaintextType::Literal(LiteralType::Boolean) | PlaintextType::Literal(LiteralType::String)
+        PlaintextType::Literal(LiteralType::Boolean)
+            | PlaintextType::Literal(LiteralType::String)
+            | PlaintextType::Struct(..)
+            | PlaintextType::Array(..)
     )
 }
 
@@ -494,9 +497,9 @@ impl<N: Network, const VARIANT: u8> ToBytes for HashInstruction<N, VARIANT> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use console::network::Testnet3;
+    use console::network::MainnetV0;
 
-    type CurrentNetwork = Testnet3;
+    type CurrentNetwork = MainnetV0;
 
     /// **Attention**: When changing this, also update in `tests/instruction/hash.rs`.
     fn valid_destination_types<N: Network>() -> &'static [PlaintextType<N>] {

@@ -27,7 +27,7 @@ pub const fn block_reward(total_supply: u64, block_time: u16, coinbase_reward: u
     // Compute the expected block height at year 1.
     let block_height_at_year_1 = block_height_at_year(block_time, 1);
     // Compute the annual reward: (0.05 * S).
-    let annual_reward = (total_supply / 1000) * 50;
+    let annual_reward = total_supply / 20;
     // Compute the block reward: (0.05 * S) / H_Y1.
     let block_reward = annual_reward / block_height_at_year_1 as u64;
     // Return the sum of the block reward, coinbase reward, and transaction fees.
@@ -226,9 +226,9 @@ fn retarget(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use console::network::{prelude::*, Testnet3};
+    use console::network::{prelude::*, MainnetV0};
 
-    type CurrentNetwork = Testnet3;
+    type CurrentNetwork = MainnetV0;
 
     const ITERATIONS: u32 = 1000;
 

@@ -34,6 +34,7 @@ impl<'de, N: Network> Deserialize<'de> for Subdag<N> {
         match deserializer.is_human_readable() {
             true => {
                 let mut value = serde_json::Value::deserialize(deserializer)?;
+
                 Ok(Self::from(DeserializeExt::take_from_value::<D>(&mut value, "subdag")?)
                     .map_err(de::Error::custom)?)
             }

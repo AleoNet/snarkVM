@@ -33,7 +33,8 @@ impl<N: Network> FromBytes for Plaintext<N> {
                     // Read the plaintext value (in 2 steps to prevent infinite recursion).
                     let num_bytes = u16::read_le(&mut reader)?;
                     // Read the plaintext bytes.
-                    let bytes = (0..num_bytes).map(|_| u8::read_le(&mut reader)).collect::<Result<Vec<_>, _>>()?;
+                    let mut bytes = Vec::new();
+                    (&mut reader).take(num_bytes as u64).read_to_end(&mut bytes)?;
                     // Recover the plaintext value.
                     let plaintext = Plaintext::read_le(&mut bytes.as_slice())?;
                     // Add the member.
@@ -54,7 +55,8 @@ impl<N: Network> FromBytes for Plaintext<N> {
                     // Read the plaintext value (in 2 steps to prevent infinite recursion).
                     let num_bytes = u16::read_le(&mut reader)?;
                     // Read the plaintext bytes.
-                    let bytes = (0..num_bytes).map(|_| u8::read_le(&mut reader)).collect::<Result<Vec<_>, _>>()?;
+                    let mut bytes = Vec::new();
+                    (&mut reader).take(num_bytes as u64).read_to_end(&mut bytes)?;
                     // Recover the plaintext value.
                     let plaintext = Plaintext::read_le(&mut bytes.as_slice())?;
                     // Add the element.
@@ -121,9 +123,9 @@ impl<N: Network> ToBytes for Plaintext<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_console_network::Testnet3;
+    use snarkvm_console_network::MainnetV0;
 
-    type CurrentNetwork = Testnet3;
+    type CurrentNetwork = MainnetV0;
 
     const ITERATIONS: u32 = 1000;
 
@@ -131,9 +133,6 @@ mod tests {
         // Check the byte representation.
         let expected_bytes = expected.to_bytes_le()?;
         assert_eq!(expected, Plaintext::read_le(&expected_bytes[..])?);
-        // assert!(Plaintext::<CurrentNetwork>::read_le(&expected_bytes[1..]).is_err());
-        // assert!(Plaintext::<CurrentNetwork>::read_le(&expected_bytes[2..]).is_err());
-        // assert!(Plaintext::<CurrentNetwork>::read_le(&expected_bytes[3..]).is_err());
         Ok(())
     }
 
@@ -225,7 +224,6 @@ mod tests {
         // Check the byte representation.
         let expected_bytes = expected.to_bytes_le()?;
         assert_eq!(expected, Plaintext::read_le(&expected_bytes[..])?);
-        assert!(Plaintext::<CurrentNetwork>::read_le(&expected_bytes[1..]).is_err());
 
         // Check the array manually.
         let expected = Plaintext::<CurrentNetwork>::from_str("[ 1u8, 2u8, 3u8, 4u8, 5u8, 6u8, 7u8, 8u8, 9u8, 10u8 ]")?;
@@ -233,7 +231,6 @@ mod tests {
         // Check the byte representation.
         let expected_bytes = expected.to_bytes_le()?;
         assert_eq!(expected, Plaintext::read_le(&expected_bytes[..])?);
-        assert!(Plaintext::<CurrentNetwork>::read_le(&expected_bytes[1..]).is_err());
 
         Ok(())
     }

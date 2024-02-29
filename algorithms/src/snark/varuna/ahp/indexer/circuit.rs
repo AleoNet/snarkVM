@@ -29,6 +29,7 @@ use crate::{
         SNARKMode,
     },
 };
+use anyhow::{anyhow, Result};
 use blake2::Digest;
 use hex::FromHex;
 use snarkvm_fields::PrimeField;
@@ -61,7 +62,7 @@ impl CircuitId {
 ///     public input
 /// 2) `{a,b,c}` are the matrices defining the R1CS instance
 /// 3) `{a,b,c}_arith` are structs containing information about the arithmetized matrices
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct Circuit<F: PrimeField, SM: SNARKMode> {
     /// Information about the indexed circuit.
     pub index_info: CircuitInfo,
@@ -119,29 +120,30 @@ impl<F: PrimeField, SM: SNARKMode> Circuit<F, SM> {
     }
 
     /// The maximum degree required to represent polynomials of this index.
-    pub fn max_degree(&self) -> usize {
+    pub fn max_degree(&self) -> Result<usize> {
         self.index_info.max_degree::<F, SM>()
     }
 
     /// The size of the constraint domain in this R1CS instance.
-    pub fn constraint_domain_size(&self) -> usize {
-        crate::fft::EvaluationDomain::<F>::new(self.index_info.num_constraints).unwrap().size()
+    pub fn constraint_domain_size(&self) -> Result<usize> {
+        Ok(crate::fft::EvaluationDomain::<F>::new(self.index_info.num_constraints)
+            .ok_or(anyhow!("Cannot create EvaluationDomain"))?
+            .size())
     }
 
     /// The size of the variable domain in this R1CS instance.
-    pub fn variable_domain_size(&self) -> usize {
-        crate::fft::EvaluationDomain::<F>::new(self.index_info.num_variables).unwrap().size()
+    pub fn variable_domain_size(&self) -> Result<usize> {
+        Ok(crate::fft::EvaluationDomain::<F>::new(self.index_info.num_variables)
+            .ok_or(anyhow!("Cannot create EvaluationDomain"))?
+            .size())
     }
 
-    pub fn interpolate_matrix_evals(&self) -> impl Iterator<Item = LabeledPolynomial<F>> {
-        let [a_arith, b_arith, c_arith]: [_; 3] = [("a", &self.a_arith), ("b", &self.b_arith), ("c", &self.c_arith)]
-            .into_iter()
-            .map(|(label, evals)| MatrixArithmetization::new(&self.id, label, evals))
-            .collect::<Result<Vec<_>, _>>()
-            .unwrap()
-            .try_into()
-            .unwrap();
-        a_arith.into_iter().chain(b_arith.into_iter()).chain(c_arith.into_iter())
+    pub fn interpolate_matrix_evals(&self) -> Result<impl Iterator<Item = LabeledPolynomial<F>>> {
+        let mut iters = Vec::with_capacity(3);
+        for (label, evals) in [("a", &self.a_arith), ("b", &self.b_arith), ("c", &self.c_arith)] {
+            iters.push(MatrixArithmetization::new(&self.id, label, evals)?.into_iter());
+        }
+        Ok(iters.into_iter().flatten())
     }
 
     /// After indexing, we drop these evaluations to save space in the ProvingKey.

@@ -28,6 +28,7 @@ use ledger_block::{
     Input,
     Output,
     Ratifications,
+    Rejected,
     Transaction,
     Transactions,
     Transition,
@@ -39,7 +40,7 @@ use synthesizer_program::Program;
 
 use once_cell::sync::OnceCell;
 
-type CurrentNetwork = console::network::Testnet3;
+type CurrentNetwork = console::network::MainnetV0;
 type CurrentAleo = circuit::network::AleoV0;
 
 /****************************************** Transition ********************************************/
@@ -65,7 +66,8 @@ pub fn sample_inputs() -> Vec<(<CurrentNetwork as Network>::TransitionID, Input<
     let plaintext = Plaintext::Literal(Literal::Field(Uniform::rand(rng)), Default::default());
     let plaintext_hash = CurrentNetwork::hash_bhp1024(&plaintext.to_bits_le()).unwrap();
     // Sample a random ciphertext.
-    let ciphertext = Ciphertext::from_fields(&vec![Uniform::rand(rng); 10]).unwrap();
+    let fields: Vec<_> = (0..10).map(|_| Uniform::rand(rng)).collect();
+    let ciphertext = Ciphertext::from_fields(&fields).unwrap();
     let ciphertext_hash = CurrentNetwork::hash_bhp1024(&ciphertext.to_bits_le()).unwrap();
 
     vec![
@@ -97,7 +99,8 @@ pub fn sample_outputs() -> Vec<(<CurrentNetwork as Network>::TransitionID, Outpu
     let plaintext = Plaintext::Literal(Literal::Field(Uniform::rand(rng)), Default::default());
     let plaintext_hash = CurrentNetwork::hash_bhp1024(&plaintext.to_bits_le()).unwrap();
     // Sample a random ciphertext.
-    let ciphertext = Ciphertext::from_fields(&vec![Uniform::rand(rng); 10]).unwrap();
+    let fields: Vec<_> = (0..10).map(|_| Uniform::rand(rng)).collect();
+    let ciphertext = Ciphertext::from_fields(&fields).unwrap();
     let ciphertext_hash = CurrentNetwork::hash_bhp1024(&ciphertext.to_bits_le()).unwrap();
     // Sample a random record.
     let randomizer = Uniform::rand(rng);
@@ -156,6 +159,23 @@ function compute:
         .clone()
 }
 
+/// Samples a rejected deployment.
+pub fn sample_rejected_deployment(is_fee_private: bool, rng: &mut TestRng) -> Rejected<CurrentNetwork> {
+    // Sample a deploy transaction.
+    let deployment = match crate::sample_deployment_transaction(is_fee_private, rng) {
+        Transaction::Deploy(_, _, deployment, _) => (*deployment).clone(),
+        _ => unreachable!(),
+    };
+
+    // Sample a new program owner.
+    let private_key = PrivateKey::new(rng).unwrap();
+    let deployment_id = deployment.to_deployment_id().unwrap();
+    let program_owner = ProgramOwner::new(&private_key, deployment_id, rng).unwrap();
+
+    // Return the rejected deployment.
+    Rejected::new_deployment(program_owner, deployment)
+}
+
 /******************************************* Execution ********************************************/
 
 /// Samples a random execution.
@@ -166,6 +186,18 @@ pub fn sample_execution(rng: &mut TestRng) -> Execution<CurrentNetwork> {
     let transaction = block.transactions().iter().next().unwrap().deref().clone();
     // Retrieve the execution.
     if let Transaction::Execute(_, execution, _) = transaction { execution } else { unreachable!() }
+}
+
+/// Samples a rejected execution.
+pub fn sample_rejected_execution(is_fee_private: bool, rng: &mut TestRng) -> Rejected<CurrentNetwork> {
+    // Sample an execute transaction.
+    let execution = match crate::sample_execution_transaction_with_fee(is_fee_private, rng) {
+        Transaction::Execute(_, execution, _) => execution,
+        _ => unreachable!(),
+    };
+
+    // Return the rejected execution.
+    Rejected::new_execution(execution)
 }
 
 /********************************************** Fee ***********************************************/
@@ -210,7 +242,7 @@ pub fn sample_fee_private(deployment_or_execution_id: Field<CurrentNetwork>, rng
         )
         .unwrap();
     // Construct the fee trace.
-    let (_, mut trace) = process.execute::<CurrentAleo>(authorization).unwrap();
+    let (_, mut trace) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
 
     // Initialize a new block store.
     let block_store = BlockStore::<CurrentNetwork, BlockMemory<_>>::open(None).unwrap();
@@ -263,7 +295,7 @@ pub fn sample_fee_public(deployment_or_execution_id: Field<CurrentNetwork>, rng:
         )
         .unwrap();
     // Construct the fee trace.
-    let (_, mut trace) = process.execute::<CurrentAleo>(authorization).unwrap();
+    let (_, mut trace) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
 
     // Initialize a new block store.
     let block_store = BlockStore::<CurrentNetwork, BlockMemory<_>>::open(None).unwrap();
@@ -393,7 +425,7 @@ fn sample_genesis_block_and_components_raw(
     let authorization =
         process.authorize::<CurrentAleo, _>(&private_key, locator.0, locator.1, inputs.iter(), rng).unwrap();
     // Execute the function.
-    let (_, mut trace) = process.execute::<CurrentAleo>(authorization).unwrap();
+    let (_, mut trace) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
 
     // Initialize a new block store.
     let block_store = BlockStore::<CurrentNetwork, BlockMemory<_>>::open(None).unwrap();
@@ -411,7 +443,7 @@ fn sample_genesis_block_and_components_raw(
     // Prepare the confirmed transaction.
     let confirmed = ConfirmedTransaction::accepted_execute(0, transaction.clone(), vec![]).unwrap();
     // Prepare the transactions.
-    let transactions = Transactions::from_iter([confirmed].into_iter());
+    let transactions = Transactions::from_iter([confirmed]);
 
     // Construct the ratifications.
     let ratifications = Ratifications::try_from(vec![]).unwrap();
@@ -422,8 +454,18 @@ fn sample_genesis_block_and_components_raw(
     let previous_hash = <CurrentNetwork as Network>::BlockHash::default();
 
     // Construct the block.
-    let block =
-        Block::new_beacon(&private_key, previous_hash, header, ratifications, None, transactions, vec![], rng).unwrap();
+    let block = Block::new_beacon(
+        &private_key,
+        previous_hash,
+        header,
+        ratifications,
+        None.into(),
+        vec![],
+        transactions,
+        vec![],
+        rng,
+    )
+    .unwrap();
     assert!(block.header().is_genesis(), "Failed to initialize a genesis block");
     // Return the block, transaction, and private key.
     (block, transaction, private_key)

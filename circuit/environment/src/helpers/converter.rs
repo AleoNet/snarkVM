@@ -30,7 +30,7 @@ impl snarkvm_algorithms::r1cs::ConstraintSynthesizer<Fq> for Circuit {
         &self,
         cs: &mut CS,
     ) -> Result<(), snarkvm_algorithms::r1cs::SynthesisError> {
-        crate::circuit::CIRCUIT.with(|circuit| (*(**circuit).borrow()).generate_constraints(cs))
+        crate::circuit::CIRCUIT.with(|circuit| circuit.borrow().generate_constraints(cs))
     }
 }
 
@@ -47,19 +47,26 @@ impl<F: PrimeField> R1CS<F> {
         assert_eq!(0, cs.num_private_variables());
         assert_eq!(0, cs.num_constraints());
 
+        let result = converter.public.insert(0, CS::one());
+        assert!(result.is_none(), "Overwrote an existing public variable in the converter");
+
         // Allocate the public variables.
-        for (i, public) in self.to_public_variables().iter().enumerate() {
+        // NOTE: we skip the first public `One` variable because we already allocated it in the `ConstraintSystem` constructor.
+        for (i, public) in self.to_public_variables().iter().skip(1).enumerate() {
             match public {
-                Variable::Public(index, value) => {
+                Variable::Public(index_value) => {
+                    let (index, value) = index_value.as_ref();
+
                     assert_eq!(
-                        i as u64, *index,
-                        "Public variables in first system must be processed in lexicographic order"
+                        (i + 1) as u64,
+                        *index,
+                        "Public vars in first system must be processed in lexicographic order"
                     );
 
-                    let gadget = cs.alloc_input(|| format!("Public {i}"), || Ok(**value))?;
+                    let gadget = cs.alloc_input(|| format!("Public {i}"), || Ok(*value))?;
 
                     assert_eq!(
-                        snarkvm_algorithms::r1cs::Index::Public((index + 1) as usize),
+                        snarkvm_algorithms::r1cs::Index::Public(*index as usize),
                         gadget.get_unchecked(),
                         "Public variables in the second system must match the first system (with an off-by-1 for the public case)"
                     );
@@ -75,13 +82,15 @@ impl<F: PrimeField> R1CS<F> {
         // Allocate the private variables.
         for (i, private) in self.to_private_variables().iter().enumerate() {
             match private {
-                Variable::Private(index, value) => {
+                Variable::Private(index_value) => {
+                    let (index, value) = index_value.as_ref();
+
                     assert_eq!(
                         i as u64, *index,
                         "Private variables in first system must be processed in lexicographic order"
                     );
 
-                    let gadget = cs.alloc(|| format!("Private {i}"), || Ok(**value))?;
+                    let gadget = cs.alloc(|| format!("Private {i}"), || Ok(*value))?;
 
                     assert_eq!(
                         snarkvm_algorithms::r1cs::Index::Private(i),
@@ -113,7 +122,8 @@ impl<F: PrimeField> R1CS<F> {
                                     "Failed during constraint translation. The first system by definition cannot have constant variables in the terms"
                                 )
                             }
-                            Variable::Public(index, _) => {
+                            Variable::Public(index_value) => {
+                                let (index, _value) = index_value.as_ref();
                                 let gadget = converter.public.get(index).unwrap();
                                 assert_eq!(
                                     snarkvm_algorithms::r1cs::Index::Public((index + 1) as usize),
@@ -122,7 +132,8 @@ impl<F: PrimeField> R1CS<F> {
                                 );
                                 linear_combination += (*coefficient, *gadget);
                             }
-                            Variable::Private(index, _) => {
+                            Variable::Private(index_value) => {
+                                let (index, _value) = index_value.as_ref();
                                 let gadget = converter.private.get(index).unwrap();
                                 assert_eq!(
                                     snarkvm_algorithms::r1cs::Index::Private(*index as usize),
@@ -159,7 +170,7 @@ impl<F: PrimeField> R1CS<F> {
         }
 
         // Ensure the given `cs` matches in size with the first system.
-        assert_eq!(self.num_public() + 1, cs.num_public_variables() as u64);
+        assert_eq!(self.num_public(), cs.num_public_variables() as u64);
         assert_eq!(self.num_private(), cs.num_private_variables() as u64);
         assert_eq!(self.num_constraints(), cs.num_constraints() as u64);
 
@@ -205,7 +216,7 @@ mod tests {
         Circuit.generate_constraints(&mut cs).unwrap();
         {
             use snarkvm_algorithms::r1cs::ConstraintSystem;
-            assert_eq!(Circuit::num_public() + 1, cs.num_public_variables() as u64);
+            assert_eq!(Circuit::num_public(), cs.num_public_variables() as u64);
             assert_eq!(Circuit::num_private(), cs.num_private_variables() as u64);
             assert_eq!(Circuit::num_constraints(), cs.num_constraints() as u64);
             assert!(cs.is_satisfied());

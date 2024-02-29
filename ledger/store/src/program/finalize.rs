@@ -26,6 +26,7 @@ use console::{
 };
 use synthesizer_program::{FinalizeOperation, FinalizeStoreTrait};
 
+use aleo_std_storage::StorageMode;
 use anyhow::Result;
 use core::marker::PhantomData;
 use indexmap::IndexSet;
@@ -78,7 +79,7 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
     type KeyValueMap: for<'a> NestedMap<'a, (ProgramID<N>, Identifier<N>), Plaintext<N>, Value<N>>;
 
     /// Initializes the program state storage.
-    fn open(dev: Option<u16>) -> Result<Self>;
+    fn open<S: Clone + Into<StorageMode>>(storage: S) -> Result<Self>;
 
     /// Initializes the test-variant of the storage.
     #[cfg(any(test, feature = "test"))]
@@ -91,8 +92,8 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
     /// Returns the key-value map.
     fn key_value_map(&self) -> &Self::KeyValueMap;
 
-    /// Returns the optional development ID.
-    fn dev(&self) -> Option<u16>;
+    /// Returns the storage mode.
+    fn storage_mode(&self) -> &StorageMode;
 
     /// Starts an atomic batch write operation.
     fn start_atomic(&self) {
@@ -243,7 +244,7 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
         })?;
 
         // Return the finalize operation.
-        Ok(FinalizeOperation::UpdateKeyValue(to_mapping_id(&program_id, &mapping_name)?, 0u64, key_id, value_id))
+        Ok(FinalizeOperation::UpdateKeyValue(to_mapping_id(&program_id, &mapping_name)?, key_id, value_id))
     }
 
     /// Removes the key-value pair for the given `program ID`, `mapping name`, and `key` from storage.
@@ -263,6 +264,9 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
             return Ok(None);
         }
 
+        // Compute the key ID.
+        let key_id = to_key_id(&program_id, &mapping_name, key)?;
+
         atomic_batch_scope!(self, {
             // Update the key-value map with the new key.
             self.key_value_map().remove_key(&(program_id, mapping_name), key)?;
@@ -271,7 +275,7 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
         })?;
 
         // Return the finalize operation.
-        Ok(Some(FinalizeOperation::RemoveKeyValue(to_mapping_id(&program_id, &mapping_name)?, 0u64)))
+        Ok(Some(FinalizeOperation::RemoveKeyValue(to_mapping_id(&program_id, &mapping_name)?, key_id)))
     }
 
     /// Replaces the mapping for the given `program ID` and `mapping name` from storage,
@@ -313,7 +317,7 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
             None => bail!("Illegal operation: program ID '{program_id}' is not initialized - cannot remove mapping."),
         };
         // Remove the mapping name.
-        if !mapping_names.remove(&mapping_name) {
+        if !mapping_names.shift_remove(&mapping_name) {
             bail!("Illegal operation: mapping '{mapping_name}' does not exist in storage - cannot remove mapping.");
         }
 
@@ -530,8 +534,8 @@ pub struct FinalizeStore<N: Network, P: FinalizeStorage<N>> {
 
 impl<N: Network, P: FinalizeStorage<N>> FinalizeStore<N, P> {
     /// Initializes the finalize store.
-    pub fn open(dev: Option<u16>) -> Result<Self> {
-        Self::from(P::open(dev)?)
+    pub fn open<S: Clone + Into<StorageMode>>(storage: S) -> Result<Self> {
+        Self::from(P::open(storage)?)
     }
 
     /// Initializes the test-variant of the storage.
@@ -581,9 +585,9 @@ impl<N: Network, P: FinalizeStorage<N>> FinalizeStore<N, P> {
         self.storage.finish_atomic()
     }
 
-    /// Returns the optional development ID.
-    pub fn dev(&self) -> Option<u16> {
-        self.storage.dev()
+    /// Returns the storage mode.
+    pub fn storage_mode(&self) -> &StorageMode {
+        self.storage.storage_mode()
     }
 }
 
@@ -768,9 +772,9 @@ impl<N: Network, P: FinalizeStorage<N>> FinalizeStore<N, P> {
 mod tests {
     use super::*;
     use crate::helpers::memory::FinalizeMemory;
-    use console::{network::Testnet3, program::Literal, types::U64};
+    use console::{network::MainnetV0, program::Literal, types::U64};
 
-    type CurrentNetwork = Testnet3;
+    type CurrentNetwork = MainnetV0;
 
     /// Checks `initialize_mapping`, `insert_key_value`, `remove_key_value`, and `remove_mapping`.
     fn check_initialize_insert_remove<N: Network>(
@@ -1313,7 +1317,7 @@ mod tests {
 
         // Insert the key and value.
         let timer = std::time::Instant::now();
-        finalize_store.insert_key_value(program_id, mapping_name, key.clone(), value.clone()).unwrap();
+        finalize_store.insert_key_value(program_id, mapping_name, key.clone(), value).unwrap();
         println!("FinalizeStore::insert_key_value - {} μs", timer.elapsed().as_micros());
 
         // Insert the list of keys and values.

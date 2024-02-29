@@ -30,7 +30,7 @@ fn poseidon2(c: &mut Criterion) {
     c.bench_function("Poseidon2 Hash 4 -> 1", |b| b.iter(|| hash.hash(&input)));
     c.bench_function("Poseidon2 Hash 4 -> 2", |b| b.iter(|| hash.hash_many(&input, 2)));
 
-    let input = [F::rand(rng); 10];
+    let input: Vec<_> = (0..10).map(|_| F::rand(rng)).collect();
     c.bench_function("Poseidon2 Hash 10 -> 1", |b| b.iter(|| hash.hash(&input)));
     c.bench_function("Poseidon2 Hash 10 -> 4", |b| b.iter(|| hash.hash_many(&input, 4)));
     c.bench_function("Poseidon2 Hash 10 -> 8", |b| b.iter(|| hash.hash_many(&input, 8)));
@@ -44,7 +44,7 @@ fn poseidon4(c: &mut Criterion) {
     c.bench_function("Poseidon4 Hash 4 -> 1", |b| b.iter(|| hash.hash(&input)));
     c.bench_function("Poseidon4 Hash 4 -> 2", |b| b.iter(|| hash.hash_many(&input, 2)));
 
-    let input = [F::rand(rng); 10];
+    let input: Vec<_> = (0..10).map(|_| F::rand(rng)).collect();
     c.bench_function("Poseidon4 Hash 10 -> 1", |b| b.iter(|| hash.hash(&input)));
     c.bench_function("Poseidon4 Hash 10 -> 4", |b| b.iter(|| hash.hash_many(&input, 4)));
     c.bench_function("Poseidon4 Hash 10 -> 8", |b| b.iter(|| hash.hash_many(&input, 8)));
@@ -58,7 +58,7 @@ fn poseidon8(c: &mut Criterion) {
     c.bench_function("Poseidon8 Hash 4 -> 1", |b| b.iter(|| hash.hash(&input)));
     c.bench_function("Poseidon8 Hash 4 -> 2", |b| b.iter(|| hash.hash_many(&input, 2)));
 
-    let input = [F::rand(rng); 10];
+    let input: Vec<_> = (0..10).map(|_| F::rand(rng)).collect();
     c.bench_function("Poseidon8 Hash 10 -> 1", |b| b.iter(|| hash.hash(&input)));
     c.bench_function("Poseidon8 Hash 10 -> 4", |b| b.iter(|| hash.hash_many(&input, 4)));
     c.bench_function("Poseidon8 Hash 10 -> 8", |b| b.iter(|| hash.hash_many(&input, 8)));

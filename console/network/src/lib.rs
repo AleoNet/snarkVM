@@ -25,8 +25,8 @@ pub use snarkvm_console_network_environment::*;
 mod helpers;
 pub use helpers::*;
 
-mod testnet3;
-pub use testnet3::*;
+mod mainnet_v0;
+pub use mainnet_v0::*;
 
 pub mod prelude {
     pub use crate::{environment::prelude::*, Network};
@@ -98,6 +98,10 @@ pub trait Network:
     const STARTING_SUPPLY: u64 = 1_500_000_000_000_000; // 1.5B credits
     /// The cost in microcredits per byte for the deployment transaction.
     const DEPLOYMENT_FEE_MULTIPLIER: u64 = 1_000; // 1 millicredit per byte
+    /// The cost in microcredits per constraint for the deployment transaction.
+    const SYNTHESIS_FEE_MULTIPLIER: u64 = 25; // 25 microcredits per constraint
+    /// The maximum number of constraints in a deployment.
+    const MAX_DEPLOYMENT_LIMIT: u64 = 1 << 20; // 1,048,576 constraints
     /// The maximum number of microcredits that can be spent as a fee.
     const MAX_FEE: u64 = 1_000_000_000_000_000;
 
@@ -109,8 +113,8 @@ pub trait Network:
     const BLOCK_TIME: u16 = 10;
     /// The coinbase puzzle degree.
     const COINBASE_PUZZLE_DEGREE: u32 = (1 << 13) - 1; // 8,191
-    /// The maximum number of prover solutions that can be included per block.
-    const MAX_PROVER_SOLUTIONS: usize = 1 << 8; // 256 prover solutions
+    /// The maximum number of solutions that can be included per block.
+    const MAX_SOLUTIONS: usize = 1 << 8; // 256 solutions
     /// The number of blocks per epoch.
     const NUM_BLOCKS_PER_EPOCH: u32 = 3600 / Self::BLOCK_TIME as u32; // 360 blocks == ~1 hour
 
@@ -155,6 +159,11 @@ pub trait Network:
     const MAX_INPUTS: usize = 16;
     /// The maximum number of outputs per transition.
     const MAX_OUTPUTS: usize = 16;
+
+    /// The maximum program depth.
+    const MAX_PROGRAM_DEPTH: usize = 64;
+    /// The maximum number of imports.
+    const MAX_IMPORTS: usize = 64;
 
     /// The state root type.
     type StateRoot: Bech32ID<Field<Self>>;

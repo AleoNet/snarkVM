@@ -66,7 +66,7 @@ impl<E: Environment> Cast<Scalar<E>> for Boolean<E> {
 mod tests {
     use super::*;
     use console::Cast as _;
-    use console_root::{network::Testnet3, prelude::TestRng};
+    use console_root::{network::MainnetV0, prelude::TestRng};
     use snarkvm_circuit_types::environment::{count_is, Circuit, Eject, Inject, Mode, UpdatableCount};
 
     use std::fmt::Debug;
@@ -77,114 +77,114 @@ mod tests {
         i: usize,
         mode: Mode,
         _: &mut TestRng,
-    ) -> (console_root::types::Boolean<Testnet3>, Boolean<Circuit>) {
+    ) -> (console_root::types::Boolean<MainnetV0>, Boolean<Circuit>) {
         (console_root::types::Boolean::new(i % 2 == 0), Boolean::new(mode, i % 2 == 0))
     }
 
-    impl_check_cast!(cast, Boolean<Circuit>, console_root::types::Boolean::<Testnet3>);
+    impl_check_cast!(cast, Boolean<Circuit>, console_root::types::Boolean::<MainnetV0>);
 
     #[test]
     fn test_boolean_to_address() {
-        check_cast::<Address<Circuit>, console_root::types::Address<Testnet3>>(Mode::Constant, count_is!(10, 0, 0, 0));
-        check_cast::<Address<Circuit>, console_root::types::Address<Testnet3>>(Mode::Public, count_is!(10, 0, 0, 0));
-        check_cast::<Address<Circuit>, console_root::types::Address<Testnet3>>(Mode::Private, count_is!(10, 0, 0, 0));
+        check_cast::<Address<Circuit>, console_root::types::Address<MainnetV0>>(Mode::Constant, count_is!(10, 0, 0, 0));
+        check_cast::<Address<Circuit>, console_root::types::Address<MainnetV0>>(Mode::Public, count_is!(10, 0, 0, 0));
+        check_cast::<Address<Circuit>, console_root::types::Address<MainnetV0>>(Mode::Private, count_is!(10, 0, 0, 0));
     }
 
     #[test]
     fn test_boolean_to_boolean() {
-        check_cast::<Boolean<Circuit>, console_root::types::Boolean<Testnet3>>(Mode::Constant, count_is!(0, 0, 0, 0));
-        check_cast::<Boolean<Circuit>, console_root::types::Boolean<Testnet3>>(Mode::Public, count_is!(0, 0, 0, 0));
-        check_cast::<Boolean<Circuit>, console_root::types::Boolean<Testnet3>>(Mode::Private, count_is!(0, 0, 0, 0));
+        check_cast::<Boolean<Circuit>, console_root::types::Boolean<MainnetV0>>(Mode::Constant, count_is!(0, 0, 0, 0));
+        check_cast::<Boolean<Circuit>, console_root::types::Boolean<MainnetV0>>(Mode::Public, count_is!(0, 0, 0, 0));
+        check_cast::<Boolean<Circuit>, console_root::types::Boolean<MainnetV0>>(Mode::Private, count_is!(0, 0, 0, 0));
     }
 
     #[test]
     fn test_boolean_to_field() {
-        check_cast::<Field<Circuit>, console_root::types::Field<Testnet3>>(Mode::Constant, count_is!(0, 0, 0, 0));
-        check_cast::<Field<Circuit>, console_root::types::Field<Testnet3>>(Mode::Public, count_is!(0, 0, 0, 0));
-        check_cast::<Field<Circuit>, console_root::types::Field<Testnet3>>(Mode::Private, count_is!(0, 0, 0, 0));
+        check_cast::<Field<Circuit>, console_root::types::Field<MainnetV0>>(Mode::Constant, count_is!(0, 0, 0, 0));
+        check_cast::<Field<Circuit>, console_root::types::Field<MainnetV0>>(Mode::Public, count_is!(0, 0, 0, 0));
+        check_cast::<Field<Circuit>, console_root::types::Field<MainnetV0>>(Mode::Private, count_is!(0, 0, 0, 0));
     }
 
     #[test]
     fn test_boolean_to_group() {
-        check_cast::<Group<Circuit>, console_root::types::Group<Testnet3>>(Mode::Constant, count_is!(10, 0, 0, 0));
-        check_cast::<Group<Circuit>, console_root::types::Group<Testnet3>>(Mode::Public, count_is!(10, 0, 0, 0));
-        check_cast::<Group<Circuit>, console_root::types::Group<Testnet3>>(Mode::Private, count_is!(10, 0, 0, 0));
+        check_cast::<Group<Circuit>, console_root::types::Group<MainnetV0>>(Mode::Constant, count_is!(10, 0, 0, 0));
+        check_cast::<Group<Circuit>, console_root::types::Group<MainnetV0>>(Mode::Public, count_is!(10, 0, 0, 0));
+        check_cast::<Group<Circuit>, console_root::types::Group<MainnetV0>>(Mode::Private, count_is!(10, 0, 0, 0));
     }
 
     #[test]
     fn test_boolean_to_i8() {
-        check_cast::<I8<Circuit>, console_root::types::I8<Testnet3>>(Mode::Constant, count_is!(16, 0, 0, 0));
-        check_cast::<I8<Circuit>, console_root::types::I8<Testnet3>>(Mode::Public, count_is!(16, 0, 0, 0));
-        check_cast::<I8<Circuit>, console_root::types::I8<Testnet3>>(Mode::Private, count_is!(16, 0, 0, 0));
+        check_cast::<I8<Circuit>, console_root::types::I8<MainnetV0>>(Mode::Constant, count_is!(16, 0, 0, 0));
+        check_cast::<I8<Circuit>, console_root::types::I8<MainnetV0>>(Mode::Public, count_is!(16, 0, 0, 0));
+        check_cast::<I8<Circuit>, console_root::types::I8<MainnetV0>>(Mode::Private, count_is!(16, 0, 0, 0));
     }
 
     #[test]
     fn test_boolean_to_i16() {
-        check_cast::<I16<Circuit>, console_root::types::I16<Testnet3>>(Mode::Constant, count_is!(32, 0, 0, 0));
-        check_cast::<I16<Circuit>, console_root::types::I16<Testnet3>>(Mode::Public, count_is!(32, 0, 0, 0));
-        check_cast::<I16<Circuit>, console_root::types::I16<Testnet3>>(Mode::Private, count_is!(32, 0, 0, 0));
+        check_cast::<I16<Circuit>, console_root::types::I16<MainnetV0>>(Mode::Constant, count_is!(32, 0, 0, 0));
+        check_cast::<I16<Circuit>, console_root::types::I16<MainnetV0>>(Mode::Public, count_is!(32, 0, 0, 0));
+        check_cast::<I16<Circuit>, console_root::types::I16<MainnetV0>>(Mode::Private, count_is!(32, 0, 0, 0));
     }
 
     #[test]
     fn test_boolean_to_i32() {
-        check_cast::<I32<Circuit>, console_root::types::I32<Testnet3>>(Mode::Constant, count_is!(64, 0, 0, 0));
-        check_cast::<I32<Circuit>, console_root::types::I32<Testnet3>>(Mode::Public, count_is!(64, 0, 0, 0));
-        check_cast::<I32<Circuit>, console_root::types::I32<Testnet3>>(Mode::Private, count_is!(64, 0, 0, 0));
+        check_cast::<I32<Circuit>, console_root::types::I32<MainnetV0>>(Mode::Constant, count_is!(64, 0, 0, 0));
+        check_cast::<I32<Circuit>, console_root::types::I32<MainnetV0>>(Mode::Public, count_is!(64, 0, 0, 0));
+        check_cast::<I32<Circuit>, console_root::types::I32<MainnetV0>>(Mode::Private, count_is!(64, 0, 0, 0));
     }
 
     #[test]
     fn test_boolean_to_i64() {
-        check_cast::<I64<Circuit>, console_root::types::I64<Testnet3>>(Mode::Constant, count_is!(128, 0, 0, 0));
-        check_cast::<I64<Circuit>, console_root::types::I64<Testnet3>>(Mode::Public, count_is!(128, 0, 0, 0));
-        check_cast::<I64<Circuit>, console_root::types::I64<Testnet3>>(Mode::Private, count_is!(128, 0, 0, 0));
+        check_cast::<I64<Circuit>, console_root::types::I64<MainnetV0>>(Mode::Constant, count_is!(128, 0, 0, 0));
+        check_cast::<I64<Circuit>, console_root::types::I64<MainnetV0>>(Mode::Public, count_is!(128, 0, 0, 0));
+        check_cast::<I64<Circuit>, console_root::types::I64<MainnetV0>>(Mode::Private, count_is!(128, 0, 0, 0));
     }
 
     #[test]
     fn test_boolean_to_i128() {
-        check_cast::<I128<Circuit>, console_root::types::I128<Testnet3>>(Mode::Constant, count_is!(256, 0, 0, 0));
-        check_cast::<I128<Circuit>, console_root::types::I128<Testnet3>>(Mode::Public, count_is!(256, 0, 0, 0));
-        check_cast::<I128<Circuit>, console_root::types::I128<Testnet3>>(Mode::Private, count_is!(256, 0, 0, 0));
+        check_cast::<I128<Circuit>, console_root::types::I128<MainnetV0>>(Mode::Constant, count_is!(256, 0, 0, 0));
+        check_cast::<I128<Circuit>, console_root::types::I128<MainnetV0>>(Mode::Public, count_is!(256, 0, 0, 0));
+        check_cast::<I128<Circuit>, console_root::types::I128<MainnetV0>>(Mode::Private, count_is!(256, 0, 0, 0));
     }
 
     #[test]
     fn test_boolean_to_scalar() {
-        check_cast::<Scalar<Circuit>, console_root::types::Scalar<Testnet3>>(Mode::Constant, count_is!(2, 0, 0, 0));
-        check_cast::<Scalar<Circuit>, console_root::types::Scalar<Testnet3>>(Mode::Public, count_is!(2, 0, 0, 0));
-        check_cast::<Scalar<Circuit>, console_root::types::Scalar<Testnet3>>(Mode::Private, count_is!(2, 0, 0, 0));
+        check_cast::<Scalar<Circuit>, console_root::types::Scalar<MainnetV0>>(Mode::Constant, count_is!(2, 0, 0, 0));
+        check_cast::<Scalar<Circuit>, console_root::types::Scalar<MainnetV0>>(Mode::Public, count_is!(2, 0, 0, 0));
+        check_cast::<Scalar<Circuit>, console_root::types::Scalar<MainnetV0>>(Mode::Private, count_is!(2, 0, 0, 0));
     }
 
     #[test]
     fn test_boolean_to_u8() {
-        check_cast::<U8<Circuit>, console_root::types::U8<Testnet3>>(Mode::Constant, count_is!(16, 0, 0, 0));
-        check_cast::<U8<Circuit>, console_root::types::U8<Testnet3>>(Mode::Public, count_is!(16, 0, 0, 0));
-        check_cast::<U8<Circuit>, console_root::types::U8<Testnet3>>(Mode::Private, count_is!(16, 0, 0, 0));
+        check_cast::<U8<Circuit>, console_root::types::U8<MainnetV0>>(Mode::Constant, count_is!(16, 0, 0, 0));
+        check_cast::<U8<Circuit>, console_root::types::U8<MainnetV0>>(Mode::Public, count_is!(16, 0, 0, 0));
+        check_cast::<U8<Circuit>, console_root::types::U8<MainnetV0>>(Mode::Private, count_is!(16, 0, 0, 0));
     }
 
     #[test]
     fn test_boolean_to_u16() {
-        check_cast::<U16<Circuit>, console_root::types::U16<Testnet3>>(Mode::Constant, count_is!(32, 0, 0, 0));
-        check_cast::<U16<Circuit>, console_root::types::U16<Testnet3>>(Mode::Public, count_is!(32, 0, 0, 0));
-        check_cast::<U16<Circuit>, console_root::types::U16<Testnet3>>(Mode::Private, count_is!(32, 0, 0, 0));
+        check_cast::<U16<Circuit>, console_root::types::U16<MainnetV0>>(Mode::Constant, count_is!(32, 0, 0, 0));
+        check_cast::<U16<Circuit>, console_root::types::U16<MainnetV0>>(Mode::Public, count_is!(32, 0, 0, 0));
+        check_cast::<U16<Circuit>, console_root::types::U16<MainnetV0>>(Mode::Private, count_is!(32, 0, 0, 0));
     }
 
     #[test]
     fn test_boolean_to_u32() {
-        check_cast::<U32<Circuit>, console_root::types::U32<Testnet3>>(Mode::Constant, count_is!(64, 0, 0, 0));
-        check_cast::<U32<Circuit>, console_root::types::U32<Testnet3>>(Mode::Public, count_is!(64, 0, 0, 0));
-        check_cast::<U32<Circuit>, console_root::types::U32<Testnet3>>(Mode::Private, count_is!(64, 0, 0, 0));
+        check_cast::<U32<Circuit>, console_root::types::U32<MainnetV0>>(Mode::Constant, count_is!(64, 0, 0, 0));
+        check_cast::<U32<Circuit>, console_root::types::U32<MainnetV0>>(Mode::Public, count_is!(64, 0, 0, 0));
+        check_cast::<U32<Circuit>, console_root::types::U32<MainnetV0>>(Mode::Private, count_is!(64, 0, 0, 0));
     }
 
     #[test]
     fn test_boolean_to_u64() {
-        check_cast::<U64<Circuit>, console_root::types::U64<Testnet3>>(Mode::Constant, count_is!(128, 0, 0, 0));
-        check_cast::<U64<Circuit>, console_root::types::U64<Testnet3>>(Mode::Public, count_is!(128, 0, 0, 0));
-        check_cast::<U64<Circuit>, console_root::types::U64<Testnet3>>(Mode::Private, count_is!(128, 0, 0, 0));
+        check_cast::<U64<Circuit>, console_root::types::U64<MainnetV0>>(Mode::Constant, count_is!(128, 0, 0, 0));
+        check_cast::<U64<Circuit>, console_root::types::U64<MainnetV0>>(Mode::Public, count_is!(128, 0, 0, 0));
+        check_cast::<U64<Circuit>, console_root::types::U64<MainnetV0>>(Mode::Private, count_is!(128, 0, 0, 0));
     }
 
     #[test]
     fn test_boolean_to_u128() {
-        check_cast::<U128<Circuit>, console_root::types::U128<Testnet3>>(Mode::Constant, count_is!(256, 0, 0, 0));
-        check_cast::<U128<Circuit>, console_root::types::U128<Testnet3>>(Mode::Public, count_is!(256, 0, 0, 0));
-        check_cast::<U128<Circuit>, console_root::types::U128<Testnet3>>(Mode::Private, count_is!(256, 0, 0, 0));
+        check_cast::<U128<Circuit>, console_root::types::U128<MainnetV0>>(Mode::Constant, count_is!(256, 0, 0, 0));
+        check_cast::<U128<Circuit>, console_root::types::U128<MainnetV0>>(Mode::Public, count_is!(256, 0, 0, 0));
+        check_cast::<U128<Circuit>, console_root::types::U128<MainnetV0>>(Mode::Private, count_is!(256, 0, 0, 0));
     }
 }

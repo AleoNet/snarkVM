@@ -14,27 +14,50 @@
 
 use crate::{
     traits::{FinalizeStoreTrait, RegistersLoad, RegistersStore, StackMatches, StackProgram},
+    CallOperator,
     Opcode,
     Operand,
 };
 use console::{
     network::prelude::*,
-    program::{Identifier, Register, Value},
+    program::{Register, Value},
 };
 
 /// A get command that uses the provided default in case of failure, e.g. `get.or_use accounts[r0] r1 into r2;`.
 /// Gets the value stored at `operand` in `mapping` and stores the result in `destination`.
 /// If the key is not present, `default` is stored in `destination`.
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(Clone)]
 pub struct GetOrUse<N: Network> {
-    /// The mapping name.
-    mapping: Identifier<N>,
+    /// The mapping.
+    mapping: CallOperator<N>,
     /// The key to access the mapping.
     key: Operand<N>,
     /// The default value.
     default: Operand<N>,
     /// The destination register.
     destination: Register<N>,
+}
+
+impl<N: Network> PartialEq for GetOrUse<N> {
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        self.mapping == other.mapping
+            && self.key == other.key
+            && self.default == other.default
+            && self.destination == other.destination
+    }
+}
+
+impl<N: Network> Eq for GetOrUse<N> {}
+
+impl<N: Network> std::hash::Hash for GetOrUse<N> {
+    #[inline]
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.mapping.hash(state);
+        self.key.hash(state);
+        self.default.hash(state);
+        self.destination.hash(state);
+    }
 }
 
 impl<N: Network> GetOrUse<N> {
@@ -50,9 +73,9 @@ impl<N: Network> GetOrUse<N> {
         vec![self.key.clone(), self.default.clone()]
     }
 
-    /// Returns the mapping name.
+    /// Returns the mapping.
     #[inline]
-    pub const fn mapping_name(&self) -> &Identifier<N> {
+    pub const fn mapping(&self) -> &CallOperator<N> {
         &self.mapping
     }
 
@@ -84,16 +107,22 @@ impl<N: Network> GetOrUse<N> {
         store: &impl FinalizeStoreTrait<N>,
         registers: &mut (impl RegistersLoad<N> + RegistersStore<N>),
     ) -> Result<()> {
+        // Determine the program ID and mapping name.
+        let (program_id, mapping_name) = match self.mapping {
+            CallOperator::Locator(locator) => (*locator.program_id(), *locator.resource()),
+            CallOperator::Resource(mapping_name) => (*stack.program_id(), mapping_name),
+        };
+
         // Ensure the mapping exists in storage.
-        if !store.contains_mapping_confirmed(stack.program_id(), &self.mapping)? {
-            bail!("Mapping '{}/{}' does not exist in storage", stack.program_id(), self.mapping);
+        if !store.contains_mapping_confirmed(&program_id, &mapping_name)? {
+            bail!("Mapping '{program_id}/{mapping_name}' does not exist in storage");
         }
 
         // Load the operand as a plaintext.
         let key = registers.load_plaintext(stack, &self.key)?;
 
         // Retrieve the value from storage as a literal.
-        let value = match store.get_value_speculative(*stack.program_id(), self.mapping, &key)? {
+        let value = match store.get_value_speculative(program_id, mapping_name, &key)? {
             Some(Value::Plaintext(plaintext)) => Value::Plaintext(plaintext),
             Some(Value::Record(..)) => bail!("Cannot 'get.or_use' a 'record'"),
             Some(Value::Future(..)) => bail!("Cannot 'get.or_use' a 'future'"),
@@ -121,7 +150,7 @@ impl<N: Network> Parser for GetOrUse<N> {
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
 
         // Parse the mapping name from the string.
-        let (string, mapping) = Identifier::parse(string)?;
+        let (string, mapping) = CallOperator::parse(string)?;
         // Parse the "[" from the string.
         let (string, _) = tag("[")(string)?;
         // Parse the whitespace from the string.
@@ -196,7 +225,7 @@ impl<N: Network> FromBytes for GetOrUse<N> {
     /// Reads the command from a buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         // Read the mapping name.
-        let mapping = Identifier::read_le(&mut reader)?;
+        let mapping = CallOperator::read_le(&mut reader)?;
         // Read the key operand.
         let key = Operand::read_le(&mut reader)?;
         // Read the default value.
@@ -225,18 +254,36 @@ impl<N: Network> ToBytes for GetOrUse<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use console::{network::Testnet3, program::Register};
+    use console::{network::MainnetV0, program::Register};
 
-    type CurrentNetwork = Testnet3;
+    type CurrentNetwork = MainnetV0;
 
     #[test]
     fn test_parse() {
         let (string, get_or_use) = GetOrUse::<CurrentNetwork>::parse("get.or_use account[r0] r1 into r2;").unwrap();
         assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
-        assert_eq!(get_or_use.mapping, Identifier::from_str("account").unwrap());
+        assert_eq!(get_or_use.mapping, CallOperator::from_str("account").unwrap());
         assert_eq!(get_or_use.operands().len(), 2, "The number of operands is incorrect");
         assert_eq!(get_or_use.key, Operand::Register(Register::Locator(0)), "The first operand is incorrect");
         assert_eq!(get_or_use.default, Operand::Register(Register::Locator(1)), "The second operand is incorrect");
         assert_eq!(get_or_use.destination, Register::Locator(2), "The second operand is incorrect");
+
+        let (string, get_or_use) =
+            GetOrUse::<CurrentNetwork>::parse("get.or_use token.aleo/balances[r0] r1 into r2;").unwrap();
+        assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
+        assert_eq!(get_or_use.mapping, CallOperator::from_str("token.aleo/balances").unwrap());
+        assert_eq!(get_or_use.operands().len(), 2, "The number of operands is incorrect");
+        assert_eq!(get_or_use.key, Operand::Register(Register::Locator(0)), "The first operand is incorrect");
+        assert_eq!(get_or_use.default, Operand::Register(Register::Locator(1)), "The second operand is incorrect");
+        assert_eq!(get_or_use.destination, Register::Locator(2), "The second operand is incorrect");
+    }
+
+    #[test]
+    fn test_from_bytes() {
+        let (string, get_or_use) = GetOrUse::<CurrentNetwork>::parse("get.or_use account[r0] r1 into r2;").unwrap();
+        assert!(string.is_empty());
+        let bytes_le = get_or_use.to_bytes_le().unwrap();
+        let result = GetOrUse::<CurrentNetwork>::from_bytes_le(&bytes_le[..]);
+        assert!(result.is_ok());
     }
 }

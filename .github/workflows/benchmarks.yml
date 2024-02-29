@@ -3,7 +3,7 @@ name: Run snarkVM Benchmarks
 on:
   push:
     branches:
-      - 'testnet3'
+      - 'mainnet'
 
 jobs:
   # Run benchmarks and stores the output to a file
@@ -60,9 +60,14 @@ jobs:
         run: |
           cd console/collections
           cargo bench --bench merkle_tree -- --output-format bencher | tee -a ../../output.txt
-          cargo bench --bench kary_merkle_tree -- --output-format bencher | tee -a ../../output.txt
           cd ../..
           
+      - name: Benchmark console/types
+        run: |
+          cd console/types
+          cargo bench --bench group -- --output-format bencher | tee -a ../../output.txt
+          cd ../..
+
       - name: Benchmark curves
         run: |
           cd curves

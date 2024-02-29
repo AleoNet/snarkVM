@@ -37,7 +37,7 @@ impl<F: PrimeField> FirstOracles<F> {
 
     /// Iterate over the polynomials output by the prover in the first round.
     pub fn into_iter(self) -> impl Iterator<Item = LabeledPolynomial<F>> {
-        self.batches.into_values().flat_map(|b| b.into_iter()).map(|b| b.0).chain(self.mask_poly.into_iter())
+        self.batches.into_values().flat_map(|b| b.into_iter()).map(|b| b.0).chain(self.mask_poly)
     }
 
     pub fn matches_info(&self, info: &BTreeMap<PolynomialLabel, PolynomialInfo>) -> bool {
@@ -112,17 +112,17 @@ impl<F: PrimeField> ThirdOracles<F> {
 /// The fourth set of prover oracles.
 #[derive(Debug)]
 pub struct FourthOracles<F: PrimeField> {
-    pub(super) gs: BTreeMap<CircuitId, MatrixGs<F>>,
+    pub(in crate::snark::varuna) gs: BTreeMap<CircuitId, MatrixGs<F>>,
 }
 
 #[derive(Debug)]
-pub(super) struct MatrixGs<F: PrimeField> {
+pub(in crate::snark::varuna) struct MatrixGs<F: PrimeField> {
     /// The polynomial `g_a` resulting from the second sumcheck.
-    pub(super) g_a: LabeledPolynomial<F>,
+    pub(in crate::snark::varuna) g_a: LabeledPolynomial<F>,
     /// The polynomial `g_b` resulting from the second sumcheck.
-    pub(super) g_b: LabeledPolynomial<F>,
+    pub(in crate::snark::varuna) g_b: LabeledPolynomial<F>,
     /// The polynomial `g_c` resulting from the second sumcheck.
-    pub(super) g_c: LabeledPolynomial<F>,
+    pub(in crate::snark::varuna) g_c: LabeledPolynomial<F>,
 }
 
 impl<F: PrimeField> MatrixGs<F> {

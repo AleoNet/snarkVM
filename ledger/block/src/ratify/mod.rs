@@ -24,11 +24,14 @@ use indexmap::IndexMap;
 type Variant = u8;
 /// A helper type to represent the public balances.
 type PublicBalances<N> = IndexMap<Address<N>, u64>;
+/// A helper type to represent the bonded balances.
+type BondedBalances<N> = IndexMap<Address<N>, (Address<N>, u64)>;
 
+// Note: The size of the `Ratify` object is 32 bytes.
 #[derive(Clone, PartialEq, Eq)]
 pub enum Ratify<N: Network> {
     /// The genesis.
-    Genesis(Committee<N>, PublicBalances<N>),
+    Genesis(Box<Committee<N>>, Box<PublicBalances<N>>, Box<BondedBalances<N>>),
     /// The block reward.
     BlockReward(u64),
     /// The puzzle reward.
@@ -45,9 +48,9 @@ impl<N: Network> Ratify<N> {
 #[cfg(test)]
 pub(crate) mod test_helpers {
     use super::*;
-    use console::network::Testnet3;
+    use console::network::MainnetV0;
 
-    type CurrentNetwork = Testnet3;
+    type CurrentNetwork = MainnetV0;
 
     pub(crate) fn sample_ratifications(rng: &mut TestRng) -> Vec<Ratify<CurrentNetwork>> {
         let committee = ledger_committee::test_helpers::sample_committee(rng);
@@ -55,11 +58,23 @@ pub(crate) mod test_helpers {
         for (address, _) in committee.members().iter() {
             public_balances.insert(*address, rng.gen());
         }
+        let bonded_balances =
+            committee.members().iter().map(|(address, (amount, _))| (*address, (*address, *amount))).collect();
 
         vec![
-            Ratify::Genesis(committee, public_balances),
+            Ratify::Genesis(Box::new(committee), Box::new(public_balances), Box::new(bonded_balances)),
             Ratify::BlockReward(rng.gen()),
             Ratify::PuzzleReward(rng.gen()),
         ]
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn check_ratify_size() {
+        assert_eq!(std::mem::size_of::<Ratify<console::network::MainnetV0>>(), 32);
     }
 }

@@ -131,15 +131,23 @@ impl<N: Network> StackExecute<N> for Stack<N> {
     /// # Errors
     /// This method will halt if the given inputs are not the same length as the input statements.
     #[inline]
-    fn execute_function<A: circuit::Aleo<Network = N>>(
+    fn execute_function<A: circuit::Aleo<Network = N>, R: CryptoRng + Rng>(
         &self,
         mut call_stack: CallStack<N>,
         console_caller: Option<ProgramID<N>>,
+        root_tvk: Option<Field<N>>,
+        rng: &mut R,
     ) -> Result<Response<N>> {
         let timer = timer!("Stack::execute_function");
 
         // Ensure the circuit environment is clean.
         A::reset();
+
+        // If in 'CheckDeployment' mode, set the constraint limit.
+        // We do not have to reset it after function calls because `CheckDeployment` mode does not execute those.
+        if let CallStack::CheckDeployment(_, _, _, constraint_limit) = &call_stack {
+            A::set_constraint_limit(*constraint_limit);
+        }
 
         // Retrieve the next request.
         let console_request = call_stack.pop()?;
@@ -155,6 +163,8 @@ impl<N: Network> StackExecute<N> for Stack<N> {
             console_request.network_id()
         );
 
+        // We can only have a root_tvk if this request was called by another request
+        ensure!(console_caller.is_some() == root_tvk.is_some());
         // Determine if this is the top-level caller.
         let console_is_root = console_caller.is_none();
 
@@ -190,11 +200,23 @@ impl<N: Network> StackExecute<N> for Stack<N> {
         lap!(timer, "Verify the input types");
 
         // Ensure the request is well-formed.
-        ensure!(console_request.verify(&input_types), "Request is invalid");
+        ensure!(console_request.verify(&input_types, console_is_root), "Request is invalid");
         lap!(timer, "Verify the console request");
 
         // Initialize the registers.
         let mut registers = Registers::new(call_stack, self.get_register_types(function.name())?.clone());
+
+        // Set the root tvk, from a parent request or the current request.
+        // inject the `root_tvk` as `Mode::Private`.
+        if let Some(root_tvk) = root_tvk {
+            registers.set_root_tvk(root_tvk);
+            registers.set_root_tvk_circuit(circuit::Field::<A>::new(circuit::Mode::Private, root_tvk));
+        } else {
+            registers.set_root_tvk(*console_request.tvk());
+            registers.set_root_tvk_circuit(circuit::Field::<A>::new(circuit::Mode::Private, *console_request.tvk()));
+        }
+
+        let root_tvk = Some(registers.root_tvk_circuit()?);
 
         use circuit::{Eject, Inject};
 
@@ -211,7 +233,7 @@ impl<N: Network> StackExecute<N> for Stack<N> {
         let caller = Ternary::ternary(&is_root, request.signer(), &parent);
 
         // Ensure the request has a valid signature, inputs, and transition view key.
-        A::assert(request.verify(&input_types, &tpk));
+        A::assert(request.verify(&input_types, &tpk, root_tvk, is_root));
         lap!(timer, "Verify the circuit request");
 
         // Set the transition signer.
@@ -278,7 +300,7 @@ impl<N: Network> StackExecute<N> for Stack<N> {
             // Execute the instruction.
             let result = match instruction {
                 // If the instruction is a `call` instruction, we need to handle it separately.
-                Instruction::Call(call) => CallTrait::execute(call, self, &mut registers),
+                Instruction::Call(call) => CallTrait::execute(call, self, &mut registers, rng),
                 // Otherwise, execute the instruction normally.
                 _ => instruction.execute(self, &mut registers),
             };
@@ -424,7 +446,7 @@ impl<N: Network> StackExecute<N> for Stack<N> {
             lap!(timer, "Save the transition");
         }
         // If the circuit is in `CheckDeployment` mode, then save the assignment.
-        else if let CallStack::CheckDeployment(_, _, ref assignments) = registers.call_stack() {
+        else if let CallStack::CheckDeployment(_, _, ref assignments, _) = registers.call_stack() {
             // Construct the call metrics.
             let metrics = CallMetrics {
                 program_id: *self.program_id(),

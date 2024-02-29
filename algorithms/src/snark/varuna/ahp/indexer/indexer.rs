@@ -14,15 +14,14 @@
 
 use crate::{
     fft::EvaluationDomain,
-    polycommit::sonic_pc::{PolynomialInfo, PolynomialLabel},
-    r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSystem},
+    polycommit::sonic_pc::{LinearCombination, PolynomialInfo, PolynomialLabel},
+    r1cs::{errors::SynthesisError, ConstraintSynthesizer},
     snark::varuna::{
         ahp::{
             indexer::{Circuit, CircuitId, CircuitInfo, ConstraintSystem as IndexerConstraintSystem},
-            AHPError,
             AHPForR1CS,
         },
-        matrices::{matrix_evals, MatrixEvals},
+        matrices::{into_matrix_helper, matrix_evals, MatrixEvals},
         num_non_zero,
         SNARKMode,
     },
@@ -30,8 +29,9 @@ use crate::{
 use snarkvm_fields::PrimeField;
 use snarkvm_utilities::cfg_into_iter;
 
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, ensure, Result};
 use core::marker::PhantomData;
+use itertools::Itertools;
 use std::collections::BTreeMap;
 
 #[cfg(not(feature = "serial"))]
@@ -101,25 +101,29 @@ impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
         map
     }
 
+    pub fn index_polynomial_labels_single<'a>(
+        matrix: &str,
+        id: &'a CircuitId,
+    ) -> impl ExactSizeIterator<Item = PolynomialLabel> + 'a {
+        [
+            format!("circuit_{id}_row_{matrix}"),
+            format!("circuit_{id}_col_{matrix}"),
+            format!("circuit_{id}_row_col_{matrix}"),
+            format!("circuit_{id}_row_col_val_{matrix}"),
+        ]
+        .into_iter()
+    }
+
     pub fn index_polynomial_labels<'a>(
         matrices: &'a [&str],
         ids: impl Iterator<Item = &'a CircuitId> + 'a,
     ) -> impl Iterator<Item = PolynomialLabel> + 'a {
-        ids.flat_map(move |id| {
-            matrices.iter().flat_map(move |matrix| {
-                [
-                    format!("circuit_{id}_row_{matrix}"),
-                    format!("circuit_{id}_col_{matrix}"),
-                    format!("circuit_{id}_row_col_{matrix}"),
-                    format!("circuit_{id}_row_col_val_{matrix}"),
-                ]
-            })
-        })
+        ids.flat_map(move |id| matrices.iter().flat_map(move |matrix| Self::index_polynomial_labels_single(matrix, id)))
     }
 
     /// Generate the indexed circuit evaluations for this constraint system.
     /// Used by both the Prover and Verifier
-    pub(crate) fn index_helper<C: ConstraintSynthesizer<F>>(c: &C) -> Result<IndexerState<F>, AHPError> {
+    pub(crate) fn index_helper<C: ConstraintSynthesizer<F>>(c: &C) -> Result<IndexerState<F>> {
         let index_time = start_timer!(|| "AHP::Index");
 
         let constraint_time = start_timer!(|| "Generating constraints");
@@ -134,17 +138,17 @@ impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
             crate::snark::varuna::ahp::matrices::add_randomizing_variables::<_, _>(&mut ics, random_assignments)
         });
 
-        crate::snark::varuna::ahp::matrices::pad_input_for_indexer_and_prover(&mut ics);
+        crate::snark::varuna::ahp::matrices::pad_input_for_indexer_and_prover(&mut ics)?;
 
-        let a = ics.a_matrix()?;
-        let b = ics.b_matrix()?;
-        let c = ics.c_matrix()?;
+        let IndexerConstraintSystem { a, b, c, num_public_variables, num_private_variables, num_constraints } = ics;
+
+        let a = into_matrix_helper(a, num_public_variables)?;
+        let b = into_matrix_helper(b, num_public_variables)?;
+        let c = into_matrix_helper(c, num_public_variables)?;
 
         end_timer!(padding_time);
 
-        let num_padded_public_variables = ics.num_public_variables();
-        let num_private_variables = ics.num_private_variables();
-        let num_constraints = ics.num_constraints();
+        let num_padded_public_variables = num_public_variables;
         let num_non_zero_a = num_non_zero(&a);
         let num_non_zero_b = num_non_zero(&b);
         let num_non_zero_c = num_non_zero(&c);
@@ -171,18 +175,13 @@ impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
             num_non_zero_c,
         };
 
-        let constraint_domain =
-            EvaluationDomain::new(num_constraints).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
-        let variable_domain = EvaluationDomain::new(num_variables).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
-        let input_domain =
-            EvaluationDomain::new(num_padded_public_variables).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
+        let constraint_domain = EvaluationDomain::new(num_constraints).ok_or(SynthesisError::PolyTooLarge)?;
+        let variable_domain = EvaluationDomain::new(num_variables).ok_or(SynthesisError::PolyTooLarge)?;
+        let input_domain = EvaluationDomain::new(num_padded_public_variables).ok_or(SynthesisError::PolyTooLarge)?;
 
-        let non_zero_a_domain =
-            EvaluationDomain::new(num_non_zero_a).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
-        let non_zero_b_domain =
-            EvaluationDomain::new(num_non_zero_b).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
-        let non_zero_c_domain =
-            EvaluationDomain::new(num_non_zero_c).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
+        let non_zero_a_domain = EvaluationDomain::new(num_non_zero_a).ok_or(SynthesisError::PolyTooLarge)?;
+        let non_zero_b_domain = EvaluationDomain::new(num_non_zero_b).ok_or(SynthesisError::PolyTooLarge)?;
+        let non_zero_c_domain = EvaluationDomain::new(num_non_zero_c).ok_or(SynthesisError::PolyTooLarge)?;
 
         let constraint_domain_elements = constraint_domain.elements().collect::<Vec<_>>();
         let variable_domain_elements = variable_domain.elements().collect::<Vec<_>>();
@@ -203,7 +202,7 @@ impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
                 .try_into()
                 .unwrap();
 
-        let id = Circuit::<F, SM>::hash(&index_info, &a, &b, &c).unwrap();
+        let id = Circuit::<F, SM>::hash(&index_info, &a, &b, &c)?;
 
         let result = Ok(IndexerState {
             constraint_domain,
@@ -228,25 +227,36 @@ impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
         result
     }
 
+    /// Evaluate the index polynomials for this constraint system at the given point.
+    /// Return the LinearCombination of the index polynomials and the sum of the evaluations.
     pub(crate) fn evaluate_index_polynomials(
         state: IndexerState<F>,
         id: &CircuitId,
         point: F,
-    ) -> Result<impl Iterator<Item = F>, AHPError> {
-        let mut evals = [
-            (state.a_arith, state.non_zero_a_domain),
-            (state.b_arith, state.non_zero_b_domain),
-            (state.c_arith, state.non_zero_c_domain),
-        ]
-        .into_iter()
-        .flat_map(move |(evals, domain)| {
-            let labels = Self::index_polynomial_labels(&["a", "b", "c"], std::iter::once(id));
+        mut combiners: impl Iterator<Item = F>,
+    ) -> Result<(LinearCombination<F>, F)> {
+        let mut lc = LinearCombination::empty("circuit_check");
+        let mut all_evals = Vec::with_capacity(3);
+        let mut sum = F::zero();
+        for (evals, domain, label) in [
+            (state.a_arith, state.non_zero_a_domain, "a"),
+            (state.b_arith, state.non_zero_b_domain, "b"),
+            (state.c_arith, state.non_zero_c_domain, "c"),
+        ] {
+            let labels = Self::index_polynomial_labels_single(label, id);
             let lagrange_coefficients_at_point = domain.evaluate_all_lagrange_coefficients(point);
-            labels.zip(evals.evaluate(&lagrange_coefficients_at_point).unwrap())
-        })
-        .collect::<Vec<_>>();
-        evals.sort_by(|(l1, _), (l2, _)| l1.cmp(l2));
-        Ok(evals.into_iter().map(|(_, eval)| eval))
+            let evals_at_point = evals.evaluate(&lagrange_coefficients_at_point)?;
+            ensure!(labels.len() == evals_at_point.len());
+            all_evals.push(labels.into_iter().zip_eq(evals_at_point.into_iter()));
+        }
+        let sorted_evals = all_evals.into_iter().flatten().sorted_unstable_by(|(l1, _), (l2, _)| l1.cmp(l2));
+        for (label, eval) in sorted_evals {
+            let combiner = combiners.next().ok_or(anyhow!("No combiner left"))?;
+            lc.add(combiner, label.as_str());
+            sum += eval * combiner;
+        }
+        ensure!(combiners.next().is_none(), "Found more combiners than sorted_evals");
+        Ok((lc, sum))
     }
 }
 

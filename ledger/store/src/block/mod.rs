@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+pub mod confirmed_tx_type;
+pub use confirmed_tx_type::*;
+
 use crate::{
     atomic_batch_scope,
     cow_to_cloned,
@@ -32,137 +35,70 @@ use ledger_block::{
     Block,
     ConfirmedTransaction,
     Header,
-    NumFinalizeSize,
     Ratifications,
     Rejected,
+    Solutions,
     Transaction,
     Transactions,
 };
-use ledger_coinbase::{CoinbaseSolution, ProverSolution, PuzzleCommitment};
+use ledger_coinbase::{ProverSolution, PuzzleCommitment};
 use ledger_narwhal_batch_certificate::BatchCertificate;
-use synthesizer_program::Program;
+use synthesizer_program::{FinalizeOperation, Program};
 
+use aleo_std_storage::StorageMode;
 use anyhow::Result;
 use parking_lot::RwLock;
-use std::{borrow::Cow, io::Cursor, sync::Arc};
+use std::{borrow::Cow, sync::Arc};
 
 #[cfg(not(feature = "serial"))]
 use rayon::prelude::*;
-
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum ConfirmedTxType {
-    /// A deploy transaction that was accepted.
-    AcceptedDeploy(u32),
-    /// An execute transaction that was accepted.
-    AcceptedExecute(u32),
-    /// A deploy transaction that was rejected.
-    RejectedDeploy(u32),
-    /// An execute transaction that was rejected.
-    RejectedExecute(u32),
-}
 
 /// Separates the confirmed transaction into a tuple.
 #[allow(clippy::type_complexity)]
 fn to_confirmed_tuple<N: Network>(
     confirmed: ConfirmedTransaction<N>,
-) -> Result<(ConfirmedTxType, Transaction<N>, Vec<u8>, Option<Rejected<N>>)> {
+) -> Result<(ConfirmedTxType<N>, Transaction<N>, Vec<FinalizeOperation<N>>)> {
     match confirmed {
-        ConfirmedTransaction::AcceptedDeploy(index, tx, finalize) => {
-            // Retrieve the number of finalize operations.
-            let num_finalize = NumFinalizeSize::try_from(finalize.len())?;
+        ConfirmedTransaction::AcceptedDeploy(index, tx, finalize_operations) => {
             // Return the confirmed tuple.
-            Ok((ConfirmedTxType::AcceptedDeploy(index), tx, (num_finalize, finalize).to_bytes_le()?, None))
+            Ok((ConfirmedTxType::AcceptedDeploy(index), tx, finalize_operations))
         }
-        ConfirmedTransaction::AcceptedExecute(index, tx, finalize) => {
-            // Retrieve the number of finalize operations.
-            let num_finalize = NumFinalizeSize::try_from(finalize.len())?;
+        ConfirmedTransaction::AcceptedExecute(index, tx, finalize_operations) => {
             // Return the confirmed tuple.
-            Ok((ConfirmedTxType::AcceptedExecute(index), tx, (num_finalize, finalize).to_bytes_le()?, None))
+            Ok((ConfirmedTxType::AcceptedExecute(index), tx, finalize_operations))
         }
-        ConfirmedTransaction::RejectedDeploy(index, tx, rejected, finalize) => {
-            // Retrieve the number of finalize operations.
-            let num_finalize = NumFinalizeSize::try_from(finalize.len())?;
-
-            // Initialize a vector for the serialized blob.
-            let mut blob = Vec::new();
-            // Serialize the rejected deployment.
-            rejected.write_le(&mut blob)?;
-            // Serialize the number of finalize operations.
-            num_finalize.write_le(&mut blob)?;
-            // Serialize the finalize operations.
-            finalize.write_le(&mut blob)?;
-
+        ConfirmedTransaction::RejectedDeploy(index, tx, rejected, finalize_operations) => {
             // Return the confirmed tuple.
-            Ok((ConfirmedTxType::RejectedDeploy(index), tx, blob, Some(rejected)))
+            Ok((ConfirmedTxType::RejectedDeploy(index, rejected), tx, finalize_operations))
         }
-        ConfirmedTransaction::RejectedExecute(index, tx, rejected, finalize) => {
-            // Retrieve the number of finalize operations.
-            let num_finalize = NumFinalizeSize::try_from(finalize.len())?;
-
-            // Initialize a vector for the serialized blob.
-            let mut blob = Vec::new();
-            // Serialize the rejected deployment.
-            rejected.write_le(&mut blob)?;
-            // Serialize the number of finalize operations.
-            num_finalize.write_le(&mut blob)?;
-            // Serialize the finalize operations.
-            finalize.write_le(&mut blob)?;
-
+        ConfirmedTransaction::RejectedExecute(index, tx, rejected, finalize_operations) => {
             // Return the confirmed tuple.
-            Ok((ConfirmedTxType::RejectedExecute(index), tx, blob, Some(rejected)))
+            Ok((ConfirmedTxType::RejectedExecute(index, rejected), tx, finalize_operations))
         }
     }
 }
 
 fn to_confirmed_transaction<N: Network>(
-    confirmed_type: ConfirmedTxType,
+    confirmed_type: ConfirmedTxType<N>,
     transaction: Transaction<N>,
-    blob: Vec<u8>,
+    finalize_operations: Vec<FinalizeOperation<N>>,
 ) -> Result<ConfirmedTransaction<N>> {
     match confirmed_type {
         ConfirmedTxType::AcceptedDeploy(index) => {
-            // Initialize a cursor.
-            let mut cursor = Cursor::new(blob);
-            // Read the number of finalize operations.
-            let num_finalize = NumFinalizeSize::read_le(&mut cursor)?;
-            // Read the finalize operations.
-            let finalize = (0..num_finalize).map(|_| FromBytes::read_le(&mut cursor)).collect::<Result<Vec<_>, _>>()?;
             // Return the confirmed transaction.
-            ConfirmedTransaction::accepted_deploy(index, transaction, finalize)
+            ConfirmedTransaction::accepted_deploy(index, transaction, finalize_operations)
         }
         ConfirmedTxType::AcceptedExecute(index) => {
-            // Initialize a cursor.
-            let mut cursor = Cursor::new(blob);
-            // Read the number of finalize operations.
-            let num_finalize = NumFinalizeSize::read_le(&mut cursor)?;
-            // Read the finalize operations.
-            let finalize = (0..num_finalize).map(|_| FromBytes::read_le(&mut cursor)).collect::<Result<Vec<_>, _>>()?;
             // Return the confirmed transaction.
-            ConfirmedTransaction::accepted_execute(index, transaction, finalize)
+            ConfirmedTransaction::accepted_execute(index, transaction, finalize_operations)
         }
-        ConfirmedTxType::RejectedDeploy(index) => {
-            // Initialize a cursor.
-            let mut cursor = Cursor::new(blob);
-            // Read the rejected deployment.
-            let rejected = Rejected::read_le(&mut cursor)?;
-            // Read the number of finalize operations.
-            let num_finalize = NumFinalizeSize::read_le(&mut cursor)?;
-            // Read the finalize operations.
-            let finalize = (0..num_finalize).map(|_| FromBytes::read_le(&mut cursor)).collect::<Result<Vec<_>, _>>()?;
+        ConfirmedTxType::RejectedDeploy(index, rejected) => {
             // Return the confirmed transaction.
-            ConfirmedTransaction::rejected_deploy(index, transaction, rejected, finalize)
+            ConfirmedTransaction::rejected_deploy(index, transaction, rejected, finalize_operations)
         }
-        ConfirmedTxType::RejectedExecute(index) => {
-            // Initialize a cursor.
-            let mut cursor = Cursor::new(blob);
-            // Read the rejected deployment.
-            let rejected = Rejected::read_le(&mut cursor)?;
-            // Read the number of finalize operations.
-            let num_finalize = NumFinalizeSize::read_le(&mut cursor)?;
-            // Read the finalize operations.
-            let finalize = (0..num_finalize).map(|_| FromBytes::read_le(&mut cursor)).collect::<Result<Vec<_>, _>>()?;
+        ConfirmedTxType::RejectedExecute(index, rejected) => {
             // Return the confirmed transaction.
-            ConfirmedTransaction::rejected_execute(index, transaction, rejected, finalize)
+            ConfirmedTransaction::rejected_execute(index, transaction, rejected, finalize_operations)
         }
     }
 }
@@ -186,19 +122,21 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
     /// The mapping of `block hash` to `block ratifications`.
     type RatificationsMap: for<'a> Map<'a, N::BlockHash, Ratifications<N>>;
     /// The mapping of `block hash` to `block solutions`.
-    type SolutionsMap: for<'a> Map<'a, N::BlockHash, Option<CoinbaseSolution<N>>>;
+    type SolutionsMap: for<'a> Map<'a, N::BlockHash, Solutions<N>>;
     /// The mapping of `puzzle commitment` to `block height`.
     type PuzzleCommitmentsMap: for<'a> Map<'a, PuzzleCommitment<N>, u32>;
+    /// The mapping of `block hash` to `[aborted solution ID]`.
+    type AbortedSolutionIDsMap: for<'a> Map<'a, N::BlockHash, Vec<PuzzleCommitment<N>>>;
+    /// The mapping of aborted `solution ID` to `block height`.
+    type AbortedSolutionHeightsMap: for<'a> Map<'a, PuzzleCommitment<N>, u32>;
     /// The mapping of `block hash` to `[transaction ID]`.
     type TransactionsMap: for<'a> Map<'a, N::BlockHash, Vec<N::TransactionID>>;
     /// The mapping of `block hash` to `[aborted transaction ID]`.
     type AbortedTransactionIDsMap: for<'a> Map<'a, N::BlockHash, Vec<N::TransactionID>>;
     /// The mapping of rejected or aborted `transaction ID` to `block hash`.
     type RejectedOrAbortedTransactionIDMap: for<'a> Map<'a, N::TransactionID, N::BlockHash>;
-    /// The mapping of `transaction ID` to `(block hash, confirmed tx type, confirmed blob)`.
-    /// TODO (howardwu): For mainnet - With recent DB changes, to prevent breaking compatibility,
-    ///  include rejected (d or e) ID into `ConfirmedTxType`, and change from `Vec<u8>` to `Vec<FinalizeOps>`.
-    type ConfirmedTransactionsMap: for<'a> Map<'a, N::TransactionID, (N::BlockHash, ConfirmedTxType, Vec<u8>)>;
+    /// The mapping of `transaction ID` to `(block hash, confirmed tx type, finalize operations)`.
+    type ConfirmedTransactionsMap: for<'a> Map<'a, N::TransactionID, (N::BlockHash, ConfirmedTxType<N>, Vec<FinalizeOperation<N>>)>;
     /// The rejected deployment or execution map.
     type RejectedDeploymentOrExecutionMap: for<'a> Map<'a, Field<N>, Rejected<N>>;
     /// The transaction storage.
@@ -207,7 +145,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
     type TransitionStorage: TransitionStorage<N>;
 
     /// Initializes the block storage.
-    fn open(dev: Option<u16>) -> Result<Self>;
+    fn open<S: Clone + Into<StorageMode>>(storage: S) -> Result<Self>;
 
     /// Returns the state root map.
     fn state_root_map(&self) -> &Self::StateRootMap;
@@ -229,6 +167,10 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
     fn solutions_map(&self) -> &Self::SolutionsMap;
     /// Returns the puzzle commitments map.
     fn puzzle_commitments_map(&self) -> &Self::PuzzleCommitmentsMap;
+    /// Returns the aborted solution IDs map.
+    fn aborted_solution_ids_map(&self) -> &Self::AbortedSolutionIDsMap;
+    /// Returns the aborted solution heights map.
+    fn aborted_solution_heights_map(&self) -> &Self::AbortedSolutionHeightsMap;
     /// Returns the accepted transactions map.
     fn transactions_map(&self) -> &Self::TransactionsMap;
     /// Returns the aborted transaction IDs map.
@@ -246,10 +188,10 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
     fn transition_store(&self) -> &TransitionStore<N, Self::TransitionStorage> {
         self.transaction_store().transition_store()
     }
-    /// Returns the optional development ID.
-    fn dev(&self) -> Option<u16> {
-        debug_assert!(self.transaction_store().dev() == self.transition_store().dev());
-        self.transition_store().dev()
+    /// Returns the storage mode.
+    fn storage_mode(&self) -> &StorageMode {
+        debug_assert!(self.transaction_store().storage_mode() == self.transition_store().storage_mode());
+        self.transition_store().storage_mode()
     }
 
     /// Starts an atomic batch write operation.
@@ -264,6 +206,8 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         self.ratifications_map().start_atomic();
         self.solutions_map().start_atomic();
         self.puzzle_commitments_map().start_atomic();
+        self.aborted_solution_ids_map().start_atomic();
+        self.aborted_solution_heights_map().start_atomic();
         self.transactions_map().start_atomic();
         self.aborted_transaction_ids_map().start_atomic();
         self.rejected_or_aborted_transaction_id_map().start_atomic();
@@ -284,6 +228,8 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
             || self.ratifications_map().is_atomic_in_progress()
             || self.solutions_map().is_atomic_in_progress()
             || self.puzzle_commitments_map().is_atomic_in_progress()
+            || self.aborted_solution_ids_map().is_atomic_in_progress()
+            || self.aborted_solution_heights_map().is_atomic_in_progress()
             || self.transactions_map().is_atomic_in_progress()
             || self.aborted_transaction_ids_map().is_atomic_in_progress()
             || self.rejected_or_aborted_transaction_id_map().is_atomic_in_progress()
@@ -304,6 +250,8 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         self.ratifications_map().atomic_checkpoint();
         self.solutions_map().atomic_checkpoint();
         self.puzzle_commitments_map().atomic_checkpoint();
+        self.aborted_solution_ids_map().atomic_checkpoint();
+        self.aborted_solution_heights_map().atomic_checkpoint();
         self.transactions_map().atomic_checkpoint();
         self.aborted_transaction_ids_map().atomic_checkpoint();
         self.rejected_or_aborted_transaction_id_map().atomic_checkpoint();
@@ -324,6 +272,8 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         self.ratifications_map().clear_latest_checkpoint();
         self.solutions_map().clear_latest_checkpoint();
         self.puzzle_commitments_map().clear_latest_checkpoint();
+        self.aborted_solution_ids_map().clear_latest_checkpoint();
+        self.aborted_solution_heights_map().clear_latest_checkpoint();
         self.transactions_map().clear_latest_checkpoint();
         self.aborted_transaction_ids_map().clear_latest_checkpoint();
         self.rejected_or_aborted_transaction_id_map().clear_latest_checkpoint();
@@ -344,6 +294,8 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         self.ratifications_map().atomic_rewind();
         self.solutions_map().atomic_rewind();
         self.puzzle_commitments_map().atomic_rewind();
+        self.aborted_solution_ids_map().atomic_rewind();
+        self.aborted_solution_heights_map().atomic_rewind();
         self.transactions_map().atomic_rewind();
         self.aborted_transaction_ids_map().atomic_rewind();
         self.rejected_or_aborted_transaction_id_map().atomic_rewind();
@@ -364,6 +316,8 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         self.ratifications_map().abort_atomic();
         self.solutions_map().abort_atomic();
         self.puzzle_commitments_map().abort_atomic();
+        self.aborted_solution_ids_map().abort_atomic();
+        self.aborted_solution_heights_map().abort_atomic();
         self.transactions_map().abort_atomic();
         self.aborted_transaction_ids_map().abort_atomic();
         self.rejected_or_aborted_transaction_id_map().abort_atomic();
@@ -384,12 +338,28 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         self.ratifications_map().finish_atomic()?;
         self.solutions_map().finish_atomic()?;
         self.puzzle_commitments_map().finish_atomic()?;
+        self.aborted_solution_ids_map().finish_atomic()?;
+        self.aborted_solution_heights_map().finish_atomic()?;
         self.transactions_map().finish_atomic()?;
         self.aborted_transaction_ids_map().finish_atomic()?;
         self.rejected_or_aborted_transaction_id_map().finish_atomic()?;
         self.confirmed_transactions_map().finish_atomic()?;
         self.rejected_deployment_or_execution_map().finish_atomic()?;
         self.transaction_store().finish_atomic()
+    }
+
+    /// Pauses atomic writes.
+    fn pause_atomic_writes(&self) -> Result<()> {
+        // Since this applies to the entire storage, any map can be used; this
+        // one is just the first one in the list.
+        self.state_root_map().pause_atomic_writes()
+    }
+
+    /// Unpauses atomic writes.
+    fn unpause_atomic_writes<const DISCARD_BATCH: bool>(&self) -> Result<()> {
+        // Since this applies to the entire storage, any map can be used; this
+        // one is just the first one in the list.
+        self.state_root_map().unpause_atomic_writes::<DISCARD_BATCH>()
     }
 
     /// Stores the given `(state root, block)` pair into storage.
@@ -405,10 +375,9 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         // Retrieve the certificate IDs to store.
         let certificates_to_store = match block.authority() {
             Authority::Beacon(_) => Vec::new(),
-            Authority::Quorum(subdag) => subdag
-                .iter()
-                .flat_map(|(round, certificates)| certificates.iter().map(|c| (c.certificate_id(), *round)))
-                .collect(),
+            Authority::Quorum(subdag) => {
+                subdag.iter().flat_map(|(round, certificates)| certificates.iter().map(|c| (c.id(), *round))).collect()
+            }
         };
 
         // Prepare the rejected transaction IDs and their corresponding unconfirmed transaction IDs.
@@ -444,13 +413,19 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
             self.ratifications_map().insert(block.hash(), block.ratifications().clone())?;
 
             // Store the block solutions.
-            self.solutions_map().insert(block.hash(), block.solutions().cloned())?;
+            self.solutions_map().insert(block.hash(), block.solutions().clone())?;
 
-            // Store the block puzzle commitments.
-            if let Some(solutions) = block.solutions() {
-                for puzzle_commitment in solutions.keys() {
-                    self.puzzle_commitments_map().insert(*puzzle_commitment, block.height())?;
-                }
+            // Store the block solution IDs.
+            for solution_id in block.solutions().solution_ids() {
+                self.puzzle_commitments_map().insert(*solution_id, block.height())?;
+            }
+
+            // Store the aborted solution IDs.
+            self.aborted_solution_ids_map().insert(block.hash(), block.aborted_solution_ids().clone())?;
+
+            // Store the block aborted solution heights.
+            for solution_id in block.aborted_solution_ids() {
+                self.aborted_solution_heights_map().insert(*solution_id, block.height())?;
             }
 
             // Store the transaction IDs.
@@ -468,11 +443,14 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
             }
 
             // Store the confirmed transactions.
-            for (confirmed_type, transaction, blob, rejected) in confirmed {
+            for (confirmed_type, transaction, finalize_operations) in confirmed {
                 // Store the block hash and confirmed transaction data.
-                self.confirmed_transactions_map().insert(transaction.id(), (block.hash(), confirmed_type, blob))?;
+                self.confirmed_transactions_map()
+                    .insert(transaction.id(), (block.hash(), confirmed_type.clone(), finalize_operations))?;
                 // Store the rejected deployment or execution.
-                if let Some(rejected) = rejected {
+                if let ConfirmedTxType::RejectedDeploy(_, rejected) | ConfirmedTxType::RejectedExecute(_, rejected) =
+                    confirmed_type
+                {
                     self.rejected_deployment_or_execution_map().insert(rejected.to_id()?, rejected)?;
                 }
                 // Store the transaction.
@@ -508,6 +486,12 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
             }
         };
 
+        // Retrieve the aborted solution IDs.
+        let aborted_solution_ids = match self.get_block_aborted_solution_ids(block_hash)? {
+            Some(solution_ids) => solution_ids,
+            None => Vec::new(),
+        };
+
         // Retrieve the aborted transaction IDs.
         let aborted_transaction_ids = match self.get_block_aborted_transaction_ids(block_hash)? {
             Some(transaction_ids) => transaction_ids,
@@ -529,7 +513,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
             Some(authority) => match authority {
                 Cow::Owned(Authority::Beacon(_)) | Cow::Borrowed(Authority::Beacon(_)) => Vec::new(),
                 Cow::Owned(Authority::Quorum(ref subdag)) | Cow::Borrowed(Authority::Quorum(ref subdag)) => {
-                    subdag.values().flatten().map(|c| c.certificate_id()).collect()
+                    subdag.values().flatten().map(|c| c.id()).collect()
                 }
             },
             None => bail!("Failed to remove block: missing authority for block '{block_height}' ('{block_hash}')"),
@@ -562,11 +546,17 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
             // Remove the block solutions.
             self.solutions_map().remove(block_hash)?;
 
-            // Remove the block puzzle commitments.
-            if let Some(solutions) = solutions {
-                for puzzle_commitment in solutions.keys() {
-                    self.puzzle_commitments_map().remove(puzzle_commitment)?;
-                }
+            // Remove the block solution IDs.
+            for solution_id in solutions.solution_ids() {
+                self.puzzle_commitments_map().remove(solution_id)?;
+            }
+
+            // Remove the aborted solution IDs.
+            self.aborted_solution_ids_map().remove(block_hash)?;
+
+            // Remove the aborted solution heights.
+            for solution_id in aborted_solution_ids {
+                self.aborted_solution_heights_map().remove(&solution_id)?;
             }
 
             // Remove the transaction IDs.
@@ -629,15 +619,22 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         match self.confirmed_transactions_map().get_confirmed(transaction_id)? {
             Some(Cow::Borrowed((block_hash, _, _))) => Ok(Some(*block_hash)),
             Some(Cow::Owned((block_hash, _, _))) => Ok(Some(block_hash)),
-            None => Ok(None),
+            None => match self.rejected_or_aborted_transaction_id_map().get_confirmed(transaction_id)? {
+                Some(Cow::Borrowed(block_hash)) => Ok(Some(*block_hash)),
+                Some(Cow::Owned(block_hash)) => Ok(Some(block_hash)),
+                None => Ok(None),
+            },
         }
     }
 
     /// Returns the block height that contains the given `puzzle commitment`.
-    fn find_block_height_from_puzzle_commitment(&self, puzzle_commitment: &PuzzleCommitment<N>) -> Result<Option<u32>> {
-        match self.puzzle_commitments_map().get_confirmed(puzzle_commitment)? {
+    fn find_block_height_from_puzzle_commitment(&self, solution_id: &PuzzleCommitment<N>) -> Result<Option<u32>> {
+        match self.puzzle_commitments_map().get_confirmed(solution_id)? {
             Some(block_height) => Ok(Some(cow_to_copied!(block_height))),
-            None => Ok(None),
+            None => match self.aborted_solution_heights_map().get_confirmed(solution_id)? {
+                Some(block_height) => Ok(Some(cow_to_copied!(block_height))),
+                None => Ok(None),
+            },
         }
     }
 
@@ -798,7 +795,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
                 match subdag.get(&round) {
                     Some(certificates) => {
                         // Retrieve the certificate for the given certificate ID.
-                        match certificates.iter().find(|certificate| &certificate.certificate_id() == certificate_id) {
+                        match certificates.iter().find(|certificate| &certificate.id() == certificate_id) {
                             Some(certificate) => Ok(Some(certificate.clone())),
                             None => bail!("The certificate '{certificate_id}' is missing in block storage"),
                         }
@@ -821,7 +818,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
     }
 
     /// Returns the block solutions for the given `block hash`.
-    fn get_block_solutions(&self, block_hash: &N::BlockHash) -> Result<Option<CoinbaseSolution<N>>> {
+    fn get_block_solutions(&self, block_hash: &N::BlockHash) -> Result<Solutions<N>> {
         match self.solutions_map().get_confirmed(block_hash)? {
             Some(solutions) => Ok(cow_to_cloned!(solutions)),
             None => bail!("Missing solutions for block ('{block_hash}')"),
@@ -829,10 +826,10 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
     }
 
     /// Returns the prover solution for the given solution ID.
-    fn get_solution(&self, puzzle_commitment: &PuzzleCommitment<N>) -> Result<ProverSolution<N>> {
-        // Retrieve the block height for the puzzle commitment.
-        let Some(block_height) = self.find_block_height_from_puzzle_commitment(puzzle_commitment)? else {
-            bail!("The block height for puzzle commitment '{puzzle_commitment}' is missing in block storage")
+    fn get_solution(&self, solution_id: &PuzzleCommitment<N>) -> Result<ProverSolution<N>> {
+        // Retrieve the block height for the solution ID.
+        let Some(block_height) = self.find_block_height_from_puzzle_commitment(solution_id)? else {
+            bail!("The block height for solution ID '{solution_id}' is missing in block storage")
         };
         // Retrieve the block hash.
         let Some(block_hash) = self.get_block_hash(block_height)? else {
@@ -843,15 +840,19 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
             bail!("The solutions for block '{block_height}' are missing in block storage")
         };
         // Retrieve the prover solution.
-        match solutions {
-            Cow::Owned(Some(ref solutions)) | Cow::Borrowed(Some(ref solutions)) => {
-                solutions.get(puzzle_commitment).cloned().ok_or_else(|| {
-                    anyhow!(
-                        "The prover solution for puzzle commitment '{puzzle_commitment}' is missing in block storage"
-                    )
-                })
-            }
-            _ => bail!("The prover solution for puzzle commitment '{puzzle_commitment}' is missing in block storage"),
+        match solutions.deref().deref() {
+            Some(ref solutions) => solutions.get(solution_id).cloned().ok_or_else(|| {
+                anyhow!("The prover solution for solution ID '{solution_id}' is missing in block storage")
+            }),
+            _ => bail!("The prover solution for solution ID '{solution_id}' is missing in block storage"),
+        }
+    }
+
+    /// Returns the block aborted solution IDs for the given `block hash`.
+    fn get_block_aborted_solution_ids(&self, block_hash: &N::BlockHash) -> Result<Option<Vec<PuzzleCommitment<N>>>> {
+        match self.aborted_solution_ids_map().get_confirmed(block_hash)? {
+            Some(aborted_solution_ids) => Ok(Some(cow_to_cloned!(aborted_solution_ids))),
+            None => Ok(None),
         }
     }
 
@@ -886,7 +887,15 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
                 Some(transactions) => {
                     match transactions.find_confirmed_transaction_for_unconfirmed_transaction_id(transaction_id) {
                         Some(confirmed) => Ok(Some(confirmed.transaction().clone())),
-                        None => bail!("Missing transaction '{transaction_id}' in block storage"),
+                        None => {
+                            // Check if the transaction was aborted.
+                            if let Some(aborted_ids) = self.get_block_aborted_transaction_ids(&block_hash)? {
+                                if aborted_ids.contains(transaction_id) {
+                                    bail!("Transaction '{transaction_id}' was aborted in block '{block_hash}'");
+                                }
+                            }
+                            bail!("Missing transaction '{transaction_id}' in block storage");
+                        }
                     }
                 }
                 None => bail!("Missing transactions for block '{block_hash}' in block storage"),
@@ -904,12 +913,13 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
             Err(err) => return Err(err),
         };
         // Retrieve the confirmed attributes.
-        let (_, confirmed_type, blob) = match self.confirmed_transactions_map().get_confirmed(&transaction.id())? {
-            Some(confirmed_attributes) => cow_to_cloned!(confirmed_attributes),
-            None => bail!("Missing confirmed transaction '{transaction_id}' in block storage"),
-        };
+        let (_, confirmed_type, finalize_operations) =
+            match self.confirmed_transactions_map().get_confirmed(&transaction.id())? {
+                Some(confirmed_attributes) => cow_to_cloned!(confirmed_attributes),
+                None => bail!("Missing confirmed transaction '{transaction_id}' in block storage"),
+            };
         // Construct the confirmed transaction.
-        to_confirmed_transaction(confirmed_type, transaction, blob).map(Some)
+        to_confirmed_transaction(confirmed_type, transaction, finalize_operations).map(Some)
     }
 
     /// Returns the unconfirmed transaction for the given `transaction ID`.
@@ -960,6 +970,10 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         let Ok(solutions) = self.get_block_solutions(block_hash) else {
             bail!("Missing solutions for block {height} ('{block_hash}')");
         };
+        // Retrieve the block aborted solution IDs.
+        let Some(aborted_solution_ids) = self.get_block_aborted_solution_ids(block_hash)? else {
+            bail!("Missing aborted solutions IDs for block {height} ('{block_hash}')");
+        };
         // Retrieve the block transactions.
         let Some(transactions) = self.get_block_transactions(block_hash)? else {
             bail!("Missing transactions for block {height} ('{block_hash}')");
@@ -976,6 +990,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
             authority,
             ratifications,
             solutions,
+            aborted_solution_ids,
             transactions,
             aborted_transaction_ids,
         )?))
@@ -993,9 +1008,9 @@ pub struct BlockStore<N: Network, B: BlockStorage<N>> {
 
 impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
     /// Initializes the block store.
-    pub fn open(dev: Option<u16>) -> Result<Self> {
+    pub fn open<S: Clone + Into<StorageMode>>(storage: S) -> Result<Self> {
         // Initialize the block storage.
-        let storage = B::open(dev)?;
+        let storage = B::open(storage)?;
 
         // Compute the block tree.
         let tree = {
@@ -1037,6 +1052,20 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
         Ok(())
     }
 
+    /// Reverts the Merkle tree to its shape before the insertion of the last 'n' blocks.
+    pub fn remove_last_n_from_tree_only(&self, n: u32) -> Result<()> {
+        // Ensure 'n' is non-zero.
+        ensure!(n > 0, "Cannot remove zero blocks");
+        // Acquire the write lock on the block tree.
+        let mut tree = self.tree.write();
+        // Prepare an updated Merkle tree removing the last 'n' block hashes.
+        let updated_tree = tree.prepare_remove_last_n(usize::try_from(n)?)?;
+        // Update the block tree.
+        *tree = updated_tree;
+        // Return success.
+        Ok(())
+    }
+
     /// Removes the last 'n' blocks from storage.
     pub fn remove_last_n(&self, n: u32) -> Result<()> {
         // Ensure 'n' is non-zero.
@@ -1061,7 +1090,6 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
             }
             None => bail!("Failed to remove last '{n}' blocks: no blocks in storage"),
         };
-
         // Fetch the block hashes to remove.
         let hashes = cfg_into_iter!(heights)
             .map(|height| match self.storage.get_block_hash(height)? {
@@ -1132,9 +1160,19 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
         self.storage.finish_atomic()
     }
 
-    /// Returns the optional development ID.
-    pub fn dev(&self) -> Option<u16> {
-        self.storage.dev()
+    /// Returns the storage mode.
+    pub fn storage_mode(&self) -> &StorageMode {
+        self.storage.storage_mode()
+    }
+
+    /// Pauses atomic writes.
+    pub fn pause_atomic_writes(&self) -> Result<()> {
+        self.storage.pause_atomic_writes()
+    }
+
+    /// Unpauses atomic writes.
+    pub fn unpause_atomic_writes<const DISCARD_BATCH: bool>(&self) -> Result<()> {
+        self.storage.unpause_atomic_writes::<DISCARD_BATCH>()
     }
 }
 
@@ -1205,7 +1243,7 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
     }
 
     /// Returns the block solutions for the given `block hash`.
-    pub fn get_block_solutions(&self, block_hash: &N::BlockHash) -> Result<Option<CoinbaseSolution<N>>> {
+    pub fn get_block_solutions(&self, block_hash: &N::BlockHash) -> Result<Solutions<N>> {
         self.storage.get_block_solutions(block_hash)
     }
 
@@ -1297,9 +1335,15 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
         self.storage.certificate_map().contains_key_confirmed(certificate_id)
     }
 
-    /// Returns `true` if the given puzzle commitment exists.
-    pub fn contains_puzzle_commitment(&self, puzzle_commitment: &PuzzleCommitment<N>) -> Result<bool> {
-        self.storage.puzzle_commitments_map().contains_key_confirmed(puzzle_commitment)
+    /// Returns `true` if the given solution ID exists.
+    pub fn contains_puzzle_commitment(&self, solution_id: &PuzzleCommitment<N>) -> Result<bool> {
+        Ok(self.storage.puzzle_commitments_map().contains_key_confirmed(solution_id)?
+            || self.contains_aborted_puzzle_commitment(solution_id)?)
+    }
+
+    /// Returns `true` if the given aborted solution ID exists.
+    fn contains_aborted_puzzle_commitment(&self, solution_id: &PuzzleCommitment<N>) -> Result<bool> {
+        self.storage.aborted_solution_heights_map().contains_key_confirmed(solution_id)
     }
 }
 
@@ -1319,8 +1363,8 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
         self.storage.reverse_id_map().keys_confirmed()
     }
 
-    /// Returns an iterator over the puzzle commitments, for all blocks in `self`.
-    pub fn puzzle_commitments(&self) -> impl '_ + Iterator<Item = Cow<'_, PuzzleCommitment<N>>> {
+    /// Returns an iterator over the solution IDs, for all blocks in `self`.
+    pub fn solution_ids(&self) -> impl '_ + Iterator<Item = Cow<'_, PuzzleCommitment<N>>> {
         self.storage.puzzle_commitments_map().keys_confirmed()
     }
 }
@@ -1330,7 +1374,7 @@ mod tests {
     use super::*;
     use crate::helpers::memory::BlockMemory;
 
-    type CurrentNetwork = console::network::Testnet3;
+    type CurrentNetwork = console::network::MainnetV0;
 
     #[test]
     fn test_insert_get_remove() {

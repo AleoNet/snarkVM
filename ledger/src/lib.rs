@@ -52,7 +52,6 @@ use console::{
     types::{Field, Group},
 };
 use ledger_authority::Authority;
-use ledger_block::{Block, ConfirmedTransaction, Header, Metadata, Ratify, Transaction, Transactions};
 use ledger_coinbase::{CoinbasePuzzle, CoinbaseSolution, EpochChallenge, ProverSolution, PuzzleCommitment};
 use ledger_committee::Committee;
 use ledger_narwhal::{BatchCertificate, Subdag, Transmission, TransmissionID};
@@ -63,7 +62,10 @@ use synthesizer::{
     vm::VM,
 };
 
-use aleo_std::prelude::{finish, lap, timer};
+use aleo_std::{
+    prelude::{finish, lap, timer},
+    StorageMode,
+};
 use anyhow::Result;
 use core::ops::Range;
 use indexmap::IndexMap;
@@ -109,13 +111,13 @@ pub struct Ledger<N: Network, C: ConsensusStorage<N>> {
 
 impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
     /// Loads the ledger from storage.
-    pub fn load(genesis_block: Block<N>, dev: Option<u16>) -> Result<Self> {
+    pub fn load(genesis_block: Block<N>, storage_mode: StorageMode) -> Result<Self> {
         let timer = timer!("Ledger::load");
 
         // Retrieve the genesis hash.
         let genesis_hash = genesis_block.hash();
         // Initialize the ledger.
-        let ledger = Self::load_unchecked(genesis_block, dev)?;
+        let ledger = Self::load_unchecked(genesis_block, storage_mode)?;
 
         // Ensure the ledger contains the correct genesis block.
         if !ledger.contains_block_hash(&genesis_hash)? {
@@ -141,12 +143,14 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
     }
 
     /// Loads the ledger from storage, without performing integrity checks.
-    pub fn load_unchecked(genesis_block: Block<N>, dev: Option<u16>) -> Result<Self> {
+    pub fn load_unchecked(genesis_block: Block<N>, storage_mode: StorageMode) -> Result<Self> {
         let timer = timer!("Ledger::load_unchecked");
 
+        info!("Loading the ledger from storage...");
         // Initialize the consensus store.
-        let Ok(store) = ConsensusStore::<N, C>::open(dev) else {
-            bail!("Failed to load ledger (run 'snarkos clean' and try again)");
+        let store = match ConsensusStore::<N, C>::open(storage_mode) {
+            Ok(store) => store,
+            Err(e) => bail!("Failed to load ledger (run 'snarkos clean' and try again)\n\n{e}\n"),
         };
         lap!(timer, "Load consensus store");
 
@@ -319,20 +323,18 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
     /// Creates a deploy transaction.
     ///
     /// The `priority_fee_in_microcredits` is an additional fee **on top** of the deployment fee.
-    pub fn create_deploy(
+    pub fn create_deploy<R: Rng + CryptoRng>(
         &self,
         private_key: &PrivateKey<N>,
         program: &Program<N>,
         priority_fee_in_microcredits: u64,
         query: Option<Query<N, C::BlockStorage>>,
+        rng: &mut R,
     ) -> Result<Transaction<N>> {
         // Fetch the unspent records.
         let records = self.find_unspent_credits_records(&ViewKey::try_from(private_key)?)?;
         ensure!(!records.len().is_zero(), "The Aleo account has no records to spend.");
         let mut records = records.values();
-
-        // Initialize an RNG.
-        let rng = &mut ::rand::thread_rng();
 
         // Prepare the fee record.
         let fee_record = Some(records.next().unwrap().clone());
@@ -344,21 +346,19 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
     /// Creates a transfer transaction.
     ///
     /// The `priority_fee_in_microcredits` is an additional fee **on top** of the execution fee.
-    pub fn create_transfer(
+    pub fn create_transfer<R: Rng + CryptoRng>(
         &self,
         private_key: &PrivateKey<N>,
         to: Address<N>,
         amount_in_microcredits: u64,
         priority_fee_in_microcredits: u64,
         query: Option<Query<N, C::BlockStorage>>,
+        rng: &mut R,
     ) -> Result<Transaction<N>> {
         // Fetch the unspent records.
         let records = self.find_unspent_credits_records(&ViewKey::try_from(private_key)?)?;
         ensure!(!records.len().is_zero(), "The Aleo account has no records to spend.");
         let mut records = records.values();
-
-        // Initialize an RNG.
-        let rng = &mut rand::thread_rng();
 
         // Prepare the inputs.
         let inputs = [
@@ -386,17 +386,30 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
 #[cfg(test)]
 pub(crate) mod test_helpers {
     use crate::Ledger;
+    use aleo_std::StorageMode;
     use console::{
         account::{Address, PrivateKey, ViewKey},
-        network::Testnet3,
+        network::MainnetV0,
         prelude::*,
     };
     use ledger_block::Block;
-    use ledger_store::{helpers::memory::ConsensusMemory, ConsensusStore};
+    use ledger_store::ConsensusStore;
     use synthesizer::vm::VM;
 
-    pub(crate) type CurrentNetwork = Testnet3;
-    pub(crate) type CurrentLedger = Ledger<CurrentNetwork, ConsensusMemory<CurrentNetwork>>;
+    pub(crate) type CurrentNetwork = MainnetV0;
+
+    #[cfg(not(feature = "rocks"))]
+    pub(crate) type CurrentLedger =
+        Ledger<CurrentNetwork, ledger_store::helpers::memory::ConsensusMemory<CurrentNetwork>>;
+    #[cfg(feature = "rocks")]
+    pub(crate) type CurrentLedger = Ledger<CurrentNetwork, ledger_store::helpers::rocksdb::ConsensusDB<CurrentNetwork>>;
+
+    #[cfg(not(feature = "rocks"))]
+    pub(crate) type CurrentConsensusStore =
+        ConsensusStore<CurrentNetwork, ledger_store::helpers::memory::ConsensusMemory<CurrentNetwork>>;
+    #[cfg(feature = "rocks")]
+    pub(crate) type CurrentConsensusStore =
+        ConsensusStore<CurrentNetwork, ledger_store::helpers::rocksdb::ConsensusDB<CurrentNetwork>>;
 
     #[allow(dead_code)]
     pub(crate) struct TestEnv {
@@ -426,11 +439,11 @@ pub(crate) mod test_helpers {
         rng: &mut (impl Rng + CryptoRng),
     ) -> CurrentLedger {
         // Initialize the store.
-        let store = ConsensusStore::<_, ConsensusMemory<_>>::open(None).unwrap();
+        let store = CurrentConsensusStore::open(None).unwrap();
         // Create a genesis block.
         let genesis = VM::from(store).unwrap().genesis_beacon(&private_key, rng).unwrap();
         // Initialize the ledger with the genesis block.
-        let ledger = CurrentLedger::load(genesis.clone(), None).unwrap();
+        let ledger = CurrentLedger::load(genesis.clone(), StorageMode::Production).unwrap();
         // Ensure the genesis block is correct.
         assert_eq!(genesis, ledger.get_block(0).unwrap());
         // Return the ledger.

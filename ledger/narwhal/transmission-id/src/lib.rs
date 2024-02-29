@@ -33,14 +33,14 @@ pub enum TransmissionID<N: Network> {
 }
 
 impl<N: Network> From<PuzzleCommitment<N>> for TransmissionID<N> {
-    /// Converts the puzzle commitment into an transmission ID.
+    /// Converts the puzzle commitment into a transmission ID.
     fn from(puzzle_commitment: PuzzleCommitment<N>) -> Self {
         Self::Solution(puzzle_commitment)
     }
 }
 
 impl<N: Network> From<&N::TransactionID> for TransmissionID<N> {
-    /// Converts the transaction ID into an transmission ID.
+    /// Converts the transaction ID into a transmission ID.
     fn from(transaction_id: &N::TransactionID) -> Self {
         Self::Transaction(*transaction_id)
     }
@@ -68,12 +68,12 @@ impl<N: Network> TransmissionID<N> {
 pub mod test_helpers {
     use super::*;
     use console::{
-        network::Testnet3,
+        network::MainnetV0,
         prelude::{Rng, TestRng, Uniform},
         types::Field,
     };
 
-    type CurrentNetwork = Testnet3;
+    type CurrentNetwork = MainnetV0;
 
     /// Returns a list of sample transmission IDs, sampled at random.
     pub fn sample_transmission_ids(rng: &mut TestRng) -> Vec<TransmissionID<CurrentNetwork>> {

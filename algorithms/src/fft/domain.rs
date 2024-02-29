@@ -319,7 +319,7 @@ impl<F: FftField> EvaluationDomain<F> {
     /// Given an index in the `other` subdomain, return an index into this domain `self`
     /// This assumes the `other`'s elements are also `self`'s first elements
     pub fn reindex_by_subdomain(&self, other: &Self, index: usize) -> Result<usize> {
-        ensure!(self.size() >= other.size(), "other.size() must be smaller than self.size()");
+        ensure!(self.size() > other.size(), "other.size() must be smaller than self.size()");
 
         // Let this subgroup be G, and the subgroup we're re-indexing by be S.
         // Since its a subgroup, the 0th element of S is at index 0 in G, the first element of S is at
@@ -345,13 +345,13 @@ impl<F: FftField> EvaluationDomain<F> {
     /// Perform O(n) multiplication of two polynomials that are presented by their
     /// evaluations in the domain.
     /// Returns the evaluations of the product over the domain.
-    #[must_use]
-    pub fn mul_polynomials_in_evaluation_domain(&self, self_evals: Vec<F>, other_evals: &[F]) -> Vec<F> {
+    pub fn mul_polynomials_in_evaluation_domain(&self, self_evals: Vec<F>, other_evals: &[F]) -> Result<Vec<F>> {
         let mut result = self_evals;
 
+        ensure!(result.len() == other_evals.len());
         cfg_iter_mut!(result).zip_eq(other_evals).for_each(|(a, b)| *a *= b);
 
-        result
+        Ok(result)
     }
 }
 

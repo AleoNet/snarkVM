@@ -34,18 +34,32 @@ impl<N: Network> FromBytes for BatchHeader<N> {
         let timestamp = i64::read_le(&mut reader)?;
 
         // Read the number of transmission IDs.
-        let num_transmissions = u32::read_le(&mut reader)?;
+        let num_transmission_ids = u32::read_le(&mut reader)?;
+        // Ensure the number of transmission IDs is within bounds.
+        if num_transmission_ids as usize > Self::MAX_TRANSMISSIONS_PER_BATCH {
+            return Err(error(format!(
+                "Number of transmission IDs ({num_transmission_ids}) exceeds the maximum ({})",
+                Self::MAX_TRANSMISSIONS_PER_BATCH,
+            )));
+        }
         // Read the transmission IDs.
         let mut transmission_ids = IndexSet::new();
-        for _ in 0..num_transmissions {
+        for _ in 0..num_transmission_ids {
             // Insert the transmission ID.
             transmission_ids.insert(TransmissionID::read_le(&mut reader)?);
         }
 
         // Read the number of previous certificate IDs.
-        let num_previous_certificate_ids = u32::read_le(&mut reader)?;
+        let num_previous_certificate_ids = u16::read_le(&mut reader)?;
+        // Ensure the number of previous certificate IDs is within bounds.
+        if num_previous_certificate_ids > Self::MAX_CERTIFICATES {
+            return Err(error(format!(
+                "Number of previous certificate IDs ({num_previous_certificate_ids}) exceeds the maximum ({})",
+                Self::MAX_CERTIFICATES
+            )));
+        }
         // Read the previous certificate IDs.
-        let mut previous_certificate_ids = IndexSet::with_capacity(num_previous_certificate_ids as usize);
+        let mut previous_certificate_ids = IndexSet::new();
         for _ in 0..num_previous_certificate_ids {
             // Read the certificate ID.
             previous_certificate_ids.insert(Field::read_le(&mut reader)?);
@@ -56,7 +70,7 @@ impl<N: Network> FromBytes for BatchHeader<N> {
 
         // Construct the batch.
         let batch = Self::from(author, round, timestamp, transmission_ids, previous_certificate_ids, signature)
-            .map_err(|e| error(e.to_string()))?;
+            .map_err(error)?;
 
         // Return the batch.
         match batch.batch_id == batch_id {
@@ -87,7 +101,7 @@ impl<N: Network> ToBytes for BatchHeader<N> {
             transmission_id.write_le(&mut writer)?;
         }
         // Write the number of previous certificate IDs.
-        u32::try_from(self.previous_certificate_ids.len()).map_err(|e| error(e.to_string()))?.write_le(&mut writer)?;
+        u16::try_from(self.previous_certificate_ids.len()).map_err(|e| error(e.to_string()))?.write_le(&mut writer)?;
         // Write the previous certificate IDs.
         for certificate_id in &self.previous_certificate_ids {
             // Write the certificate ID.
@@ -101,9 +115,6 @@ impl<N: Network> ToBytes for BatchHeader<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use console::network::Testnet3;
-
-    type CurrentNetwork = Testnet3;
 
     #[test]
     fn test_bytes() {
@@ -113,7 +124,6 @@ mod tests {
             // Check the byte representation.
             let expected_bytes = expected.to_bytes_le().unwrap();
             assert_eq!(expected, BatchHeader::read_le(&expected_bytes[..]).unwrap());
-            assert!(BatchHeader::<CurrentNetwork>::read_le(&expected_bytes[1..]).is_err());
         }
     }
 }

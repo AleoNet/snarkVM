@@ -26,6 +26,7 @@ mod varuna {
         },
         traits::{AlgebraicSponge, SNARK},
     };
+
     use std::collections::BTreeMap;
 
     use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};
@@ -57,6 +58,8 @@ mod varuna {
                         let mul_depth = 1;
                         println!("running test with SM::ZK: {}, mul_depth: {}, num_constraints: {}, num_variables: {}", $snark_mode::ZK, mul_depth + i, num_constraints + i, num_variables + i);
                         let (circ, public_inputs) = TestCircuit::gen_rand(mul_depth + i, num_constraints + i, num_variables + i, rng);
+                        let mut fake_inputs = public_inputs.clone();
+                        fake_inputs[public_inputs.len() - 1] = random;
 
                         let (index_pk, index_vk) = $snark_inst::circuit_setup(&universal_srs, &circ).unwrap();
                         println!("Called circuit setup");
@@ -76,7 +79,7 @@ mod varuna {
                         assert!($snark_inst::verify(universal_verifier, &fs_parameters, &index_vk, public_inputs, &proof).unwrap());
                         println!("Called verifier");
                         eprintln!("\nShould not verify (i.e. verifier messages should print below):");
-                        assert!(!$snark_inst::verify(universal_verifier, &fs_parameters, &index_vk, [random, random], &proof).unwrap());
+                        assert!(!$snark_inst::verify(universal_verifier, &fs_parameters, &index_vk, fake_inputs, &proof).unwrap());
                     }
 
                     for circuit_batch_size in (0..4).map(|i| 2usize.pow(i)) {
@@ -129,7 +132,8 @@ mod varuna {
                             for instance_input in vks_to_inputs.values() {
                                 let mut fake_instance_input = Vec::with_capacity(instance_input.len());
                                 for input in instance_input.iter() {
-                                    let fake_input = vec![Fr::rand(rng); input.len()];
+                                    let mut fake_input = input.clone();
+                                    fake_input[input.len() - 1] = Fr::rand(rng);
                                     fake_instance_input.push(fake_input);
                                 }
                                 fake_instance_inputs.push(fake_instance_input);
@@ -332,6 +336,8 @@ mod varuna_hiding {
         for _ in 0..num_times {
             let mul_depth = 2;
             let (circuit, public_inputs) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, rng);
+            let mut fake_inputs = public_inputs.clone();
+            fake_inputs[public_inputs.len() - 1] = Fr::rand(rng);
 
             let (index_pk, index_vk) = VarunaInst::circuit_setup(&universal_srs, &circuit).unwrap();
             println!("Called circuit setup");
@@ -342,16 +348,7 @@ mod varuna_hiding {
             assert!(VarunaInst::verify(universal_verifier, &fs_parameters, &index_vk, public_inputs, &proof).unwrap());
             println!("Called verifier");
             eprintln!("\nShould not verify (i.e. verifier messages should print below):");
-            assert!(
-                !VarunaInst::verify(
-                    universal_verifier,
-                    &fs_parameters,
-                    &index_vk,
-                    [Fr::rand(rng), Fr::rand(rng)],
-                    &proof
-                )
-                .unwrap()
-            );
+            assert!(!VarunaInst::verify(universal_verifier, &fs_parameters, &index_vk, fake_inputs, &proof).unwrap());
         }
     }
 
@@ -529,5 +526,282 @@ mod varuna_hiding {
         assert!(VarunaInst::verify(universal_verifier, &fs_parameters, &vk2, public_inputs2, &proof2).unwrap());
         /*****************************************************************************/
         assert!(VarunaInst::verify(universal_verifier, &fs_parameters, &vk1, public_inputs1, &proof1).unwrap());
+    }
+}
+
+mod varuna_test_vectors {
+    use crate::{
+        fft::EvaluationDomain,
+        snark::varuna::{ahp::verifier, AHPForR1CS, TestCircuit, VarunaNonHidingMode, VarunaSNARK},
+        traits::snark::SNARK,
+    };
+    use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};
+    use snarkvm_fields::One;
+    use std::{collections::BTreeMap, fs, ops::Deref, path::PathBuf, str::FromStr, sync::Arc};
+
+    type FS = crate::crypto_hash::PoseidonSponge<Fq, 2, 1>;
+    type MM = VarunaNonHidingMode;
+    type VarunaSonicInst = VarunaSNARK<Bls12_377, FS, MM>;
+
+    // Create the path for the `resources` folder.
+    fn resources_path(create_dir: bool) -> PathBuf {
+        let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        path.push("src");
+        path.push("snark");
+        path.push("varuna");
+        path.push("resources");
+
+        // Create the `resources` folder, if it does not exist.
+        if !path.exists() {
+            if create_dir {
+                fs::create_dir(&path).unwrap_or_else(|_| panic!("Failed to create resources folder: {path:?}"));
+            } else {
+                panic!("Resources folder does not exist: {path:?}");
+            }
+        }
+
+        path
+    }
+
+    // Create the file path.
+    fn test_vector_path(folder: &str, file: &str, circuit: &str, create_dir: bool) -> PathBuf {
+        let mut path = resources_path(create_dir);
+
+        // Construct the path where the test data lives.
+        path.push(circuit);
+        path.push(folder);
+
+        // Create the test folder if it does not exist if specified, otherwise panic.
+        if !path.exists() {
+            if create_dir {
+                fs::create_dir(&path).unwrap_or_else(|_| panic!("Failed to create resources folder: {path:?}"));
+            } else {
+                panic!("Resources folder does not exist: {path:?}");
+            }
+        }
+
+        // Construct the path for the test file.
+        path.push(file);
+        path.set_extension("txt");
+
+        path
+    }
+
+    // Loads the given `test_folder/test_file` and asserts the given `candidate` matches the expected values.
+    #[track_caller]
+    fn assert_test_vector_equality(test_folder: &str, test_file: &str, candidate: &str, circuit: &str) {
+        // Get the path to the test file.
+        let path = test_vector_path(test_folder, test_file, circuit, false);
+
+        // Assert the test file is equal to the expected value.
+        expect_test::expect_file![path].assert_eq(candidate);
+    }
+
+    // Create a test vector from a trusted revision of Varuna.
+    fn create_test_vector(folder: &str, file: &str, data: &str, circuit: &str) {
+        // Get the path to the test file.
+        let path = test_vector_path(folder, file, circuit, true);
+
+        // Write the test vector to file.
+        fs::write(&path, data).unwrap_or_else(|_| panic!("Failed to write to file: {:?}", path));
+    }
+
+    // Tests varuna against the test vectors in all circuits in the resources folder.
+    fn test_varuna_with_all_circuits(create_test_vectors: bool) {
+        let entries = fs::read_dir(resources_path(create_test_vectors)).expect("Failed to read resources folder");
+        entries.into_iter().for_each(|entry| {
+            let path = entry.unwrap().path();
+            if path.is_dir() {
+                let circuit = path.file_name().unwrap().to_str().unwrap();
+                test_circuit_with_test_vectors(create_test_vectors, circuit);
+            }
+        });
+    }
+
+    // Test Varuna against test vectors for a specific circuit.
+    fn test_circuit_with_test_vectors(create_test_vectors: bool, circuit: &str) {
+        // Initialize the parts of the witness used in the multiplicative constraints.
+        let witness_path = format!("src/snark/varuna/resources/{}/witness.input", circuit);
+        let instance_file = fs::read_to_string(witness_path).expect("Could not read the file");
+        let witness: Vec<u128> = serde_json::from_str(instance_file.lines().next().unwrap()).unwrap();
+        let (a, b) = (witness[0], witness[1]);
+
+        // Initialize challenges from file.
+        let challenges_path = format!("src/snark/varuna/resources/{}/challenges.input", circuit);
+        let challenges_file = fs::read_to_string(challenges_path).expect("Could not read the file");
+        let mut challenges = Vec::new();
+        for line in challenges_file.lines() {
+            challenges.push(line)
+        }
+        let (alpha, _eta_a, eta_b, eta_c, beta, delta_a, delta_b, delta_c, _gamma) = (
+            Fr::from_str(challenges[0]).unwrap(),
+            Fr::from_str(challenges[1]).unwrap(),
+            Fr::from_str(challenges[2]).unwrap(),
+            Fr::from_str(challenges[3]).unwrap(),
+            Fr::from_str(challenges[4]).unwrap(),
+            vec![Fr::from_str(challenges[5]).unwrap()],
+            vec![Fr::from_str(challenges[6]).unwrap()],
+            vec![Fr::from_str(challenges[7]).unwrap()],
+            Fr::from_str(challenges[8]).unwrap(),
+        );
+
+        let circuit_combiner = Fr::one();
+        let instance_combiners = vec![Fr::one()];
+
+        // Create sample circuit which corresponds to instance.input file.
+        let mul_depth = 3;
+        let num_constraints = 7;
+        let num_variables = 7;
+
+        // Create a fixed seed rng that matches those the test vectors were generated with.
+        let rng = &mut snarkvm_utilities::rand::TestRng::fixed(4730);
+        let max_degree =
+            AHPForR1CS::<Fr, MM>::max_degree(num_constraints, num_variables, num_variables * num_constraints).unwrap();
+        let universal_srs = VarunaSonicInst::universal_setup(max_degree).unwrap();
+        let (circ, _) =
+            TestCircuit::generate_circuit_with_fixed_witness(a, b, mul_depth, num_constraints, num_variables);
+        println!("Circuit: {:?}", circ);
+        let (index_pk, _index_vk) = VarunaSonicInst::circuit_setup(&universal_srs, &circ).unwrap();
+        let mut keys_to_constraints = BTreeMap::new();
+        keys_to_constraints.insert(index_pk.circuit.deref(), std::slice::from_ref(&circ));
+
+        // Begin the Varuna protocol execution.
+        let prover_state = AHPForR1CS::<_, MM>::init_prover(&keys_to_constraints, rng).unwrap();
+        let mut prover_state = AHPForR1CS::<_, MM>::prover_first_round(prover_state, rng).unwrap();
+        let first_round_oracles = Arc::new(prover_state.first_round_oracles.as_ref().unwrap());
+
+        // Get private witness polynomial coefficients.
+        let (_, w_poly) = first_round_oracles.batches.iter().next().unwrap();
+        let w_lde = format!("{:?}", w_poly[0].0.coeffs().map(|(_, coeff)| coeff).collect::<Vec<_>>());
+        if create_test_vectors {
+            create_test_vector("polynomials", "w_lde", &w_lde, circuit);
+        }
+
+        // Generate test vectors from assignments.
+        let assignments = AHPForR1CS::<_, MM>::calculate_assignments(&mut prover_state).unwrap();
+
+        // Get full witness polynomial coefficients.
+        let (_, z_poly) = assignments.iter().next().unwrap();
+        let z_lde = format!("{:?}", z_poly[0].coeffs().iter().collect::<Vec<_>>());
+        if create_test_vectors {
+            create_test_vector("polynomials", "z_lde", &z_lde, circuit);
+        }
+
+        let combiners = verifier::BatchCombiners::<Fr> { circuit_combiner, instance_combiners };
+        let batch_combiners = BTreeMap::from_iter([(index_pk.circuit.id, combiners)]);
+        let verifier_first_msg = verifier::FirstMessage::<Fr> { batch_combiners };
+
+        let (second_oracles, prover_state) =
+            AHPForR1CS::<_, MM>::prover_second_round::<_>(&verifier_first_msg, prover_state, rng).unwrap();
+
+        // Get round 2 rowcheck polynomial oracle coefficients.
+        let h_0 = format!("{:?}", second_oracles.h_0.coeffs().map(|(_, coeff)| coeff).collect::<Vec<_>>());
+        if create_test_vectors {
+            create_test_vector("polynomials", "h_0", &h_0, circuit);
+        }
+
+        let verifier_second_msg = verifier::SecondMessage::<Fr> { alpha, eta_b, eta_c };
+        let (_prover_third_message, third_oracles, prover_state) =
+            AHPForR1CS::<_, MM>::prover_third_round(&verifier_first_msg, &verifier_second_msg, prover_state, rng)
+                .unwrap();
+
+        // Get coefficients round 3 univariate rowcheck polynomial oracles.
+        let g_1 = format!("{:?}", third_oracles.g_1.coeffs().map(|(_, coeff)| coeff).collect::<Vec<_>>());
+        if create_test_vectors {
+            create_test_vector("polynomials", "g_1", &g_1, circuit);
+        }
+        let h_1 = format!("{:?}", third_oracles.h_1.coeffs().map(|(_, coeff)| coeff).collect::<Vec<_>>());
+        if create_test_vectors {
+            create_test_vector("polynomials", "h_1", &h_1, circuit);
+        }
+
+        let verifier_third_msg = verifier::ThirdMessage::<Fr> { beta };
+        let (_prover_fourth_message, fourth_oracles, prover_state) =
+            AHPForR1CS::<_, MM>::prover_fourth_round(&verifier_second_msg, &verifier_third_msg, prover_state, rng)
+                .unwrap();
+
+        // Create round 4 rational sumcheck oracle polynomials.
+        let (_, gm_polys) = fourth_oracles.gs.iter().next().unwrap();
+        let g_a = format!("{:?}", gm_polys.g_a.coeffs().map(|(_, coeff)| coeff).collect::<Vec<_>>());
+        let g_b = format!("{:?}", gm_polys.g_b.coeffs().map(|(_, coeff)| coeff).collect::<Vec<_>>());
+        let g_c = format!("{:?}", gm_polys.g_b.coeffs().map(|(_, coeff)| coeff).collect::<Vec<_>>());
+        if create_test_vectors {
+            create_test_vector("polynomials", "g_a", &g_a, circuit);
+            create_test_vector("polynomials", "g_b", &g_b, circuit);
+            create_test_vector("polynomials", "g_c", &g_c, circuit);
+        }
+
+        // Create the verifier's fourth message.
+        let verifier_fourth_msg = verifier::FourthMessage::<Fr> { delta_a, delta_b, delta_c };
+
+        let mut public_inputs = BTreeMap::new();
+        let public_input = prover_state.public_inputs(&index_pk.circuit).unwrap();
+        public_inputs.insert(index_pk.circuit.id, public_input);
+        let non_zero_a_domain = EvaluationDomain::<Fr>::new(index_pk.circuit.index_info.num_non_zero_a).unwrap();
+        let non_zero_b_domain = EvaluationDomain::<Fr>::new(index_pk.circuit.index_info.num_non_zero_b).unwrap();
+        let non_zero_c_domain = EvaluationDomain::<Fr>::new(index_pk.circuit.index_info.num_non_zero_c).unwrap();
+        let variable_domain = EvaluationDomain::<Fr>::new(index_pk.circuit.index_info.num_variables).unwrap();
+        let constraint_domain = EvaluationDomain::<Fr>::new(index_pk.circuit.index_info.num_constraints).unwrap();
+        let input_domain = EvaluationDomain::<Fr>::new(index_pk.circuit.index_info.num_public_inputs).unwrap();
+
+        // Get constraint domain elements.
+        let mut constraint_domain_elements = Vec::with_capacity(constraint_domain.size());
+        for el in constraint_domain.elements() {
+            constraint_domain_elements.push(el);
+        }
+        if create_test_vectors {
+            create_test_vector("domain", "R", &format!("{:?}", constraint_domain_elements), circuit);
+        }
+
+        // Get non_zero_domain elements.
+        let non_zero_domain = *[&non_zero_a_domain, &non_zero_b_domain, &non_zero_c_domain]
+            .iter()
+            .max_by_key(|domain| domain.size)
+            .unwrap();
+        let mut non_zero_domain_elements = Vec::with_capacity(non_zero_domain.size());
+        for el in non_zero_domain.elements() {
+            non_zero_domain_elements.push(el);
+        }
+        if create_test_vectors {
+            create_test_vector("domain", "K", &format!("{:?}", non_zero_domain_elements), circuit);
+        }
+
+        // Get variable domain elements.
+        let mut variable_domain_elements = Vec::with_capacity(input_domain.size());
+        for el in variable_domain.elements() {
+            variable_domain_elements.push(el);
+        }
+        if create_test_vectors {
+            create_test_vector("domain", "C", &format!("{:?}", variable_domain_elements), circuit);
+        }
+
+        let fifth_oracles = AHPForR1CS::<_, MM>::prover_fifth_round(verifier_fourth_msg, prover_state, rng).unwrap();
+
+        // Get coefficients of final oracle polynomial from round 5.
+        let h_2 = format!("{:?}", fifth_oracles.h_2.coeffs().map(|(_, coeff)| coeff).collect::<Vec<_>>());
+        if create_test_vectors {
+            create_test_vector("polynomials", "h_2", &h_2, circuit);
+        }
+
+        // Check the intermediate oracle polynomials against the test vectors.
+        assert_test_vector_equality("polynomials", "w_lde", &w_lde, circuit);
+        assert_test_vector_equality("polynomials", "z_lde", &z_lde, circuit);
+        assert_test_vector_equality("polynomials", "h_0", &h_0, circuit);
+        assert_test_vector_equality("polynomials", "h_1", &h_1, circuit);
+        assert_test_vector_equality("polynomials", "g_1", &g_1, circuit);
+        assert_test_vector_equality("polynomials", "h_2", &h_2, circuit);
+        assert_test_vector_equality("polynomials", "g_a", &g_a, circuit);
+        assert_test_vector_equality("polynomials", "g_b", &g_b, circuit);
+        assert_test_vector_equality("polynomials", "g_c", &g_c, circuit);
+
+        // Check that the domains match the test vectors.
+        assert_test_vector_equality("domain", "R", &format!("{:?}", constraint_domain_elements), circuit);
+        assert_test_vector_equality("domain", "K", &format!("{:?}", non_zero_domain_elements), circuit);
+        assert_test_vector_equality("domain", "C", &format!("{:?}", variable_domain_elements), circuit);
+    }
+
+    #[test]
+    fn test_varuna_with_prover_test_vectors() {
+        test_varuna_with_all_circuits(false);
     }
 }

@@ -36,7 +36,7 @@ impl<N: Network> Transition<N> {
                     // Check if the input ID matches the given ID.
                     if id == input.id() {
                         // Return the transition leaf.
-                        return Ok(input.to_transition_leaf(index as u8));
+                        return Ok(input.to_transition_leaf(u8::try_from(index)?));
                     }
                 }
                 // Error if the input ID was not found.
@@ -48,7 +48,7 @@ impl<N: Network> Transition<N> {
                     // Check if the output ID matches the given ID.
                     if id == output.id() {
                         // Return the transition leaf.
-                        return Ok(output.to_transition_leaf((self.inputs.len() + index) as u8));
+                        return Ok(output.to_transition_leaf(u8::try_from(self.inputs.len() + index)?));
                     }
                 }
                 // Error if the output ID was not found.
@@ -97,9 +97,9 @@ impl<N: Network> Transition<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use console::network::Testnet3;
+    use console::network::MainnetV0;
 
-    type CurrentNetwork = Testnet3;
+    type CurrentNetwork = MainnetV0;
 
     #[test]
     fn test_transition_depth() {

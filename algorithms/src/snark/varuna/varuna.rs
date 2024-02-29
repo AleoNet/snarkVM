@@ -46,7 +46,7 @@ use snarkvm_curves::PairingEngine;
 use snarkvm_fields::{One, PrimeField, ToConstraintField, Zero};
 use snarkvm_utilities::{to_bytes_le, ToBytes};
 
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, bail, ensure, Result};
 use core::marker::PhantomData;
 use itertools::Itertools;
 use rand::{CryptoRng, Rng};
@@ -82,17 +82,17 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, SM: SNARKMode> VarunaSNARK
             let mut indexed_circuit = AHPForR1CS::<_, SM>::index(*circuit)?;
             // TODO: Add check that c is in the correct mode.
             // Ensure the universal SRS supports the circuit size.
-            universal_srs
-                .download_powers_for(0..indexed_circuit.max_degree())
-                .map_err(|e| anyhow!("Failed to download powers for degree {}: {e}", indexed_circuit.max_degree()))?;
-            let coefficient_support = AHPForR1CS::<E::Fr, SM>::get_degree_bounds(&indexed_circuit.index_info);
+            universal_srs.download_powers_for(0..indexed_circuit.max_degree()?).map_err(|e| {
+                anyhow!("Failed to download powers for degree {}: {e}", indexed_circuit.max_degree().unwrap())
+            })?;
+            let coefficient_support = AHPForR1CS::<E::Fr, SM>::get_degree_bounds(&indexed_circuit.index_info)?;
 
             // Varuna only needs degree 2 random polynomials.
             let supported_hiding_bound = 1;
             let supported_lagrange_sizes = [].into_iter(); // TODO: consider removing lagrange_bases_at_beta_g from CommitterKey
             let (committer_key, _) = SonicKZG10::<E, FS>::trim(
                 universal_srs,
-                indexed_circuit.max_degree(),
+                indexed_circuit.max_degree()?,
                 supported_lagrange_sizes,
                 supported_hiding_bound,
                 Some(coefficient_support.as_slice()),
@@ -106,11 +106,11 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, SM: SNARKMode> VarunaSNARK
             let (mut circuit_commitments, commitment_randomnesses): (_, _) = SonicKZG10::<E, FS>::commit(
                 universal_prover,
                 &ck,
-                indexed_circuit.interpolate_matrix_evals().map(Into::into),
+                indexed_circuit.interpolate_matrix_evals()?.map(Into::into),
                 setup_rng,
             )?;
             let empty_randomness = Randomness::<E>::empty();
-            assert!(commitment_randomnesses.iter().all(|r| r == &empty_randomness));
+            ensure!(commitment_randomnesses.iter().all(|r| r == &empty_randomness));
             end_timer!(commit_time);
 
             circuit_commitments.sort_by(|c1, c2| c1.label().cmp(c2.label()));
@@ -141,7 +141,7 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, SM: SNARKMode> VarunaSNARK
         let mut sponge = FS::new_with_parameters(fs_parameters);
         sponge.absorb_bytes(Self::PROTOCOL_NAME);
         for (batch_size, inputs) in inputs_and_batch_sizes.values() {
-            sponge.absorb_bytes(&(u64::try_from(*batch_size).unwrap()).to_le_bytes());
+            sponge.absorb_bytes(&(*batch_size as u64).to_le_bytes());
             for input in inputs.iter() {
                 sponge.absorb_nonnative_field_elements(input.iter().copied());
             }
@@ -157,7 +157,7 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, SM: SNARKMode> VarunaSNARK
         verifying_key: &CircuitVerifyingKey<E>,
     ) -> Result<FS> {
         let mut sponge = FS::new_with_parameters(fs_parameters);
-        sponge.absorb_bytes(&to_bytes_le![&Self::PROTOCOL_NAME].unwrap());
+        sponge.absorb_bytes(&to_bytes_le![&Self::PROTOCOL_NAME]?);
         sponge.absorb_bytes(&verifying_key.circuit_info.to_bytes_le()?);
         sponge.absorb_native_field_elements(&verifying_key.circuit_commitments);
         sponge.absorb_bytes(&verifying_key.id.0);
@@ -214,7 +214,7 @@ where
     type VerifierInput = [E::Fr];
     type VerifyingKey = CircuitVerifyingKey<E>;
 
-    fn universal_setup(max_degree: usize) -> Result<Self::UniversalSRS, SNARKError> {
+    fn universal_setup(max_degree: usize) -> Result<Self::UniversalSRS> {
         let setup_time = start_timer!(|| { format!("Varuna::UniversalSetup with max_degree {max_degree}",) });
         let srs = SonicKZG10::<E, FS>::load_srs(max_degree).map_err(Into::into);
         end_timer!(setup_time);
@@ -228,7 +228,7 @@ where
         circuit: &C,
     ) -> Result<(Self::ProvingKey, Self::VerifyingKey)> {
         let mut circuit_keys = Self::batch_circuit_setup::<C>(universal_srs, &[circuit])?;
-        assert_eq!(circuit_keys.len(), 1);
+        ensure!(circuit_keys.len() == 1);
         Ok(circuit_keys.pop().unwrap())
     }
 
@@ -238,14 +238,14 @@ where
         fs_parameters: &Self::FSParameters,
         verifying_key: &Self::VerifyingKey,
         proving_key: &Self::ProvingKey,
-    ) -> Result<Self::Certificate, SNARKError> {
+    ) -> Result<Self::Certificate> {
         // Initialize sponge
         let mut sponge = Self::init_sponge_for_certificate(fs_parameters, verifying_key)?;
         // Compute challenges for linear combination, and the point to evaluate the polynomials at.
         // The linear combination requires `num_polynomials - 1` coefficients
         // (since the first coeff is 1), and so we squeeze out `num_polynomials` points.
         let mut challenges = sponge.squeeze_nonnative_field_elements(verifying_key.circuit_commitments.len());
-        let point = challenges.pop().unwrap();
+        let point = challenges.pop().ok_or(anyhow!("Failed to squeeze random element"))?;
         let one = E::Fr::one();
         let linear_combination_challenges = core::iter::once(&one).chain(challenges.iter());
 
@@ -266,7 +266,7 @@ where
             universal_prover,
             &committer_key,
             &[lc],
-            proving_key.circuit.interpolate_matrix_evals(),
+            proving_key.circuit.interpolate_matrix_evals()?,
             &empty_randomness,
             &query_set,
             &mut sponge,
@@ -283,15 +283,15 @@ where
         circuit: &C,
         verifying_key: &Self::VerifyingKey,
         certificate: &Self::Certificate,
-    ) -> Result<bool, SNARKError> {
+    ) -> Result<bool> {
         // Ensure the VerifyingKey encodes the expected circuit.
         let circuit_id = &verifying_key.id;
         let state = AHPForR1CS::<E::Fr, SM>::index_helper(circuit)?;
         if state.index_info != verifying_key.circuit_info {
-            return Err(SNARKError::CircuitNotFound);
+            bail!(SNARKError::CircuitNotFound);
         }
         if state.id != *circuit_id {
-            return Err(SNARKError::CircuitNotFound);
+            bail!(SNARKError::CircuitNotFound);
         }
 
         // Initialize sponge.
@@ -301,26 +301,20 @@ where
         // The linear combination requires `num_polynomials - 1` coefficients
         // (since the first coeff is 1), and so we squeeze out `num_polynomials` points.
         let mut challenges = sponge.squeeze_nonnative_field_elements(verifying_key.circuit_commitments.len());
-        let point = challenges.pop().unwrap();
-        let one = E::Fr::one();
-        let linear_combination_challenges = core::iter::once(&one).chain(challenges.iter());
+        let point = challenges.pop().ok_or(anyhow!("Failed to squeeze random element"))?;
+        let combiners = core::iter::once(E::Fr::one()).chain(challenges);
 
         // We will construct a linear combination and provide a proof of evaluation of the lc at `point`.
-        let poly_info = AHPForR1CS::<E::Fr, SM>::index_polynomial_info(std::iter::once(circuit_id));
-        let evaluations_at_point = AHPForR1CS::<E::Fr, SM>::evaluate_index_polynomials(state, circuit_id, point)?;
-        let mut lc = crate::polycommit::sonic_pc::LinearCombination::empty("circuit_check");
-        let mut evaluation = E::Fr::zero();
-        for ((label, &c), eval) in poly_info.keys().zip_eq(linear_combination_challenges).zip_eq(evaluations_at_point) {
-            lc.add(c, label.as_str());
-            evaluation += c * eval;
-        }
+        let (lc, evaluation) =
+            AHPForR1CS::<E::Fr, SM>::evaluate_index_polynomials(state, circuit_id, point, combiners)?;
 
+        ensure!(verifying_key.circuit_commitments.len() == lc.terms.len());
         let commitments = verifying_key
             .iter()
             .cloned()
-            .zip_eq(poly_info.values())
-            .map(|(c, info)| LabeledCommitment::new_with_info(info, c))
-            .collect::<Vec<_>>();
+            .zip_eq(lc.terms.keys())
+            .map(|(c, label)| LabeledCommitment::new(format!("{label:?}"), c, None))
+            .collect_vec();
         let evaluations = Evaluations::from_iter([(("circuit_check".into(), point), evaluation)]);
         let query_set = QuerySet::from_iter([("circuit_check".into(), ("challenge".into(), point))]);
 
@@ -338,16 +332,16 @@ where
 
     /// This is the main entrypoint for creating proofs.
     /// You can find a specification of the prover algorithm in:
-    /// https://github.com/AleoHQ/protocol-docs/tree/main/snark/varuna
+    /// https://github.com/AleoHQ/protocol-docs
     fn prove_batch<C: ConstraintSynthesizer<E::Fr>, R: Rng + CryptoRng>(
         universal_prover: &Self::UniversalProver,
         fs_parameters: &Self::FSParameters,
         keys_to_constraints: &BTreeMap<&CircuitProvingKey<E, SM>, &[C]>,
         zk_rng: &mut R,
-    ) -> Result<Self::Proof, SNARKError> {
+    ) -> Result<Self::Proof> {
         let prover_time = start_timer!(|| "Varuna::Prover");
         if keys_to_constraints.is_empty() {
-            return Err(SNARKError::EmptyBatch);
+            bail!(SNARKError::EmptyBatch);
         }
 
         let mut circuits_to_constraints = BTreeMap::new();
@@ -378,7 +372,7 @@ where
 
             circuit_ids.push(circuit_id);
         }
-        assert_eq!(prover_state.total_instances, total_instances);
+        ensure!(prover_state.total_instances == total_instances);
 
         let committer_key = CommitterUnionKey::union(keys_to_constraints.keys().map(|pk| pk.committer_key.deref()));
 
@@ -522,7 +516,7 @@ where
             .chain(fourth_oracles.into_iter())
             .chain(fifth_oracles.into_iter())
             .collect();
-        assert!(
+        ensure!(
             polynomials.len()
                 == num_unique_circuits * 6 + // numerator and denominator for each matrix sumcheck
             AHPForR1CS::<E::Fr, SM>::num_first_round_oracles(total_instances) +
@@ -570,9 +564,9 @@ where
 
         let empty_randomness = Randomness::<E>::empty();
         if SM::ZK {
-            assert!(commitment_randomnesses.iter().any(|r| r != &empty_randomness));
+            ensure!(commitment_randomnesses.iter().any(|r| r != &empty_randomness));
         } else {
-            assert!(commitment_randomnesses.iter().all(|r| r == &empty_randomness));
+            ensure!(commitment_randomnesses.iter().all(|r| r == &empty_randomness));
         }
 
         // Compute the AHP verifier's query set.
@@ -619,7 +613,7 @@ where
             pc_proof,
         )?;
         proof.check_batch_sizes()?;
-        assert_eq!(proof.pc_proof.is_hiding(), SM::ZK);
+        ensure!(proof.pc_proof.is_hiding() == SM::ZK);
 
         end_timer!(prover_time);
         Ok(proof)
@@ -627,15 +621,15 @@ where
 
     /// This is the main entrypoint for verifying proofs.
     /// You can find a specification of the verifier algorithm in:
-    /// https://github.com/AleoHQ/protocol-docs/tree/main/marlin
+    /// https://github.com/AleoHQ/protocol-docs
     fn verify_batch<B: Borrow<Self::VerifierInput>>(
         universal_verifier: &Self::UniversalVerifier,
         fs_parameters: &Self::FSParameters,
         keys_to_inputs: &BTreeMap<&Self::VerifyingKey, &[B]>,
         proof: &Self::Proof,
-    ) -> Result<bool, SNARKError> {
+    ) -> Result<bool> {
         if keys_to_inputs.is_empty() {
-            return Err(SNARKError::EmptyBatch);
+            bail!(SNARKError::EmptyBatch);
         }
 
         proof.check_batch_sizes()?;
@@ -645,11 +639,11 @@ where
             batch_sizes.insert(vk.id, batch_sizes_vec[i]);
 
             if public_inputs_i.is_empty() {
-                return Err(SNARKError::EmptyBatch);
+                bail!(SNARKError::EmptyBatch);
             }
 
             if public_inputs_i.len() != batch_sizes_vec[i] {
-                return Err(SNARKError::BatchSizeMismatch);
+                bail!(SNARKError::BatchSizeMismatch);
             }
         }
 
@@ -663,25 +657,38 @@ where
         let mut input_domains = BTreeMap::new();
         let mut circuit_infos = BTreeMap::new();
         let mut circuit_ids = Vec::with_capacity(keys_to_inputs.len());
-        for (vk, public_inputs_i) in keys_to_inputs.iter() {
+        for (&vk, &public_inputs_i) in keys_to_inputs.iter() {
             max_num_constraints = max_num_constraints.max(vk.circuit_info.num_constraints);
             max_num_variables = max_num_variables.max(vk.circuit_info.num_variables);
 
             let non_zero_domains = AHPForR1CS::<_, SM>::cmp_non_zero_domains(&vk.circuit_info, max_non_zero_domain)?;
             max_non_zero_domain = non_zero_domains.max_non_zero_domain;
 
-            let input_domain = EvaluationDomain::<E::Fr>::new(vk.circuit_info.num_public_inputs).unwrap();
+            let input_domain = EvaluationDomain::<E::Fr>::new(vk.circuit_info.num_public_inputs)
+                .ok_or(anyhow!("Failed to create EvaluationDomain from num_public_inputs"))?;
             input_domains.insert(vk.id, input_domain);
 
+            let input_fields = public_inputs_i
+                .iter()
+                .map(|input| {
+                    let input = input.borrow().to_field_elements()?;
+                    ensure!(input.len() > 0);
+                    ensure!(input[0] == E::Fr::one());
+                    if input.len() > input_domain.size() {
+                        bail!(SNARKError::PublicInputSizeMismatch);
+                    }
+                    Ok(input)
+                })
+                .collect::<Result<Vec<_>, _>>()?;
+
             let (padded_public_inputs_i, parsed_public_inputs_i): (Vec<_>, Vec<_>) = {
-                public_inputs_i
+                input_fields
                     .iter()
                     .map(|input| {
-                        let input = input.borrow().to_field_elements().unwrap();
-                        let mut new_input = Vec::with_capacity((1 + input.len()).max(input_domain.size()));
-                        new_input.push(E::Fr::one());
-                        new_input.extend_from_slice(&input);
-                        new_input.resize(input.len().max(input_domain.size()), E::Fr::zero());
+                        let input_len = input.len().max(input_domain.size());
+                        let mut new_input = Vec::with_capacity(input_len);
+                        new_input.extend_from_slice(input);
+                        new_input.resize(input_len, E::Fr::zero());
                         if cfg!(debug_assertions) {
                             println!("Number of padded public variables: {}", new_input.len());
                         }
@@ -700,10 +707,10 @@ where
             inputs_and_batch_sizes.insert(vk.id, (batch_size, padded_public_vec[i].as_slice()));
         }
         let max_constraint_domain =
-            EvaluationDomain::<E::Fr>::new(max_num_constraints).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
+            EvaluationDomain::<E::Fr>::new(max_num_constraints).ok_or(SynthesisError::PolyTooLarge)?;
         let max_variable_domain =
-            EvaluationDomain::<E::Fr>::new(max_num_variables).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
-        let max_non_zero_domain = max_non_zero_domain.ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
+            EvaluationDomain::<E::Fr>::new(max_num_variables).ok_or(SynthesisError::PolyTooLarge)?;
+        let max_non_zero_domain = max_non_zero_domain.ok_or(SynthesisError::PolyTooLarge)?;
 
         let comms = &proof.commitments;
         let proof_has_correct_zk_mode = if SM::ZK {
@@ -743,8 +750,8 @@ where
 
         if SM::ZK {
             first_commitments.push(LabeledCommitment::new_with_info(
-                first_round_info.get("mask_poly").unwrap(),
-                comms.mask_poly.unwrap(),
+                first_round_info.get("mask_poly").ok_or(anyhow!("Missing mask_poly"))?,
+                comms.mask_poly.ok_or(anyhow!("Missing mask_poly"))?,
             ));
         }
 
@@ -837,7 +844,6 @@ where
         // degree bounds because we know the committed index polynomial has the
         // correct degree.
 
-        // Gather commitments in one vector.
         let commitments: Vec<_> = circuit_commitments
             .into_iter()
             .flatten()

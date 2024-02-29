@@ -52,9 +52,9 @@ impl<'de, N: Network> Deserialize<'de> for PartialSolution<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use console::{account::PrivateKey, network::Testnet3};
+    use console::{account::PrivateKey, network::MainnetV0};
 
-    type CurrentNetwork = Testnet3;
+    type CurrentNetwork = MainnetV0;
 
     #[test]
     fn test_serde_json() -> Result<()> {

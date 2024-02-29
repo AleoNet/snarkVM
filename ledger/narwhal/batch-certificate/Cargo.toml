@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-ledger-narwhal-batch-certificate"
-version = "0.16.6"
+version = "0.16.19"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "A batch certificate for a Narwhal-style memory pool in a decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -24,37 +24,37 @@ license = "Apache-2.0"
 edition = "2021"
 
 [features]
-default = [ ]
+default = [ "rayon" ]
 serial = [ "console/serial" ]
 wasm = [ "console/wasm" ]
-test-helpers = [ "narwhal-batch-header/test-helpers", "time" ]
+test-helpers = [ "narwhal-batch-header/test-helpers" ]
 
 [dependencies.console]
 package = "snarkvm-console"
 path = "../../../console"
-version = "=0.16.6"
+version = "=0.16.19"
 
 [dependencies.narwhal-batch-header]
 package = "snarkvm-ledger-narwhal-batch-header"
 path = "../batch-header"
-version = "=0.16.6"
+version = "=0.16.19"
 
 [dependencies.narwhal-transmission-id]
 package = "snarkvm-ledger-narwhal-transmission-id"
 path = "../transmission-id"
-version = "=0.16.6"
+version = "=0.16.19"
 
 [dependencies.indexmap]
 version = "2.0"
 features = [ "serde" ]
 
+[dependencies.rayon]
+version = "1"
+optional = true
+
 [dependencies.serde_json]
 version = "1.0"
 features = [ "preserve_order" ]
-
-[dependencies.time]
-version = "0.3"
-optional = true
 
 [dev-dependencies.bincode]
 version = "1.3"

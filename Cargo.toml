@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm"
-version = "0.16.6"
+version = "0.16.19"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "A decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -22,7 +22,7 @@ categories = [
 include = [ "Cargo.toml", "vm", "README.md", "LICENSE.md" ]
 license = "Apache-2.0"
 edition = "2021"
-rust-version = "1.70"
+rust-version = "1.72.1"
 
 [workspace]
 members = [
@@ -76,6 +76,7 @@ members = [
   "ledger/query",
   "ledger/store",
   "ledger/test-helpers",
+  "metrics",
   "parameters",
   "synthesizer",
   "synthesizer/process",
@@ -123,14 +124,16 @@ cli = [
   "rand",
   "self_update",
   "serde_json",
-  "thiserror"
+  "thiserror",
+  "ureq"
 ]
 aleo-cli = [ "snarkvm-synthesizer/aleo-cli" ]
 async = [ "snarkvm-ledger/async", "snarkvm-synthesizer/async" ]
 cuda = [ "snarkvm-algorithms/cuda" ]
 parameters_no_std_out = [ "snarkvm-parameters/no_std_out" ]
 noconfig = [ ]
-rocks = [ "snarkvm-ledger/rocks" ]
+rocks = [ "snarkvm-ledger/rocks", "snarkvm-synthesizer/rocks" ]
+test = [ "snarkvm-ledger/test" ]
 test-helpers = [ "snarkvm-ledger/test-helpers" ]
 timer = [ "snarkvm-ledger/timer" ]
 algorithms = [ "snarkvm-algorithms" ]
@@ -139,6 +142,7 @@ console = [ "snarkvm-console" ]
 curves = [ "snarkvm-curves" ]
 fields = [ "snarkvm-fields" ]
 ledger = [ "snarkvm-ledger" ]
+metrics = [ "snarkvm-metrics", "snarkvm-ledger/metrics" ]
 parameters = [ "snarkvm-parameters" ]
 synthesizer = [ "snarkvm-synthesizer" ]
 utilities = [ "snarkvm-utilities" ]
@@ -146,53 +150,58 @@ wasm = [ "snarkvm-wasm" ]
 
 [dependencies.snarkvm-algorithms]
 path = "./algorithms"
-version = "=0.16.6"
+version = "=0.16.19"
 optional = true
 
 [dependencies.snarkvm-circuit]
 path = "./circuit"
-version = "=0.16.6"
+version = "=0.16.19"
 optional = true
 
 [dependencies.snarkvm-console]
 path = "./console"
-version = "=0.16.6"
+version = "=0.16.19"
 optional = true
 
 [dependencies.snarkvm-curves]
 path = "./curves"
-version = "=0.16.6"
+version = "=0.16.19"
 optional = true
 
 [dependencies.snarkvm-fields]
 path = "./fields"
-version = "=0.16.6"
+version = "=0.16.19"
 optional = true
 
 [dependencies.snarkvm-ledger]
 path = "./ledger"
-version = "=0.16.6"
+version = "=0.16.19"
+optional = true
+
+[dependencies.snarkvm-metrics]
+path = "./metrics"
+version = "=0.16.19"
 optional = true
 
 [dependencies.snarkvm-parameters]
 path = "./parameters"
-version = "=0.16.6"
+version = "=0.16.19"
 optional = true
 
 [dependencies.snarkvm-synthesizer]
 path = "./synthesizer"
-version = "=0.16.6"
+version = "=0.16.19"
 default-features = false
 optional = true
 
 [dependencies.snarkvm-utilities]
 path = "./utilities"
-version = "=0.16.6"
+version = "=0.16.19"
 optional = true
 
 [dependencies.snarkvm-wasm]
 path = "./wasm"
-version = "=0.16.6"
+version = "=0.16.19"
 optional = true
 
 [dependencies.anstyle]
@@ -251,6 +260,7 @@ optional = true
 [dependencies.ureq]
 version = "2.7"
 features = [ "json" ]
+optional = true
 
 [dev-dependencies.bincode]
 version = "1.3"

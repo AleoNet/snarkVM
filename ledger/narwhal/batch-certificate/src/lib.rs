@@ -28,65 +28,77 @@ use narwhal_batch_header::BatchHeader;
 use narwhal_transmission_id::TransmissionID;
 
 use core::hash::{Hash, Hasher};
-use indexmap::{IndexMap, IndexSet};
+use indexmap::IndexSet;
+use std::collections::HashSet;
 
-#[derive(Clone, PartialEq, Eq)]
+#[cfg(not(feature = "serial"))]
+use rayon::prelude::*;
+
+#[derive(Clone)]
 pub struct BatchCertificate<N: Network> {
-    /// The certificate ID.
-    certificate_id: Field<N>,
     /// The batch header.
     batch_header: BatchHeader<N>,
-    /// The `(signature, timestamp)` pairs for the batch ID from the committee.
-    signatures: IndexMap<Signature<N>, i64>,
+    /// The signatures for the batch ID from the committee.
+    signatures: IndexSet<Signature<N>>,
+}
+
+impl<N: Network> BatchCertificate<N> {
+    /// The maximum number of signatures in a batch certificate.
+    pub const MAX_SIGNATURES: u16 = BatchHeader::<N>::MAX_CERTIFICATES;
 }
 
 impl<N: Network> BatchCertificate<N> {
     /// Initializes a new batch certificate.
-    pub fn new(batch_header: BatchHeader<N>, signatures: IndexMap<Signature<N>, i64>) -> Result<Self> {
-        // Compute the certificate ID.
-        let certificate_id = Self::compute_certificate_id(batch_header.batch_id(), &signatures)?;
-        // Return the batch certificate.
-        Self::from(certificate_id, batch_header, signatures)
-    }
+    pub fn from(batch_header: BatchHeader<N>, signatures: IndexSet<Signature<N>>) -> Result<Self> {
+        // Ensure that the number of signatures is within bounds.
+        ensure!(signatures.len() <= Self::MAX_SIGNATURES as usize, "Invalid number of signatures");
 
-    /// Initializes a new batch certificate.
-    pub fn from(
-        certificate_id: Field<N>,
-        batch_header: BatchHeader<N>,
-        signatures: IndexMap<Signature<N>, i64>,
-    ) -> Result<Self> {
-        // Compute the certificate ID.
-        if certificate_id != Self::compute_certificate_id(batch_header.batch_id(), &signatures)? {
-            bail!("Invalid batch certificate ID")
-        }
+        // Ensure that the signature is from a unique signer and not from the author.
+        let signature_authors = signatures.iter().map(|signature| signature.to_address()).collect::<HashSet<_>>();
+        ensure!(
+            !signature_authors.contains(&batch_header.author()),
+            "The author's signature was included in the signers"
+        );
+        ensure!(signature_authors.len() == signatures.len(), "A duplicate author was found in the set of signatures");
+
         // Verify the signatures are valid.
-        for (signature, timestamp) in &signatures {
-            let preimage = [batch_header.batch_id(), Field::from_u64(*timestamp as u64)];
-            if !signature.verify(&signature.to_address(), &preimage) {
+        cfg_iter!(signatures).try_for_each(|signature| {
+            if !signature.verify(&signature.to_address(), &[batch_header.batch_id()]) {
                 bail!("Invalid batch certificate signature")
             }
-        }
+            Ok(())
+        })?;
         // Return the batch certificate.
-        Self::from_unchecked(certificate_id, batch_header, signatures)
+        Self::from_unchecked(batch_header, signatures)
     }
 
     /// Initializes a new batch certificate.
-    pub fn from_unchecked(
-        certificate_id: Field<N>,
-        batch_header: BatchHeader<N>,
-        signatures: IndexMap<Signature<N>, i64>,
-    ) -> Result<Self> {
+    pub fn from_unchecked(batch_header: BatchHeader<N>, signatures: IndexSet<Signature<N>>) -> Result<Self> {
         // Ensure the signatures are not empty.
         ensure!(!signatures.is_empty(), "Batch certificate must contain signatures");
         // Return the batch certificate.
-        Ok(Self { certificate_id, batch_header, signatures })
+        Ok(Self { batch_header, signatures })
+    }
+}
+
+impl<N: Network> PartialEq for BatchCertificate<N> {
+    fn eq(&self, other: &Self) -> bool {
+        self.batch_id() == other.batch_id()
+    }
+}
+
+impl<N: Network> Eq for BatchCertificate<N> {}
+
+impl<N: Network> Hash for BatchCertificate<N> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.batch_header.batch_id().hash(state);
     }
 }
 
 impl<N: Network> BatchCertificate<N> {
     /// Returns the certificate ID.
-    pub const fn certificate_id(&self) -> Field<N> {
-        self.certificate_id
+    pub const fn id(&self) -> Field<N> {
+        self.batch_header.batch_id()
     }
 
     /// Returns the batch header.
@@ -96,83 +108,48 @@ impl<N: Network> BatchCertificate<N> {
 
     /// Returns the batch ID.
     pub const fn batch_id(&self) -> Field<N> {
-        self.batch_header.batch_id()
+        self.batch_header().batch_id()
     }
 
     /// Returns the author.
     pub const fn author(&self) -> Address<N> {
-        self.batch_header.author()
+        self.batch_header().author()
     }
 
     /// Returns the round.
     pub const fn round(&self) -> u64 {
-        self.batch_header.round()
+        self.batch_header().round()
     }
 
     /// Returns the transmission IDs.
     pub const fn transmission_ids(&self) -> &IndexSet<TransmissionID<N>> {
-        self.batch_header.transmission_ids()
+        self.batch_header().transmission_ids()
     }
 
     /// Returns the batch certificate IDs for the previous round.
     pub const fn previous_certificate_ids(&self) -> &IndexSet<Field<N>> {
-        self.batch_header.previous_certificate_ids()
+        self.batch_header().previous_certificate_ids()
     }
 
-    /// Returns the median timestamp of the batch ID from the committee.
-    pub fn median_timestamp(&self) -> i64 {
-        let mut timestamps = self.timestamps().chain([self.batch_header.timestamp()].into_iter()).collect::<Vec<_>>();
-        timestamps.sort_unstable();
-        timestamps[timestamps.len() / 2]
-    }
-
-    /// Returns the timestamps of the batch ID from the committee.
-    pub fn timestamps(&self) -> impl '_ + ExactSizeIterator<Item = i64> {
-        self.signatures.values().copied()
+    /// Returns the timestamp of the batch header.
+    pub fn timestamp(&self) -> i64 {
+        self.batch_header().timestamp()
     }
 
     /// Returns the signatures of the batch ID from the committee.
-    pub fn signatures(&self) -> impl ExactSizeIterator<Item = &Signature<N>> {
-        self.signatures.keys()
-    }
-}
-
-impl<N: Network> Hash for BatchCertificate<N> {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.batch_header.batch_id().hash(state);
-        (self.signatures.len() as u64).hash(state);
-        for signature in &self.signatures {
-            signature.hash(state);
-        }
-    }
-}
-
-impl<N: Network> BatchCertificate<N> {
-    /// Returns the certificate ID.
-    pub fn compute_certificate_id(batch_id: Field<N>, signatures: &IndexMap<Signature<N>, i64>) -> Result<Field<N>> {
-        let mut preimage = Vec::new();
-        // Insert the batch ID.
-        batch_id.write_le(&mut preimage)?;
-        // Insert the signatures.
-        for (signature, timestamp) in signatures {
-            // Insert the signature.
-            signature.write_le(&mut preimage)?;
-            // Insert the timestamp.
-            timestamp.write_le(&mut preimage)?;
-        }
-        // Hash the preimage.
-        N::hash_bhp1024(&preimage.to_bits_le())
+    pub fn signatures(&self) -> Box<dyn '_ + ExactSizeIterator<Item = &Signature<N>>> {
+        Box::new(self.signatures.iter())
     }
 }
 
 #[cfg(any(test, feature = "test-helpers"))]
 pub mod test_helpers {
     use super::*;
-    use console::{account::PrivateKey, network::Testnet3, prelude::TestRng, types::Field};
+    use console::{account::PrivateKey, network::MainnetV0, prelude::TestRng, types::Field};
 
     use indexmap::IndexSet;
 
-    type CurrentNetwork = Testnet3;
+    type CurrentNetwork = MainnetV0;
 
     /// Returns a sample batch certificate, sampled at random.
     pub fn sample_batch_certificate(rng: &mut TestRng) -> BatchCertificate<CurrentNetwork> {
@@ -201,15 +178,13 @@ pub mod test_helpers {
                 rng,
             );
         // Sample a list of signatures.
-        let mut signatures = IndexMap::with_capacity(5);
+        let mut signatures = IndexSet::with_capacity(5);
         for _ in 0..5 {
             let private_key = PrivateKey::new(rng).unwrap();
-            let timestamp = time::OffsetDateTime::now_utc().unix_timestamp();
-            let timestamp_field = Field::from_u64(timestamp as u64);
-            signatures.insert(private_key.sign(&[batch_header.batch_id(), timestamp_field], rng).unwrap(), timestamp);
+            signatures.insert(private_key.sign(&[batch_header.batch_id()], rng).unwrap());
         }
         // Return the batch certificate.
-        BatchCertificate::new(batch_header, signatures).unwrap()
+        BatchCertificate::from(batch_header, signatures).unwrap()
     }
 
     /// Returns a list of sample batch certificates, sampled at random.
@@ -245,14 +220,26 @@ pub mod test_helpers {
             sample_batch_certificate_for_round(previous_round, rng),
         ];
         // Construct the previous certificate IDs.
-        let previous_certificate_ids: IndexSet<_> = previous_certificates.iter().map(|c| c.certificate_id()).collect();
+        let previous_certificate_ids: IndexSet<_> = previous_certificates.iter().map(|c| c.id()).collect();
         // Sample the leader certificate.
         let certificate = sample_batch_certificate_for_round_with_previous_certificate_ids(
             current_round,
-            previous_certificate_ids.clone(),
+            previous_certificate_ids,
             rng,
         );
 
         (certificate, previous_certificates)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    type CurrentNetwork = console::network::MainnetV0;
+
+    #[test]
+    fn test_maximum_signatures() {
+        assert_eq!(BatchHeader::<CurrentNetwork>::MAX_CERTIFICATES, BatchCertificate::<CurrentNetwork>::MAX_SIGNATURES);
     }
 }

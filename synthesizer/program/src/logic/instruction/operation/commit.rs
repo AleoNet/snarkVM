@@ -349,9 +349,9 @@ impl<N: Network, const VARIANT: u8> ToBytes for CommitInstruction<N, VARIANT> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use console::network::Testnet3;
+    use console::network::MainnetV0;
 
-    type CurrentNetwork = Testnet3;
+    type CurrentNetwork = MainnetV0;
 
     /// **Attention**: When changing this, also update in `tests/instruction/commit.rs`.
     fn valid_destination_types() -> &'static [LiteralType] {

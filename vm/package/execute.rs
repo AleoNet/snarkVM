@@ -96,7 +96,7 @@ impl<N: Network> Package<N> {
         process.insert_verifying_key(program_id, &function_name, verifier.verifying_key().clone())?;
 
         // Execute the circuit.
-        let (response, mut trace) = process.execute::<A>(authorization)?;
+        let (response, mut trace) = process.execute::<A, R>(authorization, rng)?;
 
         // Retrieve the call metrics.
         let call_metrics = trace.call_metrics().to_vec();
@@ -117,7 +117,7 @@ mod tests {
 
     type CurrentAleo = snarkvm_circuit::network::AleoV0;
 
-    // TODO: Re-enable this test after `staging` is merged into `testnet3` for the October 18, 2023 calibration reset.
+    // TODO: Re-enable this test after `mainnet`.
     #[test]
     #[ignore]
     fn test_execute() {

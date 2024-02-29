@@ -86,11 +86,11 @@ impl<N: Network> Display for Output<N> {
 mod tests {
     use super::*;
     use console::{
-        network::Testnet3,
+        network::MainnetV0,
         program::{Literal, Register, U8},
     };
 
-    type CurrentNetwork = Testnet3;
+    type CurrentNetwork = MainnetV0;
 
     #[test]
     fn test_output_parse() -> Result<()> {

@@ -271,7 +271,7 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Pro
     /// Returns a reference to the function with the given name.
     pub fn get_function_ref(&self, name: &Identifier<N>) -> Result<&FunctionCore<N, Instruction, Command>> {
         // Attempt to retrieve the function.
-        let function = self.functions.get(name).ok_or_else(|| anyhow!("Function '{name}' is not defined."))?;
+        let function = self.functions.get(name).ok_or(anyhow!("Function '{}/{name}' is not defined.", self.id))?;
         // Ensure the function name matches.
         ensure!(function.name() == name, "Expected function '{name}', but found function '{}'", function.name());
         // Ensure the number of inputs is within the allowed range.
@@ -294,6 +294,9 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Pro
     fn add_import(&mut self, import: Import<N>) -> Result<()> {
         // Retrieve the imported program name.
         let import_name = *import.name();
+
+        // Ensure that the number of imports is within the allowed range.
+        ensure!(self.imports.len() < N::MAX_IMPORTS, "Program exceeds the maximum number of imports");
 
         // Ensure the import name is new.
         ensure!(self.is_unique_name(&import_name), "'{import_name}' is already in use.");
@@ -575,6 +578,7 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Pro
         "u64",
         "u128",
         "scalar",
+        "signature",
         "string",
         // Boolean
         "true",
@@ -589,6 +593,7 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Pro
         "owner",
         // Program
         "transition",
+        "import",
         "function",
         "struct",
         "closure",
@@ -659,11 +664,11 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Typ
 mod tests {
     use super::*;
     use console::{
-        network::Testnet3,
+        network::MainnetV0,
         program::{Locator, ValueType},
     };
 
-    type CurrentNetwork = Testnet3;
+    type CurrentNetwork = MainnetV0;
 
     #[test]
     fn test_program_mapping() -> Result<()> {

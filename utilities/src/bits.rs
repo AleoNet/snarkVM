@@ -41,16 +41,21 @@ pub trait ToBits: Sized {
 
     /// Returns `self` as a boolean array in little-endian order.
     fn to_bits_le(&self) -> Vec<bool> {
-        let mut bits = Vec::with_capacity(32);
+        let mut bits = Vec::new();
         self.write_bits_le(&mut bits);
         bits
     }
 
     /// Returns `self` as a boolean array in big-endian order.
     fn to_bits_be(&self) -> Vec<bool> {
-        let mut bits = Vec::with_capacity(32);
+        let mut bits = Vec::new();
         self.write_bits_be(&mut bits);
         bits
+    }
+
+    /// An optional indication of how many bits an object can be represented with.
+    fn num_bits() -> Option<usize> {
+        None
     }
 }
 
@@ -144,7 +149,6 @@ macro_rules! impl_bits_for_integer {
             /// Returns `self` as a boolean array in little-endian order.
             #[inline]
             fn write_bits_le(&self, vec: &mut Vec<bool>) {
-                vec.reserve(<$int>::BITS as usize);
                 let mut value = *self;
                 for _ in 0..<$int>::BITS {
                     vec.push(value & 1 == 1);
@@ -157,6 +161,10 @@ macro_rules! impl_bits_for_integer {
             fn write_bits_be(&self, vec: &mut Vec<bool>) {
                 let reversed = self.reverse_bits();
                 reversed.write_bits_le(vec);
+            }
+
+            fn num_bits() -> Option<usize> {
+                Some(<$int>::BITS as usize)
             }
         }
 
@@ -266,6 +274,10 @@ impl<C: ToBits> ToBits for &[C] {
     /// A helper method to return a concatenated list of little-endian bits.
     #[inline]
     fn write_bits_le(&self, vec: &mut Vec<bool>) {
+        if let Some(num_bits) = C::num_bits() {
+            vec.reserve(num_bits * self.len());
+        }
+
         for elem in self.iter() {
             elem.write_bits_le(vec);
         }
@@ -274,6 +286,10 @@ impl<C: ToBits> ToBits for &[C] {
     /// A helper method to return a concatenated list of big-endian bits.
     #[inline]
     fn write_bits_be(&self, vec: &mut Vec<bool>) {
+        if let Some(num_bits) = C::num_bits() {
+            vec.reserve(num_bits * self.len());
+        }
+
         for elem in self.iter() {
             elem.write_bits_be(vec);
         }

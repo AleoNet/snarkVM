@@ -27,9 +27,11 @@ impl<N: Network> Stack<N> {
             universal_srs: process.universal_srs().clone(),
             proving_keys: Default::default(),
             verifying_keys: Default::default(),
+            number_of_calls: Default::default(),
+            program_depth: 0,
         };
 
-        // Add all of the imports into the stack.
+        // Add all the imports into the stack.
         for import in program.imports().keys() {
             // Ensure the program imports all exist in the process already.
             if !process.contains_program(import) {
@@ -39,17 +41,49 @@ impl<N: Network> Stack<N> {
             let external_stack = process.get_stack(import)?;
             // Add the external stack to the stack.
             stack.insert_external_stack(external_stack.clone())?;
+            // Update the program depth, checking that it does not exceed the maximum call depth.
+            stack.program_depth = std::cmp::max(stack.program_depth, external_stack.program_depth() + 1);
+            ensure!(
+                stack.program_depth <= N::MAX_PROGRAM_DEPTH,
+                "Program depth exceeds the maximum allowed call depth"
+            );
         }
         // Add the program closures to the stack.
         for closure in program.closures().values() {
             // Add the closure to the stack.
             stack.insert_closure(closure)?;
         }
+
         // Add the program functions to the stack.
         for function in program.functions().values() {
             // Add the function to the stack.
             stack.insert_function(function)?;
+            // Determine the number of calls for the function.
+            let mut num_calls = 1;
+            for instruction in function.instructions() {
+                if let Instruction::Call(call) = instruction {
+                    // Determine if this is a function call.
+                    if call.is_function_call(&stack)? {
+                        // Increment by the number of calls.
+                        num_calls += match call.operator() {
+                            CallOperator::Locator(locator) => stack
+                                .get_external_stack(locator.program_id())?
+                                .get_number_of_calls(locator.resource())?,
+                            CallOperator::Resource(resource) => stack.get_number_of_calls(resource)?,
+                        };
+                    }
+                }
+            }
+            // Check that the number of calls does not exceed the maximum.
+            // Note that one transition is reserved for the fee.
+            ensure!(
+                num_calls < ledger_block::Transaction::<N>::MAX_TRANSITIONS,
+                "Number of calls exceeds the maximum allowed number of transitions"
+            );
+            // Add the number of calls to the stack.
+            stack.number_of_calls.insert(*function.name(), num_calls);
         }
+
         // Return the stack.
         Ok(stack)
     }
@@ -58,7 +92,7 @@ impl<N: Network> Stack<N> {
 impl<N: Network> Stack<N> {
     /// Inserts the given external stack to the stack.
     #[inline]
-    fn insert_external_stack(&mut self, external_stack: Stack<N>) -> Result<()> {
+    fn insert_external_stack(&mut self, external_stack: Arc<Stack<N>>) -> Result<()> {
         // Retrieve the program ID.
         let program_id = *external_stack.program_id();
         // Ensure the external stack is not already added.
@@ -109,7 +143,6 @@ impl<N: Network> Stack<N> {
             // Add the finalize name and finalize types to the stack.
             self.finalize_types.insert(*name, finalize_types);
         }
-
         // Return success.
         Ok(())
     }

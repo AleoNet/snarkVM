@@ -1,5 +1,8 @@
 /*
 randomness: 1337
+keys:
+  - APrivateKey1zkpFbGDx4znwxo1zrxfUscfGn1Vy3My3ia5gRHx3XwaLtCR
+  - APrivateKey1zkpJhviKDvvm7yu7SZuhSudVR7zjCRG2HznuAHwuGYc1xqN
 cases:
   - program: mint_and_split.aleo
     function: mint

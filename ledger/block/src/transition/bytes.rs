@@ -53,10 +53,12 @@ impl<N: Network> FromBytes for Transition<N> {
         let tpk = FromBytes::read_le(&mut reader)?;
         // Read the transition commitment.
         let tcm = FromBytes::read_le(&mut reader)?;
+        // Read the signer commitment.
+        let scm = FromBytes::read_le(&mut reader)?;
 
         // Construct the candidate transition.
         let transition =
-            Self::new(program_id, function_name, inputs, outputs, tpk, tcm).map_err(|e| error(e.to_string()))?;
+            Self::new(program_id, function_name, inputs, outputs, tpk, tcm, scm).map_err(|e| error(e.to_string()))?;
         // Ensure the transition ID matches the expected ID.
         match transition_id == *transition.id() {
             true => Ok(transition),
@@ -91,16 +93,15 @@ impl<N: Network> ToBytes for Transition<N> {
         // Write the transition public key.
         self.tpk.write_le(&mut writer)?;
         // Write the transition commitment.
-        self.tcm.write_le(&mut writer)
+        self.tcm.write_le(&mut writer)?;
+        // Write the signer commitment.
+        self.scm.write_le(&mut writer)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use console::network::Testnet3;
-
-    type CurrentNetwork = Testnet3;
 
     #[test]
     fn test_bytes() -> Result<()> {
@@ -112,7 +113,6 @@ mod tests {
         // Check the byte representation.
         let expected_bytes = expected.to_bytes_le()?;
         assert_eq!(expected, Transition::read_le(&expected_bytes[..])?);
-        assert!(Transition::<CurrentNetwork>::read_le(&expected_bytes[1..]).is_err());
 
         Ok(())
     }

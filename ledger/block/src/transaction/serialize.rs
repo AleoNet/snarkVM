@@ -29,7 +29,7 @@ impl<N: Network> Serialize for Transaction<N> {
                     transaction.end()
                 }
                 Self::Execute(id, execution, fee) => {
-                    let mut transaction = serializer.serialize_struct("Transaction", 4)?;
+                    let mut transaction = serializer.serialize_struct("Transaction", 3 + fee.is_some() as usize)?;
                     transaction.serialize_field("type", "execute")?;
                     transaction.serialize_field("id", &id)?;
                     transaction.serialize_field("execution", &execution)?;

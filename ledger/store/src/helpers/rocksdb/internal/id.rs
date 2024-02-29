@@ -17,6 +17,7 @@
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[repr(u16)]
 pub enum MapID {
+    BFT(BFTMap),
     Block(BlockMap),
     Committee(CommitteeMap),
     Deployment(DeploymentMap),
@@ -34,6 +35,7 @@ pub enum MapID {
 impl From<MapID> for u16 {
     fn from(id: MapID) -> u16 {
         match id {
+            MapID::BFT(id) => id as u16,
             MapID::Block(id) => id as u16,
             MapID::Committee(id) => id as u16,
             MapID::Deployment(id) => id as u16,
@@ -48,6 +50,15 @@ impl From<MapID> for u16 {
             MapID::Test(id) => id as u16,
         }
     }
+}
+
+/// The RocksDB map prefix for BFT-related entries.
+// Note: the order of these variants can be changed at any point in time,
+// as long as the corresponding DataID values remain the same.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[repr(u16)]
+pub enum BFTMap {
+    Transmissions = DataID::BFTTransmissionsMap as u16,
 }
 
 /// The RocksDB map prefix for block-related entries.
@@ -66,6 +77,8 @@ pub enum BlockMap {
     Ratifications = DataID::BlockRatificationsMap as u16,
     Solutions = DataID::BlockSolutionsMap as u16,
     PuzzleCommitments = DataID::BlockPuzzleCommitmentsMap as u16,
+    AbortedSolutionIDs = DataID::BlockAbortedSolutionIDsMap as u16,
+    AbortedSolutionHeights = DataID::BlockAbortedSolutionHeightsMap as u16,
     Transactions = DataID::BlockTransactionsMap as u16,
     AbortedTransactionIDs = DataID::BlockAbortedTransactionIDsMap as u16,
     RejectedOrAbortedTransactionID = DataID::BlockRejectedOrAbortedTransactionIDMap as u16,
@@ -173,6 +186,7 @@ pub enum TransitionMap {
     ReverseTPK = DataID::TransitionReverseTPKMap as u16,
     TCM = DataID::TransitionTCMMap as u16,
     ReverseTCM = DataID::TransitionReverseTCMMap as u16,
+    SCM = DataID::TransitionSCMMap as u16,
 }
 
 /// The RocksDB map prefix for program-related entries.
@@ -195,6 +209,7 @@ pub enum TestMap {
     Test2 = DataID::Test2 as u16,
     Test3 = DataID::Test3 as u16,
     Test4 = DataID::Test4 as u16,
+    Test5 = DataID::Test5 as u16,
 }
 
 /// The RocksDB map prefix.
@@ -205,6 +220,8 @@ pub enum TestMap {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(u16)]
 enum DataID {
+    // BFT
+    BFTTransmissionsMap,
     // Block
     BlockStateRootMap,
     BlockReverseStateRootMap,
@@ -216,10 +233,13 @@ enum DataID {
     BlockRatificationsMap,
     BlockSolutionsMap,
     BlockPuzzleCommitmentsMap,
+    BlockAbortedSolutionIDsMap,
+    BlockAbortedSolutionHeightsMap,
     BlockTransactionsMap,
     BlockAbortedTransactionIDsMap,
     BlockRejectedOrAbortedTransactionIDMap,
     BlockConfirmedTransactionsMap,
+    BlockRejectedDeploymentOrExecutionMap,
     // Committee
     CurrentRoundMap,
     RoundToHeightMap,
@@ -266,12 +286,10 @@ enum DataID {
     TransitionReverseTPKMap,
     TransitionTCMMap,
     TransitionReverseTCMMap,
+    TransitionSCMMap,
     // Program
     ProgramIDMap,
     KeyValueMap,
-
-    // TODO (howardwu): For mainnet - Reorder this up above.
-    BlockRejectedDeploymentOrExecutionMap,
 
     // Testing
     #[cfg(test)]
@@ -282,4 +300,6 @@ enum DataID {
     Test3,
     #[cfg(test)]
     Test4,
+    #[cfg(test)]
+    Test5,
 }

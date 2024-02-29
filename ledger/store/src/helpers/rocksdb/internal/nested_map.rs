@@ -16,11 +16,14 @@
 
 use super::*;
 use crate::helpers::{NestedMap, NestedMapRead};
-use console::prelude::FromBytes;
+use console::prelude::{anyhow, cfg_into_iter, FromBytes};
 
 use core::{fmt, fmt::Debug, hash::Hash, mem};
 use std::{borrow::Cow, sync::atomic::Ordering};
 use tracing::error;
+
+#[cfg(not(feature = "serial"))]
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
 
 #[derive(Clone)]
 pub struct NestedDataMap<
@@ -80,10 +83,20 @@ impl<M: Serialize + DeserializeOwned, K: Serialize + DeserializeOwned, V: Serial
 }
 #[inline]
 fn get_map_and_key(map_key: &[u8]) -> Result<(&[u8], &[u8])> {
-    let map_len = u32::from_bytes_le(&map_key[PREFIX_LEN..][..4])? as usize;
-    let map = &map_key[PREFIX_LEN + 4..][..map_len];
-    let key = &map_key[PREFIX_LEN + 4 + map_len..];
+    // Retrieve the map length.
+    let map_len = u32::from_bytes_le(
+        map_key.get(PREFIX_LEN..PREFIX_LEN + 4).ok_or_else(|| anyhow!("NestedMap map_len index out of range"))?,
+    )? as usize;
 
+    // Retrieve the map bytes.
+    let map = map_key
+        .get(PREFIX_LEN + 4..PREFIX_LEN + 4 + map_len)
+        .ok_or_else(|| anyhow!("NestedMap map index out of range"))?;
+
+    // Retrieve the key bytes.
+    let key = map_key.get(PREFIX_LEN + 4 + map_len..).ok_or_else(|| anyhow!("NestedMap key index out of range"))?;
+
+    // Return the map and key bytes.
     Ok((map, key))
 }
 
@@ -130,17 +143,16 @@ impl<
                 let mut batch = rocksdb::WriteBatch::default();
 
                 // Construct an iterator over the DB with the specified prefix.
-                let iterator = self.database.iterator(rocksdb::IteratorMode::From(
-                    &self.create_prefixed_map(map)?,
-                    rocksdb::Direction::Forward,
-                ));
+                let iterator = self.database.prefix_iterator(&self.create_prefixed_map(map)?);
 
                 // Iterate over the entries in the DB with the specified prefix.
                 for entry in iterator {
                     let (map_key, _) = entry?;
 
                     // Extract the bytes belonging to the map and the key.
-                    let (entry_map, _) = get_map_and_key(&map_key)?;
+                    let Ok((entry_map, _)) = get_map_and_key(&map_key) else {
+                        break;
+                    };
 
                     // If the 'entry_map' matches 'serialized_map', delete the key.
                     if entry_map == serialized_map {
@@ -189,8 +201,11 @@ impl<
 
         // Ensure that the atomic batch is empty.
         assert!(self.atomic_batch.lock().is_empty());
-        // Ensure that the database atomic batch is empty.
-        assert!(self.database.atomic_batch.lock().is_empty());
+        // Ensure that the database atomic batch is empty; skip this check if the atomic
+        // writes are paused, as there may be pending operations.
+        if !self.database.are_atomic_writes_paused() {
+            assert!(self.database.atomic_batch.lock().is_empty());
+        }
     }
 
     ///
@@ -272,17 +287,16 @@ impl<
                         let serialized_map = bincode::serialize(&map)?;
 
                         // Construct an iterator over the DB with the specified prefix.
-                        let iterator = self.database.iterator(rocksdb::IteratorMode::From(
-                            &self.create_prefixed_map(&map)?,
-                            rocksdb::Direction::Forward,
-                        ));
+                        let iterator = self.database.prefix_iterator(&self.create_prefixed_map(&map)?);
 
                         // Iterate over the entries in the DB with the specified prefix.
                         for entry in iterator {
                             let (map_key, _) = entry?;
 
                             // Extract the bytes belonging to the map and the key.
-                            let (entry_map, _) = get_map_and_key(&map_key)?;
+                            let Ok((entry_map, _)) = get_map_and_key(&map_key) else {
+                                break;
+                            };
 
                             // If the 'entry_map' matches 'serialized_map', delete the key.
                             if entry_map == serialized_map {
@@ -312,8 +326,9 @@ impl<
         assert!(previous_atomic_depth != 0);
 
         // If we're at depth 0, it is the final call to `finish_atomic` and the
-        // atomic write batch can be physically executed.
-        if previous_atomic_depth == 1 {
+        // atomic write batch can be physically executed. This is skipped if the
+        // atomic writes are paused.
+        if previous_atomic_depth == 1 && !self.database.are_atomic_writes_paused() {
             // Empty the collection of pending operations.
             let batch = mem::take(&mut *self.database.atomic_batch.lock());
             // Execute all the operations atomically.
@@ -340,6 +355,38 @@ impl<
         fn((M, Option<K>, Option<V>)) -> (Cow<'a, M>, Option<Cow<'a, K>>, Option<Cow<'a, V>>),
     >;
     type Values = NestedValues<'a, V>;
+
+    ///
+    /// Returns the number of confirmed entries in the map.
+    ///
+    fn len_map_confirmed(&self, map: &M) -> Result<usize> {
+        // Obtain the nested map prefix and its final part.
+        let prefix = self.create_prefixed_map(map)?;
+        let serialized_map = &prefix[PREFIX_LEN + 4..];
+
+        // A raw iterator doesn't allocate.
+        let mut iter = self.database.raw_iterator();
+        // Find the first key with the nested map prefix.
+        iter.seek(&prefix);
+
+        // Count the number of keys belonging to the nested map.
+        let mut len = 0usize;
+        while let Some(key) = iter.key() {
+            // Only compare the nested map - the network ID and the outer map
+            // ID are guaranteed to remain the same as long as there is more
+            // than a single map in the database.
+            if !key[PREFIX_LEN + 4..].starts_with(serialized_map) {
+                // If the nested map ID is different, it's the end of iteration.
+                break;
+            }
+
+            // Increment the length and go to the next record.
+            len += 1;
+            iter.next();
+        }
+
+        Ok(len)
+    }
 
     ///
     /// Returns `true` if the given map and key exists.
@@ -388,25 +435,21 @@ impl<
         let mut entries = Vec::new();
 
         // Construct an iterator over the DB with the specified prefix.
-        let iterator = self
-            .database
-            .iterator(rocksdb::IteratorMode::From(&self.create_prefixed_map(map)?, rocksdb::Direction::Forward));
+        let iterator = self.database.prefix_iterator(&self.create_prefixed_map(map)?);
 
         // Iterate over the entries in the DB with the specified prefix.
         for entry in iterator {
             let (map_key, value) = entry?;
 
             // Extract the bytes belonging to the map and the key.
-            let (entry_map, entry_key) = get_map_and_key(&map_key)?;
+            let Ok((entry_map, entry_key)) = get_map_and_key(&map_key) else {
+                break;
+            };
 
             // If the 'entry_map' matches 'serialized_map', deserialize the key and value.
             if entry_map == serialized_map {
-                // Deserialize the key.
-                let key = bincode::deserialize(entry_key)?;
-                // Deserialize the value.
-                let value = bincode::deserialize(&value)?;
                 // Push the key-value pair to the vector.
-                entries.push((key, value));
+                entries.push((entry_key.to_owned(), value));
             } else {
                 // If the 'entry_map' no longer matches the 'serialized_map',
                 // we've moved past the relevant keys and can break the loop.
@@ -414,7 +457,15 @@ impl<
             }
         }
 
-        Ok(entries)
+        // Possibly deserialize the entries in parallel.
+        Ok(cfg_into_iter!(entries)
+            .map(|(k, v)| {
+                let k = bincode::deserialize::<K>(&k);
+                let v = bincode::deserialize::<V>(&v);
+
+                k.and_then(|k| v.map(|v| (k, v)))
+            })
+            .collect::<Result<_, bincode::Error>>()?)
     }
 
     ///
@@ -428,14 +479,14 @@ impl<
         let operations = self.atomic_batch.lock().clone();
 
         if !operations.is_empty() {
-            // Perform all the queued operations.
+            // Traverse the queued operations.
             for (m, k, v) in operations {
                 // If the map does not match the given map, then continue.
                 if &m != map {
                     continue;
                 }
 
-                // Perform the operation.
+                // Update the confirmed pairs based on the pending operations.
                 match (k, v) {
                     // Insert or update the key-value pair for the key.
                     (Some(k), Some(v)) => {
@@ -708,19 +759,22 @@ mod tests {
     use crate::{
         atomic_batch_scope,
         atomic_finalize,
-        helpers::rocksdb::{internal::tests::temp_dir, MapID, TestMap},
+        helpers::{
+            rocksdb::{internal::tests::temp_dir, MapID, TestMap},
+            traits::Map,
+        },
         FinalizeMode,
     };
     use console::{
         account::{Address, FromStr},
-        network::Testnet3,
+        network::MainnetV0,
     };
 
     use anyhow::anyhow;
     use serial_test::serial;
     use tracing_test::traced_test;
 
-    type CurrentNetwork = Testnet3;
+    type CurrentNetwork = MainnetV0;
 
     // Below are a few objects that mimic the way our NestedDataMaps are organized,
     // in order to provide a more accurate test setup for some scenarios.
@@ -746,6 +800,28 @@ mod tests {
             batch_in_progress: Default::default(),
             checkpoints: Default::default(),
         }
+    }
+
+    fn open_non_nested_map_testing_from_db<
+        K: Serialize + DeserializeOwned,
+        V: Serialize + DeserializeOwned,
+        T: Into<u16>,
+    >(
+        database: RocksDB,
+        map_id: T,
+    ) -> DataMap<K, V> {
+        // Combine contexts to create a new scope.
+        let mut context = database.network_id.to_le_bytes().to_vec();
+        context.extend_from_slice(&(map_id.into()).to_le_bytes());
+
+        // Return the DataMap.
+        DataMap(Arc::new(InnerDataMap {
+            database,
+            context,
+            atomic_batch: Default::default(),
+            batch_in_progress: Default::default(),
+            checkpoints: Default::default(),
+        }))
     }
 
     struct TestStorage {
@@ -798,7 +874,7 @@ mod tests {
             self.own_map.is_atomic_in_progress()
                 && self.extra_maps.own_map1.is_atomic_in_progress()
                 && self.extra_maps.own_map1.is_atomic_in_progress()
-                && self.extra_maps.extra_maps.own_map.is_atomic_in_progress()
+                && self.extra_maps.extra_maps.own_nested_map.is_atomic_in_progress()
         }
     }
 
@@ -855,35 +931,44 @@ mod tests {
     }
 
     struct TestStorage3 {
-        own_map: NestedDataMap<usize, usize, String>,
+        own_nested_map: NestedDataMap<usize, usize, String>,
+        own_map: DataMap<usize, String>,
     }
 
     impl TestStorage3 {
         fn open(database: RocksDB) -> Self {
-            Self { own_map: open_map_testing_from_db(database, MapID::Test(TestMap::Test4)) }
+            Self {
+                own_nested_map: open_map_testing_from_db(database.clone(), MapID::Test(TestMap::Test4)),
+                own_map: open_non_nested_map_testing_from_db(database, MapID::Test(TestMap::Test5)),
+            }
         }
 
         fn start_atomic(&self) {
+            self.own_nested_map.start_atomic();
             self.own_map.start_atomic();
         }
 
         fn is_atomic_in_progress(&self) -> bool {
-            self.own_map.is_atomic_in_progress()
+            self.own_nested_map.is_atomic_in_progress() || self.own_map.is_atomic_in_progress()
         }
 
         fn atomic_checkpoint(&self) {
+            self.own_nested_map.atomic_checkpoint();
             self.own_map.atomic_checkpoint();
         }
 
         fn clear_latest_checkpoint(&self) {
+            self.own_nested_map.clear_latest_checkpoint();
             self.own_map.clear_latest_checkpoint();
         }
 
         fn atomic_rewind(&self) {
+            self.own_nested_map.atomic_rewind();
             self.own_map.atomic_rewind();
         }
 
         fn finish_atomic(&self) -> Result<()> {
+            self.own_nested_map.finish_atomic()?;
             self.own_map.finish_atomic()
         }
     }
@@ -964,6 +1049,29 @@ mod tests {
                 .expect("Failed to open data map");
 
         crate::helpers::test_helpers::nested_map::check_iterators_match(map);
+    }
+
+    #[test]
+    #[serial]
+    #[traced_test]
+    fn test_iter_from_nested_to_non_nested() {
+        // Open a storage with a DataMap right after a NestedDataMap.
+        let database = RocksDB::open_testing(temp_dir(), None).expect("Failed to open a test database");
+        let test_storage = TestStorage3::open(database);
+
+        // Insert 5 (confirmed) records into a nested map 77.
+        for i in 0..5 {
+            test_storage.own_nested_map.insert(77, i, i.to_string()).expect("Failed to insert");
+        }
+
+        // Insert 5 (confirmed) records into the neighboring data map; the keys are large on purpose.
+        for i in 0..5 {
+            test_storage.own_map.insert(usize::MAX - i, (usize::MAX - i).to_string()).expect("Failed to insert");
+        }
+
+        // We should be able to collect the 5 records from the nested data map.
+        let confirmed = test_storage.own_nested_map.get_map_confirmed(&77).unwrap();
+        assert_eq!(confirmed.len(), 5);
     }
 
     #[test]
@@ -1574,7 +1682,7 @@ mod tests {
         assert!(test_storage.own_map.iter_confirmed().next().is_none());
         assert!(test_storage.extra_maps.own_map1.iter_confirmed().next().is_none());
         assert!(test_storage.extra_maps.own_map2.iter_confirmed().next().is_none());
-        assert!(test_storage.extra_maps.extra_maps.own_map.iter_confirmed().next().is_none());
+        assert!(test_storage.extra_maps.extra_maps.own_nested_map.iter_confirmed().next().is_none());
 
         assert_eq!(test_storage.own_map.checkpoints.lock().last(), None);
 
@@ -1603,11 +1711,11 @@ mod tests {
                 test_storage.extra_maps.own_map2.insert(2, 2, 2.to_string()).unwrap();
 
                 // Start another atomic write batch.
-                atomic_batch_scope!(test_storage.extra_maps.extra_maps.own_map, {
-                    assert!(test_storage.extra_maps.extra_maps.own_map.is_atomic_in_progress());
+                atomic_batch_scope!(test_storage.extra_maps.extra_maps.own_nested_map, {
+                    assert!(test_storage.extra_maps.extra_maps.own_nested_map.is_atomic_in_progress());
 
                     // Write an item into the fourth map.
-                    test_storage.extra_maps.extra_maps.own_map.insert(3, 3, 3.to_string()).unwrap();
+                    test_storage.extra_maps.extra_maps.own_nested_map.insert(3, 3, 3.to_string()).unwrap();
 
                     Ok(())
                 })?;
@@ -1628,7 +1736,7 @@ mod tests {
         assert_eq!(test_storage.own_map.iter_confirmed().count(), 1);
         assert_eq!(test_storage.extra_maps.own_map1.iter_confirmed().count(), 1);
         assert_eq!(test_storage.extra_maps.own_map2.iter_confirmed().count(), 1);
-        assert_eq!(test_storage.extra_maps.extra_maps.own_map.iter_confirmed().count(), 1);
+        assert_eq!(test_storage.extra_maps.extra_maps.own_nested_map.iter_confirmed().count(), 1);
 
         // The atomic_write_batch macro uses ?, so the test returns a Result for simplicity.
         Ok(())
@@ -1659,11 +1767,11 @@ mod tests {
                     test_storage.extra_maps.own_map2.insert(2, 2, 2.to_string()).unwrap();
 
                     // Start another atomic write batch.
-                    let result: Result<()> = atomic_batch_scope!(test_storage.extra_maps.extra_maps.own_map, {
+                    let result: Result<()> = atomic_batch_scope!(test_storage.extra_maps.extra_maps.own_nested_map, {
                         assert!(test_storage.is_atomic_in_progress_everywhere());
 
                         // Write an item into the fourth map.
-                        test_storage.extra_maps.extra_maps.own_map.insert(3, 3, 3.to_string()).unwrap();
+                        test_storage.extra_maps.extra_maps.own_nested_map.insert(3, 3, 3.to_string()).unwrap();
 
                         // Rewind the atomic batch via a simulated error.
                         bail!("An error that will trigger a single rewind.");
@@ -1690,7 +1798,7 @@ mod tests {
         assert!(test_storage.own_map.iter_confirmed().next().is_none());
         assert!(test_storage.extra_maps.own_map1.iter_confirmed().next().is_none());
         assert!(test_storage.extra_maps.own_map2.iter_confirmed().next().is_none());
-        assert!(test_storage.extra_maps.extra_maps.own_map.iter_confirmed().next().is_none());
+        assert!(test_storage.extra_maps.extra_maps.own_nested_map.iter_confirmed().next().is_none());
 
         // Note: all the checks going through .database can be performed on any one
         // of the objects, as all of them share the same instance of the database.
@@ -1706,6 +1814,6 @@ mod tests {
         assert_eq!(test_storage.own_map.iter_confirmed().count(), 1);
         assert_eq!(test_storage.extra_maps.own_map1.iter_confirmed().count(), 1);
         assert_eq!(test_storage.extra_maps.own_map2.iter_confirmed().count(), 1);
-        assert_eq!(test_storage.extra_maps.extra_maps.own_map.iter_confirmed().count(), 0);
+        assert_eq!(test_storage.extra_maps.extra_maps.own_nested_map.iter_confirmed().count(), 0);
     }
 }

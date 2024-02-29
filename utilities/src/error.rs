@@ -37,3 +37,32 @@ impl Error for crate::String {}
 
 #[cfg(not(feature = "std"))]
 impl Error for crate::io::Error {}
+
+/// This purpose of this macro is to catch the instances of halting
+/// without producing logs looking like unexpected panics. It prints
+/// to stderr using the format: "Halted at <location>: <halt message>".
+#[macro_export]
+macro_rules! handle_halting {
+    ($e:expr) => {{
+        use std::panic;
+
+        // Set a custom hook before calling catch_unwind to
+        // indicate that the panic was expected and handled.
+        panic::set_hook(Box::new(|e| {
+            let msg = e.to_string();
+            let msg = msg.split_ascii_whitespace().skip_while(|&word| word != "panicked").collect::<Vec<&str>>();
+            let mut msg = msg.join(" ");
+            msg = msg.replacen("panicked", "Halted", 1);
+            eprintln!("{msg}");
+        }));
+
+        // Perform the operation that may panic.
+        let result = panic::catch_unwind($e);
+
+        // Restore the standard panic hook.
+        let _ = panic::take_hook();
+
+        // Return the result, allowing regular error-handling.
+        result
+    }};
+}

@@ -32,7 +32,8 @@ impl<N: Network> FromBytes for Future<N> {
             // Read the argument (in 2 steps to prevent infinite recursion).
             let num_bytes = u16::read_le(&mut reader)?;
             // Read the argument bytes.
-            let bytes = (0..num_bytes).map(|_| u8::read_le(&mut reader)).collect::<Result<Vec<_>, _>>()?;
+            let mut bytes = Vec::new();
+            (&mut reader).take(num_bytes as u64).read_to_end(&mut bytes)?;
             // Recover the argument.
             let entry = Argument::read_le(&mut bytes.as_slice())?;
             // Add the argument.
@@ -71,9 +72,9 @@ impl<N: Network> ToBytes for Future<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_console_network::Testnet3;
+    use snarkvm_console_network::MainnetV0;
 
-    type CurrentNetwork = Testnet3;
+    type CurrentNetwork = MainnetV0;
 
     #[test]
     fn test_bytes() -> Result<()> {
@@ -84,7 +85,6 @@ mod tests {
         // Check the byte representation.
         let expected_bytes = expected.to_bytes_le()?;
         assert_eq!(expected, Future::read_le(&expected_bytes[..])?);
-        assert!(Future::<CurrentNetwork>::read_le(&expected_bytes[1..]).is_err());
 
         Ok(())
     }

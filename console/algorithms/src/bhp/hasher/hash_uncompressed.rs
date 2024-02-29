@@ -14,6 +14,8 @@
 
 use super::*;
 
+use std::borrow::Cow;
+
 impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> HashUncompressed
     for BHPHasher<E, NUM_WINDOWS, WINDOW_SIZE>
 {
@@ -36,12 +38,15 @@ impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> HashUncompres
         );
 
         // Pad the input to a multiple of `BHP_CHUNK_SIZE` for hashing.
-        let mut input = input.to_vec();
-        if input.len() % BHP_CHUNK_SIZE != 0 {
+        let input = if input.len() % BHP_CHUNK_SIZE != 0 {
             let padding = BHP_CHUNK_SIZE - (input.len() % BHP_CHUNK_SIZE);
-            input.resize(input.len() + padding, false);
-            ensure!((input.len() % BHP_CHUNK_SIZE) == 0, "Input must be a multiple of {BHP_CHUNK_SIZE}");
-        }
+            let mut padded_input = vec![false; input.len() + padding];
+            padded_input[..input.len()].copy_from_slice(input);
+            ensure!((padded_input.len() % BHP_CHUNK_SIZE) == 0, "Input must be a multiple of {BHP_CHUNK_SIZE}");
+            Cow::Owned(padded_input)
+        } else {
+            Cow::Borrowed(input)
+        };
 
         // Compute sum of h_i^{sum of (1-2*c_{i,j,2})*(1+c_{i,j,0}+2*c_{i,j,1})*2^{4*(j-1)} for all j in segment}
         // for all i. Described in section 5.4.1.7 in the Zcash protocol specification.

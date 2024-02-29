@@ -22,7 +22,7 @@ impl<E: Environment> Elligator2<E> {
         debug_assert!(console::Group::<E::Network>::EDWARDS_D.legendre().is_qnr());
 
         // Ensure the input is nonzero.
-        E::assert_neq(input, &Field::<E>::zero());
+        E::assert_neq(input, Field::<E>::zero());
 
         // Define `1` as a constant.
         let one = Field::one();

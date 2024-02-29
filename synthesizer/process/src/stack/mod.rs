@@ -41,8 +41,10 @@ use console::{
     account::{Address, PrivateKey},
     network::prelude::*,
     program::{
+        Argument,
         Entry,
         EntryType,
+        FinalizeType,
         Future,
         Identifier,
         Literal,
@@ -79,7 +81,7 @@ pub type Assignments<N> = Arc<RwLock<Vec<(circuit::Assignment<<N as Environment>
 pub enum CallStack<N: Network> {
     Authorize(Vec<Request<N>>, PrivateKey<N>, Authorization<N>),
     Synthesize(Vec<Request<N>>, PrivateKey<N>, Authorization<N>),
-    CheckDeployment(Vec<Request<N>>, PrivateKey<N>, Assignments<N>),
+    CheckDeployment(Vec<Request<N>>, PrivateKey<N>, Assignments<N>, Option<u64>),
     Evaluate(Authorization<N>),
     Execute(Authorization<N>, Arc<RwLock<Trace<N>>>),
     PackageRun(Vec<Request<N>>, PrivateKey<N>, Assignments<N>),
@@ -107,11 +109,14 @@ impl<N: Network> CallStack<N> {
             CallStack::Synthesize(requests, private_key, authorization) => {
                 CallStack::Synthesize(requests.clone(), *private_key, authorization.replicate())
             }
-            CallStack::CheckDeployment(requests, private_key, assignments) => CallStack::CheckDeployment(
-                requests.clone(),
-                *private_key,
-                Arc::new(RwLock::new(assignments.read().clone())),
-            ),
+            CallStack::CheckDeployment(requests, private_key, assignments, constraint_limit) => {
+                CallStack::CheckDeployment(
+                    requests.clone(),
+                    *private_key,
+                    Arc::new(RwLock::new(assignments.read().clone())),
+                    *constraint_limit,
+                )
+            }
             CallStack::Evaluate(authorization) => CallStack::Evaluate(authorization.replicate()),
             CallStack::Execute(authorization, trace) => {
                 CallStack::Execute(authorization.replicate(), Arc::new(RwLock::new(trace.read().clone())))
@@ -169,7 +174,7 @@ pub struct Stack<N: Network> {
     /// The program (record types, structs, functions).
     program: Program<N>,
     /// The mapping of external stacks as `(program ID, stack)`.
-    external_stacks: IndexMap<ProgramID<N>, Stack<N>>,
+    external_stacks: IndexMap<ProgramID<N>, Arc<Stack<N>>>,
     /// The mapping of closure and function names to their register types.
     register_types: IndexMap<Identifier<N>, RegisterTypes<N>>,
     /// The mapping of finalize names to their register types.
@@ -180,6 +185,10 @@ pub struct Stack<N: Network> {
     proving_keys: Arc<RwLock<IndexMap<Identifier<N>, ProvingKey<N>>>>,
     /// The mapping of function name to verifying key.
     verifying_keys: Arc<RwLock<IndexMap<Identifier<N>, VerifyingKey<N>>>>,
+    /// The mapping of function names to the number of calls.
+    number_of_calls: IndexMap<Identifier<N>, usize>,
+    /// The program depth.
+    program_depth: usize,
 }
 
 impl<N: Network> Stack<N> {
@@ -221,6 +230,12 @@ impl<N: Network> StackProgram<N> for Stack<N> {
         self.program.id()
     }
 
+    /// Returns the program depth.
+    #[inline]
+    fn program_depth(&self) -> usize {
+        self.program_depth
+    }
+
     /// Returns `true` if the stack contains the external record.
     #[inline]
     fn contains_external_record(&self, locator: &Locator<N>) -> bool {
@@ -235,7 +250,7 @@ impl<N: Network> StackProgram<N> for Stack<N> {
 
     /// Returns the external stack for the given program ID.
     #[inline]
-    fn get_external_stack(&self, program_id: &ProgramID<N>) -> Result<&Stack<N>> {
+    fn get_external_stack(&self, program_id: &ProgramID<N>) -> Result<&Arc<Stack<N>>> {
         // Retrieve the external stack.
         self.external_stacks.get(program_id).ok_or_else(|| anyhow!("External program '{program_id}' does not exist."))
     }
@@ -274,23 +289,50 @@ impl<N: Network> StackProgram<N> for Stack<N> {
     /// Returns the expected number of calls for the given function name.
     #[inline]
     fn get_number_of_calls(&self, function_name: &Identifier<N>) -> Result<usize> {
-        // Determine the number of calls for this function (including the function itself).
-        let mut num_calls = 1;
-        for instruction in self.get_function(function_name)?.instructions() {
-            if let Instruction::Call(call) = instruction {
-                // Determine if this is a function call.
-                if call.is_function_call(self)? {
-                    // Increment by the number of calls.
-                    num_calls += match call.operator() {
-                        CallOperator::Locator(locator) => {
-                            self.get_external_stack(locator.program_id())?.get_number_of_calls(locator.resource())?
-                        }
-                        CallOperator::Resource(resource) => self.get_number_of_calls(resource)?,
-                    };
-                }
+        self.number_of_calls
+            .get(function_name)
+            .copied()
+            .ok_or_else(|| anyhow!("Function '{function_name}' does not exist"))
+    }
+
+    /// Returns a value for the given value type.
+    fn sample_value<R: Rng + CryptoRng>(
+        &self,
+        burner_address: &Address<N>,
+        value_type: &ValueType<N>,
+        rng: &mut R,
+    ) -> Result<Value<N>> {
+        match value_type {
+            ValueType::Constant(plaintext_type)
+            | ValueType::Public(plaintext_type)
+            | ValueType::Private(plaintext_type) => Ok(Value::Plaintext(self.sample_plaintext(plaintext_type, rng)?)),
+            ValueType::Record(record_name) => {
+                Ok(Value::Record(self.sample_record(burner_address, record_name, Group::rand(rng), rng)?))
             }
+            ValueType::ExternalRecord(locator) => {
+                // Retrieve the external stack.
+                let stack = self.get_external_stack(locator.program_id())?;
+                // Sample the output.
+                Ok(Value::Record(stack.sample_record(burner_address, locator.resource(), Group::rand(rng), rng)?))
+            }
+            ValueType::Future(locator) => Ok(Value::Future(self.sample_future(locator, rng)?)),
         }
-        Ok(num_calls)
+    }
+
+    /// Returns a record for the given record name, with the given burner address and nonce.
+    fn sample_record<R: Rng + CryptoRng>(
+        &self,
+        burner_address: &Address<N>,
+        record_name: &Identifier<N>,
+        nonce: Group<N>,
+        rng: &mut R,
+    ) -> Result<Record<N, Plaintext<N>>> {
+        // Sample a record.
+        let record = self.sample_record_internal(burner_address, record_name, nonce, 0, rng)?;
+        // Ensure the record matches the value type.
+        self.matches_record(&record, record_name)?;
+        // Return the record.
+        Ok(record)
     }
 }
 
@@ -376,13 +418,13 @@ impl<N: Network> Stack<N> {
     /// Removes the proving key for the given function name.
     #[inline]
     pub fn remove_proving_key(&self, function_name: &Identifier<N>) {
-        self.proving_keys.write().remove(function_name);
+        self.proving_keys.write().shift_remove(function_name);
     }
 
     /// Removes the verifying key for the given function name.
     #[inline]
     pub fn remove_verifying_key(&self, function_name: &Identifier<N>) {
-        self.verifying_keys.write().remove(function_name);
+        self.verifying_keys.write().shift_remove(function_name);
     }
 }
 

@@ -207,7 +207,7 @@ pub mod test_helpers {
 
     use once_cell::sync::OnceCell;
 
-    type CurrentNetwork = console::network::Testnet3;
+    type CurrentNetwork = console::network::MainnetV0;
     type CurrentAleo = circuit::network::AleoV0;
 
     /// Samples a random hardcoded private fee.
@@ -253,7 +253,7 @@ pub mod test_helpers {
             )
             .unwrap();
         // Construct the fee trace.
-        let (_, mut trace) = process.execute::<CurrentAleo>(authorization).unwrap();
+        let (_, mut trace) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
 
         // Initialize a new block store.
         let block_store = BlockStore::<CurrentNetwork, BlockMemory<_>>::open(None).unwrap();
@@ -309,7 +309,7 @@ pub mod test_helpers {
             )
             .unwrap();
         // Construct the fee trace.
-        let (_, mut trace) = process.execute::<CurrentAleo>(authorization).unwrap();
+        let (_, mut trace) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
 
         // Initialize a new block store.
         let block_store = BlockStore::<CurrentNetwork, BlockMemory<_>>::open(None).unwrap();

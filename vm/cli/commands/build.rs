@@ -41,7 +41,7 @@ impl Build {
 
         // package.build::<Aleo>(match self.offline {
         //     true => None,
-        //     false => Some(endpoint.unwrap_or("https://vm.aleo.org/testnet3/build".to_string())),
+        //     false => Some(endpoint.unwrap_or("https://api.explorer.aleo.org/v0/mainnet/build".to_string())),
         // })?;
 
         // Prepare the path string.

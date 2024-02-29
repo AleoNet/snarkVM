@@ -27,12 +27,12 @@ use crate::{
         SNARKMode,
     },
 };
-use anyhow::anyhow;
+use anyhow::{anyhow, ensure, Result};
 use snarkvm_fields::{Field, PrimeField};
 
 use core::{borrow::Borrow, marker::PhantomData};
 use itertools::Itertools;
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, fmt::Write};
 
 /// The algebraic holographic proof defined in [CHMMVW19](https://eprint.iacr.org/2019/1047).
 /// Currently, this AHP only supports inputs of size one
@@ -43,7 +43,9 @@ pub struct AHPForR1CS<F: Field, SM: SNARKMode> {
 }
 
 pub(crate) fn witness_label(circuit_id: CircuitId, poly: &str, i: usize) -> String {
-    format!("circuit_{circuit_id}_{poly}_{i:0>8}")
+    let mut label = String::with_capacity(82 + poly.len());
+    let _ = write!(&mut label, "circuit_{circuit_id}_{poly}_{i:0>8}");
+    label
 }
 
 pub(crate) struct NonZeroDomains<F: PrimeField> {
@@ -79,17 +81,17 @@ impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
     /// of this protocol.
     /// The number of the variables must include the "one" variable. That is, it
     /// must be with respect to the number of formatted public inputs.
-    pub fn max_degree(num_constraints: usize, num_variables: usize, num_non_zero: usize) -> Result<usize, AHPError> {
+    pub fn max_degree(num_constraints: usize, num_variables: usize, num_non_zero: usize) -> Result<usize> {
         let zk_bound = Self::zk_bound().unwrap_or(0);
         let constraint_domain_size =
-            EvaluationDomain::<F>::compute_size_of_domain(num_constraints).ok_or(AHPError::PolynomialDegreeTooLarge)?;
+            EvaluationDomain::<F>::compute_size_of_domain(num_constraints).ok_or(AHPError::PolyTooLarge)?;
         let variable_domain_size =
-            EvaluationDomain::<F>::compute_size_of_domain(num_variables).ok_or(AHPError::PolynomialDegreeTooLarge)?;
+            EvaluationDomain::<F>::compute_size_of_domain(num_variables).ok_or(AHPError::PolyTooLarge)?;
         let non_zero_domain_size =
-            EvaluationDomain::<F>::compute_size_of_domain(num_non_zero).ok_or(AHPError::PolynomialDegreeTooLarge)?;
+            EvaluationDomain::<F>::compute_size_of_domain(num_non_zero).ok_or(AHPError::PolyTooLarge)?;
 
         // these should correspond with the bounds set in the <round>.rs files
-        Ok(*[
+        [
             2 * constraint_domain_size + 2 * zk_bound - 2,
             2 * variable_domain_size + 2 * zk_bound - 2,
             if SM::ZK { variable_domain_size + 3 } else { 0 }, // mask_poly
@@ -99,34 +101,40 @@ impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
         ]
         .iter()
         .max()
-        .unwrap())
+        .copied()
+        .ok_or(anyhow!("Could not find max_degree"))
     }
 
     /// Get all the strict degree bounds enforced in the AHP.
-    pub fn get_degree_bounds(info: &CircuitInfo) -> [usize; 4] {
+    pub fn get_degree_bounds(info: &CircuitInfo) -> Result<[usize; 4]> {
         let num_variables = info.num_variables;
         let num_non_zero_a = info.num_non_zero_a;
         let num_non_zero_b = info.num_non_zero_b;
         let num_non_zero_c = info.num_non_zero_c;
-        [
-            EvaluationDomain::<F>::compute_size_of_domain(num_variables).unwrap() - 2,
-            EvaluationDomain::<F>::compute_size_of_domain(num_non_zero_a).unwrap() - 2,
-            EvaluationDomain::<F>::compute_size_of_domain(num_non_zero_b).unwrap() - 2,
-            EvaluationDomain::<F>::compute_size_of_domain(num_non_zero_c).unwrap() - 2,
-        ]
+        Ok([
+            EvaluationDomain::<F>::compute_size_of_domain(num_variables).ok_or(SynthesisError::PolyTooLarge)? - 2,
+            EvaluationDomain::<F>::compute_size_of_domain(num_non_zero_a).ok_or(SynthesisError::PolyTooLarge)? - 2,
+            EvaluationDomain::<F>::compute_size_of_domain(num_non_zero_b).ok_or(SynthesisError::PolyTooLarge)? - 2,
+            EvaluationDomain::<F>::compute_size_of_domain(num_non_zero_c).ok_or(SynthesisError::PolyTooLarge)? - 2,
+        ])
     }
 
     pub(crate) fn cmp_non_zero_domains(
         info: &CircuitInfo,
         max_candidate: Option<EvaluationDomain<F>>,
-    ) -> Result<NonZeroDomains<F>, SynthesisError> {
-        let domain_a = EvaluationDomain::new(info.num_non_zero_a).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
-        let domain_b = EvaluationDomain::new(info.num_non_zero_b).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
-        let domain_c = EvaluationDomain::new(info.num_non_zero_c).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
-        let new_candidate = [domain_a, domain_b, domain_c].into_iter().max_by_key(|d| d.size()).unwrap();
+    ) -> Result<NonZeroDomains<F>> {
+        let domain_a = EvaluationDomain::new(info.num_non_zero_a).ok_or(SynthesisError::PolyTooLarge)?;
+        let domain_b = EvaluationDomain::new(info.num_non_zero_b).ok_or(SynthesisError::PolyTooLarge)?;
+        let domain_c = EvaluationDomain::new(info.num_non_zero_c).ok_or(SynthesisError::PolyTooLarge)?;
+        let new_candidate = [domain_a, domain_b, domain_c]
+            .into_iter()
+            .max_by_key(|d| d.size())
+            .ok_or(anyhow!("could not find max domain"))?;
         let mut max_non_zero_domain = Some(new_candidate);
-        if max_candidate.is_some() && max_candidate.unwrap().size() > new_candidate.size() {
-            max_non_zero_domain = max_candidate;
+        if let Some(max_candidate) = max_candidate {
+            if max_candidate.size() > new_candidate.size() {
+                max_non_zero_domain = Some(max_candidate);
+            }
         }
         Ok(NonZeroDomains { max_non_zero_domain, domain_a, domain_b, domain_c })
     }
@@ -158,7 +166,7 @@ impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
     /// Public input should be unformatted.
     /// We construct the linear combinations as per section 5 of our protocol documentation.
     /// We can distinguish between:
-    /// (1) simple comitments: $\{\cm{g_A}, \cm{g_B}, \cm{g_C}\}$ and $\{\cm{\hat{z}_{B,i,j}}\}_{i \in {[\mathcal{D}]}}$, $\cm{g_1}$
+    /// (1) simple commitments: $\{\cm{g_A}, \cm{g_B}, \cm{g_C}\}$ and $\{\cm{\hat{z}_{B,i,j}}\}_{i \in {[\mathcal{D}]}}$, $\cm{g_1}$
     /// (2) virtual commitments for the lincheck_sumcheck and matrix_sumcheck. These are linear combinations of the simple commitments
     #[allow(non_snake_case)]
     pub fn construct_linear_combinations<E: EvaluationsProvider<F>>(
@@ -167,27 +175,25 @@ impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
         prover_third_message: &prover::ThirdMessage<F>,
         prover_fourth_message: &prover::FourthMessage<F>,
         state: &verifier::State<F, SM>,
-    ) -> Result<BTreeMap<String, LinearCombination<F>>, AHPError> {
-        assert!(!public_inputs.is_empty());
+    ) -> Result<BTreeMap<String, LinearCombination<F>>> {
+        ensure!(!public_inputs.is_empty());
         let max_constraint_domain = state.max_constraint_domain;
         let max_variable_domain = state.max_variable_domain;
         let max_non_zero_domain = state.max_non_zero_domain;
-        let public_inputs = state
-            .circuit_specific_states
-            .iter()
-            .map(|(circuit_id, circuit_state)| {
-                let input_domain = circuit_state.input_domain;
-                let public_inputs = public_inputs[circuit_id]
-                    .iter()
-                    .map(|p| {
-                        let public_input = prover::ConstraintSystem::format_public_input(p);
-                        Self::formatted_public_input_is_admissible(&public_input).map(|_| public_input)
-                    })
-                    .collect::<Result<Vec<_>, _>>();
-                assert_eq!(public_inputs.as_ref().unwrap()[0].len(), input_domain.size());
-                public_inputs
-            })
-            .collect::<Result<Vec<_>, _>>()?;
+        let mut formatted_public_inputs = Vec::with_capacity(state.circuit_specific_states.len());
+        for (circuit_id, circuit_state) in &state.circuit_specific_states {
+            let input_domain = circuit_state.input_domain;
+            let public_inputs_i = public_inputs[circuit_id]
+                .iter()
+                .map(|p| {
+                    let public_input = prover::ConstraintSystem::format_public_input(p);
+                    Self::formatted_public_input_is_admissible(&public_input)?;
+                    Ok::<_, AHPError>(public_input)
+                })
+                .collect::<Result<Vec<_>, _>>()?;
+            ensure!(public_inputs_i[0].len() == input_domain.size());
+            formatted_public_inputs.push(public_inputs_i);
+        }
 
         let verifier::FirstMessage { batch_combiners } = state.first_round_message.as_ref().unwrap();
         let verifier::SecondMessage { alpha, eta_b, eta_c } = state.second_round_message.unwrap();
@@ -277,7 +283,7 @@ impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
             .enumerate()
             .map(|(i, (circuit_id, circuit_state))| {
                 let lag_at_beta = circuit_state.input_domain.evaluate_all_lagrange_coefficients(beta);
-                let x_at_beta = public_inputs[i]
+                let x_at_beta = formatted_public_inputs[i]
                     .iter()
                     .map(|x| x.iter().zip_eq(&lag_at_beta).map(|(x, l)| *x * l).sum::<F>())
                     .collect_vec();
@@ -350,6 +356,9 @@ impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
             let non_zero_domains = [&state_i.non_zero_a_domain, &state_i.non_zero_b_domain, &state_i.non_zero_c_domain];
             let sums = sums_fourth_msg[i].iter();
 
+            ensure!(matrices.len() == sums.len());
+            ensure!(matrices.len() == deltas.len());
+            ensure!(matrices.len() == non_zero_domains.len());
             for (((m, sum), delta), non_zero_domain) in
                 matrices.into_iter().zip_eq(sums).zip_eq(deltas).zip_eq(non_zero_domains)
             {
@@ -361,7 +370,7 @@ impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
                 let g_m = LinearCombination::new(g_m_label.clone(), [(F::one(), g_m_label)]);
                 let g_m_at_gamma = evals.get_lc_eval(&g_m, gamma)?;
 
-                let (a_poly, b_poly) = Self::construct_matrix_linear_combinations(evals, id, m, v_rc, challenges, rc);
+                let (a_poly, b_poly) = Self::construct_matrix_linear_combinations(evals, id, m, v_rc, challenges, rc)?;
                 let g_m_term = Self::construct_g_m_term(gamma, g_m_at_gamma, sum, *selector, a_poly, b_poly);
 
                 matrix_sumcheck += (delta, &g_m_term);
@@ -402,7 +411,7 @@ impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
         v_rc_at_alpha_beta: F,
         challenges: QueryPoints<F>,
         rc_size: F,
-    ) -> (LinearCombination<F>, LinearCombination<F>) {
+    ) -> Result<(LinearCombination<F>, LinearCombination<F>)> {
         let label_a_poly = format!("circuit_{id}_a_poly_{matrix}");
         let label_b_poly = format!("circuit_{id}_b_poly_{matrix}");
         let QueryPoints { alpha, beta, gamma } = challenges;
@@ -412,9 +421,9 @@ impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
         let a_poly_eval_available = evals.get_lc_eval(&a_poly, gamma).is_ok();
         let b_poly = LinearCombination::new(label_b_poly.clone(), [(F::one(), label_b_poly.clone())]);
         let b_poly_eval_available = evals.get_lc_eval(&b_poly, gamma).is_ok();
-        assert_eq!(a_poly_eval_available, b_poly_eval_available);
+        ensure!(a_poly_eval_available == b_poly_eval_available);
         if a_poly_eval_available && b_poly_eval_available {
-            return (a_poly, b_poly);
+            return Ok((a_poly, b_poly));
         };
 
         // When running as the verifier, we need to construct a(X) and b(X) from the indexing polynomials
@@ -431,7 +440,7 @@ impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
             (F::one(), (label_row_col).into()),
         ]);
         b *= rc_size;
-        (a, b)
+        Ok((a, b))
     }
 }
 
@@ -441,14 +450,14 @@ impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
 /// when constructing linear combinations via `AHPForR1CS::construct_linear_combinations`.
 pub trait EvaluationsProvider<F: PrimeField>: core::fmt::Debug {
     /// Get the evaluation of linear combination `lc` at `point`.
-    fn get_lc_eval(&self, lc: &LinearCombination<F>, point: F) -> Result<F, AHPError>;
+    fn get_lc_eval(&self, lc: &LinearCombination<F>, point: F) -> Result<F>;
 }
 
 /// The `EvaluationsProvider` used by the verifier
 impl<F: PrimeField> EvaluationsProvider<F> for crate::polycommit::sonic_pc::Evaluations<F> {
-    fn get_lc_eval(&self, lc: &LinearCombination<F>, point: F) -> Result<F, AHPError> {
+    fn get_lc_eval(&self, lc: &LinearCombination<F>, point: F) -> Result<F> {
         let key = (lc.label.clone(), point);
-        self.get(&key).copied().ok_or_else(|| AHPError::MissingEval(lc.label.clone()))
+        self.get(&key).copied().ok_or_else(|| AHPError::MissingEval(lc.label.clone())).map_err(Into::into)
     }
 }
 
@@ -458,7 +467,7 @@ where
     F: PrimeField,
     T: Borrow<LabeledPolynomial<F>> + core::fmt::Debug,
 {
-    fn get_lc_eval(&self, lc: &LinearCombination<F>, point: F) -> Result<F, AHPError> {
+    fn get_lc_eval(&self, lc: &LinearCombination<F>, point: F) -> Result<F> {
         let mut eval = F::zero();
         for (coeff, term) in lc.iter() {
             let value = if let LCTerm::PolyLabel(label) = term {
@@ -468,7 +477,7 @@ where
                     .borrow()
                     .evaluate(point)
             } else {
-                assert!(term.is_one());
+                ensure!(term.is_one());
                 F::one()
             };
             eval += &(*coeff * value)

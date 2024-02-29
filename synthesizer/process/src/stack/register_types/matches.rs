@@ -168,8 +168,6 @@ impl<N: Network> RegisterTypes<N> {
     }
 
     /// Checks that the given record matches the layout of the record type.
-    /// Note: Ordering for `owner` **does** matter, however ordering
-    /// for record data does **not** matter, as long as all defined members are present.
     pub fn matches_record(
         &self,
         stack: &(impl StackMatches<N> + StackProgram<N>),

@@ -37,6 +37,8 @@ pub use snarkvm_curves as curves;
 pub use snarkvm_fields as fields;
 #[cfg(feature = "ledger")]
 pub use snarkvm_ledger as ledger;
+#[cfg(feature = "metrics")]
+pub use snarkvm_metrics as metrics;
 #[cfg(feature = "parameters")]
 pub use snarkvm_parameters as parameters;
 #[cfg(feature = "synthesizer")]

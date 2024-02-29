@@ -15,42 +15,6 @@
 use super::*;
 
 impl<N: Network> Stack<N> {
-    /// Returns a value for the given value type.
-    pub fn sample_value<R: Rng + CryptoRng>(
-        &self,
-        burner_address: &Address<N>,
-        value_type: &ValueType<N>,
-        rng: &mut R,
-    ) -> Result<Value<N>> {
-        match value_type {
-            ValueType::Constant(plaintext_type)
-            | ValueType::Public(plaintext_type)
-            | ValueType::Private(plaintext_type) => Ok(Value::Plaintext(self.sample_plaintext(plaintext_type, rng)?)),
-            ValueType::Record(record_name) => {
-                Ok(Value::Record(self.sample_record(burner_address, record_name, rng)?))
-            }
-            ValueType::ExternalRecord(locator) => {
-                bail!("Illegal operation: Cannot sample external records (for '{locator}.record').")
-            }
-            ValueType::Future(locator) => bail!("Illegal operation: Cannot sample futures (for '{locator}.future')."),
-        }
-    }
-
-    /// Returns a record for the given record name, with the given burner address.
-    pub fn sample_record<R: Rng + CryptoRng>(
-        &self,
-        burner_address: &Address<N>,
-        record_name: &Identifier<N>,
-        rng: &mut R,
-    ) -> Result<Record<N, Plaintext<N>>> {
-        // Sample a record.
-        let record = self.sample_record_internal(burner_address, record_name, 0, rng)?;
-        // Ensure the record matches the value type.
-        self.matches_record(&record, record_name)?;
-        // Return the record.
-        Ok(record)
-    }
-
     /// Samples a plaintext value according to the given plaintext type.
     pub fn sample_plaintext<R: Rng + CryptoRng>(
         &self,
@@ -64,14 +28,23 @@ impl<N: Network> Stack<N> {
         // Return the plaintext value.
         Ok(plaintext)
     }
-}
 
-impl<N: Network> Stack<N> {
+    /// Samples a future value according to the given future type.
+    pub fn sample_future<R: Rng + CryptoRng>(&self, locator: &Locator<N>, rng: &mut R) -> Result<Future<N>> {
+        // Sample a future value.
+        let future = self.sample_future_internal(locator, 0, rng)?;
+        // Ensure the future value matches the future type.
+        self.matches_future(&future, locator)?;
+        // Return the future value.
+        Ok(future)
+    }
+
     /// Returns a record for the given record name.
-    fn sample_record_internal<R: Rng + CryptoRng>(
+    pub(crate) fn sample_record_internal<R: Rng + CryptoRng>(
         &self,
         burner_address: &Address<N>,
         record_name: &Identifier<N>,
+        nonce: Group<N>,
         depth: usize,
         rng: &mut R,
     ) -> Result<Record<N, Plaintext<N>>> {
@@ -98,9 +71,6 @@ impl<N: Network> Stack<N> {
                 Ok((*entry_name, entry))
             })
             .collect::<Result<IndexMap<_, _>>>()?;
-
-        // Initialize the nonce.
-        let nonce = Group::rand(rng);
 
         // Return the record.
         Record::<N, Plaintext<N>>::from_plaintext(owner, data, nonce)
@@ -181,5 +151,47 @@ impl<N: Network> Stack<N> {
         };
         // Return the plaintext.
         Ok(plaintext)
+    }
+
+    /// Samples a future value according to the given locator.
+    fn sample_future_internal<R: Rng + CryptoRng>(
+        &self,
+        locator: &Locator<N>,
+        depth: usize,
+        rng: &mut R,
+    ) -> Result<Future<N>> {
+        // Retrieve the associated function.
+        let function = match locator.program_id() == self.program_id() {
+            true => self.get_function_ref(locator.resource())?,
+            false => self.get_external_program(locator.program_id())?.get_function_ref(locator.resource())?,
+        };
+
+        // Retrieve the finalize inputs.
+        let inputs = match function.finalize_logic() {
+            Some(finalize_logic) => finalize_logic.inputs(),
+            None => bail!("Function '{locator}' does not have a finalize block"),
+        };
+
+        let arguments = inputs
+            .into_iter()
+            .map(|input| {
+                match input.finalize_type() {
+                    FinalizeType::Plaintext(plaintext_type) => {
+                        // Sample the plaintext value.
+                        let plaintext = self.sample_plaintext_internal(plaintext_type, depth + 1, rng)?;
+                        // Return the argument.
+                        Ok(Argument::Plaintext(plaintext))
+                    }
+                    FinalizeType::Future(locator) => {
+                        // Sample the future value.
+                        let future = self.sample_future_internal(locator, depth + 1, rng)?;
+                        // Return the argument.
+                        Ok(Argument::Future(future))
+                    }
+                }
+            })
+            .collect::<Result<Vec<_>>>()?;
+
+        Ok(Future::new(*locator.program_id(), *locator.resource(), arguments))
     }
 }

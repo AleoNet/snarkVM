@@ -29,7 +29,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         // Currently, we do not support ratifications from the memory pool.
         ensure!(ratifications.is_empty(), "Ratifications are currently unsupported from the memory pool");
         // Construct the block template.
-        let (header, ratifications, solutions, transactions, aborted_transaction_ids) =
+        let (header, ratifications, solutions, aborted_solution_ids, transactions, aborted_transaction_ids) =
             self.construct_block_template(&previous_block, Some(&subdag), ratifications, solutions, transactions)?;
 
         // Construct the new quorum block.
@@ -39,6 +39,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             subdag,
             ratifications,
             solutions,
+            aborted_solution_ids,
             transactions,
             aborted_transaction_ids,
         )
@@ -60,13 +61,14 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         let previous_block = self.latest_block();
 
         // Construct the block template.
-        let (header, ratifications, solutions, transactions, aborted_transaction_ids) = self.construct_block_template(
-            &previous_block,
-            None,
-            candidate_ratifications,
-            candidate_solutions,
-            candidate_transactions,
-        )?;
+        let (header, ratifications, solutions, aborted_solution_ids, transactions, aborted_transaction_ids) = self
+            .construct_block_template(
+                &previous_block,
+                None,
+                candidate_ratifications,
+                candidate_solutions,
+                candidate_transactions,
+            )?;
 
         // Construct the new beacon block.
         Block::new_beacon(
@@ -75,6 +77,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             header,
             ratifications,
             solutions,
+            aborted_solution_ids,
             transactions,
             aborted_transaction_ids,
             rng,
@@ -107,6 +110,61 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
     }
 }
 
+/// Splits candidate solutions into a collection of accepted ones and aborted ones.
+pub fn split_candidate_solutions<T, F>(
+    mut candidate_solutions: Vec<T>,
+    max_solutions: usize,
+    verification_fn: F,
+) -> (Vec<T>, Vec<T>)
+where
+    T: Sized + Send,
+    F: Fn(&T) -> bool + Send + Sync,
+{
+    // Separate the candidate solutions into valid and aborted solutions.
+    let mut valid_candidate_solutions = Vec::with_capacity(max_solutions);
+    let mut aborted_candidate_solutions = Vec::new();
+    // Reverse the candidate solutions in order to be able to chunk them more efficiently.
+    candidate_solutions.reverse();
+    // Verify the candidate solutions in chunks. This is done so that we can potentially
+    // perform these operations in parallel while keeping the end result deterministic.
+    let chunk_size = 16;
+    while !candidate_solutions.is_empty() {
+        // Check if the collection of valid solutions is full.
+        if valid_candidate_solutions.len() >= max_solutions {
+            // If that's the case, mark the rest of the candidates as aborted.
+            aborted_candidate_solutions.extend(candidate_solutions.into_iter().rev());
+            break;
+        }
+
+        // Split off a chunk of the candidate solutions.
+        let candidates_chunk = if candidate_solutions.len() > chunk_size {
+            candidate_solutions.split_off(candidate_solutions.len() - chunk_size)
+        } else {
+            std::mem::take(&mut candidate_solutions)
+        };
+
+        // Verify the solutions in the chunk.
+        let verification_results: Vec<_> = cfg_into_iter!(candidates_chunk)
+            .rev()
+            .map(|solution| {
+                let verified = verification_fn(&solution);
+                (solution, verified)
+            })
+            .collect();
+
+        // Process the results of the verification.
+        for (solution, is_valid) in verification_results.into_iter() {
+            if is_valid && valid_candidate_solutions.len() < max_solutions {
+                valid_candidate_solutions.push(solution);
+            } else {
+                aborted_candidate_solutions.push(solution);
+            }
+        }
+    }
+
+    (valid_candidate_solutions, aborted_candidate_solutions)
+}
+
 impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
     /// Constructs a block template for the next block in the ledger.
     #[allow(clippy::type_complexity)]
@@ -117,27 +175,34 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         candidate_ratifications: Vec<Ratify<N>>,
         candidate_solutions: Vec<ProverSolution<N>>,
         candidate_transactions: Vec<Transaction<N>>,
-    ) -> Result<(Header<N>, Ratifications<N>, Option<CoinbaseSolution<N>>, Transactions<N>, Vec<N::TransactionID>)>
-    {
+    ) -> Result<(
+        Header<N>,
+        Ratifications<N>,
+        Solutions<N>,
+        Vec<PuzzleCommitment<N>>,
+        Transactions<N>,
+        Vec<N::TransactionID>,
+    )> {
         // Construct the solutions.
-        let (solutions, solutions_root, combined_proof_target) = match candidate_solutions.is_empty() {
-            true => (None, Field::<N>::zero(), 0u128),
+        let (solutions, aborted_solutions, solutions_root, combined_proof_target) = match candidate_solutions.is_empty()
+        {
+            true => (None, vec![], Field::<N>::zero(), 0u128),
             false => {
                 // Retrieve the coinbase verifying key.
                 let coinbase_verifying_key = self.coinbase_puzzle.coinbase_verifying_key();
                 // Retrieve the latest epoch challenge.
                 let latest_epoch_challenge = self.latest_epoch_challenge()?;
                 // Separate the candidate solutions into valid and aborted solutions.
-                // TODO: Add `aborted_solution_ids` to the block.
-                let (valid_candidate_solutions, _aborted_candidate_solutions): (Vec<_>, Vec<_>) =
-                    cfg_into_iter!(candidate_solutions).partition(|solution| {
+                let (valid_candidate_solutions, aborted_candidate_solutions) =
+                    split_candidate_solutions(candidate_solutions, N::MAX_SOLUTIONS, |solution| {
                         solution
                             .verify(coinbase_verifying_key, &latest_epoch_challenge, self.latest_proof_target())
                             .unwrap_or(false)
                     });
+
                 // Check if there are any valid solutions.
                 match valid_candidate_solutions.is_empty() {
-                    true => (None, Field::<N>::zero(), 0u128),
+                    true => (None, aborted_candidate_solutions, Field::<N>::zero(), 0u128),
                     false => {
                         // Construct the solutions.
                         let solutions = CoinbaseSolution::new(valid_candidate_solutions)?;
@@ -146,11 +211,17 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                         // Compute the combined proof target.
                         let combined_proof_target = solutions.to_combined_proof_target()?;
                         // Output the solutions, solutions root, and combined proof target.
-                        (Some(solutions), solutions_root, combined_proof_target)
+                        (Some(solutions), aborted_candidate_solutions, solutions_root, combined_proof_target)
                     }
                 }
             }
         };
+        // Prepare the solutions.
+        let solutions = Solutions::from(solutions);
+
+        // Construct the aborted solution IDs.
+        let aborted_solution_ids =
+            aborted_solutions.into_iter().map(|solution| solution.commitment()).collect::<Vec<_>>();
 
         // Retrieve the latest state root.
         let latest_state_root = self.latest_state_root();
@@ -168,7 +239,27 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         let next_height = previous_block.height().saturating_add(1);
         // Determine the timestamp for the next block.
         let next_timestamp = match subdag {
-            Some(subdag) => subdag.timestamp(),
+            Some(subdag) => {
+                // Retrieve the previous committee lookback.
+                let previous_committee_lookback = {
+                    // Calculate the penultimate round, which is the round before the anchor round.
+                    let penultimate_round = subdag.anchor_round().saturating_sub(1);
+                    // Get the round number for the previous committee. Note, we subtract 2 from odd rounds,
+                    // because committees are updated in even rounds.
+                    let previous_penultimate_round = match penultimate_round % 2 == 0 {
+                        true => penultimate_round.saturating_sub(1),
+                        false => penultimate_round.saturating_sub(2),
+                    };
+                    // Get the previous committee lookback round.
+                    let penultimate_committee_lookback_round =
+                        previous_penultimate_round.saturating_sub(Committee::<N>::COMMITTEE_LOOKBACK_RANGE);
+                    // Output the previous committee lookback.
+                    self.get_committee_for_round(penultimate_committee_lookback_round)?
+                        .ok_or(anyhow!("Failed to fetch committee for round {penultimate_committee_lookback_round}"))?
+                };
+                // Return the timestamp for the given committee lookback.
+                subdag.timestamp(&previous_committee_lookback)
+            }
             None => OffsetDateTime::now_utc().unix_timestamp(),
         };
         // Compute the next cumulative weight.
@@ -224,7 +315,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             state,
             Some(coinbase_reward),
             candidate_ratifications,
-            solutions.as_ref(),
+            &solutions,
             candidate_transactions.iter(),
         )?;
 
@@ -263,6 +354,6 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         )?;
 
         // Return the block template.
-        Ok((header, ratifications, solutions, transactions, aborted_transaction_ids))
+        Ok((header, ratifications, solutions, aborted_solution_ids, transactions, aborted_transaction_ids))
     }
 }

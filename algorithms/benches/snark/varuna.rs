@@ -25,7 +25,7 @@ use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};
 use snarkvm_utilities::{CanonicalDeserialize, CanonicalSerialize, TestRng};
 
 use criterion::Criterion;
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, time::Duration};
 
 type VarunaInst = VarunaSNARK<Bls12_377, FS, VarunaHidingMode>;
 type FS = PoseidonSponge<Fq, 2, 1>;
@@ -58,11 +58,12 @@ fn snark_circuit_setup(c: &mut Criterion) {
 }
 
 fn snark_prove(c: &mut Criterion) {
+    let rng = &mut TestRng::default();
+
     c.bench_function("snark_prove", move |b| {
         let num_constraints = 100;
         let num_variables = 25;
         let mul_depth = 1;
-        let rng = &mut TestRng::default();
 
         let max_degree = AHPForR1CS::<Fr, VarunaHidingMode>::max_degree(1000, 1000, 1000).unwrap();
         let universal_srs = VarunaInst::universal_setup(max_degree).unwrap();
@@ -77,11 +78,12 @@ fn snark_prove(c: &mut Criterion) {
 }
 
 fn snark_batch_prove(c: &mut Criterion) {
+    let rng = &mut TestRng::default();
+
     c.bench_function("snark_batch_prove", move |b| {
         let num_constraints_base = 100;
         let num_variables_base = 25;
         let mul_depth_base = 1;
-        let rng = &mut TestRng::default();
 
         let max_degree = AHPForR1CS::<Fr, VarunaHidingMode>::max_degree(1000000, 1000000, 1000000).unwrap();
         let universal_srs = VarunaInst::universal_setup(max_degree).unwrap();
@@ -119,11 +121,12 @@ fn snark_batch_prove(c: &mut Criterion) {
 }
 
 fn snark_verify(c: &mut Criterion) {
+    let rng = &mut TestRng::default();
+
     c.bench_function("snark_verify", move |b| {
         let num_constraints = 100;
         let num_variables = 25;
         let mul_depth = 1;
-        let rng = &mut TestRng::default();
 
         let max_degree = AHPForR1CS::<Fr, VarunaHidingMode>::max_degree(100, 100, 100).unwrap();
         let universal_srs = VarunaInst::universal_setup(max_degree).unwrap();
@@ -145,10 +148,11 @@ fn snark_verify(c: &mut Criterion) {
 }
 
 fn snark_batch_verify(c: &mut Criterion) {
+    let rng = &mut TestRng::default();
+
     c.bench_function("snark_batch_verify", move |b| {
         let num_constraints_base = 100;
         let num_variables_base = 25;
-        let rng = &mut TestRng::default();
 
         let max_degree = AHPForR1CS::<Fr, VarunaHidingMode>::max_degree(1000, 1000, 100).unwrap();
         let universal_srs = VarunaInst::universal_setup(max_degree).unwrap();
@@ -200,6 +204,7 @@ fn snark_batch_verify(c: &mut Criterion) {
 fn snark_vk_serialize(c: &mut Criterion) {
     use snarkvm_utilities::serialize::Compress;
     let mut group = c.benchmark_group("snark_vk_serialize");
+    let rng = &mut TestRng::default();
     for mode in [Compress::Yes, Compress::No] {
         let name = match mode {
             Compress::No => "uncompressed",
@@ -208,7 +213,6 @@ fn snark_vk_serialize(c: &mut Criterion) {
         let num_constraints = 100;
         let num_variables = 25;
         let mul_depth = 1;
-        let rng = &mut TestRng::default();
 
         let max_degree = AHPForR1CS::<Fr, VarunaHidingMode>::max_degree(100, 100, 100).unwrap();
         let universal_srs = VarunaInst::universal_setup(max_degree).unwrap();
@@ -229,6 +233,7 @@ fn snark_vk_serialize(c: &mut Criterion) {
 fn snark_vk_deserialize(c: &mut Criterion) {
     use snarkvm_utilities::serialize::{Compress, Validate};
     let mut group = c.benchmark_group("snark_vk_deserialize");
+    let rng = &mut TestRng::default();
     for compress in [Compress::Yes, Compress::No] {
         let compress_name = match compress {
             Compress::No => "uncompressed",
@@ -243,7 +248,6 @@ fn snark_vk_deserialize(c: &mut Criterion) {
             let num_constraints = 100;
             let num_variables = 25;
             let mul_depth = 1;
-            let rng = &mut TestRng::default();
 
             let max_degree = AHPForR1CS::<Fr, VarunaHidingMode>::max_degree(100, 100, 100).unwrap();
             let universal_srs = VarunaInst::universal_setup(max_degree).unwrap();
@@ -273,13 +277,13 @@ fn snark_certificate_prove(c: &mut Criterion) {
     let fs_p = &fs_parameters;
 
     for size in [100, 1_000, 10_000, 100_000] {
-        c.bench_function(&format!("snark_certificate_prove_{size}"), |b| {
-            let num_constraints = size;
-            let num_variables = size;
-            let mul_depth = 1;
-            let (circuit, _) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, rng);
-            let (pk, vk) = VarunaInst::circuit_setup(&universal_srs, &circuit).unwrap();
+        let num_constraints = size;
+        let num_variables = size;
+        let mul_depth = 1;
+        let (circuit, _) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, rng);
+        let (pk, vk) = VarunaInst::circuit_setup(&universal_srs, &circuit).unwrap();
 
+        c.bench_function(&format!("snark_certificate_prove_{size}"), |b| {
             b.iter(|| VarunaInst::prove_vk(universal_prover, fs_p, &vk, &pk).unwrap())
         });
     }
@@ -296,14 +300,14 @@ fn snark_certificate_verify(c: &mut Criterion) {
     let fs_p = &fs_parameters;
 
     for size in [100, 1_000, 10_000, 100_000] {
-        c.bench_function(&format!("snark_certificate_verify_{size}"), |b| {
-            let num_constraints = size;
-            let num_variables = size;
-            let mul_depth = 1;
-            let (circuit, _) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, rng);
-            let (pk, vk) = VarunaInst::circuit_setup(&universal_srs, &circuit).unwrap();
-            let certificate = VarunaInst::prove_vk(universal_prover, fs_p, &vk, &pk).unwrap();
+        let num_constraints = size;
+        let num_variables = size;
+        let mul_depth = 1;
+        let (circuit, _) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, rng);
+        let (pk, vk) = VarunaInst::circuit_setup(&universal_srs, &circuit).unwrap();
+        let certificate = VarunaInst::prove_vk(universal_prover, fs_p, &vk, &pk).unwrap();
 
+        c.bench_function(&format!("snark_certificate_verify_{size}"), |b| {
             b.iter(|| VarunaInst::verify_vk(universal_verifier, fs_p, &circuit, &vk, &certificate).unwrap())
         });
     }
@@ -311,7 +315,7 @@ fn snark_certificate_verify(c: &mut Criterion) {
 
 criterion_group! {
     name = varuna_snark;
-    config = Criterion::default().sample_size(10);
+    config = Criterion::default().measurement_time(Duration::from_secs(10));
     targets = snark_universal_setup, snark_circuit_setup, snark_prove, snark_verify, snark_batch_prove, snark_batch_verify, snark_vk_serialize, snark_vk_deserialize, snark_certificate_prove, snark_certificate_verify,
 }
 

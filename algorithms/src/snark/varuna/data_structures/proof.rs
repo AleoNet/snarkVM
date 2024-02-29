@@ -88,7 +88,7 @@ impl<E: PairingEngine> Commitments<E> {
         compress: Compress,
         validate: Validate,
     ) -> Result<Self, snarkvm_utilities::SerializationError> {
-        let mut w = Vec::with_capacity(batch_sizes.iter().sum());
+        let mut w = Vec::new();
         for batch_size in batch_sizes {
             w.extend(deserialize_vec_without_len(&mut reader, compress, validate, *batch_size)?);
         }
@@ -170,7 +170,7 @@ impl<F: PrimeField> Evaluations<F> {
 
         for (label, value) in map {
             if label == "g_1" {
-                break;
+                continue;
             }
 
             if label.contains("g_a") {
@@ -261,7 +261,11 @@ impl<E: PairingEngine> Proof<E> {
 
     /// Check that the number of messages is consistent with our batch size
     pub fn check_batch_sizes(&self) -> Result<(), SNARKError> {
-        let total_instances = self.batch_sizes.iter().sum::<usize>();
+        let total_instances = self
+            .batch_sizes
+            .iter()
+            .try_fold(0usize, |acc, &size| acc.checked_add(size))
+            .ok_or(SNARKError::BatchSizeMismatch)?;
         if self.commitments.witness_commitments.len() != total_instances {
             return Err(SNARKError::BatchSizeMismatch);
         }
@@ -424,9 +428,9 @@ mod test {
     fn rand_evaluations<F: PrimeField>(rng: &mut TestRng, i: usize) -> Evaluations<F> {
         Evaluations {
             g_1_eval: F::rand(rng),
-            g_a_evals: vec![F::rand(rng); i],
-            g_b_evals: vec![F::rand(rng); i],
-            g_c_evals: vec![F::rand(rng); i],
+            g_a_evals: (0..i).map(|_| F::rand(rng)).collect(),
+            g_b_evals: (0..i).map(|_| F::rand(rng)).collect(),
+            g_c_evals: (0..i).map(|_| F::rand(rng)).collect(),
         }
     }
 

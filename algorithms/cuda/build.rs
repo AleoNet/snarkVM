@@ -20,7 +20,7 @@ fn main() {
     // account for cross-compilation [by examining environment variable]
     let target_arch = env::var("CARGO_CFG_TARGET_ARCH").unwrap();
 
-    // Set CC environment variable to choose alternative C compiler.
+    // Set CC environment variable to choose an alternative C compiler.
     // Optimization level depends on whether or not --release is passed
     // or implied.
     let mut cc = cc::Build::new();

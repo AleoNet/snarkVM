@@ -37,28 +37,28 @@ pub enum Transmission<N: Network> {
 }
 
 impl<N: Network> From<ProverSolution<N>> for Transmission<N> {
-    /// Converts the prover solution into an transmission.
+    /// Converts the prover solution into a transmission.
     fn from(solution: ProverSolution<N>) -> Self {
         Self::Solution(Data::Object(solution))
     }
 }
 
 impl<N: Network> From<Transaction<N>> for Transmission<N> {
-    /// Converts the transaction into an transmission.
+    /// Converts the transaction into a transmission.
     fn from(transaction: Transaction<N>) -> Self {
         Self::Transaction(Data::Object(transaction))
     }
 }
 
 impl<N: Network> From<Data<ProverSolution<N>>> for Transmission<N> {
-    /// Converts the prover solution into an transmission.
+    /// Converts the prover solution into a transmission.
     fn from(solution: Data<ProverSolution<N>>) -> Self {
         Self::Solution(solution)
     }
 }
 
 impl<N: Network> From<Data<Transaction<N>>> for Transmission<N> {
-    /// Converts the transaction into an transmission.
+    /// Converts the transaction into a transmission.
     fn from(transaction: Data<Transaction<N>>) -> Self {
         Self::Transaction(transaction)
     }
@@ -68,13 +68,13 @@ impl<N: Network> From<Data<Transaction<N>>> for Transmission<N> {
 pub mod test_helpers {
     use super::*;
     use console::{
-        network::Testnet3,
+        network::MainnetV0,
         prelude::{Rng, TestRng},
     };
 
     use ::bytes::Bytes;
 
-    type CurrentNetwork = Testnet3;
+    type CurrentNetwork = MainnetV0;
 
     /// Returns a list of sample transmissions, sampled at random.
     pub fn sample_transmissions(rng: &mut TestRng) -> Vec<Transmission<CurrentNetwork>> {

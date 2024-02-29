@@ -61,8 +61,11 @@ impl<E: Environment> CastLossy<Group<E>> for Field<E> {
     #[inline]
     fn cast_lossy(&self) -> Group<E> {
         // This method requires that an `x-coordinate` of 1 is an invalid group element.
-        // This is used by the ternary below, which uses 'is_one' to determine whether to return the generator.
+        // This is used by the ternary below, which uses 'is_x_one' to determine whether to return the generator.
         debug_assert!(console::Group::from_x_coordinate(<console::Field<E::Network> as console::One>::one()).is_err());
+
+        // Attempt to find a group element with self as the x-coordinate.
+        let (point_with_x, x_is_not_in_group) = Group::from_x_coordinate_flagged(self.clone());
 
         // Determine if the field element is zero.
         let is_x_zero = self.is_zero();
@@ -73,35 +76,20 @@ impl<E: Environment> CastLossy<Group<E>> for Field<E> {
         let generator = Group::generator();
 
         // Determine the input to Elligator-2, based on the x-coordinate.
+        // If self is 0, we pass 1 to Elligator-2 instead.
+        // Note that, in this case, we won't use the result of Elligator-2,
+        // because the point (0, 1) is in the subgroup, and that is what we return.
         let elligator_input = Field::ternary(&is_x_zero, &Field::one(), self);
         // Perform Elligator-2 on the field element, to recover a group element.
-        let elligator = Elligator2::encode(&elligator_input);
+        let elligator_point = Elligator2::encode(&elligator_input);
 
-        // Determine the initial x-coordinate, if the given field element is one.
-        let initial_x = Field::ternary(&is_x_one, &generator.to_x_coordinate(), &elligator.to_x_coordinate());
-        // Determine the initial y-coordinate, if the given field element is one.
-        let initial_y = Field::ternary(&is_x_one, &generator.to_y_coordinate(), &elligator.to_y_coordinate());
+        // Select either the generator or the result of Elligator-2, depending on whether x is 1 or not.
+        // This is only used when x is not in the group, see below.
+        let generator_or_elligator_point = Group::ternary(&is_x_one, &generator, &elligator_point);
 
-        // Determine the y-coordinate, if the x-coordinate is valid.
-        let possible_y: Field<E> = {
-            // Set the x-coordinate.
-            let x = self.clone();
-            // Derive the y-coordinate.
-            witness!(|x| match console::Group::from_x_coordinate(x) {
-                Ok(point) => point.to_y_coordinate(),
-                Err(_) => console::Zero::zero(),
-            })
-        };
-        // Determine if the recovered y-coordinate is zero.
-        let is_y_zero = possible_y.is_zero();
-
-        // Determine the final x-coordinate, based on whether the possible y-coordinate is zero.
-        let final_x = Field::ternary(&is_y_zero, &initial_x, self);
-        // Determine the final y-coordinate, based on whether the possible y-coordinate is zero.
-        let final_y = Field::ternary(&is_y_zero, &initial_y, &possible_y);
-
-        // Return the result.
-        Group::from_xy_coordinates(final_x, final_y)
+        // Select either the group point with x or the generator or the result of Elligator-2,
+        // depending on whether x is in the group or not, and, if it is not, based on whether it is 1 or not.
+        Group::ternary(&x_is_not_in_group, &generator_or_elligator_point, &point_with_x)
     }
 }
 
@@ -128,7 +116,7 @@ mod tests {
     use super::*;
     use console::CastLossy as _;
     use console_root::{
-        network::Testnet3,
+        network::MainnetV0,
         prelude::{One, TestRng, Uniform, Zero},
     };
     use snarkvm_circuit_types::environment::{count_is, count_less_than, Circuit, Eject, FormalCircuit, Inject, Mode, Transcribe, UpdatableCount};
@@ -145,45 +133,45 @@ mod tests {
         i: usize,
         mode: Mode,
         rng: &mut TestRng,
-    ) -> (console_root::types::Field<Testnet3>, Field<Circuit>) {
+    ) -> (console_root::types::Field<MainnetV0>, Field<Circuit>) {
         let console_value = match i {
-            0 => console_root::types::Field::<Testnet3>::zero(),
-            1 => console_root::types::Field::<Testnet3>::one(),
+            0 => console_root::types::Field::<MainnetV0>::zero(),
+            1 => console_root::types::Field::<MainnetV0>::one(),
             _ => Uniform::rand(rng),
         };
         let circuit_value = Field::<Circuit>::new(mode, console_value);
         (console_value, circuit_value)
     }
 
-    check_cast_lossy!(cast_lossy, Field<Circuit>, console_root::types::Field::<Testnet3>);
+    check_cast_lossy!(cast_lossy, Field<Circuit>, console_root::types::Field::<MainnetV0>);
 
     #[test]
     fn test_field_to_address() {
-        check_cast_lossy::<Address<Circuit>, console_root::types::Address<Testnet3>>(
+        check_cast_lossy::<Address<Circuit>, console_root::types::Address<MainnetV0>>(
             Mode::Constant,
-            count_less_than!(551, 0, 0, 0),
+            count_less_than!(4303, 0, 0, 0),
         );
-        check_cast_lossy::<Address<Circuit>, console_root::types::Address<Testnet3>>(
+        check_cast_lossy::<Address<Circuit>, console_root::types::Address<MainnetV0>>(
             Mode::Public,
-            count_is!(277, 0, 899, 904),
+            count_is!(2029, 0, 6745, 6750),
         );
-        check_cast_lossy::<Address<Circuit>, console_root::types::Address<Testnet3>>(
+        check_cast_lossy::<Address<Circuit>, console_root::types::Address<MainnetV0>>(
             Mode::Private,
-            count_is!(277, 0, 899, 904),
+            count_is!(2029, 0, 6745, 6750),
         );
     }
 
     #[test]
     fn test_field_to_boolean() {
-        check_cast_lossy::<Boolean<Circuit>, console_root::types::Boolean<Testnet3>>(
+        check_cast_lossy::<Boolean<Circuit>, console_root::types::Boolean<MainnetV0>>(
             Mode::Constant,
             count_is!(253, 0, 0, 0),
         );
-        check_cast_lossy::<Boolean<Circuit>, console_root::types::Boolean<Testnet3>>(
+        check_cast_lossy::<Boolean<Circuit>, console_root::types::Boolean<MainnetV0>>(
             Mode::Public,
             count_is!(0, 0, 505, 507),
         );
-        check_cast_lossy::<Boolean<Circuit>, console_root::types::Boolean<Testnet3>>(
+        check_cast_lossy::<Boolean<Circuit>, console_root::types::Boolean<MainnetV0>>(
             Mode::Private,
             count_is!(0, 0, 505, 507),
         );
@@ -191,60 +179,69 @@ mod tests {
 
     #[test]
     fn test_field_to_field() {
-        check_cast_lossy::<Field<Circuit>, console_root::types::Field<Testnet3>>(Mode::Constant, count_is!(0, 0, 0, 0));
-        check_cast_lossy::<Field<Circuit>, console_root::types::Field<Testnet3>>(Mode::Public, count_is!(0, 0, 0, 0));
-        check_cast_lossy::<Field<Circuit>, console_root::types::Field<Testnet3>>(Mode::Private, count_is!(0, 0, 0, 0));
+        check_cast_lossy::<Field<Circuit>, console_root::types::Field<MainnetV0>>(
+            Mode::Constant,
+            count_is!(0, 0, 0, 0),
+        );
+        check_cast_lossy::<Field<Circuit>, console_root::types::Field<MainnetV0>>(Mode::Public, count_is!(0, 0, 0, 0));
+        check_cast_lossy::<Field<Circuit>, console_root::types::Field<MainnetV0>>(Mode::Private, count_is!(0, 0, 0, 0));
     }
 
     #[test]
     fn test_field_to_group() {
-        check_cast_lossy::<Group<Circuit>, console_root::types::Group<Testnet3>>(
+        check_cast_lossy::<Group<Circuit>, console_root::types::Group<MainnetV0>>(
             Mode::Constant,
-            count_less_than!(551, 0, 0, 0),
+            count_less_than!(4303, 0, 0, 0),
         );
-        check_cast_lossy::<Group<Circuit>, console_root::types::Group<Testnet3>>(
+        check_cast_lossy::<Group<Circuit>, console_root::types::Group<MainnetV0>>(
             Mode::Public,
-            count_is!(277, 0, 899, 904),
+            count_is!(2029, 0, 6745, 6750),
         );
-        check_cast_lossy::<Group<Circuit>, console_root::types::Group<Testnet3>>(
+        check_cast_lossy::<Group<Circuit>, console_root::types::Group<MainnetV0>>(
             Mode::Private,
-            count_is!(277, 0, 899, 904),
+            count_is!(2029, 0, 6745, 6750),
         );
     }
 
     #[test]
     fn test_field_to_i8() {
-        check_cast_lossy::<I8<Circuit>, console_root::types::I8<Testnet3>>(Mode::Constant, count_is!(253, 0, 0, 0));
-        check_cast_lossy::<I8<Circuit>, console_root::types::I8<Testnet3>>(Mode::Public, count_is!(0, 0, 505, 507));
-        check_cast_lossy::<I8<Circuit>, console_root::types::I8<Testnet3>>(Mode::Private, count_is!(0, 0, 505, 507));
+        check_cast_lossy::<I8<Circuit>, console_root::types::I8<MainnetV0>>(Mode::Constant, count_is!(253, 0, 0, 0));
+        check_cast_lossy::<I8<Circuit>, console_root::types::I8<MainnetV0>>(Mode::Public, count_is!(0, 0, 505, 507));
+        check_cast_lossy::<I8<Circuit>, console_root::types::I8<MainnetV0>>(Mode::Private, count_is!(0, 0, 505, 507));
     }
 
     #[test]
     fn test_field_to_i16() {
-        check_cast_lossy::<I16<Circuit>, console_root::types::I16<Testnet3>>(Mode::Constant, count_is!(253, 0, 0, 0));
-        check_cast_lossy::<I16<Circuit>, console_root::types::I16<Testnet3>>(Mode::Public, count_is!(0, 0, 505, 507));
-        check_cast_lossy::<I16<Circuit>, console_root::types::I16<Testnet3>>(Mode::Private, count_is!(0, 0, 505, 507));
+        check_cast_lossy::<I16<Circuit>, console_root::types::I16<MainnetV0>>(Mode::Constant, count_is!(253, 0, 0, 0));
+        check_cast_lossy::<I16<Circuit>, console_root::types::I16<MainnetV0>>(Mode::Public, count_is!(0, 0, 505, 507));
+        check_cast_lossy::<I16<Circuit>, console_root::types::I16<MainnetV0>>(Mode::Private, count_is!(0, 0, 505, 507));
     }
 
     #[test]
     fn test_field_to_i32() {
-        check_cast_lossy::<I32<Circuit>, console_root::types::I32<Testnet3>>(Mode::Constant, count_is!(253, 0, 0, 0));
-        check_cast_lossy::<I32<Circuit>, console_root::types::I32<Testnet3>>(Mode::Public, count_is!(0, 0, 505, 507));
-        check_cast_lossy::<I32<Circuit>, console_root::types::I32<Testnet3>>(Mode::Private, count_is!(0, 0, 505, 507));
+        check_cast_lossy::<I32<Circuit>, console_root::types::I32<MainnetV0>>(Mode::Constant, count_is!(253, 0, 0, 0));
+        check_cast_lossy::<I32<Circuit>, console_root::types::I32<MainnetV0>>(Mode::Public, count_is!(0, 0, 505, 507));
+        check_cast_lossy::<I32<Circuit>, console_root::types::I32<MainnetV0>>(Mode::Private, count_is!(0, 0, 505, 507));
     }
 
     #[test]
     fn test_field_to_i64() {
-        check_cast_lossy::<I64<Circuit>, console_root::types::I64<Testnet3>>(Mode::Constant, count_is!(253, 0, 0, 0));
-        check_cast_lossy::<I64<Circuit>, console_root::types::I64<Testnet3>>(Mode::Public, count_is!(0, 0, 505, 507));
-        check_cast_lossy::<I64<Circuit>, console_root::types::I64<Testnet3>>(Mode::Private, count_is!(0, 0, 505, 507));
+        check_cast_lossy::<I64<Circuit>, console_root::types::I64<MainnetV0>>(Mode::Constant, count_is!(253, 0, 0, 0));
+        check_cast_lossy::<I64<Circuit>, console_root::types::I64<MainnetV0>>(Mode::Public, count_is!(0, 0, 505, 507));
+        check_cast_lossy::<I64<Circuit>, console_root::types::I64<MainnetV0>>(Mode::Private, count_is!(0, 0, 505, 507));
     }
 
     #[test]
     fn test_field_to_i128() {
-        check_cast_lossy::<I128<Circuit>, console_root::types::I128<Testnet3>>(Mode::Constant, count_is!(253, 0, 0, 0));
-        check_cast_lossy::<I128<Circuit>, console_root::types::I128<Testnet3>>(Mode::Public, count_is!(0, 0, 505, 507));
-        check_cast_lossy::<I128<Circuit>, console_root::types::I128<Testnet3>>(
+        check_cast_lossy::<I128<Circuit>, console_root::types::I128<MainnetV0>>(
+            Mode::Constant,
+            count_is!(253, 0, 0, 0),
+        );
+        check_cast_lossy::<I128<Circuit>, console_root::types::I128<MainnetV0>>(
+            Mode::Public,
+            count_is!(0, 0, 505, 507),
+        );
+        check_cast_lossy::<I128<Circuit>, console_root::types::I128<MainnetV0>>(
             Mode::Private,
             count_is!(0, 0, 505, 507),
         );
@@ -252,15 +249,15 @@ mod tests {
 
     #[test]
     fn test_field_to_scalar() {
-        check_cast_lossy::<Scalar<Circuit>, console_root::types::Scalar<Testnet3>>(
+        check_cast_lossy::<Scalar<Circuit>, console_root::types::Scalar<MainnetV0>>(
             Mode::Constant,
             count_is!(253, 0, 0, 0),
         );
-        check_cast_lossy::<Scalar<Circuit>, console_root::types::Scalar<Testnet3>>(
+        check_cast_lossy::<Scalar<Circuit>, console_root::types::Scalar<MainnetV0>>(
             Mode::Public,
             count_is!(0, 0, 505, 507),
         );
-        check_cast_lossy::<Scalar<Circuit>, console_root::types::Scalar<Testnet3>>(
+        check_cast_lossy::<Scalar<Circuit>, console_root::types::Scalar<MainnetV0>>(
             Mode::Private,
             count_is!(0, 0, 505, 507),
         );
@@ -268,37 +265,43 @@ mod tests {
 
     #[test]
     fn test_field_to_u8() {
-        check_cast_lossy::<U8<Circuit>, console_root::types::U8<Testnet3>>(Mode::Constant, count_is!(253, 0, 0, 0));
-        check_cast_lossy::<U8<Circuit>, console_root::types::U8<Testnet3>>(Mode::Public, count_is!(0, 0, 505, 507));
-        check_cast_lossy::<U8<Circuit>, console_root::types::U8<Testnet3>>(Mode::Private, count_is!(0, 0, 505, 507));
+        check_cast_lossy::<U8<Circuit>, console_root::types::U8<MainnetV0>>(Mode::Constant, count_is!(253, 0, 0, 0));
+        check_cast_lossy::<U8<Circuit>, console_root::types::U8<MainnetV0>>(Mode::Public, count_is!(0, 0, 505, 507));
+        check_cast_lossy::<U8<Circuit>, console_root::types::U8<MainnetV0>>(Mode::Private, count_is!(0, 0, 505, 507));
     }
 
     #[test]
     fn test_field_to_u16() {
-        check_cast_lossy::<U16<Circuit>, console_root::types::U16<Testnet3>>(Mode::Constant, count_is!(253, 0, 0, 0));
-        check_cast_lossy::<U16<Circuit>, console_root::types::U16<Testnet3>>(Mode::Public, count_is!(0, 0, 505, 507));
-        check_cast_lossy::<U16<Circuit>, console_root::types::U16<Testnet3>>(Mode::Private, count_is!(0, 0, 505, 507));
+        check_cast_lossy::<U16<Circuit>, console_root::types::U16<MainnetV0>>(Mode::Constant, count_is!(253, 0, 0, 0));
+        check_cast_lossy::<U16<Circuit>, console_root::types::U16<MainnetV0>>(Mode::Public, count_is!(0, 0, 505, 507));
+        check_cast_lossy::<U16<Circuit>, console_root::types::U16<MainnetV0>>(Mode::Private, count_is!(0, 0, 505, 507));
     }
 
     #[test]
     fn test_field_to_u32() {
-        check_cast_lossy::<U32<Circuit>, console_root::types::U32<Testnet3>>(Mode::Constant, count_is!(253, 0, 0, 0));
-        check_cast_lossy::<U32<Circuit>, console_root::types::U32<Testnet3>>(Mode::Public, count_is!(0, 0, 505, 507));
-        check_cast_lossy::<U32<Circuit>, console_root::types::U32<Testnet3>>(Mode::Private, count_is!(0, 0, 505, 507));
+        check_cast_lossy::<U32<Circuit>, console_root::types::U32<MainnetV0>>(Mode::Constant, count_is!(253, 0, 0, 0));
+        check_cast_lossy::<U32<Circuit>, console_root::types::U32<MainnetV0>>(Mode::Public, count_is!(0, 0, 505, 507));
+        check_cast_lossy::<U32<Circuit>, console_root::types::U32<MainnetV0>>(Mode::Private, count_is!(0, 0, 505, 507));
     }
 
     #[test]
     fn test_field_to_u64() {
-        check_cast_lossy::<U64<Circuit>, console_root::types::U64<Testnet3>>(Mode::Constant, count_is!(253, 0, 0, 0));
-        check_cast_lossy::<U64<Circuit>, console_root::types::U64<Testnet3>>(Mode::Public, count_is!(0, 0, 505, 507));
-        check_cast_lossy::<U64<Circuit>, console_root::types::U64<Testnet3>>(Mode::Private, count_is!(0, 0, 505, 507));
+        check_cast_lossy::<U64<Circuit>, console_root::types::U64<MainnetV0>>(Mode::Constant, count_is!(253, 0, 0, 0));
+        check_cast_lossy::<U64<Circuit>, console_root::types::U64<MainnetV0>>(Mode::Public, count_is!(0, 0, 505, 507));
+        check_cast_lossy::<U64<Circuit>, console_root::types::U64<MainnetV0>>(Mode::Private, count_is!(0, 0, 505, 507));
     }
 
     #[test]
     fn test_field_to_u128() {
-        check_cast_lossy::<U128<Circuit>, console_root::types::U128<Testnet3>>(Mode::Constant, count_is!(253, 0, 0, 0));
-        check_cast_lossy::<U128<Circuit>, console_root::types::U128<Testnet3>>(Mode::Public, count_is!(0, 0, 505, 507));
-        check_cast_lossy::<U128<Circuit>, console_root::types::U128<Testnet3>>(
+        check_cast_lossy::<U128<Circuit>, console_root::types::U128<MainnetV0>>(
+            Mode::Constant,
+            count_is!(253, 0, 0, 0),
+        );
+        check_cast_lossy::<U128<Circuit>, console_root::types::U128<MainnetV0>>(
+            Mode::Public,
+            count_is!(0, 0, 505, 507),
+        );
+        check_cast_lossy::<U128<Circuit>, console_root::types::U128<MainnetV0>>(
             Mode::Private,
             count_is!(0, 0, 505, 507),
         );

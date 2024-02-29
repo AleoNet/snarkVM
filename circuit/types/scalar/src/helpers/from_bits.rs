@@ -116,7 +116,7 @@ mod tests {
             });
 
             // Add excess zero bits.
-            let candidate = vec![given_bits, vec![Boolean::new(mode, false); i as usize]].concat();
+            let candidate = [given_bits, vec![Boolean::new(mode, false); i as usize]].concat();
 
             Circuit::scope(&format!("Excess {mode} {i}"), || {
                 let candidate = Scalar::<Circuit>::from_bits_le(&candidate);
@@ -157,7 +157,7 @@ mod tests {
             });
 
             // Add excess zero bits.
-            let candidate = vec![vec![Boolean::new(mode, false); i as usize], given_bits].concat();
+            let candidate = [vec![Boolean::new(mode, false); i as usize], given_bits].concat();
 
             Circuit::scope(&format!("Excess {mode} {i}"), || {
                 let candidate = Scalar::<Circuit>::from_bits_be(&candidate);

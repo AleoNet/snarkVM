@@ -26,7 +26,7 @@ pub trait ConstraintSynthesizer<F: Field>: Sync {
 }
 
 /// Represents a constraint system which can have new variables
-/// allocated and constrains between them formed.
+/// allocated and constraints between them formed.
 pub trait ConstraintSystem<F: Field>: Sized {
     /// Represents the type of the "root" of this constraint system
     /// so that nested namespaces can minimize indirection.

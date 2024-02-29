@@ -19,17 +19,14 @@ impl<N: Network> Serialize for Block<N> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
             true => {
-                let mut block = serializer.serialize_struct("Block", 6)?;
+                let mut block = serializer.serialize_struct("Block", 9)?;
                 block.serialize_field("block_hash", &self.block_hash)?;
                 block.serialize_field("previous_hash", &self.previous_hash)?;
                 block.serialize_field("header", &self.header)?;
                 block.serialize_field("authority", &self.authority)?;
                 block.serialize_field("ratifications", &self.ratifications)?;
-
-                if let Some(solutions) = &self.solutions {
-                    block.serialize_field("solutions", solutions)?;
-                }
-
+                block.serialize_field("solutions", &self.solutions)?;
+                block.serialize_field("aborted_solution_ids", &self.aborted_solution_ids)?;
                 block.serialize_field("transactions", &self.transactions)?;
                 block.serialize_field("aborted_transaction_ids", &self.aborted_transaction_ids)?;
                 block.end()
@@ -47,16 +44,14 @@ impl<'de, N: Network> Deserialize<'de> for Block<N> {
                 let mut block = serde_json::Value::deserialize(deserializer)?;
                 let block_hash: N::BlockHash = DeserializeExt::take_from_value::<D>(&mut block, "block_hash")?;
 
-                // Retrieve the solutions.
-                let solutions = block.get_mut("solutions").unwrap_or(&mut serde_json::Value::Null).take();
-
                 // Recover the block.
                 let block = Self::from(
                     DeserializeExt::take_from_value::<D>(&mut block, "previous_hash")?,
                     DeserializeExt::take_from_value::<D>(&mut block, "header")?,
                     DeserializeExt::take_from_value::<D>(&mut block, "authority")?,
                     DeserializeExt::take_from_value::<D>(&mut block, "ratifications")?,
-                    serde_json::from_value(solutions).map_err(de::Error::custom)?,
+                    DeserializeExt::take_from_value::<D>(&mut block, "solutions")?,
+                    DeserializeExt::take_from_value::<D>(&mut block, "aborted_solution_ids")?,
                     DeserializeExt::take_from_value::<D>(&mut block, "transactions")?,
                     DeserializeExt::take_from_value::<D>(&mut block, "aborted_transaction_ids")?,
                 )
@@ -76,9 +71,9 @@ impl<'de, N: Network> Deserialize<'de> for Block<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use console::network::Testnet3;
+    use console::network::MainnetV0;
 
-    type CurrentNetwork = Testnet3;
+    type CurrentNetwork = MainnetV0;
 
     #[test]
     fn test_serde_json() -> Result<()> {

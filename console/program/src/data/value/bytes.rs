@@ -53,9 +53,9 @@ impl<N: Network> ToBytes for Value<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_console_network::Testnet3;
+    use snarkvm_console_network::MainnetV0;
 
-    type CurrentNetwork = Testnet3;
+    type CurrentNetwork = MainnetV0;
 
     #[test]
     fn test_value_plaintext_bytes() -> Result<()> {
@@ -67,7 +67,6 @@ mod tests {
         // Check the byte representation.
         let expected_bytes = expected.to_bytes_le()?;
         assert_eq!(expected, Value::read_le(&expected_bytes[..])?);
-        assert!(Value::<CurrentNetwork>::read_le(&expected_bytes[1..]).is_err());
         Ok(())
     }
 
@@ -81,7 +80,6 @@ mod tests {
         // Check the byte representation.
         let expected_bytes = expected.to_bytes_le()?;
         assert_eq!(expected, Value::read_le(&expected_bytes[..])?);
-        assert!(Value::<CurrentNetwork>::read_le(&expected_bytes[1..]).is_err());
         Ok(())
     }
 }

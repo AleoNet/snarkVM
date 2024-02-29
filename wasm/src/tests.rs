@@ -14,7 +14,7 @@
 
 use snarkvm_console::{
     account::{Address, PrivateKey, ViewKey},
-    network::Testnet3,
+    network::MainnetV0,
 };
 use snarkvm_utilities::TestRng;
 
@@ -29,7 +29,7 @@ fn test_account() {
     const ALEO_VIEW_KEY: &str = "AViewKey1n1n3ZbnVEtXVe3La2xWkUvY3EY7XaCG6RZJJ3tbvrrrD";
     const ALEO_ADDRESS: &str = "aleo1wvgwnqvy46qq0zemj0k6sfp3zv0mp77rw97khvwuhac05yuwscxqmfyhwf";
 
-    let private_key = PrivateKey::<Testnet3>::from_str(ALEO_PRIVATE_KEY).unwrap();
+    let private_key = PrivateKey::<MainnetV0>::from_str(ALEO_PRIVATE_KEY).unwrap();
     assert_eq!(ALEO_PRIVATE_KEY, private_key.to_string());
 
     let view_key = ViewKey::try_from(&private_key).unwrap();
@@ -45,7 +45,7 @@ fn test_account_sign() {
 
     for _ in 0..ITERATIONS {
         // Sample a new private key and address.
-        let private_key = PrivateKey::<Testnet3>::new(&mut rng).unwrap();
+        let private_key = PrivateKey::<MainnetV0>::new(&mut rng).unwrap();
         let address = Address::try_from(&private_key).unwrap();
 
         // Sign a message with the account private key.

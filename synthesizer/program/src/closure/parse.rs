@@ -32,7 +32,7 @@ impl<N: Network, Instruction: InstructionTrait<N>> Parser for ClosureCore<N, Ins
         let (string, _) = tag(":")(string)?;
 
         // Parse the inputs from the string.
-        let (string, inputs) = many0(Input::parse)(string)?;
+        let (string, inputs) = many1(Input::parse)(string)?;
         // Parse the instructions from the string.
         let (string, instructions) = many1(Instruction::parse)(string)?;
         // Parse the outputs from the string.
@@ -88,9 +88,9 @@ impl<N: Network, Instruction: InstructionTrait<N>> Display for ClosureCore<N, In
 mod tests {
     use super::*;
     use crate::Closure;
-    use console::network::Testnet3;
+    use console::network::MainnetV0;
 
-    type CurrentNetwork = Testnet3;
+    type CurrentNetwork = MainnetV0;
 
     #[test]
     fn test_closure_parse() {

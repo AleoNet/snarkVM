@@ -14,6 +14,7 @@
 
 #![forbid(unsafe_code)]
 #![warn(clippy::cast_possible_truncation)]
+#![allow(clippy::too_many_arguments)]
 
 mod bytes;
 mod serialize;
@@ -30,7 +31,8 @@ use narwhal_transmission_id::TransmissionID;
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct BatchHeader<N: Network> {
-    /// The batch ID, defined as the hash of the round number, timestamp, transmission IDs, and previous batch certificate IDs.
+    /// The batch ID, defined as the hash of the author, round number, timestamp, transmission IDs,
+    /// previous batch certificate IDs, and last election certificate IDs.
     batch_id: Field<N>,
     /// The author of the batch.
     author: Address<N>,
@@ -47,6 +49,18 @@ pub struct BatchHeader<N: Network> {
 }
 
 impl<N: Network> BatchHeader<N> {
+    /// The maximum number of certificates in a batch.
+    pub const MAX_CERTIFICATES: u16 = 200;
+    /// The maximum number of rounds to store before garbage collecting.
+    pub const MAX_GC_ROUNDS: usize = 100;
+    /// The maximum number of transmissions in a batch.
+    /// Note: This limit is set to 50 as part of safety measures to prevent DoS attacks.
+    /// This limit can be increased in the future as performance improves. Alternatively,
+    /// the rate of block production can be sped up to compensate for the limit set here.
+    pub const MAX_TRANSMISSIONS_PER_BATCH: usize = 50;
+}
+
+impl<N: Network> BatchHeader<N> {
     /// Initializes a new batch header.
     pub fn new<R: Rng + CryptoRng>(
         private_key: &PrivateKey<N>,
@@ -57,11 +71,27 @@ impl<N: Network> BatchHeader<N> {
         rng: &mut R,
     ) -> Result<Self> {
         match round {
-            // If the round is zero or one, then there should be no previous certificate IDs.
-            0 | 1 => ensure!(previous_certificate_ids.is_empty(), "Invalid round number, must not have certificates"),
+            0 | 1 => {
+                // If the round is zero or one, then there should be no previous certificate IDs.
+                ensure!(previous_certificate_ids.is_empty(), "Invalid round number, must not have certificates");
+            }
             // If the round is not zero and not one, then there should be at least one previous certificate ID.
             _ => ensure!(!previous_certificate_ids.is_empty(), "Invalid round number, must have certificates"),
         }
+
+        // Ensure that the number of transmissions is within bounds.
+        ensure!(
+            transmission_ids.len() <= Self::MAX_TRANSMISSIONS_PER_BATCH,
+            "Invalid number of transmission IDs ({})",
+            transmission_ids.len()
+        );
+        // Ensure that the number of previous certificate IDs is within bounds.
+        ensure!(
+            previous_certificate_ids.len() <= Self::MAX_CERTIFICATES as usize,
+            "Invalid number of previous certificate IDs ({})",
+            previous_certificate_ids.len()
+        );
+
         // Retrieve the address.
         let author = Address::try_from(private_key)?;
         // Compute the batch ID.
@@ -82,11 +112,27 @@ impl<N: Network> BatchHeader<N> {
         signature: Signature<N>,
     ) -> Result<Self> {
         match round {
-            // If the round is zero or one, then there should be no previous certificate IDs.
-            0 | 1 => ensure!(previous_certificate_ids.is_empty(), "Invalid round number, must not have certificates"),
+            0 | 1 => {
+                // If the round is zero or one, then there should be no previous certificate IDs.
+                ensure!(previous_certificate_ids.is_empty(), "Invalid round number, must not have certificates");
+            }
             // If the round is not zero and not one, then there should be at least one previous certificate ID.
             _ => ensure!(!previous_certificate_ids.is_empty(), "Invalid round number, must have certificates"),
         }
+
+        // Ensure that the number of transmissions is within bounds.
+        ensure!(
+            transmission_ids.len() <= Self::MAX_TRANSMISSIONS_PER_BATCH,
+            "Invalid number of transmission IDs ({})",
+            transmission_ids.len()
+        );
+        // Ensure that the number of previous certificate IDs is within bounds.
+        ensure!(
+            previous_certificate_ids.len() <= Self::MAX_CERTIFICATES as usize,
+            "Invalid number of previous certificate IDs ({})",
+            previous_certificate_ids.len()
+        );
+
         // Compute the batch ID.
         let batch_id = Self::compute_batch_id(author, round, timestamp, &transmission_ids, &previous_certificate_ids)?;
         // Verify the signature.
@@ -155,11 +201,11 @@ impl<N: Network> BatchHeader<N> {
 #[cfg(any(test, feature = "test-helpers"))]
 pub mod test_helpers {
     use super::*;
-    use console::{account::PrivateKey, network::Testnet3, prelude::TestRng};
+    use console::{account::PrivateKey, network::MainnetV0, prelude::TestRng};
 
     use time::OffsetDateTime;
 
-    type CurrentNetwork = Testnet3;
+    type CurrentNetwork = MainnetV0;
 
     /// Returns a sample batch header, sampled at random.
     pub fn sample_batch_header(rng: &mut TestRng) -> BatchHeader<CurrentNetwork> {

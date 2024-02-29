@@ -21,11 +21,11 @@ use crate::{
 use circuit::{network::AleoV0, Aleo};
 use console::{
     account::{Address, PrivateKey, ViewKey},
-    network::{prelude::*, Testnet3},
+    network::{prelude::*, MainnetV0},
     program::{Identifier, Literal, Plaintext, ProgramID, Record, Value},
     types::{Field, U64},
 };
-use ledger_block::Fee;
+use ledger_block::{Fee, Transaction};
 use ledger_query::Query;
 use ledger_store::{
     helpers::memory::{BlockMemory, FinalizeMemory},
@@ -34,14 +34,14 @@ use ledger_store::{
     FinalizeStorage,
     FinalizeStore,
 };
-use synthesizer_program::{FinalizeGlobalState, FinalizeStoreTrait, Program};
+use synthesizer_program::{FinalizeGlobalState, FinalizeStoreTrait, Program, StackProgram};
 use synthesizer_snark::UniversalSRS;
 
 use indexmap::IndexMap;
 use parking_lot::RwLock;
 use std::sync::Arc;
 
-type CurrentNetwork = Testnet3;
+type CurrentNetwork = MainnetV0;
 type CurrentAleo = AleoV0;
 
 /// Samples a new finalize state.
@@ -85,7 +85,7 @@ pub fn sample_fee<N: Network, A: Aleo<Network = N>, B: BlockStorage<N>, P: Final
         .authorize_fee_public::<A, _>(&private_key, base_fee_in_microcredits, priority_fee_in_microcredits, id, rng)
         .unwrap();
     // Execute the fee.
-    let (_, mut trace) = process.execute::<A>(authorization).unwrap();
+    let (_, mut trace) = process.execute::<A, _>(authorization, rng).unwrap();
     // Prepare the assignments.
     trace.prepare(Query::from(block_store)).unwrap();
     // Compute the proof and construct the fee.
@@ -395,7 +395,7 @@ output r4 as field.private;",
     // Re-run to ensure state continues to work.
     let trace = Arc::new(RwLock::new(Trace::new()));
     let call_stack = CallStack::execute(authorization, trace).unwrap();
-    let response = stack.execute_function::<CurrentAleo>(call_stack, None).unwrap();
+    let response = stack.execute_function::<CurrentAleo, _>(call_stack, None, None, rng).unwrap();
     let candidate = response.outputs();
     assert_eq!(3, candidate.len());
     assert_eq!(r2, candidate[0]);
@@ -530,7 +530,7 @@ fn test_process_execute_transfer_public() {
     assert_eq!(authorization.len(), 1);
 
     // Execute the request.
-    let (response, _trace) = process.execute::<CurrentAleo>(authorization).unwrap();
+    let (response, _trace) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
     let candidate = response.outputs();
     assert_eq!(2, candidate.len());
     assert_eq!(r2, candidate[0]);
@@ -677,7 +677,7 @@ fn test_process_multirecords() {
     assert_eq!(authorization.len(), 1);
 
     // Execute the request.
-    let (response, _trace) = process.execute::<CurrentAleo>(authorization).unwrap();
+    let (response, _trace) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
     let candidate = response.outputs();
     assert_eq!(3, candidate.len());
     assert_eq!(output_a, candidate[0]);
@@ -758,7 +758,7 @@ fn test_process_self_caller() {
     assert_eq!(authorization.len(), 1);
 
     // Execute the request.
-    let (response, _trace) = process.execute::<CurrentAleo>(authorization).unwrap();
+    let (response, _trace) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
     let candidate = response.outputs();
     assert_eq!(1, candidate.len());
     assert_eq!(output, candidate[0]);
@@ -818,7 +818,7 @@ fn test_process_program_id() {
     assert_eq!(authorization.len(), 1);
 
     // Execute the request.
-    let (response, _trace) = process.execute::<CurrentAleo>(authorization).unwrap();
+    let (response, _trace) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
     let candidate = response.outputs();
     assert_eq!(1, candidate.len());
     assert_eq!(output, candidate[0]);
@@ -857,7 +857,7 @@ fn test_process_output_operand() {
         assert_eq!(authorization.len(), 1);
 
         // Execute the request.
-        let (response, _trace) = process.execute::<CurrentAleo>(authorization).unwrap();
+        let (response, _trace) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
         let candidate = response.outputs();
         assert_eq!(1, candidate.len());
         assert_eq!(output, candidate[0]);
@@ -880,7 +880,7 @@ fn test_process_output_operand() {
     )
     .unwrap();
 
-    // Initalize the RNG.
+    // Initialize the RNG.
     let rng = &mut TestRng::default();
 
     // Initialize a new caller account.
@@ -1020,7 +1020,7 @@ function compute:
     assert_eq!(authorization.len(), 1);
 
     // Execute the request.
-    let (response, _trace) = process.execute::<CurrentAleo>(authorization).unwrap();
+    let (response, _trace) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
     let candidate = response.outputs();
     assert_eq!(4, candidate.len());
     assert_eq!(r3, candidate[0]);
@@ -1170,7 +1170,7 @@ function transfer:
     assert_eq!(authorization.len(), 5);
 
     // Execute the request.
-    let (response, _trace) = process.execute::<CurrentAleo>(authorization).unwrap();
+    let (response, _trace) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
     let candidate = response.outputs();
     assert_eq!(2, candidate.len());
     assert_eq!(output_a, candidate[0]);
@@ -1280,7 +1280,7 @@ finalize compute:
     assert_eq!(authorization.len(), 1);
 
     // Execute the request.
-    let (response, mut trace) = process.execute::<CurrentAleo>(authorization).unwrap();
+    let (response, mut trace) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
     let candidate = response.outputs();
     assert_eq!(1, candidate.len());
 
@@ -1393,7 +1393,7 @@ finalize compute:
     assert_eq!(authorization.len(), 1);
 
     // Execute the request.
-    let (response, mut trace) = process.execute::<CurrentAleo>(authorization).unwrap();
+    let (response, mut trace) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
     let candidate = response.outputs();
     assert_eq!(1, candidate.len());
 
@@ -1524,7 +1524,7 @@ finalize mint_public:
     assert_eq!(authorization.len(), 1);
 
     // Execute the request.
-    let (response, mut trace) = process.execute::<CurrentAleo>(authorization).unwrap();
+    let (response, mut trace) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
     let candidate = response.outputs();
     assert_eq!(1, candidate.len());
 
@@ -1692,7 +1692,7 @@ finalize init:
     assert_eq!(authorization.len(), 2);
 
     // Execute the request.
-    let (response, mut trace) = process.execute::<CurrentAleo>(authorization).unwrap();
+    let (response, mut trace) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
     let candidate = response.outputs();
     assert_eq!(1, candidate.len());
 
@@ -1807,7 +1807,7 @@ finalize compute:
     assert_eq!(authorization.len(), 1);
 
     // Execute the request.
-    let (response, mut trace) = process.execute::<CurrentAleo>(authorization).unwrap();
+    let (response, mut trace) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
     let candidate = response.outputs();
     assert_eq!(1, candidate.len());
 
@@ -1919,14 +1919,14 @@ function a:
     assert_eq!(authorization.len(), 3);
 
     // Execute the request.
-    let (response, mut trace) = process.execute::<CurrentAleo>(authorization).unwrap();
+    let (response, mut trace) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
     let candidate = response.outputs();
     assert_eq!(1, candidate.len());
     assert_eq!(output, candidate[0]);
 
     // Construct the expected transition order.
     let expected_order = [
-        (program0.id(), Identifier::<Testnet3>::from_str("c").unwrap()),
+        (program0.id(), Identifier::<MainnetV0>::from_str("c").unwrap()),
         (program1.id(), Identifier::from_str("b").unwrap()),
         (program2.id(), Identifier::from_str("a").unwrap()),
     ];
@@ -2101,23 +2101,23 @@ fn test_complex_execution_order() {
     assert_eq!(authorization.len(), 10);
 
     // Execute the request.
-    let (response, mut trace) = process.execute::<CurrentAleo>(authorization).unwrap();
+    let (response, mut trace) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
     let candidate = response.outputs();
     assert_eq!(1, candidate.len());
     assert_eq!(output, candidate[0]);
 
     // Construct the expected execution order.
     let expected_order = [
-        (program0.id(), Identifier::<Testnet3>::from_str("c").unwrap()),
-        (program1.id(), Identifier::<Testnet3>::from_str("d").unwrap()),
-        (program2.id(), Identifier::<Testnet3>::from_str("b").unwrap()),
-        (program0.id(), Identifier::<Testnet3>::from_str("c").unwrap()),
-        (program1.id(), Identifier::<Testnet3>::from_str("d").unwrap()),
-        (program2.id(), Identifier::<Testnet3>::from_str("b").unwrap()),
-        (program1.id(), Identifier::<Testnet3>::from_str("d").unwrap()),
-        (program0.id(), Identifier::<Testnet3>::from_str("c").unwrap()),
-        (program3.id(), Identifier::<Testnet3>::from_str("e").unwrap()),
-        (program4.id(), Identifier::<Testnet3>::from_str("a").unwrap()),
+        (program0.id(), Identifier::<MainnetV0>::from_str("c").unwrap()),
+        (program1.id(), Identifier::<MainnetV0>::from_str("d").unwrap()),
+        (program2.id(), Identifier::<MainnetV0>::from_str("b").unwrap()),
+        (program0.id(), Identifier::<MainnetV0>::from_str("c").unwrap()),
+        (program1.id(), Identifier::<MainnetV0>::from_str("d").unwrap()),
+        (program2.id(), Identifier::<MainnetV0>::from_str("b").unwrap()),
+        (program1.id(), Identifier::<MainnetV0>::from_str("d").unwrap()),
+        (program0.id(), Identifier::<MainnetV0>::from_str("c").unwrap()),
+        (program3.id(), Identifier::<MainnetV0>::from_str("e").unwrap()),
+        (program4.id(), Identifier::<MainnetV0>::from_str("a").unwrap()),
     ];
     for (transition, (expected_program_id, expected_function_name)) in
         trace.transitions().iter().zip_eq(expected_order.iter())
@@ -2235,7 +2235,7 @@ finalize compute:
     assert_eq!(authorization.len(), 1);
 
     // Execute the request.
-    let (response, mut trace) = process.execute::<CurrentAleo>(authorization).unwrap();
+    let (response, mut trace) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
     let candidate = response.outputs();
     assert_eq!(1, candidate.len());
 
@@ -2339,7 +2339,7 @@ function compute:
     assert_eq!(authorization.len(), 1);
 
     // Execute the request.
-    let (response, mut trace) = process.execute::<CurrentAleo>(authorization).unwrap();
+    let (response, mut trace) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
     let candidate = response.outputs();
     assert_eq!(3, candidate.len());
     assert_eq!(r2, candidate[0]);
@@ -2450,7 +2450,7 @@ function {function_name}:
             .unwrap();
 
         // Execute the request.
-        let (response, mut trace) = process.execute::<CurrentAleo>(authorization).unwrap();
+        let (response, mut trace) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
         assert_eq!(response.outputs().len(), 0);
 
         // Prepare the trace.
@@ -2469,7 +2469,7 @@ function {function_name}:
             .unwrap();
 
         // Execute the request.
-        let (response, mut trace) = process.execute::<CurrentAleo>(authorization).unwrap();
+        let (response, mut trace) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
         assert_eq!(response.outputs().len(), 0);
 
         // Prepare the trace.
@@ -2482,4 +2482,132 @@ function {function_name}:
     // Ensure that the transitions are unique.
     assert_ne!(execution_1.peek().unwrap().id(), execution_2.peek().unwrap().id());
     assert_ne!(execution_1.to_execution_id().unwrap(), execution_2.to_execution_id().unwrap());
+}
+
+#[test]
+fn test_long_import_chain() {
+    // Initialize a new program.
+    let program = Program::<CurrentNetwork>::from_str(
+        r"
+    program test0.aleo;
+    function c:",
+    )
+    .unwrap();
+
+    // Construct the process.
+    let mut process = crate::test_helpers::sample_process(&program);
+
+    // Add `MAX_PROGRAM_DEPTH` programs to the process.
+    for i in 1..=CurrentNetwork::MAX_PROGRAM_DEPTH {
+        println!("Adding program {i}");
+        // Initialize a new program.
+        let program = Program::from_str(&format!(
+            "
+        import test{}.aleo;
+        program test{}.aleo;
+        function c:",
+            i - 1,
+            i
+        ))
+        .unwrap();
+        // Add the program to the process.
+        process.add_program(&program).unwrap();
+    }
+
+    // Add the `MAX_PROGRAM_DEPTH + 1` program to the process, which should fail.
+    let program = Program::from_str(&format!(
+        "
+        import test{}.aleo;
+        program test{}.aleo;
+        function c:",
+        CurrentNetwork::MAX_PROGRAM_DEPTH,
+        CurrentNetwork::MAX_PROGRAM_DEPTH + 1
+    ))
+    .unwrap();
+    let result = process.add_program(&program);
+    assert!(result.is_err());
+}
+
+#[test]
+fn test_long_import_chain_with_calls() {
+    // Initialize a new program.
+    let program = Program::<CurrentNetwork>::from_str(
+        r"
+    program test0.aleo;
+    function c:",
+    )
+    .unwrap();
+
+    // Construct the process.
+    let mut process = crate::test_helpers::sample_process(&program);
+
+    // Check that the number of calls, up to `Transaction::MAX_TRANSITIONS - 1`, is correct.
+    for i in 1..(Transaction::<CurrentNetwork>::MAX_TRANSITIONS - 1) {
+        println!("Adding program {}", i);
+        // Initialize a new program.
+        let program = Program::from_str(&format!(
+            "
+        import test{}.aleo;
+        program test{}.aleo;
+        function c:
+            call test{}.aleo/c;",
+            i - 1,
+            i,
+            i - 1
+        ))
+        .unwrap();
+        // Add the program to the process.
+        process.add_program(&program).unwrap();
+        // Check that the number of calls is correct.
+        let stack = process.get_stack(program.id()).unwrap();
+        let number_of_calls = stack.get_number_of_calls(program.functions().into_iter().next().unwrap().0).unwrap();
+        assert_eq!(number_of_calls, i + 1);
+    }
+
+    // Check that `Transaction::MAX_TRANSITIONS - 1`-th call fails.
+    let program = Program::from_str(&format!(
+        "
+        import test{}.aleo;
+        program test{}.aleo;
+        function c:
+            call test{}.aleo/c;",
+        Transaction::<CurrentNetwork>::MAX_TRANSITIONS - 2,
+        Transaction::<CurrentNetwork>::MAX_TRANSITIONS - 1,
+        Transaction::<CurrentNetwork>::MAX_TRANSITIONS - 2
+    ))
+    .unwrap();
+    let result = process.add_program(&program);
+    assert!(result.is_err())
+}
+
+#[test]
+fn test_max_imports() {
+    // Construct the process.
+    let mut process = Process::<CurrentNetwork>::load().unwrap();
+
+    // Add `MAX_IMPORTS` programs to the process.
+    for i in 0..CurrentNetwork::MAX_IMPORTS {
+        println!("Adding program {i}");
+        // Initialize a new program.
+        let program = Program::from_str(&format!("program test{i}.aleo; function c:")).unwrap();
+        // Add the program to the process.
+        process.add_program(&program).unwrap();
+    }
+
+    // Add a program importing all `MAX_IMPORTS` programs, which should pass.
+    let import_string =
+        (0..CurrentNetwork::MAX_IMPORTS).map(|i| format!("import test{}.aleo;", i)).collect::<Vec<_>>().join(" ");
+    let program =
+        Program::from_str(&format!("{import_string}program test{}.aleo; function c:", CurrentNetwork::MAX_IMPORTS))
+            .unwrap();
+    process.add_program(&program).unwrap();
+
+    // Attempt to construct a program importing `MAX_IMPORTS + 1` programs, which should fail.
+    let import_string =
+        (0..CurrentNetwork::MAX_IMPORTS + 1).map(|i| format!("import test{}.aleo;", i)).collect::<Vec<_>>().join(" ");
+    let result = Program::<CurrentNetwork>::from_str(&format!(
+        "{import_string}program test{}.aleo; function c:",
+        CurrentNetwork::MAX_IMPORTS + 1
+    ));
+    assert!(result.is_err());
 }

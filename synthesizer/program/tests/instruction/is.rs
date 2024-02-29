@@ -18,7 +18,7 @@ use crate::helpers::sample::{sample_finalize_registers, sample_registers};
 
 use circuit::AleoV0;
 use console::{
-    network::Testnet3,
+    network::MainnetV0,
     prelude::*,
     program::{Identifier, Literal, LiteralType, Register},
 };
@@ -34,7 +34,7 @@ use snarkvm_synthesizer_program::{
 };
 use synthesizer_process::{Process, Stack};
 
-type CurrentNetwork = Testnet3;
+type CurrentNetwork = MainnetV0;
 type CurrentAleo = AleoV0;
 
 const ITERATIONS: usize = 100;

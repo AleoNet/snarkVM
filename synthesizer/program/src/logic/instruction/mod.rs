@@ -181,11 +181,11 @@ pub enum Instruction<N: Network> {
     RemWrapped(RemWrapped<N>),
     /// Shifts `first` left by `second` bits, storing the outcome in `destination`.
     Shl(Shl<N>),
-    /// Shifts `first` left by `second` bits, continuing past the boundary of the type, storing the outcome in `destination`.
+    /// Shifts `first` left by `second` bits, wrapping around at the boundary of the type, storing the outcome in `destination`.
     ShlWrapped(ShlWrapped<N>),
     /// Shifts `first` right by `second` bits, storing the outcome in `destination`.
     Shr(Shr<N>),
-    /// Shifts `first` right by `second` bits, continuing past the boundary of the type, storing the outcome in `destination`.
+    /// Shifts `first` right by `second` bits, wrapping around at the boundary of the type, storing the outcome in `destination`.
     ShrWrapped(ShrWrapped<N>),
     /// Computes whether `signature` is valid for the given `address` and `message`.
     SignVerify(SignVerify<N>),
@@ -461,9 +461,9 @@ impl<N: Network> Display for Instruction<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use console::network::Testnet3;
+    use console::network::MainnetV0;
 
-    type CurrentNetwork = Testnet3;
+    type CurrentNetwork = MainnetV0;
 
     #[test]
     fn test_opcodes() {

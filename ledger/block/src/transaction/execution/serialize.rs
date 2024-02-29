@@ -19,7 +19,7 @@ impl<N: Network> Serialize for Execution<N> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
             true => {
-                let mut execution = serializer.serialize_struct("Execution", 3)?;
+                let mut execution = serializer.serialize_struct("Execution", 2 + self.proof.is_some() as usize)?;
                 execution
                     .serialize_field("transitions", &self.transitions.values().collect::<Vec<&Transition<N>>>())?;
                 execution.serialize_field("global_state_root", &self.global_state_root)?;

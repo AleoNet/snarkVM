@@ -113,8 +113,14 @@ pub fn bad_degree_bound_test<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>>() -
         println!("Generated query set");
 
         let mut sponge_for_open = S::new();
-        let proof =
-            SonicKZG10::batch_open(universal_prover, &ck, &polynomials, &query_set, &rands, &mut sponge_for_open)?;
+        let proof = SonicKZG10::batch_open(
+            universal_prover,
+            &ck,
+            polynomials.iter(),
+            &query_set,
+            rands.iter(),
+            &mut sponge_for_open,
+        )?;
         let mut sponge_for_check = S::new();
         let result = SonicKZG10::batch_check(&vk, &comms, &query_set, &values, &proof, &mut sponge_for_check)?;
         assert!(result, "proof was incorrect, Query set: {query_set:#?}");
@@ -203,8 +209,14 @@ pub fn lagrange_test_template<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>>()
         println!("Generated query set");
 
         let mut sponge_for_open = S::new();
-        let proof =
-            SonicKZG10::batch_open(universal_prover, &ck, &polynomials, &query_set, &rands, &mut sponge_for_open)?;
+        let proof = SonicKZG10::batch_open(
+            universal_prover,
+            &ck,
+            polynomials.iter(),
+            &query_set,
+            rands.iter(),
+            &mut sponge_for_open,
+        )?;
         let mut sponge_for_check = S::new();
         let result = SonicKZG10::batch_check(&vk, &comms, &query_set, &values, &proof, &mut sponge_for_check)?;
         if !result {
@@ -251,7 +263,7 @@ where
     let max_degree = max_degree.unwrap_or_else(|| distributions::Uniform::from(8..=64).sample(rng));
     let pp = SonicKZG10::<E, S>::load_srs(max_degree)?;
     let universal_prover = &pp.to_universal_prover().unwrap();
-    let supported_degree_bounds = vec![1 << 10, 1 << 15, 1 << 20, 1 << 25, 1 << 30];
+    let supported_degree_bounds = [1 << 10, 1 << 15, 1 << 20, 1 << 25, 1 << 30];
 
     for _ in 0..num_iters {
         let supported_degree =
@@ -327,8 +339,14 @@ where
         println!("Generated query set");
 
         let mut sponge_for_open = S::new();
-        let proof =
-            SonicKZG10::batch_open(universal_prover, &ck, &polynomials, &query_set, &rands, &mut sponge_for_open)?;
+        let proof = SonicKZG10::batch_open(
+            universal_prover,
+            &ck,
+            polynomials.iter(),
+            &query_set,
+            rands.iter(),
+            &mut sponge_for_open,
+        )?;
         let mut sponge_for_check = S::new();
         let result = SonicKZG10::batch_check(&vk, &comms, &query_set, &values, &proof, &mut sponge_for_check)?;
         if !result {
@@ -373,7 +391,7 @@ fn equation_test_template<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>>(
     let max_degree = max_degree.unwrap_or_else(|| distributions::Uniform::from(8..=64).sample(rng));
     let pp = SonicKZG10::<E, S>::load_srs(max_degree)?;
     let universal_prover = &pp.to_universal_prover().unwrap();
-    let supported_degree_bounds = vec![1 << 10, 1 << 15, 1 << 20, 1 << 25, 1 << 30];
+    let supported_degree_bounds = [1 << 10, 1 << 15, 1 << 20, 1 << 25, 1 << 30];
 
     for _ in 0..num_iters {
         let supported_degree =

@@ -52,14 +52,14 @@ type E = Circuit;
 
 thread_local! {
     /// The group bases for the Aleo signature and encryption schemes.
-    static GENERATOR_G: Vec<Group<AleoV0>> = Vec::constant(<console::Testnet3 as console::Network>::g_powers().to_vec());
+    static GENERATOR_G: Vec<Group<AleoV0>> = Vec::constant(<console::MainnetV0 as console::Network>::g_powers().to_vec());
 
     /// The encryption domain as a constant field element.
-    static ENCRYPTION_DOMAIN: Field<AleoV0> = Field::constant(<console::Testnet3 as console::Network>::encryption_domain());
+    static ENCRYPTION_DOMAIN: Field<AleoV0> = Field::constant(<console::MainnetV0 as console::Network>::encryption_domain());
     /// The graph key domain as a constant field element.
-    static GRAPH_KEY_DOMAIN: Field<AleoV0> = Field::constant(<console::Testnet3 as console::Network>::graph_key_domain());
+    static GRAPH_KEY_DOMAIN: Field<AleoV0> = Field::constant(<console::MainnetV0 as console::Network>::graph_key_domain());
     /// The serial number domain as a constant field element.
-    static SERIAL_NUMBER_DOMAIN: Field<AleoV0> = Field::constant(<console::Testnet3 as console::Network>::serial_number_domain());
+    static SERIAL_NUMBER_DOMAIN: Field<AleoV0> = Field::constant(<console::MainnetV0 as console::Network>::serial_number_domain());
 
     /// The BHP hash function, which can take an input of up to 256 bits.
     static BHP_256: BHP256<AleoV0> = BHP256::<AleoV0>::constant(console::BHP_256.clone());
@@ -464,6 +464,16 @@ impl Environment for AleoV0 {
     /// Halts the program from further synthesis, evaluation, and execution in the current environment.
     fn halt<S: Into<String>, T>(message: S) -> T {
         E::halt(message)
+    }
+
+    /// Returns the constraint limit for the circuit, if one exists.
+    fn get_constraint_limit() -> Option<u64> {
+        E::get_constraint_limit()
+    }
+
+    /// Sets the constraint limit for the circuit.
+    fn set_constraint_limit(limit: Option<u64>) {
+        E::set_constraint_limit(limit)
     }
 
     /// Returns the R1CS circuit, resetting the circuit.

@@ -198,7 +198,7 @@ mod tests {
         synthesizer::Process,
     };
 
-    type CurrentNetwork = snarkvm_console::network::Testnet3;
+    type CurrentNetwork = snarkvm_console::network::MainnetV0;
     type CurrentAleo = snarkvm_circuit::AleoV0;
 
     fn temp_dir() -> std::path::PathBuf {
