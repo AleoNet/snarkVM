@@ -42,32 +42,42 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         let timer = timer!("VM::speculate");
 
         // TODO (raychu86): Clean up this logic and remove the extra collect.
-        // Ensure each transaction is well-formed and unique. Abort any transactions that are not.
-        let rngs = (0..candidate_transactions.len()).map(|_| StdRng::from_seed(rng.gen())).collect::<Vec<_>>();
-        let candidate_transactions: Vec<_> = candidate_transactions.collect();
-        let checked_transactions: Vec<_> = cfg_into_iter!(candidate_transactions)
-            .zip(rngs)
-            .map(|(transaction, mut rng)| {
-                let error_message = match self.check_transaction(transaction, None, &mut rng) {
-                    Ok(_) => None,
-                    Err(e) => Some(e.to_string()),
-                };
+        // If the transactions are not part of the genesis block, ensure each transaction is well-formed and unique. Abort any transactions that are not.
+        let block_store = self.block_store();
+        let candidate_transactions = candidate_transactions.collect::<Vec<_>>();
+        let (verified_transactions, verification_aborted_transactions) = match block_store
+            .find_block_height_from_state_root(block_store.current_state_root())?
+        {
+            // If the current state root does not exist in the block store, then the genesis block has not been introduced yet.
+            None => (candidate_transactions, vec![]),
+            // Verify transactions for all non-genesis cases.
+            _ => {
+                let rngs = (0..candidate_transactions.len()).map(|_| StdRng::from_seed(rng.gen())).collect::<Vec<_>>();
+                // Verify the transactions and collect the error message if there is one.
+                let checked_transactions: Vec<_> = cfg_into_iter!(candidate_transactions)
+                    .zip(rngs)
+                    .map(|(transaction, mut rng)| {
+                        let error_message = match self.check_transaction(transaction, None, &mut rng) {
+                            Ok(_) => None,
+                            Err(e) => Some(e.to_string()),
+                        };
+                        (transaction, error_message)
+                    })
+                    .collect();
 
-                (transaction, error_message)
-            })
-            .collect();
-
-        // Separate the verified and aborted transactions.
-        let (verified_transactions, verification_aborted_transactions) = checked_transactions.into_iter().fold(
-            (Vec::new(), Vec::new()),
-            |(mut verified, mut aborted), (transaction, error_message)| {
-                match error_message {
-                    None => verified.push(transaction),
-                    Some(e) => aborted.push((transaction, e)),
-                };
-                (verified, aborted)
-            },
-        );
+                // Separate the verified and aborted transactions.
+                checked_transactions.into_iter().fold(
+                    (Vec::new(), Vec::new()),
+                    |(mut verified, mut aborted), (transaction, error_message)| {
+                        match error_message {
+                            None => verified.push(transaction),
+                            Some(e) => aborted.push((transaction, e)),
+                        };
+                        (verified, aborted)
+                    },
+                )
+            }
+        };
 
         // Performs a **dry-run** over the list of ratifications, solutions, and transactions.
         let (ratifications, confirmed_transactions, speculation_aborted_transactions, ratified_finalize_operations) =
