@@ -16,6 +16,8 @@ use super::*;
 
 use ledger_committee::{MAX_DELEGATORS, MIN_DELEGATOR_STAKE, MIN_VALIDATOR_STAKE};
 
+use rand::{rngs::StdRng, SeedableRng};
+
 impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// Speculates on the given list of transactions in the VM.
     ///
@@ -28,31 +30,65 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     ///     `Ratify::BlockReward(block_reward)` and `Ratify::PuzzleReward(puzzle_reward)`
     ///     to the front of the `ratifications` list.
     #[inline]
-    pub fn speculate<'a>(
+    pub fn speculate<'a, R: Rng + CryptoRng>(
         &self,
         state: FinalizeGlobalState,
         coinbase_reward: Option<u64>,
         candidate_ratifications: Vec<Ratify<N>>,
         candidate_solutions: &Solutions<N>,
         candidate_transactions: impl ExactSizeIterator<Item = &'a Transaction<N>>,
+        rng: &mut R,
     ) -> Result<(Ratifications<N>, Transactions<N>, Vec<N::TransactionID>, Vec<FinalizeOperation<N>>)> {
         let timer = timer!("VM::speculate");
 
+        // TODO (raychu86): Clean up this logic and remove the extra collect.
+        // Ensure each transaction is well-formed and unique. Abort any transactions that are not.
+        let rngs = (0..candidate_transactions.len()).map(|_| StdRng::from_seed(rng.gen())).collect::<Vec<_>>();
+        let candidate_transactions: Vec<_> = candidate_transactions.collect();
+        let checked_transactions: Vec<_> = cfg_into_iter!(candidate_transactions)
+            .zip(rngs)
+            .map(|(transaction, mut rng)| {
+                let error_message = match self.check_transaction(transaction, None, &mut rng) {
+                    Ok(_) => None,
+                    Err(e) => Some(e.to_string()),
+                };
+
+                (transaction, error_message)
+            })
+            .collect();
+
+        // Separate the verified and aborted transactions.
+        let (verified_transactions, verification_aborted_transactions) = checked_transactions.into_iter().fold(
+            (Vec::new(), Vec::new()),
+            |(mut verified, mut aborted), (transaction, error_message)| {
+                match error_message {
+                    None => verified.push(transaction),
+                    Some(e) => aborted.push((transaction, e)),
+                };
+                (verified, aborted)
+            },
+        );
+
         // Performs a **dry-run** over the list of ratifications, solutions, and transactions.
-        let (ratifications, confirmed_transactions, aborted_transactions, ratified_finalize_operations) = self
-            .atomic_speculate(
+        let (ratifications, confirmed_transactions, speculation_aborted_transactions, ratified_finalize_operations) =
+            self.atomic_speculate(
                 state,
                 coinbase_reward,
                 candidate_ratifications,
                 candidate_solutions,
-                candidate_transactions,
+                verified_transactions.into_iter(),
             )?;
 
+        // Get the aborted transaction ids.
+        let verification_aborted_transaction_ids = verification_aborted_transactions.iter().map(|(tx, e)| (tx.id(), e));
+        let speculation_aborted_transaction_ids = speculation_aborted_transactions.iter().map(|(tx, e)| (tx.id(), e));
+
         // Convert the aborted transactions into aborted transaction IDs.
-        let mut aborted_transaction_ids = Vec::with_capacity(aborted_transactions.len());
-        for (tx, error) in aborted_transactions {
-            warn!("Speculation safely aborted a transaction - {error} ({})", tx.id());
-            aborted_transaction_ids.push(tx.id());
+        let mut aborted_transaction_ids =
+            Vec::with_capacity(verification_aborted_transactions.len() + speculation_aborted_transactions.len());
+        for (tx_id, error) in verification_aborted_transaction_ids.chain(speculation_aborted_transaction_ids) {
+            warn!("Speculation safely aborted a transaction - {error} ({tx_id})");
+            aborted_transaction_ids.push(tx_id);
         }
 
         finish!(timer, "Finished dry-run of the transactions");
@@ -1135,6 +1171,7 @@ finalize transfer_public:
             vec![],
             &None.into(),
             transactions.iter(),
+            rng,
         )?;
 
         // Construct the metadata associated with the block.
@@ -1399,7 +1436,14 @@ finalize transfer_public:
 
         // Prepare the confirmed transactions.
         let (ratifications, confirmed_transactions, aborted_transaction_ids, _) = vm
-            .speculate(sample_finalize_state(1), None, vec![], &None.into(), [deployment_transaction.clone()].iter())
+            .speculate(
+                sample_finalize_state(1),
+                None,
+                vec![],
+                &None.into(),
+                [deployment_transaction.clone()].iter(),
+                rng,
+            )
             .unwrap();
         assert_eq!(confirmed_transactions.len(), 1);
         assert!(aborted_transaction_ids.is_empty());
@@ -1687,7 +1731,7 @@ function ped_hash:
 
             // Speculatively execute the transaction. Ensure that this call does not panic and returns a rejected transaction.
             let (_, confirmed_transactions, aborted_transaction_ids, _) = vm
-                .speculate(sample_finalize_state(1), None, vec![], &None.into(), [transaction.clone()].iter())
+                .speculate(sample_finalize_state(1), None, vec![], &None.into(), [transaction.clone()].iter(), rng)
                 .unwrap();
             assert!(aborted_transaction_ids.is_empty());
 

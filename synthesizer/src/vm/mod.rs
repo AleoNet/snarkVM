@@ -312,7 +312,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         let state = FinalizeGlobalState::new_genesis::<N>()?;
         // Speculate on the ratifications, solutions, and transactions.
         let (ratifications, transactions, aborted_transaction_ids, ratified_finalize_operations) =
-            self.speculate(state, None, ratifications, &solutions, transactions.iter())?;
+            self.speculate(state, None, ratifications, &solutions, transactions.iter(), rng)?;
         ensure!(
             aborted_transaction_ids.is_empty(),
             "Failed to initialize a genesis block - found aborted transaction IDs"
@@ -699,7 +699,7 @@ function compute:
 
         // Construct the new block header.
         let (ratifications, transactions, aborted_transaction_ids, ratified_finalize_operations) =
-            vm.speculate(sample_finalize_state(1), None, vec![], &None.into(), transactions.iter())?;
+            vm.speculate(sample_finalize_state(1), None, vec![], &None.into(), transactions.iter(), rng)?;
         assert!(aborted_transaction_ids.is_empty());
 
         // Construct the metadata associated with the block.
