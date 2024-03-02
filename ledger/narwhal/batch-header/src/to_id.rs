@@ -21,6 +21,7 @@ impl<N: Network> BatchHeader<N> {
             self.author,
             self.round,
             self.timestamp,
+            self.committee_id,
             &self.transmission_ids,
             &self.previous_certificate_ids,
         )
@@ -33,6 +34,7 @@ impl<N: Network> BatchHeader<N> {
         author: Address<N>,
         round: u64,
         timestamp: i64,
+        committee_id: Field<N>,
         transmission_ids: &IndexSet<TransmissionID<N>>,
         previous_certificate_ids: &IndexSet<Field<N>>,
     ) -> Result<Field<N>> {
@@ -43,6 +45,8 @@ impl<N: Network> BatchHeader<N> {
         round.write_le(&mut preimage)?;
         // Insert the timestamp.
         timestamp.write_le(&mut preimage)?;
+        // Insert the committee ID.
+        committee_id.write_le(&mut preimage)?;
         // Insert the number of transmissions.
         u32::try_from(transmission_ids.len())?.write_le(&mut preimage)?;
         // Insert the transmission IDs.
