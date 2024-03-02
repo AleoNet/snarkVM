@@ -60,6 +60,7 @@ use synthesizer_program::{FinalizeGlobalState, FinalizeOperation, FinalizeStoreT
 
 use aleo_std::prelude::{finish, lap, timer};
 use indexmap::{IndexMap, IndexSet};
+use itertools::Either;
 use lru::LruCache;
 use parking_lot::{Mutex, RwLock};
 use std::{num::NonZeroUsize, sync::Arc};

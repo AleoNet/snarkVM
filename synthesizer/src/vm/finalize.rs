@@ -54,28 +54,12 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             _ => {
                 let rngs = (0..candidate_transactions.len()).map(|_| StdRng::from_seed(rng.gen())).collect::<Vec<_>>();
                 // Verify the transactions and collect the error message if there is one.
-                let checked_transactions: Vec<_> = cfg_into_iter!(candidate_transactions)
-                    .zip(rngs)
-                    .map(|(transaction, mut rng)| {
-                        let error_message = match self.check_transaction(transaction, None, &mut rng) {
-                            Ok(_) => None,
-                            Err(e) => Some(e.to_string()),
-                        };
-                        (transaction, error_message)
-                    })
-                    .collect();
-
-                // Separate the verified and aborted transactions.
-                checked_transactions.into_iter().fold(
-                    (Vec::new(), Vec::new()),
-                    |(mut verified, mut aborted), (transaction, error_message)| {
-                        match error_message {
-                            None => verified.push(transaction),
-                            Some(e) => aborted.push((transaction, e)),
-                        };
-                        (verified, aborted)
-                    },
-                )
+                cfg_into_iter!(candidate_transactions).zip(rngs).partition_map(|(transaction, mut rng)| {
+                    match self.check_transaction(transaction, None, &mut rng) {
+                        Ok(_) => Either::Left(transaction),
+                        Err(e) => Either::Right((transaction, e.to_string())),
+                    }
+                })
             }
         };
 
