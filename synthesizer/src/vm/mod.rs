@@ -1323,7 +1323,7 @@ function do:
     #[test]
     // #[ignore]
     fn test_deployment_memory_overload() {
-        const NUM_DEPLOYMENTS: usize = 7;
+        const NUM_DEPLOYMENTS: usize = 31;
 
         let rng = &mut TestRng::default();
 
@@ -1620,6 +1620,8 @@ finalize do:
             vm.execute(&private_key, ("program_layer_5.aleo", "do"), inputs.clone(), record.clone(), 0, None, rng).unwrap();
         let transaction7 =
             vm.execute(&private_key, ("program_layer_6.aleo", "do"), inputs.clone(), record.clone(), 0, None, rng).unwrap();
+        let transaction31 =
+            vm.execute(&private_key, ("program_layer_30.aleo", "do"), inputs.clone(), record.clone(), 0, None, rng).unwrap();
 
         // Verify.
         vm.check_transaction(&transaction1, None, rng).unwrap();
@@ -1629,6 +1631,7 @@ finalize do:
         vm.check_transaction(&transaction5, None, rng).unwrap();
         vm.check_transaction(&transaction6, None, rng).unwrap();
         vm.check_transaction(&transaction7, None, rng).unwrap();
+        vm.check_transaction(&transaction31, None, rng).unwrap();
     }
 
 //     #[test]
