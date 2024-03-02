@@ -110,8 +110,8 @@ impl<N: Network> BatchHeader<N> {
         let signature = private_key.sign(&[batch_id], rng)?;
         // Return the batch header.
         Ok(Self {
-            author,
             batch_id,
+            author,
             round,
             timestamp,
             committee_id,
