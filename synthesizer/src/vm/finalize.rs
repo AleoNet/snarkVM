@@ -41,27 +41,28 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     ) -> Result<(Ratifications<N>, Transactions<N>, Vec<N::TransactionID>, Vec<FinalizeOperation<N>>)> {
         let timer = timer!("VM::speculate");
 
-        // TODO (raychu86): Clean up this logic and remove the extra collect.
+        // Collect the candidate transactions into a vector.
+        let candidate_transactions: Vec<_> = candidate_transactions.collect::<Vec<_>>();
+        let candidate_transaction_ids: Vec<_> = candidate_transactions.iter().map(|tx| tx.id()).collect();
+
         // If the transactions are not part of the genesis block, ensure each transaction is well-formed and unique. Abort any transactions that are not.
-        let block_store = self.block_store();
-        let candidate_transactions = candidate_transactions.collect::<Vec<_>>();
-        let (verified_transactions, verification_aborted_transactions) = match block_store
-            .find_block_height_from_state_root(block_store.current_state_root())?
-        {
-            // If the current state root does not exist in the block store, then the genesis block has not been introduced yet.
-            None => (candidate_transactions, vec![]),
-            // Verify transactions for all non-genesis cases.
-            _ => {
-                let rngs = (0..candidate_transactions.len()).map(|_| StdRng::from_seed(rng.gen())).collect::<Vec<_>>();
-                // Verify the transactions and collect the error message if there is one.
-                cfg_into_iter!(candidate_transactions).zip(rngs).partition_map(|(transaction, mut rng)| {
-                    match self.check_transaction(transaction, None, &mut rng) {
+        let (verified_transactions, verification_aborted_transactions) =
+            match self.block_store().find_block_height_from_state_root(self.block_store().current_state_root())? {
+                // If the current state root does not exist in the block store, then the genesis block has not been introduced yet.
+                None => (candidate_transactions, vec![]),
+                // Verify transactions for all non-genesis cases.
+                _ => {
+                    let rngs =
+                        (0..candidate_transactions.len()).map(|_| StdRng::from_seed(rng.gen())).collect::<Vec<_>>();
+                    // Verify the transactions and collect the error message if there is one.
+                    cfg_into_iter!(candidate_transactions).zip(rngs).partition_map(|(transaction, mut rng)| match self
+                        .check_transaction(transaction, None, &mut rng)
+                    {
                         Ok(_) => Either::Left(transaction),
                         Err(e) => Either::Right((transaction, e.to_string())),
-                    }
-                })
-            }
-        };
+                    })
+                }
+            };
 
         // Performs a **dry-run** over the list of ratifications, solutions, and transactions.
         let (ratifications, confirmed_transactions, speculation_aborted_transactions, ratified_finalize_operations) =
@@ -76,14 +77,19 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         // Get the aborted transaction ids.
         let verification_aborted_transaction_ids = verification_aborted_transactions.iter().map(|(tx, e)| (tx.id(), e));
         let speculation_aborted_transaction_ids = speculation_aborted_transactions.iter().map(|(tx, e)| (tx.id(), e));
+        let unordered_aborted_transaction_ids: IndexMap<N::TransactionID, &String> =
+            verification_aborted_transaction_ids.chain(speculation_aborted_transaction_ids).collect();
 
-        // Convert the aborted transactions into aborted transaction IDs.
-        let mut aborted_transaction_ids =
-            Vec::with_capacity(verification_aborted_transactions.len() + speculation_aborted_transactions.len());
-        for (tx_id, error) in verification_aborted_transaction_ids.chain(speculation_aborted_transaction_ids) {
-            warn!("Speculation safely aborted a transaction - {error} ({tx_id})");
-            aborted_transaction_ids.push(tx_id);
-        }
+        // Filter and order the aborted transaction ids according to candidate_transactions
+        let aborted_transaction_ids: Vec<_> = candidate_transaction_ids
+            .into_iter()
+            .filter_map(|tx_id| {
+                unordered_aborted_transaction_ids.get(&tx_id).map(|error| {
+                    warn!("Speculation safely aborted a transaction - {error} ({tx_id})");
+                    tx_id
+                })
+            })
+            .collect();
 
         finish!(timer, "Finished dry-run of the transactions");
 
