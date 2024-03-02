@@ -242,17 +242,18 @@ impl<N: Network> Block<N> {
             );
 
             // Check that all all certificates on each round have the same committee ID.
-            for (round, certificates) in subdag.iter() {
+            cfg_iter!(subdag).try_for_each(|(round, certificates)| {
                 // Check that every certificate for a given round shares the same committee ID.
                 let expected_committee_id = certificates
                     .first()
                     .map(|certificate| certificate.committee_id())
-                    .ok_or(anyhow!("No certificates found for round {round}"))?;
+                    .ok_or(anyhow!("No certificates found for subdag round {round}"))?;
                 ensure!(
-                    certificates.iter().all(|certificate| certificate.committee_id() == expected_committee_id),
-                    "All certificates on round {round} do not have the same committee ID",
+                    certificates.iter().skip(1).all(|certificate| certificate.committee_id() == expected_committee_id),
+                    "Certificates on round {round} do not all have the same committee ID",
                 );
-            }
+                Ok(())
+            })?;
         }
 
         // Return success.
