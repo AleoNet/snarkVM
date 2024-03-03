@@ -1,9 +1,6 @@
 /*
 randomness: 45791624
-cases:
-  - program: parent.aleo
-    function: foo
-    inputs: []
+cases: []
 */
 
 program child.aleo;
