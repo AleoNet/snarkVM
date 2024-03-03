@@ -1,3 +1,0 @@
-errors:
-- 'Failed to run `VM::deploy for program parent.aleo: Futures in finalize ''foo'' are not awaited in the order they are passed in.'
-outputs: []
