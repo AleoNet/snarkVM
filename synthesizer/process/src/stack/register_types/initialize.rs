@@ -13,8 +13,6 @@
 // limitations under the License.
 
 use super::*;
-use indexmap::IndexSet;
-use synthesizer_program::CastType;
 
 impl<N: Network> RegisterTypes<N> {
     /// Initializes a new instance of `RegisterTypes` for the given closure.
