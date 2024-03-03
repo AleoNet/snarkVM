@@ -16,6 +16,7 @@ use crate::{
     traits::{StackEvaluate, StackExecute},
     CallStack,
     Process,
+    Stack,
     Trace,
 };
 use circuit::{network::AleoV0, Aleo};
@@ -2609,5 +2610,34 @@ fn test_max_imports() {
         "{import_string}program test{}.aleo; function c:",
         CurrentNetwork::MAX_IMPORTS + 1
     ));
+    assert!(result.is_err());
+}
+
+#[test]
+fn test_program_exceeding_transaction_spend_limit() {
+    // Construct a finalize body whose finalize cost is excessively large.
+    let finalize_body = (0..<CurrentNetwork as Network>::MAX_COMMANDS)
+        .map(|i| format!("hash.bhp256 0field into r{i} as field;"))
+        .collect::<Vec<_>>()
+        .join("\n");
+    // Construct the program.
+    let program = Program::from_str(&format!(
+        r"program test_max_spend_limit.aleo;
+      function foo:
+      async foo into r0;
+      output r0 as test_max_spend_limit.aleo/foo.future;
+      finalize foo:{finalize_body}",
+    ))
+    .unwrap();
+
+    // Initialize a `Process`.
+    let mut process = Process::<CurrentNetwork>::load().unwrap();
+
+    // Attempt to add the program to the process, which should fail.
+    let result = process.add_program(&program);
+    assert!(result.is_err());
+
+    // Attempt to initialize a `Stack` directly with the program, which should fail.
+    let result = Stack::initialize(&process, &program);
     assert!(result.is_err());
 }
