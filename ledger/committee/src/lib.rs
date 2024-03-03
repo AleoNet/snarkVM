@@ -181,7 +181,7 @@ impl<N: Network> Committee<N> {
         // Retrieve the total stake of the committee.
         let total_stake = self.total_stake();
         // Construct the round seed.
-        let seed = [self.starting_round, current_round, total_stake].map(Field::from_u64);
+        let seed = [current_round].map(Field::from_u64);
         // Hash the round seed.
         let hash = Literal::Field(N::hash_to_group_psd4(&seed)?.to_x_coordinate());
         // Compute the stake index from the hash output.
@@ -211,17 +211,13 @@ impl<N: Network> Committee<N> {
         Ok(leader.unwrap())
     }
 
-    /// Returns the committee members sorted by stake in decreasing order.
-    /// For members with matching stakes, we further sort by their address' x-coordinate in decreasing order.
+    /// Returns the committee members sorted by their address' x-coordinate in decreasing order.
     /// Note: This ensures the method returns a deterministic result that is SNARK-friendly.
     fn sorted_members(&self) -> indexmap::map::IntoIter<Address<N>, (u64, bool)> {
         let members = self.members.clone();
         // Note: The use of 'sorted_unstable_by' is safe here because the addresses are guaranteed to be unique.
-        members.sorted_unstable_by(|address1, (stake1, _), address2, (stake2, _)| {
-            // Sort by stake in decreasing order.
-            let cmp = stake2.cmp(stake1);
-            // If the stakes are equal, sort by x-coordinate in decreasing order.
-            if cmp == Ordering::Equal { address2.to_x_coordinate().cmp(&address1.to_x_coordinate()) } else { cmp }
+        members.sorted_unstable_by(|address1, (_, _), address2, (_, _)| {
+            address2.to_x_coordinate().cmp(&address1.to_x_coordinate())
         })
     }
 }
