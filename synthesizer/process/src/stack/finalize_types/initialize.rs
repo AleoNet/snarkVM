@@ -17,6 +17,12 @@ use super::*;
 impl<N: Network> FinalizeTypes<N> {
     /// Initializes a new instance of `FinalizeTypes` for the given finalize.
     /// Checks that the given finalize is well-formed for the given stack.
+    ///
+    /// Attention: To support user-defined ordering for awaiting on futures, this method does **not** check
+    /// that all input futures are awaited **exactly** once. It does however check that all input
+    /// futures are awaited at least once. This means that it is possible to deploy a program
+    /// whose finalize is not well-formed, but it is not possible to execute a program whose finalize
+    /// is not well-formed.
     #[inline]
     pub(super) fn initialize_finalize_types(
         stack: &(impl StackMatches<N> + StackProgram<N>),
