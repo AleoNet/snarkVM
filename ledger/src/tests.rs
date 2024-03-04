@@ -1252,6 +1252,45 @@ function simple_output:
 }
 
 #[test]
+fn test_abort_fee_transaction() {
+    let rng = &mut TestRng::default();
+
+    // Initialize the test environment.
+    let crate::test_helpers::TestEnv { ledger, private_key, address, .. } = crate::test_helpers::sample_test_env(rng);
+
+    // Construct valid transaction for the ledger.
+    let inputs = [Value::from_str(&format!("{address}")).unwrap(), Value::from_str("1000u64").unwrap()];
+    let transaction = ledger
+        .vm
+        .execute(&private_key, ("credits.aleo", "transfer_public"), inputs.clone().into_iter(), None, 0, None, rng)
+        .unwrap();
+    let transaction_id = transaction.id();
+
+    // Convert a fee transaction.
+    let transaction_to_convert_to_fee = ledger
+        .vm
+        .execute(&private_key, ("credits.aleo", "transfer_public"), inputs.into_iter(), None, 0, None, rng)
+        .unwrap();
+    let fee_transaction = Transaction::from_fee(transaction_to_convert_to_fee.fee_transition().unwrap()).unwrap();
+    let fee_transaction_id = fee_transaction.id();
+
+    // Create a block using a fee transaction.
+    let block = ledger
+        .prepare_advance_to_next_beacon_block(&private_key, vec![], vec![], vec![fee_transaction, transaction], rng)
+        .unwrap();
+
+    // Check that the block aborts the invalid transaction.
+    assert_eq!(block.aborted_transaction_ids(), &vec![fee_transaction_id]);
+    assert_eq!(block.transaction_ids().collect::<Vec<_>>(), vec![&transaction_id]);
+
+    // Check that the next block is valid.
+    ledger.check_next_block(&block, rng).unwrap();
+
+    // Add the block to the ledger.
+    ledger.advance_to_next_block(&block).unwrap();
+}
+
+#[test]
 fn test_abort_invalid_transaction() {
     let rng = &mut TestRng::default();
 

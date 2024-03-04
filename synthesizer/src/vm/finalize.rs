@@ -55,11 +55,19 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     let rngs =
                         (0..candidate_transactions.len()).map(|_| StdRng::from_seed(rng.gen())).collect::<Vec<_>>();
                     // Verify the transactions and collect the error message if there is one.
-                    cfg_into_iter!(candidate_transactions).zip(rngs).partition_map(|(transaction, mut rng)| match self
-                        .check_transaction(transaction, None, &mut rng)
-                    {
-                        Ok(_) => Either::Left(transaction),
-                        Err(e) => Either::Right((transaction, e.to_string())),
+                    cfg_into_iter!(candidate_transactions).zip(rngs).partition_map(|(transaction, mut rng)| {
+                        // Abort the transaction if it is a fee transaction.
+                        if transaction.is_fee() {
+                            return Either::Right((
+                                transaction,
+                                "Fee transactions are not allowed in speculate".to_string(),
+                            ));
+                        }
+                        // Verify the transaction.
+                        match self.check_transaction(transaction, None, &mut rng) {
+                            Ok(_) => Either::Left(transaction),
+                            Err(e) => Either::Right((transaction, e.to_string())),
+                        }
                     })
                 }
             };
