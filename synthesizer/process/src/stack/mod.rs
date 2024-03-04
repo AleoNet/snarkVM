@@ -36,7 +36,7 @@ mod evaluate;
 mod execute;
 mod helpers;
 
-use crate::{traits::*, CallMetrics, Process, Trace};
+use crate::{cost_in_microcredits, traits::*, CallMetrics, Process, Trace};
 use console::{
     account::{Address, PrivateKey},
     network::prelude::*,
@@ -187,6 +187,8 @@ pub struct Stack<N: Network> {
     verifying_keys: Arc<RwLock<IndexMap<Identifier<N>, VerifyingKey<N>>>>,
     /// The mapping of function names to the number of calls.
     number_of_calls: IndexMap<Identifier<N>, usize>,
+    /// The mapping of function names to finalize cost.
+    finalize_costs: IndexMap<Identifier<N>, u64>,
     /// The program depth.
     program_depth: usize,
 }
@@ -272,6 +274,15 @@ impl<N: Network> StackProgram<N> for Stack<N> {
         let external_program = self.get_external_program(locator.program_id())?;
         // Return the external record, if it exists.
         external_program.get_record(locator.resource())
+    }
+
+    /// Returns the expected finalize cost for the given function name.
+    #[inline]
+    fn get_finalize_cost(&self, function_name: &Identifier<N>) -> Result<u64> {
+        self.finalize_costs
+            .get(function_name)
+            .copied()
+            .ok_or_else(|| anyhow!("Function '{function_name}' does not exist"))
     }
 
     /// Returns the function with the given function name.

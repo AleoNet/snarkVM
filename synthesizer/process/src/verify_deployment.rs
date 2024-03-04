@@ -33,16 +33,6 @@ impl<N: Network> Process<N> {
         let stack = Stack::new(self, deployment.program())?;
         lap!(timer, "Compute the stack");
 
-        // Ensure that each finalize block does not exceed the `TRANSACTION_SPEND_LIMIT`.
-        for (function_name, _) in deployment.program().functions() {
-            let finalize_cost = cost_in_microcredits(&stack, function_name)?;
-            ensure!(
-                finalize_cost <= N::TRANSACTION_SPEND_LIMIT,
-                "Finalize block '{function_name}' has a cost '{finalize_cost}' which exceeds the transaction spend limit '{}'",
-                N::TRANSACTION_SPEND_LIMIT
-            );
-        }
-
         // Ensure the verifying keys are well-formed and the certificates are valid.
         let verification = stack.verify_deployment::<A, R>(deployment, rng);
         lap!(timer, "Verify the deployment");
