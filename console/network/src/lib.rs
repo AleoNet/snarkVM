@@ -148,6 +148,8 @@ pub trait Network:
     const MAX_MAPPINGS: usize = 31;
     /// The maximum number of functions in a program.
     const MAX_FUNCTIONS: usize = 31;
+    /// The maximum number of structs in a program.
+    const MAX_STRUCTS: usize = 31;
     /// The maximum number of operands in an instruction.
     const MAX_OPERANDS: usize = Self::MAX_INPUTS;
     /// The maximum number of instructions in a closure or function.

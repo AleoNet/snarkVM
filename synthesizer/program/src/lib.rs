@@ -362,6 +362,9 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Pro
         // Retrieve the struct name.
         let struct_name = *struct_.name();
 
+        // Ensure the program has not exceeded the maximum number of structs.
+        ensure!(self.functions.len() < N::MAX_STRUCTS, "Program exceeds the maximum number of structs.");
+
         // Ensure the struct name is new.
         ensure!(self.is_unique_name(&struct_name), "'{struct_name}' is already in use.");
         // Ensure the struct name is not a reserved opcode.
