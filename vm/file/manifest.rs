@@ -35,8 +35,8 @@ pub struct Manifest<N: Network> {
 }
 
 impl<N: Network> Manifest<N> {
-    /// Creates a new manifest file with the given directory path and program ID.
-    pub fn create(directory: &Path, id: &ProgramID<N>) -> Result<Self> {
+    /// Creates a new manifest file with the given directory path, program ID, and an optional description.
+    pub fn create(directory: &Path, id: &ProgramID<N>, description: Option<&str>) -> Result<Self> {
         // Ensure the directory path exists.
         ensure!(directory.exists(), "The program directory does not exist: '{}'", directory.display());
         // Ensure the program name is valid.
@@ -47,10 +47,12 @@ impl<N: Network> Manifest<N> {
             r#"{{
     "program": "{id}",
     "version": "0.0.0",
-    "description": "",
+    "description": "{description}",
     "license": "MIT"
 }}
-"#
+"#,
+            id = id.name(),
+            description = description.unwrap_or(""),
         );
 
         // Construct the file path.
