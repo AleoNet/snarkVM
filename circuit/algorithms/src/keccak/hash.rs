@@ -598,8 +598,8 @@ mod tests {
         // To make it easier to find the output bits, we should consider combining the bits in some way.
         // It doesn't work to use from_bits_le since that constraints bits above 252 to be zero.
 
-        // _precadidate is a Vec<Boolean<FormalCircuit>> of length 1600;
-        // here's an exmaple of how to convert it to an array.
+        // _precandidate is a Vec<Boolean<FormalCircuit>> of length 1600;
+        // here's an example of how to convert it to an array.
         // let _precandidate_array : &[Boolean<FormalCircuit>] = &_precandidate.clone()[..];
         // and here's what doesn't work in combining the bits:
         // let _candidate = Field::<FormalCircuit>::from_bits_le(_precandidate_array);
