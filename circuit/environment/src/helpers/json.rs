@@ -63,8 +63,8 @@ impl ConstraintJSON {
     fn variable_json<F: PrimeField>(v: &Variable<F>) -> String {
         match v {
             Variable::Constant(val) => format!("c{}", val),
-            Variable::Public(idx, _) => format!("x{}", idx),
-            Variable::Private(idx, _) => format!("w{}", idx),
+            Variable::Public(idx) => format!("x{:?}", idx),
+            Variable::Private(idx) => format!("w{:?}", idx),
         }
     }
 
