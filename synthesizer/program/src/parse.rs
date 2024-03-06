@@ -261,7 +261,8 @@ function compute:
 
     #[test]
     fn test_program_size() {
-        let long_name = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+        // Define variable name for easy experimentation with program sizes.
+        let var_name = "a";
 
         // Helper function to generate imports.
         let gen_import_string = |n: usize| -> String {
@@ -277,8 +278,8 @@ function compute:
             let mut s = String::with_capacity(CurrentNetwork::MAX_PROGRAM_SIZE);
             for i in 0..n {
                 s.push_str(&format!("struct m{}:\n", i));
-                for j in 0..CurrentNetwork::MAX_DATA_ENTRIES {
-                    s.push_str(&format!("    {}{} as u128;\n", long_name, j));
+                for j in 0..10 {
+                    s.push_str(&format!("    {}{} as u128;\n", var_name, j));
                 }
             }
             s
@@ -289,8 +290,8 @@ function compute:
             let mut s = String::with_capacity(CurrentNetwork::MAX_PROGRAM_SIZE);
             for i in 0..n {
                 s.push_str(&format!("record r{}:\n    owner as address.private;\n", i));
-                for j in 0..CurrentNetwork::MAX_DATA_ENTRIES {
-                    s.push_str(&format!("    {}{} as u128.private;\n", long_name, j));
+                for j in 0..10 {
+                    s.push_str(&format!("    {}{} as u128.private;\n", var_name, j));
                 }
             }
             s
@@ -302,7 +303,7 @@ function compute:
             for i in 0..n {
                 s.push_str(&format!(
                     "mapping {}{}:\n    key as field.public;\n    value as field.public;\n",
-                    long_name, i
+                    var_name, i
                 ));
             }
             s
@@ -313,7 +314,7 @@ function compute:
             let mut s = String::with_capacity(CurrentNetwork::MAX_PROGRAM_SIZE);
             for i in 0..n {
                 s.push_str(&format!("closure c{}:\n    input r0 as u128;\n", i));
-                for j in 0..4000 {
+                for j in 0..10 {
                     s.push_str(&format!("    add r0 r0 into r{};\n", j));
                 }
                 s.push_str(&format!("    output r{} as u128;\n", 4000));
@@ -326,7 +327,7 @@ function compute:
             let mut s = String::with_capacity(CurrentNetwork::MAX_PROGRAM_SIZE);
             for i in 0..n {
                 s.push_str(&format!("function f{}:\n    add 1u128 1u128 into r0;\n", i));
-                for j in 0..4000 {
+                for j in 0..10 {
                     s.push_str(&format!("    add r0 r0 into r{j};\n"));
                 }
             }
@@ -337,6 +338,9 @@ function compute:
         let test_parse = |imports: &str, body: &str, should_succeed: bool| {
             let program = format!("{imports}\nprogram to_parse.aleo;\n\n{body}");
             let result = Program::<CurrentNetwork>::from_str(&program);
+            if result.is_ok() != should_succeed {
+                println!("Program failed to parse: {program}");
+            }
             assert_eq!(result.is_ok(), should_succeed);
         };
 
