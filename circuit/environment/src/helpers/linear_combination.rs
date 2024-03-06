@@ -130,9 +130,7 @@ impl<F: PrimeField> LinearCombination<F> {
     }
 
     /// Returns the terms (excluding the constant value) in the linear combination.
-    pub(crate) fn to_terms(&self) -> &IndexMap<Variable<F>, F> {
-    // EM NOTE: the next line was in keccak-bit-tests, the previous in mainnet
-    //pub(super) fn to_terms(&self) -> &[(Variable<F>, F)] {
+    pub(super) fn to_terms(&self) -> &[(Variable<F>, F)] {
         &self.terms
     }
 

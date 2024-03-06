@@ -44,16 +44,16 @@ impl<N: Network> Stack<N> {
                 _ => self.sample_value(&burner_address, input_type, rng),
             })
             .collect::<Result<Vec<_>>>()?;
-
-        // Compute the request, with a burner private key.
+        
+        // Compute the request, with a burner private key, root_tvk of None, and is_root of false.
         let request =
-            Request::sign(&burner_private_key, *program_id, *function_name, inputs.into_iter(), &input_types, rng)?;
+            Request::sign(&burner_private_key, *program_id, *function_name, inputs.into_iter(), &input_types, None, false, rng)?;
         // Initialize the authorization.
         let authorization = Authorization::new(request.clone());
         // Initialize the call stack.
         let call_stack = CallStack::Synthesize(vec![request], burner_private_key, authorization);
         // Synthesize the circuit.
-        let _ = self.execute_function::<A>(call_stack, None)?;
+        let _ = self.execute_function::<A, R>(call_stack, None, None, rng)?;
 
         let transcript = A::clear();
 

@@ -52,14 +52,14 @@ type E = FormalCircuit;
 
 thread_local! {
     /// The group bases for the Aleo signature and encryption schemes.
-    static GENERATOR_G: Vec<Group<FormalV0>> = Vec::constant(<console::Testnet3 as console::Network>::g_powers().to_vec());
+    static GENERATOR_G: Vec<Group<FormalV0>> = Vec::constant(<console::MainnetV0 as console::Network>::g_powers().to_vec());
 
     /// The encryption domain as a constant field element.
-    static ENCRYPTION_DOMAIN: Field<FormalV0> = Field::constant(<console::Testnet3 as console::Network>::encryption_domain());
+    static ENCRYPTION_DOMAIN: Field<FormalV0> = Field::constant(<console::MainnetV0 as console::Network>::encryption_domain());
     /// The graph key domain as a constant field element.
-    static GRAPH_KEY_DOMAIN: Field<FormalV0> = Field::constant(<console::Testnet3 as console::Network>::graph_key_domain());
+    static GRAPH_KEY_DOMAIN: Field<FormalV0> = Field::constant(<console::MainnetV0 as console::Network>::graph_key_domain());
     /// The serial number domain as a constant field element.
-    static SERIAL_NUMBER_DOMAIN: Field<FormalV0> = Field::constant(<console::Testnet3 as console::Network>::serial_number_domain());
+    static SERIAL_NUMBER_DOMAIN: Field<FormalV0> = Field::constant(<console::MainnetV0 as console::Network>::serial_number_domain());
 
     /// The BHP hash function, which can take an input of up to 256 bits.
     static BHP_256: BHP256<FormalV0> = BHP256::<FormalV0>::constant(console::BHP_256.clone());
@@ -480,6 +480,16 @@ impl Environment for FormalV0 {
     /// Clears the circuit and initializes an empty environment.
     fn reset() {
         E::reset()
+    }
+
+    /// Returns the constraint limit for the circuit, if one exists.
+    fn get_constraint_limit() -> Option<u64> {
+        None //CONSTRAINT_LIMIT.with(|current_limit| current_limit.get())
+    }
+
+    /// Sets the constraint limit for the circuit.
+    fn set_constraint_limit(limit: Option<u64>) {
+        //CONSTRAINT_LIMIT.with(|current_limit| current_limit.replace(limit));
     }
 }
 

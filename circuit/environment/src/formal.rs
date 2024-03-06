@@ -19,7 +19,7 @@ use std::{fmt::Formatter, iter, rc::Rc};
 
 use serde::{Deserialize, Serialize};
 
-type Field = <console::Testnet3 as console::Environment>::Field;
+type Field = <console::MainnetV0 as console::Environment>::Field;
 
 thread_local! {
     pub(super) static TRANSCRIPT: Rc<RefCell<ConstraintTranscript>> = Rc::new(RefCell::new(ConstraintTranscript::new()));
@@ -190,6 +190,16 @@ impl Environment for FormalCircuit {
     fn reset() {
         Circuit::reset()
     }
+
+    /// Returns the constraint limit for the circuit, if one exists.
+    fn get_constraint_limit() -> Option<u64> {
+        None //CONSTRAINT_LIMIT.with(|current_limit| current_limit.get())
+    }
+
+    /// Sets the constraint limit for the circuit.
+    fn set_constraint_limit(limit: Option<u64>) {
+        //CONSTRAINT_LIMIT.with(|current_limit| current_limit.replace(limit));
+    }
 }
 
 #[derive(Serialize, Deserialize)]
@@ -263,7 +273,7 @@ impl Transcribe for FormalCircuit {
 
 impl fmt::Display for FormalCircuit {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        CIRCUIT.with(|circuit| write!(f, "{}", (**circuit).borrow()))
+        CIRCUIT.with(|circuit| write!(f, "{}", (*circuit).borrow()))
     }
 }
 
