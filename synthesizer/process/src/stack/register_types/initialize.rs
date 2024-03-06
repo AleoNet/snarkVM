@@ -13,7 +13,6 @@
 // limitations under the License.
 
 use super::*;
-use synthesizer_program::CastType;
 
 impl<N: Network> RegisterTypes<N> {
     /// Initializes a new instance of `RegisterTypes` for the given closure.
@@ -158,17 +157,17 @@ impl<N: Network> RegisterTypes<N> {
         }
 
         /* Additional checks. */
-        // - All futures produces before the `async` call must be consumed by the `async` call, in the order in which they were produced.
+        // - All futures produces before the `async` call must be consumed by the `async` call.
 
         // Get all registers containing futures.
-        let mut future_registers = register_types
+        let mut future_registers: IndexSet<(Register<N>, Locator<N>)> = register_types
             .destinations
             .iter()
             .filter_map(|(index, register_type)| match register_type {
-                RegisterType::Future(locator) => Some((Register::Locator(*index), *locator)),
+                RegisterType::Future(locator) => Some((Register::<N>::Locator(*index), *locator)),
                 _ => None,
             })
-            .collect::<Vec<_>>();
+            .collect();
 
         match async_ {
             // If no `async` instruction exists, then there should not be any future registers.
@@ -179,26 +178,22 @@ impl<N: Network> RegisterTypes<N> {
                     function.name()
                 )
             }
-            // Otherwise, check that all the registers were consumed by the `async` call, in order.
+            // Otherwise, check that all the registers were consumed by the `async` call.
             Some(async_) => {
                 // Remove the last future, since this is the future created by the `async` call.
                 future_registers.pop();
-                // Get the register operands that are `future` types.
-                let async_future_operands = async_
-                    .operands()
-                    .iter()
-                    .filter_map(|operand| match operand {
-                        Operand::Register(register) => match register_types.get_type(stack, register).ok() {
-                            Some(RegisterType::Future(locator)) => Some((register.clone(), locator)),
-                            _ => None,
-                        },
-                        _ => None,
-                    })
-                    .collect::<Vec<_>>();
-                // Ensure the future operands are in the same order as the future registers.
+                // Check only the register operands that are `future` types.
+                for operand in async_.operands() {
+                    if let Operand::Register(register) = operand {
+                        if let Ok(RegisterType::Future(locator)) = register_types.get_type(stack, register) {
+                            assert!(future_registers.remove(&(register.clone(), locator)));
+                        }
+                    }
+                }
+                // Ensure that all the futures created are consumed in the async call.
                 ensure!(
-                    async_future_operands == future_registers,
-                    "Function '{}' contains futures, but the 'async' instruction does not consume all of them in the order they were produced",
+                    future_registers.is_empty(),
+                    "Function '{}' contains futures, but the 'async' instruction does not consume all of the ones produced.",
                     function.name()
                 );
             }

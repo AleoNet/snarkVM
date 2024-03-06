@@ -33,6 +33,7 @@ use console::{
 };
 use synthesizer_program::{
     CallOperator,
+    CastType,
     Closure,
     Function,
     Instruction,
@@ -45,7 +46,7 @@ use synthesizer_program::{
 };
 
 use console::program::{FinalizeType, Locator};
-use indexmap::IndexMap;
+use indexmap::{IndexMap, IndexSet};
 
 #[derive(Clone, Default, PartialEq, Eq)]
 pub struct RegisterTypes<N: Network> {

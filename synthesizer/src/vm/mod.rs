@@ -55,7 +55,7 @@ use ledger_store::{
     TransactionStore,
     TransitionStore,
 };
-use synthesizer_process::{Authorization, Process, Trace};
+use synthesizer_process::{deployment_cost, execution_cost, Authorization, Process, Trace};
 use synthesizer_program::{FinalizeGlobalState, FinalizeOperation, FinalizeStoreTrait, Program};
 
 use aleo_std::prelude::{finish, lap, timer};

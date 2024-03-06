@@ -80,6 +80,9 @@ pub trait StackProgram<N: Network> {
     /// Returns `true` if the stack contains the external record.
     fn get_external_record(&self, locator: &Locator<N>) -> Result<&RecordType<N>>;
 
+    /// Returns the expected finalize cost for the given function name.
+    fn get_finalize_cost(&self, function_name: &Identifier<N>) -> Result<u64>;
+
     /// Returns the function with the given function name.
     fn get_function(&self, function_name: &Identifier<N>) -> Result<Function<N>>;
 

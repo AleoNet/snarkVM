@@ -24,6 +24,8 @@ impl<N: Network> FromBytes for Committee<N> {
             return Err(error("Invalid committee version"));
         }
 
+        // Read the committee ID.
+        let id = Field::read_le(&mut reader)?;
         // Read the starting round.
         let starting_round = u64::read_le(&mut reader)?;
         // Read the number of members.
@@ -51,6 +53,10 @@ impl<N: Network> FromBytes for Committee<N> {
         let total_stake = u64::read_le(&mut reader)?;
         // Construct the committee.
         let committee = Self::new(starting_round, members).map_err(|e| error(e.to_string()))?;
+        // Ensure the committee ID matches.
+        if committee.id() != id {
+            return Err(error("Invalid committee ID during deserialization"));
+        }
         // Ensure the total stake matches.
         match committee.total_stake() == total_stake {
             true => Ok(committee),
@@ -64,6 +70,8 @@ impl<N: Network> ToBytes for Committee<N> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Write the version.
         1u8.write_le(&mut writer)?;
+        // Write the committee ID.
+        self.id().write_le(&mut writer)?;
         // Write the starting round.
         self.starting_round.write_le(&mut writer)?;
         // Write the number of members.

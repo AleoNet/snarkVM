@@ -19,7 +19,8 @@ impl<N: Network> Serialize for Committee<N> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
             true => {
-                let mut certificate = serializer.serialize_struct("Committee", 3)?;
+                let mut certificate = serializer.serialize_struct("Committee", 4)?;
+                certificate.serialize_field("id", &self.id)?;
                 certificate.serialize_field("starting_round", &self.starting_round)?;
                 certificate.serialize_field("members", &self.members)?;
                 certificate.serialize_field("total_stake", &self.total_stake)?;
@@ -36,12 +37,17 @@ impl<'de, N: Network> Deserialize<'de> for Committee<N> {
         match deserializer.is_human_readable() {
             true => {
                 let mut value = serde_json::Value::deserialize(deserializer)?;
+                let id: Field<N> = DeserializeExt::take_from_value::<D>(&mut value, "id")?;
                 let total_stake: u64 = DeserializeExt::take_from_value::<D>(&mut value, "total_stake")?;
                 let committee = Self::new(
                     DeserializeExt::take_from_value::<D>(&mut value, "starting_round")?,
                     DeserializeExt::take_from_value::<D>(&mut value, "members")?,
                 )
                 .map_err(de::Error::custom)?;
+
+                if committee.id != id {
+                    return Err(de::Error::custom("committee ID mismatch"));
+                }
                 match committee.total_stake == total_stake {
                     true => Ok(committee),
                     false => Err(de::Error::custom("total stake mismatch")),
