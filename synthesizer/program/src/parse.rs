@@ -106,16 +106,13 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Fro
 
     /// Returns a program from a string literal.
     fn from_str(string: &str) -> Result<Self> {
-        // Ensure the raw program string is less than MAX_PROGRAM_CHAR_SIZE.
-        ensure!(string.len() <= N::MAX_PROGRAM_CHAR_SIZE, "Program exceeds N::MAX_PROGRAM_CHAR_SIZE.");
+        // Ensure the raw program string is less than MAX_PROGRAM_SIZE.
+        ensure!(string.len() <= N::MAX_PROGRAM_SIZE, "Program length exceeds N::MAX_PROGRAM_SIZE.");
 
         match Self::parse(string) {
             Ok((remainder, object)) => {
                 // Ensure the remainder is empty.
                 ensure!(remainder.is_empty(), "Failed to parse string. Remaining invalid string is: \"{remainder}\"");
-                // Ensure the parsed program is less than MAX_PROGRAM_BYTE_SIZE.
-                let program_byte_len = object.to_bytes_le()?.len();
-                ensure!(program_byte_len <= N::MAX_PROGRAM_BYTE_SIZE, "Program exceeds N::MAX_PROGRAM_BYTE_SIZE.");
                 // Return the object.
                 Ok(object)
             }
@@ -268,7 +265,7 @@ function compute:
 
         // Helper function to generate large structs.
         let gen_struct_string = |n: usize| -> String {
-            let mut s = String::with_capacity(CurrentNetwork::MAX_PROGRAM_CHAR_SIZE);
+            let mut s = String::with_capacity(CurrentNetwork::MAX_PROGRAM_SIZE);
             for i in 0..n {
                 s.push_str(&format!("struct m{}:\n", i));
                 for j in 0..CurrentNetwork::MAX_DATA_ENTRIES {
@@ -280,7 +277,7 @@ function compute:
 
         // Helper function to generate large records.
         let gen_record_string = |n: usize| -> String {
-            let mut s = String::with_capacity(CurrentNetwork::MAX_PROGRAM_CHAR_SIZE);
+            let mut s = String::with_capacity(CurrentNetwork::MAX_PROGRAM_SIZE);
             for i in 0..n {
                 s.push_str(&format!("record r{}:\n    owner as address.private;\n", i));
                 for j in 0..CurrentNetwork::MAX_DATA_ENTRIES {
@@ -292,7 +289,7 @@ function compute:
 
         // Helper function to generate large mappings.
         let gen_mapping_string = |n: usize| -> String {
-            let mut s = String::with_capacity(CurrentNetwork::MAX_PROGRAM_CHAR_SIZE);
+            let mut s = String::with_capacity(CurrentNetwork::MAX_PROGRAM_SIZE);
             for i in 0..n {
                 s.push_str(&format!(
                     "mapping {}{}:\n    key as field.public;\n    value as field.public;\n",
@@ -304,7 +301,7 @@ function compute:
 
         // Helper function to generate large closures.
         let gen_closure_string = |n: usize| -> String {
-            let mut s = String::with_capacity(CurrentNetwork::MAX_PROGRAM_CHAR_SIZE);
+            let mut s = String::with_capacity(CurrentNetwork::MAX_PROGRAM_SIZE);
             for i in 0..n {
                 s.push_str(&format!("closure c{}:\n    input r0 as u128;\n", i));
                 for j in 0..4000 {
@@ -317,7 +314,7 @@ function compute:
 
         // Helper function to generate large functions.
         let gen_function_string = |n: usize| -> String {
-            let mut s = String::with_capacity(CurrentNetwork::MAX_PROGRAM_CHAR_SIZE);
+            let mut s = String::with_capacity(CurrentNetwork::MAX_PROGRAM_SIZE);
             for i in 0..n {
                 s.push_str(&format!("function f{}:\n    add 1u128 1u128 into r0;\n", i));
                 for j in 0..4000 {

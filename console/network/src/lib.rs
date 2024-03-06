@@ -144,10 +144,8 @@ pub trait Network:
     /// The maximum number of entries in a record.
     const MAX_RECORD_ENTRIES: usize = Self::MIN_RECORD_ENTRIES.saturating_add(Self::MAX_DATA_ENTRIES);
 
-    /// The maximum program size in bytes.
-    const MAX_PROGRAM_BYTE_SIZE: usize = 3_500_000; // 3.5 MB
-    /// The maximum program size in characters.
-    const MAX_PROGRAM_CHAR_SIZE: usize = 7_000_000; // 7 MB
+    /// The maximum program size by number of characters.
+    const MAX_PROGRAM_SIZE: usize = 7_000_000; // 7 MB
 
     /// The maximum number of mappings in a program.
     const MAX_MAPPINGS: usize = 31;
