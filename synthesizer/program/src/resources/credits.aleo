@@ -314,7 +314,7 @@ finalize bond_public:
 /**********************************************************************************************************************/
 
 // This function allows any staker to unbond their microcredits from a validator.
-// The corresponding functions for 'unbond_public' is 'claim_unbond_public'.
+// The corresponding function for 'unbond_public' is 'claim_unbond_public'.
 function unbond_public:
     // Input the amount of microcredits to unbond.
     input r0 as u64.public;
@@ -632,7 +632,10 @@ finalize unbond_delegator_as_validator:
 
 /**********************************************************************************************************************/
 
-// This function allows any staker to claim their microcredits after the unbonding period.
+// The `claim_unbond_public` function allows any staker to claim their microcredits
+// to their withdrawal address after the unbonding period.
+//
+// This function also removes the staker's withdrawal address if the staker no longer has any bonded balance.
 function claim_unbond_public:
     // Claim the unbonded microcredits.
     async claim_unbond_public self.caller into r0;
@@ -650,16 +653,30 @@ finalize claim_unbond_public:
     // Enforce the unbonding is complete.
     assert.eq r2 true;
 
-    // Add the unbonded amount to the stakers's public balance.
-    // Increments `account[r0]` by `r1`.
-    // If `account[r0]` does not exist, 0u64 is used.
-    // If `account[r0] + r2` overflows, `claim_unbond_public` is reverted.
-    get.or_use account[r0] 0u64 into r3;
-    add r1.microcredits r3 into r4;
-    set r4 into account[r0];
+    // Get the withdrawal address for the caller.
+    get withdraw[r0] into r3;
+
+    // Add the unbonded amount to the withdrawal address public balance.
+    // Increments `account[r3]` by `r1`.
+    // If `account[r3]` does not exist, 0u64 is used.
+    // If `account[r3] + r2` overflows, `claim_unbond_public` is reverted.
+    get.or_use account[r3] 0u64 into r4;
+    add r1.microcredits r4 into r5;
+    set r5 into account[r3];
 
     // Remove the unbond state for the caller.
     remove unbonding[r0];
+
+    // Check if the caller is still bonded.
+    contains bonded[r0] into r6;
+    // Ends the `claim_unbond_public` logic.
+    branch.eq r6 true to end;
+
+    // If the caller is no longer bonded, remove the withdrawal address.
+    remove withdraw[r0];
+
+    // The terminus.
+    position end;
 
 /**********************************************************************************************************************/
 
