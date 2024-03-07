@@ -1391,7 +1391,7 @@ fn test_max_committee_limit_with_bonds() {
         .iter()
         .map(|(private_key, (amount, _))| {
             let address = Address::try_from(private_key).unwrap();
-            (address, (address, *amount))
+            (address, (address, address, *amount))
         })
         .collect();
 

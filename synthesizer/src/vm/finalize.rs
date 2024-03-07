@@ -762,6 +762,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         let account_mapping = Identifier::from_str("account")?;
         // Construct the metadata mapping name.
         let metadata_mapping = Identifier::from_str("metadata")?;
+        // Construct the withdraw mapping name.
+        let withdraw_mapping = Identifier::from_str("withdraw")?;
 
         // Initialize a list of finalize operations.
         let mut finalize_operations = Vec::new();
@@ -807,7 +809,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
                     // Calculate the stake per validator using `bonded_balances`.
                     let mut stake_per_validator = IndexMap::with_capacity(committee.members().len());
-                    for (address, (validator_address, amount)) in bonded_balances.iter() {
+                    for (address, (validator_address, _, amount)) in bonded_balances.iter() {
                         // Check that the amount meets the minimum requirement, depending on whether the address is a validator.
                         if *address == *validator_address {
                             ensure!(
@@ -855,9 +857,25 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                         "Ratify::Genesis(..) incorrect total total stake for the committee"
                     );
 
+                    // Split the bonded balances into stakers and withdrawal addresses.
+                    let (next_stakers, withdrawal_addresses) = bonded_balances.iter().fold(
+                        (
+                            IndexMap::with_capacity(bonded_balances.len()),
+                            IndexMap::with_capacity(bonded_balances.len()),
+                        ),
+                        |(mut stakers, mut withdrawal_addresses), (staker, (validator, withdrawal_address, amount))| {
+                            stakers.insert(*staker, (*validator, *amount));
+                            withdrawal_addresses.insert(*staker, *withdrawal_address);
+                            (stakers, withdrawal_addresses)
+                        },
+                    );
+
                     // Construct the next committee map and next bonded map.
                     let (next_committee_map, next_bonded_map) =
-                        to_next_commitee_map_and_bonded_map(committee, bonded_balances);
+                        to_next_commitee_map_and_bonded_map(committee, &next_stakers);
+
+                    // Construct the next withdraw map.
+                    let next_withdraw_map = to_next_withdraw_map(&withdrawal_addresses);
 
                     // Insert the next committee into storage.
                     store.committee_store().insert(state.block_height(), *(committee.clone()))?;
@@ -867,6 +885,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                         store.replace_mapping(program_id, committee_mapping, next_committee_map)?,
                         // Replace the bonded mapping in storage.
                         store.replace_mapping(program_id, bonded_mapping, next_bonded_map)?,
+                        // Replace the withdraw mapping in storage.
+                        store.replace_mapping(program_id, withdraw_mapping, next_withdraw_map)?,
                     ]);
 
                     // Update the number of validators.
@@ -1350,18 +1370,19 @@ finalize transfer_public:
     }
 
     /// Returns the `bonded_balances` given the validators and delegators.
+    /// Note that the withdrawal address is the same as the staker address.
     fn sample_bonded_balances<N: Network>(
         validators: &IndexMap<PrivateKey<N>, (u64, bool)>,
         delegators: &IndexMap<PrivateKey<N>, (Address<N>, u64)>,
-    ) -> IndexMap<Address<N>, (Address<N>, u64)> {
+    ) -> IndexMap<Address<N>, (Address<N>, Address<N>, u64)> {
         let mut bonded_balances = IndexMap::with_capacity(validators.len() + delegators.len());
         for (private_key, (amount, _)) in validators {
             let address = Address::try_from(private_key).unwrap();
-            bonded_balances.insert(address, (address, *amount));
+            bonded_balances.insert(address, (address, address, *amount));
         }
         for (private_key, (validator, amount)) in delegators {
             let address = Address::try_from(private_key).unwrap();
-            bonded_balances.insert(address, (*validator, *amount));
+            bonded_balances.insert(address, (*validator, address, *amount));
         }
         bonded_balances
     }
@@ -2146,7 +2167,7 @@ finalize compute:
         let actual_bonded = vm.finalize_store().get_mapping_confirmed(program_id, bonded_mapping_name).unwrap();
         let expected_bonded = bonded_balances
             .iter()
-            .map(|(address, (validator, amount))| {
+            .map(|(address, (validator, _, amount))| {
                 (
                     Plaintext::from_str(&address.to_string()).unwrap(),
                     Value::from_str(&format!("{{ validator: {validator}, microcredits: {amount}u64 }}")).unwrap(),
