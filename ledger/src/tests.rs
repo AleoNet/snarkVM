@@ -226,8 +226,11 @@ fn test_insufficient_public_fees() {
 
     // Attempt to bond the node with insufficient public fees.
     {
-        let inputs =
-            [Value::from_str(&format!("{recipient_address}")).unwrap(), Value::from_str("1000000000000u64").unwrap()];
+        let inputs = [
+            Value::from_str(&format!("{recipient_address}")).unwrap(),
+            Value::from_str(&format!("{recipient_address}")).unwrap(),
+            Value::from_str("1000000000000u64").unwrap(),
+        ];
         let transaction = ledger
             .vm
             .execute(&recipient_private_key, ("credits.aleo", "bond_public"), inputs.into_iter(), None, 0, None, rng)
@@ -520,6 +523,7 @@ fn test_bond_and_unbond_validator() {
     // Construct the bond public
     let bond_amount = 1000000000000u64; // 1 million credits.
     let inputs = [
+        Value::from_str(&format!("{new_member_address}")).unwrap(),
         Value::from_str(&format!("{new_member_address}")).unwrap(),
         Value::from_str(&format!("{bond_amount}u64")).unwrap(),
     ];
@@ -1419,6 +1423,7 @@ fn test_max_committee_limit_with_bonds() {
             ("credits.aleo", "bond_public"),
             vec![
                 Value::<CurrentNetwork>::from_str(&first_address.to_string()).unwrap(),
+                Value::<CurrentNetwork>::from_str(&first_address.to_string()).unwrap(),
                 Value::<CurrentNetwork>::from_str(&format!("{MIN_VALIDATOR_STAKE}u64")).unwrap(),
             ]
             .iter(),
@@ -1461,6 +1466,7 @@ fn test_max_committee_limit_with_bonds() {
             &second_private_key,
             ("credits.aleo", "bond_public"),
             vec![
+                Value::<CurrentNetwork>::from_str(&second_address.to_string()).unwrap(),
                 Value::<CurrentNetwork>::from_str(&second_address.to_string()).unwrap(),
                 Value::<CurrentNetwork>::from_str(&format!("{MIN_VALIDATOR_STAKE}u64")).unwrap(),
             ]
