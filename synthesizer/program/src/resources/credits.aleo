@@ -659,7 +659,7 @@ finalize claim_unbond_public:
     // Add the unbonded amount to the withdrawal address public balance.
     // Increments `account[r3]` by `r1`.
     // If `account[r3]` does not exist, 0u64 is used.
-    // If `account[r3] + r2` overflows, `claim_unbond_public` is reverted.
+    // If `account[r3] + r1` overflows, `claim_unbond_public` is reverted.
     get.or_use account[r3] 0u64 into r4;
     add r1.microcredits r4 into r5;
     set r5 into account[r3];
