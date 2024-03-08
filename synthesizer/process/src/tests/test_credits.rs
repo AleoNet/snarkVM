@@ -1737,6 +1737,240 @@ fn test_bonding_to_closed_fails() {
     );
 }
 
+// All the the above test cases use the same staker and withdraw addresses.
+// The following test check the functionality of the withdraw address using a different staker and withdraw address.
+
+#[test]
+fn test_claim_unbond_public_to_withdrawal_address() {
+    let rng = &mut TestRng::default();
+
+    // Construct the process.
+    let process = Process::<CurrentNetwork>::load().unwrap();
+
+    // Initialize a new finalize store.
+    let (store, _temp_dir) = sample_finalize_store!();
+
+    // Initialize the validators and delegators.
+    let (validators, delegators) = initialize_stakers(&store, 1, 1, rng).unwrap();
+    let (validator_private_key, (validator_address, _)) = validators.first().unwrap();
+    let (delegator_private_key, (delegator_address, _)) = delegators.first().unwrap();
+
+    // Retrieve the account balance.
+    let validator_balance = account_balance(&store, validator_address).unwrap();
+    let delegator_balance = account_balance(&store, delegator_address).unwrap();
+
+    // Initialize new withdrawal addresses.
+    let withdraw_private_key_1 = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+    let withdraw_private_key_2 = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+    let withdrawal_address_1 = Address::try_from(&withdraw_private_key_1).unwrap();
+    let withdrawal_address_2 = Address::try_from(&withdraw_private_key_2).unwrap();
+
+    // Bond the validator the withdrawal address.
+    let validator_amount = MIN_VALIDATOR_STAKE;
+    bond_public(
+        &process,
+        &store,
+        validator_private_key,
+        validator_address,
+        &withdrawal_address_1,
+        validator_amount,
+        rng,
+    )
+    .unwrap();
+
+    // Bond the delegator to the validator.
+    let delegator_amount = MIN_DELEGATOR_STAKE;
+    bond_public(
+        &process,
+        &store,
+        delegator_private_key,
+        validator_address,
+        &withdrawal_address_2,
+        delegator_amount,
+        rng,
+    )
+    .unwrap();
+
+    // Unbond the delegator completely.
+    unbond_public(&process, &store, delegator_private_key, delegator_amount, 1, rng).unwrap();
+    let unbond_height = unbond_state(&store, delegator_address).unwrap().unwrap().1;
+
+    // Check that the bond, unbond, and withdraw states are correct.
+    assert_eq!(account_balance(&store, delegator_address).unwrap(), delegator_balance - delegator_amount);
+    assert!(account_balance(&store, &withdrawal_address_2).is_err());
+    assert_eq!(bond_state(&store, delegator_address).unwrap(), None);
+    assert_eq!(unbond_state(&store, delegator_address).unwrap().unwrap().0, delegator_amount);
+    assert_eq!(withdraw_state(&store, delegator_address).unwrap(), Some(withdrawal_address_2));
+
+    /* Ensure that claiming an unbond after the unlock height succeeds. */
+    claim_unbond_public(&process, &store, delegator_private_key, unbond_height, rng).unwrap();
+
+    // Check that the bond, unbond, and withdraw states are correct.
+    assert_eq!(account_balance(&store, delegator_address).unwrap(), delegator_balance - delegator_amount);
+    assert_eq!(account_balance(&store, &withdrawal_address_2).unwrap(), delegator_amount);
+    assert_eq!(bond_state(&store, delegator_address).unwrap(), None);
+    assert_eq!(unbond_state(&store, delegator_address).unwrap(), None);
+    assert_eq!(withdraw_state(&store, delegator_address).unwrap(), None);
+
+    // Unbond the validator completely.
+    unbond_public(&process, &store, validator_private_key, validator_amount, unbond_height, rng).unwrap();
+    let unbond_height = unbond_state(&store, validator_address).unwrap().unwrap().1;
+
+    // Check that the bond, unbond, and withdraw states are correct.
+    assert_eq!(account_balance(&store, validator_address).unwrap(), validator_balance - validator_amount);
+    assert!(account_balance(&store, &withdrawal_address_1).is_err());
+    assert_eq!(bond_state(&store, validator_address).unwrap(), None);
+    assert_eq!(unbond_state(&store, validator_address).unwrap().unwrap().0, validator_amount);
+    assert_eq!(withdraw_state(&store, validator_address).unwrap(), Some(withdrawal_address_1));
+
+    /* Ensure that claiming an unbond after the unlock height succeeds. */
+    claim_unbond_public(&process, &store, validator_private_key, unbond_height, rng).unwrap();
+
+    // Check that the bond, unbond, and withdraw states are correct.
+    assert_eq!(account_balance(&store, validator_address).unwrap(), validator_balance - validator_amount);
+    assert_eq!(account_balance(&store, &withdrawal_address_1).unwrap(), validator_amount);
+    assert_eq!(bond_state(&store, validator_address).unwrap(), None);
+    assert_eq!(unbond_state(&store, validator_address).unwrap(), None);
+    assert_eq!(withdraw_state(&store, validator_address).unwrap(), None);
+}
+
+#[test]
+fn test_bonding_multiple_stakers_to_same_withdrawal_address() {
+    let rng = &mut TestRng::default();
+
+    // Construct the process.
+    let process = Process::<CurrentNetwork>::load().unwrap();
+
+    // Initialize a new finalize store.
+    let (store, _temp_dir) = sample_finalize_store!();
+
+    // Initialize the validators and delegators.
+    let (validators, delegators) = initialize_stakers(&store, 1, 1, rng).unwrap();
+    let (validator_private_key, (validator_address, _)) = validators.first().unwrap();
+    let (delegator_private_key, (delegator_address, _)) = delegators.first().unwrap();
+
+    // Initialize a new withdraw address.
+    let withdraw_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+    let withdrawal_address = Address::try_from(&withdraw_private_key).unwrap();
+
+    // Bond the validator the withdrawal address.
+    let validator_amount = MIN_VALIDATOR_STAKE;
+    bond_public(&process, &store, validator_private_key, validator_address, &withdrawal_address, validator_amount, rng)
+        .unwrap();
+
+    // Prepare the delegator amount.
+    let delegator_amount = MIN_DELEGATOR_STAKE;
+    // Bond the delegator the same withdrawal address.
+    bond_public(&process, &store, delegator_private_key, validator_address, &withdrawal_address, delegator_amount, rng)
+        .unwrap();
+
+    // Check that the withdraw state is correct.
+    assert_eq!(withdraw_state(&store, validator_address).unwrap(), Some(withdrawal_address));
+    assert_eq!(withdraw_state(&store, delegator_address).unwrap(), Some(withdrawal_address));
+}
+
+#[test]
+fn test_claim_unbond_public_removes_withdraw_mapping() {
+    let rng = &mut TestRng::default();
+
+    // Construct the process.
+    let process = Process::<CurrentNetwork>::load().unwrap();
+
+    // Initialize a new finalize store.
+    let (store, _temp_dir) = sample_finalize_store!();
+
+    // Initialize the validators and delegators.
+    let (validators, _) = initialize_stakers(&store, 1, 0, rng).unwrap();
+    let (validator_private_key, (validator_address, _)) = validators.first().unwrap();
+
+    // Retrieve the account balance.
+    let validator_balance = account_balance(&store, validator_address).unwrap();
+
+    // Initialize a new withdraw address.
+    let withdraw_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+    let withdrawal_address = Address::try_from(&withdraw_private_key).unwrap();
+
+    // Bond the validator the withdrawal address.
+    let validator_amount = MIN_VALIDATOR_STAKE * 2;
+    bond_public(&process, &store, validator_private_key, validator_address, &withdrawal_address, validator_amount, rng)
+        .unwrap();
+
+    // Unbond half of the validator's stake.
+    let unbond_amount = validator_amount / 2;
+    unbond_public(&process, &store, validator_private_key, unbond_amount, 1, rng).unwrap();
+    let unbond_height = unbond_state(&store, validator_address).unwrap().unwrap().1;
+
+    /* Ensure that claiming an unbond after the unlock height succeeds. */
+    claim_unbond_public(&process, &store, validator_private_key, unbond_height, rng).unwrap();
+
+    // Check that the account, bond, unbond, and withdraw states are correct.
+    assert_eq!(account_balance(&store, validator_address).unwrap(), validator_balance - validator_amount);
+    assert_eq!(account_balance(&store, &withdrawal_address).unwrap(), unbond_amount);
+    assert_eq!(
+        bond_state(&store, validator_address).unwrap(),
+        Some((*validator_address, validator_amount - unbond_amount))
+    );
+    assert_eq!(unbond_state(&store, validator_address).unwrap(), None);
+    assert_eq!(withdraw_state(&store, validator_address).unwrap(), Some(withdrawal_address));
+
+    // Unbond the remaining validator stake.
+    unbond_public(&process, &store, validator_private_key, unbond_amount, unbond_height, rng).unwrap();
+    let unbond_height = unbond_state(&store, validator_address).unwrap().unwrap().1;
+
+    /* Ensure that claiming an unbond after the unlock height succeeds. */
+    claim_unbond_public(&process, &store, validator_private_key, unbond_height, rng).unwrap();
+
+    // Check that the account, bond, unbond, and withdraw states are correct.
+    // The withdraw state should be removed after the last unbond is claimed.
+    assert_eq!(account_balance(&store, validator_address).unwrap(), validator_balance - validator_amount);
+    assert_eq!(account_balance(&store, &withdrawal_address).unwrap(), validator_amount);
+    assert_eq!(bond_state(&store, validator_address).unwrap(), None);
+    assert_eq!(unbond_state(&store, validator_address).unwrap(), None);
+    assert_eq!(withdraw_state(&store, validator_address).unwrap(), None);
+}
+
+#[test]
+fn test_bond_public_to_different_withdraw_address_fails() {
+    let rng = &mut TestRng::default();
+
+    // Construct the process.
+    let process = Process::<CurrentNetwork>::load().unwrap();
+
+    // Initialize a new finalize store.
+    let (store, _temp_dir) = sample_finalize_store!();
+
+    // Initialize the validators and delegators.
+    let (validators, _) = initialize_stakers(&store, 1, 0, rng).unwrap();
+    let (validator_private_key, (validator_address, _)) = validators.first().unwrap();
+
+    // Initialize a new withdraw address.
+    let withdraw_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+    let withdrawal_address = Address::try_from(&withdraw_private_key).unwrap();
+
+    // Bond the validator the withdrawal address.
+    let validator_amount = MIN_VALIDATOR_STAKE;
+    bond_public(&process, &store, validator_private_key, validator_address, &withdrawal_address, validator_amount, rng)
+        .unwrap();
+
+    // Initialize a new withdraw address.
+    let new_withdraw_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+    let new_withdraw_private_key = Address::try_from(&new_withdraw_private_key).unwrap();
+
+    // Ensure that bonding to a different withdraw address fails.
+    assert!(
+        bond_public(
+            &process,
+            &store,
+            validator_private_key,
+            validator_address,
+            &new_withdraw_private_key,
+            validator_amount,
+            rng
+        )
+        .is_err()
+    );
+}
+
 // Test cases:
 
 //   set_validator_state:
