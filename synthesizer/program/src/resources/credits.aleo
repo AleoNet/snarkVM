@@ -146,9 +146,9 @@ finalize bond_public:
     get.or_use metadata[aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc] 0u32 into r5;
     // Increment the committee size by one.
     add r5 1u32 into r6;
-    // Determine if the committee size is less than or equal to 200.
-    lte r6 200u32 into r7;
-    // Enforce that the committee size is less than or equal to 200.
+    // Determine if the committee size is less than or equal to 10.
+    lte r6 10u32 into r7;
+    // Enforce that the committee size is less than or equal to 10.
     assert.eq r7 true;
     // Set the new committee size.
     set r6 into metadata[aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc];
