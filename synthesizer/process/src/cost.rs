@@ -21,22 +21,141 @@ use console::{
 use ledger_block::{Deployment, Execution};
 use synthesizer_program::{CastType, Command, Finalize, Instruction, Operand, StackProgram};
 
-/// The base and per byte costs for expensive operations.
+/// Returns the *minimum* cost in microcredits to publish the given deployment (total cost, (storage cost, synthesis cost, namespace cost)).
+pub fn deployment_cost<N: Network>(deployment: &Deployment<N>) -> Result<(u64, (u64, u64, u64))> {
+    // Determine the number of bytes in the deployment.
+    let size_in_bytes = deployment.size_in_bytes()?;
+    // Retrieve the program ID.
+    let program_id = deployment.program_id();
+    // Determine the number of characters in the program ID.
+    let num_characters = u32::try_from(program_id.name().to_string().len())?;
+    // Compute the number of combined constraints in the program.
+    let num_combined_constraints = deployment.num_combined_constraints()?;
+
+    // Compute the storage cost in microcredits.
+    let storage_cost = size_in_bytes
+        .checked_mul(N::DEPLOYMENT_FEE_MULTIPLIER)
+        .ok_or(anyhow!("The storage cost computation overflowed for a deployment"))?;
+
+    // Compute the synthesis cost in microcredits.
+    let synthesis_cost = num_combined_constraints * N::SYNTHESIS_FEE_MULTIPLIER;
+
+    // Compute the namespace cost in credits: 10^(10 - num_characters).
+    let namespace_cost = 10u64
+        .checked_pow(10u32.saturating_sub(num_characters))
+        .ok_or(anyhow!("The namespace cost computation overflowed for a deployment"))?
+        .saturating_mul(1_000_000); // 1 microcredit = 1e-6 credits.
+
+    // Compute the total cost in microcredits.
+    let total_cost = storage_cost
+        .checked_add(synthesis_cost)
+        .and_then(|x| x.checked_add(namespace_cost))
+        .ok_or(anyhow!("The total cost computation overflowed for a deployment"))?;
+
+    Ok((total_cost, (storage_cost, synthesis_cost, namespace_cost)))
+}
+
+/// Returns the *minimum* cost in microcredits to publish the given execution (total cost, (storage cost, finalize cost)).
+pub fn execution_cost<N: Network>(process: &Process<N>, execution: &Execution<N>) -> Result<(u64, (u64, u64))> {
+    // Compute the storage cost in microcredits.
+    let storage_cost = execution.size_in_bytes()?;
+
+    // Get the root transition.
+    let transition = execution.peek()?;
+
+    // Get the finalize cost for the root transition.
+    let finalize_cost = process.get_stack(transition.program_id())?.get_finalize_cost(transition.function_name())?;
+
+    // Compute the total cost in microcredits.
+    let total_cost = storage_cost
+        .checked_add(finalize_cost)
+        .ok_or(anyhow!("The total cost computation overflowed for an execution"))?;
+
+    Ok((total_cost, (storage_cost, finalize_cost)))
+}
+
+/// Finalize costs for compute heavy operations, derived as:
+/// `BASE_COST + (PER_BYTE_COST * SIZE_IN_BYTES)`.
 const CAST_BASE_COST: u64 = 500;
 const CAST_PER_BYTE_COST: u64 = 30;
+
 const HASH_BASE_COST: u64 = 10_000;
 const HASH_PER_BYTE_COST: u64 = 30;
+
 const HASH_BHP_BASE_COST: u64 = 50_000;
 const HASH_BHP_PER_BYTE_COST: u64 = 300;
+
 const HASH_PSD_BASE_COST: u64 = 40_000;
 const HASH_PSD_PER_BYTE_COST: u64 = 75;
+
 const MAPPING_BASE_COST: u64 = 10_000;
 const MAPPING_PER_BYTE_COST: u64 = 10;
+
 const SET_BASE_COST: u64 = 10_000;
 const SET_PER_BYTE_COST: u64 = 100;
 
+/// A helper function to determine the plaintext type in bytes.
+fn plaintext_size_in_bytes<N: Network>(stack: &Stack<N>, plaintext_type: &PlaintextType<N>) -> Result<u64> {
+    match plaintext_type {
+        PlaintextType::Literal(literal_type) => Ok(literal_type.size_in_bytes::<N>() as u64),
+        PlaintextType::Struct(struct_name) => {
+            // Retrieve the struct from the stack.
+            let struct_ = stack.program().get_struct(struct_name)?;
+            // Retrieve the size of the struct name.
+            let size_of_name = struct_.name().to_bytes_le()?.len() as u64;
+            // Retrieve the size of all the members of the struct.
+            let size_of_members = struct_.members().iter().try_fold(0u64, |acc, (_, member_type)| {
+                acc.checked_add(plaintext_size_in_bytes(stack, member_type)?).ok_or(anyhow!(
+                    "Overflowed while computing the size of the struct '{}/{struct_name}' - {member_type}",
+                    stack.program_id()
+                ))
+            })?;
+            // Return the size of the struct.
+            Ok(size_of_name.saturating_add(size_of_members))
+        }
+        PlaintextType::Array(array_type) => {
+            // Retrieve the number of elements in the array.
+            let num_elements = **array_type.length() as u64;
+            // Compute the size of an array element.
+            let size_of_element = plaintext_size_in_bytes(stack, array_type.next_element_type())?;
+            // Return the size of the array.
+            Ok(num_elements.saturating_mul(size_of_element))
+        }
+    }
+}
+
+/// A helper function to compute the following: base_cost + (byte_multiplier * size_of_operands).
+fn cost_in_size<'a, N: Network>(
+    stack: &Stack<N>,
+    finalize: &Finalize<N>,
+    operands: impl IntoIterator<Item = &'a Operand<N>>,
+    byte_multiplier: u64,
+    base_cost: u64,
+) -> Result<u64> {
+    // Retrieve the finalize types.
+    let finalize_types = stack.get_finalize_types(finalize.name())?;
+    // Compute the size of the operands.
+    let size_of_operands = operands.into_iter().try_fold(0u64, |acc, operand| {
+        // Determine the size of the operand.
+        let operand_size = match finalize_types.get_type_from_operand(stack, operand)? {
+            FinalizeType::Plaintext(plaintext_type) => plaintext_size_in_bytes(stack, &plaintext_type)?,
+            FinalizeType::Future(future) => {
+                bail!("Future '{future}' is not a valid operand in the finalize scope");
+            }
+        };
+        // Safely add the size to the accumulator.
+        acc.checked_add(operand_size).ok_or(anyhow!(
+            "Overflowed while computing the size of the operand '{operand}' in '{}/{}' (finalize)",
+            stack.program_id(),
+            finalize.name()
+        ))
+    })?;
+    // Return the cost.
+    Ok(base_cost.saturating_add(byte_multiplier.saturating_mul(size_of_operands)))
+}
+
 /// Returns the the cost of a command in a finalize scope.
-pub fn command_cost<N: Network>(stack: &Stack<N>, finalize: &Finalize<N>, command: &Command<N>) -> Result<u64> {
+pub fn cost_per_command<N: Network>(stack: &Stack<N>, finalize: &Finalize<N>, command: &Command<N>) -> Result<u64> {
     match command {
         Command::Instruction(Instruction::Abs(_)) => Ok(500),
         Command::Instruction(Instruction::AbsWrapped(_)) => Ok(500),
@@ -234,59 +353,6 @@ pub fn command_cost<N: Network>(stack: &Stack<N>, finalize: &Finalize<N>, comman
     }
 }
 
-/// Returns the *minimum* cost in microcredits to publish the given deployment (total cost, (storage cost, synthesis cost, namespace cost)).
-pub fn deployment_cost<N: Network>(deployment: &Deployment<N>) -> Result<(u64, (u64, u64, u64))> {
-    // Determine the number of bytes in the deployment.
-    let size_in_bytes = deployment.size_in_bytes()?;
-    // Retrieve the program ID.
-    let program_id = deployment.program_id();
-    // Determine the number of characters in the program ID.
-    let num_characters = u32::try_from(program_id.name().to_string().len())?;
-    // Compute the number of combined constraints in the program.
-    let num_combined_constraints = deployment.num_combined_constraints()?;
-
-    // Compute the storage cost in microcredits.
-    let storage_cost = size_in_bytes
-        .checked_mul(N::DEPLOYMENT_FEE_MULTIPLIER)
-        .ok_or(anyhow!("The storage cost computation overflowed for a deployment"))?;
-
-    // Compute the synthesis cost in microcredits.
-    let synthesis_cost = num_combined_constraints * N::SYNTHESIS_FEE_MULTIPLIER;
-
-    // Compute the namespace cost in credits: 10^(10 - num_characters).
-    let namespace_cost = 10u64
-        .checked_pow(10u32.saturating_sub(num_characters))
-        .ok_or(anyhow!("The namespace cost computation overflowed for a deployment"))?
-        .saturating_mul(1_000_000); // 1 microcredit = 1e-6 credits.
-
-    // Compute the total cost in microcredits.
-    let total_cost = storage_cost
-        .checked_add(synthesis_cost)
-        .and_then(|x| x.checked_add(namespace_cost))
-        .ok_or(anyhow!("The total cost computation overflowed for a deployment"))?;
-
-    Ok((total_cost, (storage_cost, synthesis_cost, namespace_cost)))
-}
-
-/// Returns the *minimum* cost in microcredits to publish the given execution (total cost, (storage cost, finalize cost)).
-pub fn execution_cost<N: Network>(process: &Process<N>, execution: &Execution<N>) -> Result<(u64, (u64, u64))> {
-    // Compute the storage cost in microcredits.
-    let storage_cost = execution.size_in_bytes()?;
-
-    // Get the root transition.
-    let transition = execution.peek()?;
-
-    // Get the finalize cost for the root transition.
-    let finalize_cost = process.get_stack(transition.program_id())?.get_finalize_cost(transition.function_name())?;
-
-    // Compute the total cost in microcredits.
-    let total_cost = storage_cost
-        .checked_add(finalize_cost)
-        .ok_or(anyhow!("The total cost computation overflowed for an execution"))?;
-
-    Ok((total_cost, (storage_cost, finalize_cost)))
-}
-
 /// Returns the minimum number of microcredits required to run the finalize.
 pub fn cost_in_microcredits<N: Network>(stack: &Stack<N>, function_name: &Identifier<N>) -> Result<u64> {
     // Retrieve the finalize logic.
@@ -294,7 +360,6 @@ pub fn cost_in_microcredits<N: Network>(stack: &Stack<N>, function_name: &Identi
         // Return a finalize cost of 0, if the function does not have a finalize scope.
         return Ok(0);
     };
-
     // Get the cost of finalizing all futures.
     let mut future_cost = 0u64;
     for input in finalize.inputs() {
@@ -307,73 +372,12 @@ pub fn cost_in_microcredits<N: Network>(stack: &Stack<N>, function_name: &Identi
                 .ok_or(anyhow!("Finalize cost overflowed"))?;
         }
     }
-
     // Aggregate the cost of all commands in the program.
     finalize
         .commands()
         .iter()
-        .map(|command| command_cost(stack, finalize, command))
+        .map(|command| cost_per_command(stack, finalize, command))
         .try_fold(future_cost, |acc, res| {
             res.and_then(|x| acc.checked_add(x).ok_or(anyhow!("Finalize cost overflowed")))
         })
-}
-
-/// A helper function to determine the size of the plaintext type in bytes.
-fn plaintext_size_in_bytes<N: Network>(stack: &Stack<N>, plaintext_type: &PlaintextType<N>) -> Result<u64> {
-    match plaintext_type {
-        PlaintextType::Literal(literal_type) => Ok(literal_type.size_in_bytes::<N>() as u64),
-        PlaintextType::Struct(struct_name) => {
-            // Retrieve the struct from the stack.
-            let struct_ = stack.program().get_struct(struct_name)?;
-            // Retrieve the size of the struct name.
-            let size_of_name = struct_.name().to_bytes_le()?.len() as u64;
-            // Retrieve the size of all the members of the struct.
-            let size_of_members = struct_.members().iter().try_fold(0u64, |acc, (_, member_type)| {
-                acc.checked_add(plaintext_size_in_bytes(stack, member_type)?).ok_or(anyhow!(
-                    "Overflowed while computing the size of the struct '{}/{struct_name}' - {member_type}",
-                    stack.program_id()
-                ))
-            })?;
-            // Return the size of the struct.
-            Ok(size_of_name.saturating_add(size_of_members))
-        }
-        PlaintextType::Array(array_type) => {
-            // Retrieve the number of elements in the array.
-            let num_elements = **array_type.length() as u64;
-            // Compute the size of an array element.
-            let size_of_element = plaintext_size_in_bytes(stack, array_type.next_element_type())?;
-            // Return the size of the array.
-            Ok(num_elements.saturating_mul(size_of_element))
-        }
-    }
-}
-
-/// A helper function to compute the following: base_cost + (byte_multiplier * size_of_operands).
-fn cost_in_size<'a, N: Network>(
-    stack: &Stack<N>,
-    finalize: &Finalize<N>,
-    operands: impl IntoIterator<Item = &'a Operand<N>>,
-    byte_multiplier: u64,
-    base_cost: u64,
-) -> Result<u64> {
-    // Retrieve the finalize types.
-    let finalize_types = stack.get_finalize_types(finalize.name())?;
-    // Compute the size of the operands.
-    let size_of_operands = operands.into_iter().try_fold(0u64, |acc, operand| {
-        // Determine the size of the operand.
-        let operand_size = match finalize_types.get_type_from_operand(stack, operand)? {
-            FinalizeType::Plaintext(plaintext_type) => plaintext_size_in_bytes(stack, &plaintext_type)?,
-            FinalizeType::Future(future) => {
-                bail!("Future '{future}' is not a valid operand in the finalize scope");
-            }
-        };
-        // Safely add the size to the accumulator.
-        acc.checked_add(operand_size).ok_or(anyhow!(
-            "Overflowed while computing the size of the operand '{operand}' in '{}/{}' (finalize)",
-            stack.program_id(),
-            finalize.name()
-        ))
-    })?;
-    // Return the cost.
-    Ok(base_cost.saturating_add(byte_multiplier.saturating_mul(size_of_operands)))
 }
