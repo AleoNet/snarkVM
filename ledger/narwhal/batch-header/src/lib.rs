@@ -52,7 +52,12 @@ pub struct BatchHeader<N: Network> {
 
 impl<N: Network> BatchHeader<N> {
     /// The maximum number of certificates in a batch.
+    #[cfg(not(any(test, feature = "test")))]
     pub const MAX_CERTIFICATES: u16 = 10;
+    /// The maximum number of certificates in a batch.
+    /// This is set to a deliberately high value (200) for testing purposes only.
+    #[cfg(any(test, feature = "test"))]
+    pub const MAX_CERTIFICATES: u16 = 200;
     /// The maximum number of rounds to store before garbage collecting.
     pub const MAX_GC_ROUNDS: usize = 100;
     /// The maximum number of transmissions in a batch.

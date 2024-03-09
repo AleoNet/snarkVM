@@ -408,7 +408,7 @@ mod tests {
         // Set the number of rounds.
         const NUM_ROUNDS: u64 = 256 * 2_000;
         // Sample the number of members.
-        let num_members = rng.gen_range(3..=10);
+        let num_members = rng.gen_range(3..=Committee::<CurrentNetwork>::MAX_COMMITTEE_SIZE);
         // Sample a committee.
         let committee = crate::test_helpers::sample_committee_custom(num_members, rng);
         // Check the leader distribution.
@@ -420,7 +420,8 @@ mod tests {
         // Initialize the RNG.
         let rng = &mut TestRng::default();
         // Sample a committee.
-        let committee = crate::test_helpers::sample_committee_custom(10, rng);
+        let committee =
+            crate::test_helpers::sample_committee_custom(Committee::<CurrentNetwork>::MAX_COMMITTEE_SIZE, rng);
 
         // Start a timer.
         let timer = std::time::Instant::now();
