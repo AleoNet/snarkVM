@@ -216,7 +216,7 @@ fn initialize_stakers<N: Network, F: FinalizeStorage<N>>(
         // Initialize a new account.
         let private_key = PrivateKey::<N>::new(rng)?;
         let address = Address::try_from(&private_key)?;
-        let balance = 10_000_000_000_000u64;
+        let balance = 100_000_000_000_000u64;
 
         // Add the balance directly to the finalize store.
         let key = Plaintext::from(Literal::Address(address));
@@ -497,7 +497,7 @@ fn test_bond_validator_multiple_bonds() {
         /* First Bond */
 
         // Perform the first bond.
-        let amount = 1_000_000_000_000u64;
+        let amount = MIN_VALIDATOR_STAKE;
         assert!(amount < public_balance);
         bond_public(&process, &store, validator_private_key, validator_address, amount, rng).unwrap();
 
@@ -513,7 +513,7 @@ fn test_bond_validator_multiple_bonds() {
         /* Second Bond */
 
         // Perform the second bond.
-        let amount = 1_000_000_000_000u64;
+        let amount = MIN_VALIDATOR_STAKE;
         assert!(amount < public_balance_1);
         bond_public(&process, &store, validator_private_key, validator_address, amount, rng).unwrap();
 
@@ -1314,7 +1314,7 @@ fn test_unbond_delegator_as_validator() {
     /* Ensure unbonding a delegator as an open validator fails. */
 
     // Bond the validators.
-    let validator_amount = 1_000_000_000_000u64;
+    let validator_amount = MIN_VALIDATOR_STAKE;
     bond_public(&process, &finalize_store, &validator_private_key_1, &validator_address_1, validator_amount, rng)
         .unwrap();
     bond_public(&process, &finalize_store, &validator_private_key_2, &validator_address_2, validator_amount, rng)
@@ -1369,7 +1369,7 @@ fn test_claim_unbond() {
     let public_balance = account_balance(&finalize_store, validator_address).unwrap();
 
     // Perform the bond.
-    let validator_amount = 1_000_000_000_000u64;
+    let validator_amount = MIN_VALIDATOR_STAKE;
     bond_public(&process, &finalize_store, validator_private_key, validator_address, validator_amount, rng).unwrap();
 
     /* Ensure claiming an unbond fails when no unbond_state exists. */
@@ -1406,7 +1406,7 @@ fn test_set_validator_state() {
     /* Ensure calling `set_validator_state` succeeds. */
 
     // Perform the bond.
-    let amount = 1_000_000_000_000u64;
+    let amount = MIN_VALIDATOR_STAKE;
     bond_public(&process, &finalize_store, validator_private_key, validator_address, amount, rng).unwrap();
 
     // Check that the validator state is correct.
@@ -1462,21 +1462,21 @@ fn test_bonding_to_closed_fails() {
     /* Ensure bonding to a closed validator fails. */
 
     // Perform the bond.
-    let amount = 1_000_000_000_000u64;
+    let amount = MIN_VALIDATOR_STAKE;
     bond_public(&process, &finalize_store, validator_private_key, validator_address, amount, rng).unwrap();
 
     // Set the validator `is_open` state to `false`.
     set_validator_state(&process, &finalize_store, validator_private_key, false, rng).unwrap();
 
     // Ensure that the validator can't bond additional stake.
-    let validator_amount = 1_000_000_000_000u64;
+    let validator_amount = MIN_VALIDATOR_STAKE;
     assert!(
         bond_public(&process, &finalize_store, validator_private_key, validator_address, validator_amount, rng)
             .is_err()
     );
 
     // Ensure that delegators can't bond to the validator.
-    let delegator_amount = 1_000_000u64;
+    let delegator_amount = MIN_DELEGATOR_STAKE;
     assert!(
         bond_public(&process, &finalize_store, delegator_private_key, validator_address, delegator_amount, rng)
             .is_err()

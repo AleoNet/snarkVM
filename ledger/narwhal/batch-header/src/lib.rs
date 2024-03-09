@@ -55,9 +55,9 @@ impl<N: Network> BatchHeader<N> {
     #[cfg(not(any(test, feature = "test")))]
     pub const MAX_CERTIFICATES: u16 = 10;
     /// The maximum number of certificates in a batch.
-    /// This is set to a deliberately high value (200) for testing purposes only.
+    /// This is set to a deliberately high value (100) for testing purposes only.
     #[cfg(any(test, feature = "test"))]
-    pub const MAX_CERTIFICATES: u16 = 200;
+    pub const MAX_CERTIFICATES: u16 = 100;
     /// The maximum number of rounds to store before garbage collecting.
     pub const MAX_GC_ROUNDS: usize = 100;
     /// The maximum number of transmissions in a batch.
