@@ -180,9 +180,9 @@ finalize bond_public:
 
     // Increment the microcredits in the bond state.
     add r9.microcredits r2 into r14;
-    // Determine if the amount is at least one million credits.
-    gte r14 1_000_000_000_000u64 into r15;
-    // Enforce the amount is at least one million credits.
+    // Determine if the amount is at least 10 million credits.
+    gte r14 10_000_000_000_000u64 into r15;
+    // Enforce the amount is at least 10 million credits.
     assert.eq r15 true;
 
     // Construct the updated bond state.
@@ -260,9 +260,9 @@ finalize bond_public:
 
     // Increment the microcredits in the bond state.
     add r28.microcredits r2 into r29;
-    // Determine if the amount is at least 10 credits.
-    gte r29 10_000_000u64 into r30;
-    // Enforce the amount is at least 10 credits.
+    // Determine if the amount is at least 10 thousand credits.
+    gte r29 10_000_000_000u64 into r30;
+    // Enforce the amount is at least 10 thousand credits.
     assert.eq r30 true;
 
     // Construct the updated bond state.
@@ -345,12 +345,12 @@ finalize unbond_public:
     // Decrement the microcredits in the bond state.
     sub r8.microcredits r1 into r9;
 
-    // Determine if the remaining bond is at least one million credits.
-    gte r9 1_000_000_000_000u64 into r10;
+    // Determine if the remaining bond is at least 10 million credits.
+    gte r9 10_000_000_000_000u64 into r10;
 
-    // If the remaining balance is at least 1 million credits, jump to the `decrement_validator` logic.
+    // If the remaining balance is at least 10 million credits, jump to the `decrement_validator` logic.
     branch.eq r10 true to decrement_validator;
-    // If the remaining balance is less than 1 million credits, jump to the `remove_validator` logic.
+    // If the remaining balance is less than 10 million credits, jump to the `remove_validator` logic.
     branch.eq r10 false to remove_validator;
 
     /*** Decrement Validator ***/
@@ -433,12 +433,12 @@ finalize unbond_public:
     // Decrement the microcredits in the bond state.
     sub r19.microcredits r1 into r20;
 
-    // Determine if the remaining bond is at least 10 credits.
-    gte r20 10_000_000u64 into r21;
+    // Determine if the remaining bond is at least 10 thousand credits.
+    gte r20 10_000_000_000u64 into r21;
 
-    // If the remaining balance is at least 10 credits, jump to the `decrement_delegator` logic.
+    // If the remaining balance is at least 10 thousand credits, jump to the `decrement_delegator` logic.
     branch.eq r21 true to decrement_delegator;
-    // If the remaining balance is less than 10 credits, jump to the `remove_delegator` logic.
+    // If the remaining balance is less than 10 thousand credits, jump to the `remove_delegator` logic.
     branch.eq r21 false to remove_delegator;
 
     /*** Decrement Delegator ***/
