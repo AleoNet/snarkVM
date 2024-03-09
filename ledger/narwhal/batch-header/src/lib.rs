@@ -52,7 +52,7 @@ pub struct BatchHeader<N: Network> {
 
 impl<N: Network> BatchHeader<N> {
     /// The maximum number of certificates in a batch.
-    pub const MAX_CERTIFICATES: u16 = 200;
+    pub const MAX_CERTIFICATES: u16 = 10;
     /// The maximum number of rounds to store before garbage collecting.
     pub const MAX_GC_ROUNDS: usize = 100;
     /// The maximum number of transmissions in a batch.
