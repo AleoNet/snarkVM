@@ -362,6 +362,9 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Pro
         // Retrieve the struct name.
         let struct_name = *struct_.name();
 
+        // Ensure the program has not exceeded the maximum number of structs.
+        ensure!(self.structs.len() < N::MAX_STRUCTS, "Program exceeds the maximum number of structs.");
+
         // Ensure the struct name is new.
         ensure!(self.is_unique_name(&struct_name), "'{struct_name}' is already in use.");
         // Ensure the struct name is not a reserved opcode.
@@ -419,6 +422,9 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Pro
     fn add_record(&mut self, record: RecordType<N>) -> Result<()> {
         // Retrieve the record name.
         let record_name = *record.name();
+
+        // Ensure the program has not exceeded the maximum number of records.
+        ensure!(self.records.len() < N::MAX_RECORDS, "Program exceeds the maximum number of records.");
 
         // Ensure the record name is new.
         ensure!(self.is_unique_name(&record_name), "'{record_name}' is already in use.");
@@ -479,6 +485,9 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Pro
     fn add_closure(&mut self, closure: ClosureCore<N, Instruction>) -> Result<()> {
         // Retrieve the closure name.
         let closure_name = *closure.name();
+
+        // Ensure the program has not exceeded the maximum number of closures.
+        ensure!(self.closures.len() < N::MAX_CLOSURES, "Program exceeds the maximum number of closures.");
 
         // Ensure the closure name is new.
         ensure!(self.is_unique_name(&closure_name), "'{closure_name}' is already in use.");
