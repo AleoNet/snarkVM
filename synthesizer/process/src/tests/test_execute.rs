@@ -2616,10 +2616,14 @@ fn test_max_imports() {
 #[test]
 fn test_program_exceeding_transaction_spend_limit() {
     // Construct a finalize body whose finalize cost is excessively large.
-    let finalize_body = (0..<CurrentNetwork as Network>::MAX_COMMANDS)
-        .map(|i| format!("hash.bhp256 0field into r{i} as field;"))
-        .collect::<Vec<_>>()
-        .join("\n");
+    let mut finalize_body = r"
+    cast  0u8 0u8 0u8 0u8 0u8 0u8 0u8 0u8 0u8 0u8 0u8 0u8 0u8 0u8 0u8 0u8 into r0 as [u8; 16u32];
+    cast  r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 into r1 as [[u8; 16u32]; 16u32];
+    cast  r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 into r2 as [[[u8; 16u32]; 16u32]; 16u32];"
+        .to_string();
+    (3..500).for_each(|i| {
+        finalize_body.push_str(&format!("hash.bhp256 r2 into r{i} as field;\n"));
+    });
     // Construct the program.
     let program = Program::from_str(&format!(
         r"program test_max_spend_limit.aleo;
