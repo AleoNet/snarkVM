@@ -14,8 +14,6 @@
 
 use super::*;
 
-use rand::{rngs::StdRng, SeedableRng};
-
 impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
     /// Checks the given block is valid next block.
     pub fn check_next_block<R: CryptoRng + Rng>(&self, block: &Block<N>, rng: &mut R) -> Result<()> {
@@ -38,13 +36,14 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             }
         }
 
+        // Retrieve the transactions and their rejected IDs.
+        let transactions = block
+            .transactions()
+            .iter()
+            .map(|transaction| transaction.to_rejected_id().map(|rejected_id| (transaction.deref(), rejected_id)))
+            .collect::<Result<Vec<_>>>()?;
         // Ensure each transaction is well-formed and unique.
-        let transactions = block.transactions();
-        let rngs = (0..transactions.len()).map(|_| StdRng::from_seed(rng.gen())).collect::<Vec<_>>();
-        cfg_iter!(transactions).zip(rngs).try_for_each(|(transaction, mut rng)| {
-            self.check_transaction_basic(transaction, transaction.to_rejected_id()?, &mut rng)
-                .map_err(|e| anyhow!("Invalid transaction found in the transactions list: {e}"))
-        })?;
+        self.check_transactions_basic(&transactions, rng)?;
 
         // TODO (howardwu): Remove this after moving the total supply into credits.aleo.
         {
