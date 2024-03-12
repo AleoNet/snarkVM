@@ -106,6 +106,9 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Fro
 
     /// Returns a program from a string literal.
     fn from_str(string: &str) -> Result<Self> {
+        // Ensure the raw program string is less than MAX_PROGRAM_SIZE.
+        ensure!(string.len() <= N::MAX_PROGRAM_SIZE, "Program length exceeds N::MAX_PROGRAM_SIZE.");
+
         match Self::parse(string) {
             Ok((remainder, object)) => {
                 // Ensure the remainder is empty.
@@ -254,5 +257,128 @@ function compute:
         assert_eq!(expected, format!("{program}"));
 
         Ok(())
+    }
+
+    #[test]
+    fn test_program_size() {
+        // Define variable name for easy experimentation with program sizes.
+        let var_name = "a";
+
+        // Helper function to generate imports.
+        let gen_import_string = |n: usize| -> String {
+            let mut s = String::new();
+            for i in 0..n {
+                s.push_str(&format!("import foo{i}.aleo;\n"));
+            }
+            s
+        };
+
+        // Helper function to generate large structs.
+        let gen_struct_string = |n: usize| -> String {
+            let mut s = String::with_capacity(CurrentNetwork::MAX_PROGRAM_SIZE);
+            for i in 0..n {
+                s.push_str(&format!("struct m{}:\n", i));
+                for j in 0..10 {
+                    s.push_str(&format!("    {}{} as u128;\n", var_name, j));
+                }
+            }
+            s
+        };
+
+        // Helper function to generate large records.
+        let gen_record_string = |n: usize| -> String {
+            let mut s = String::with_capacity(CurrentNetwork::MAX_PROGRAM_SIZE);
+            for i in 0..n {
+                s.push_str(&format!("record r{}:\n    owner as address.private;\n", i));
+                for j in 0..10 {
+                    s.push_str(&format!("    {}{} as u128.private;\n", var_name, j));
+                }
+            }
+            s
+        };
+
+        // Helper function to generate large mappings.
+        let gen_mapping_string = |n: usize| -> String {
+            let mut s = String::with_capacity(CurrentNetwork::MAX_PROGRAM_SIZE);
+            for i in 0..n {
+                s.push_str(&format!(
+                    "mapping {}{}:\n    key as field.public;\n    value as field.public;\n",
+                    var_name, i
+                ));
+            }
+            s
+        };
+
+        // Helper function to generate large closures.
+        let gen_closure_string = |n: usize| -> String {
+            let mut s = String::with_capacity(CurrentNetwork::MAX_PROGRAM_SIZE);
+            for i in 0..n {
+                s.push_str(&format!("closure c{}:\n    input r0 as u128;\n", i));
+                for j in 0..10 {
+                    s.push_str(&format!("    add r0 r0 into r{};\n", j));
+                }
+                s.push_str(&format!("    output r{} as u128;\n", 4000));
+            }
+            s
+        };
+
+        // Helper function to generate large functions.
+        let gen_function_string = |n: usize| -> String {
+            let mut s = String::with_capacity(CurrentNetwork::MAX_PROGRAM_SIZE);
+            for i in 0..n {
+                s.push_str(&format!("function f{}:\n    add 1u128 1u128 into r0;\n", i));
+                for j in 0..10 {
+                    s.push_str(&format!("    add r0 r0 into r{j};\n"));
+                }
+            }
+            s
+        };
+
+        // Helper function to generate and parse a program.
+        let test_parse = |imports: &str, body: &str, should_succeed: bool| {
+            let program = format!("{imports}\nprogram to_parse.aleo;\n\n{body}");
+            let result = Program::<CurrentNetwork>::from_str(&program);
+            if result.is_ok() != should_succeed {
+                println!("Program failed to parse: {program}");
+            }
+            assert_eq!(result.is_ok(), should_succeed);
+        };
+
+        // A program with MAX_IMPORTS should succeed.
+        test_parse(&gen_import_string(CurrentNetwork::MAX_IMPORTS), &gen_struct_string(1), true);
+        // A program with more than MAX_IMPORTS should fail.
+        test_parse(&gen_import_string(CurrentNetwork::MAX_IMPORTS + 1), &gen_struct_string(1), false);
+        // A program with MAX_STRUCTS should succeed.
+        test_parse("", &gen_struct_string(CurrentNetwork::MAX_STRUCTS), true);
+        // A program with more than MAX_STRUCTS should fail.
+        test_parse("", &gen_struct_string(CurrentNetwork::MAX_STRUCTS + 1), false);
+        // A program with MAX_RECORDS should succeed.
+        test_parse("", &gen_record_string(CurrentNetwork::MAX_RECORDS), true);
+        // A program with more than MAX_RECORDS should fail.
+        test_parse("", &gen_record_string(CurrentNetwork::MAX_RECORDS + 1), false);
+        // A program with MAX_MAPPINGS should succeed.
+        test_parse("", &gen_mapping_string(CurrentNetwork::MAX_MAPPINGS), true);
+        // A program with more than MAX_MAPPINGS should fail.
+        test_parse("", &gen_mapping_string(CurrentNetwork::MAX_MAPPINGS + 1), false);
+        // A program with MAX_CLOSURES should succeed.
+        test_parse("", &gen_closure_string(CurrentNetwork::MAX_CLOSURES), true);
+        // A program with more than MAX_CLOSURES should fail.
+        test_parse("", &gen_closure_string(CurrentNetwork::MAX_CLOSURES + 1), false);
+        // A program with MAX_FUNCTIONS should succeed.
+        test_parse("", &gen_function_string(CurrentNetwork::MAX_FUNCTIONS), true);
+        // A program with more than MAX_FUNCTIONS should fail.
+        test_parse("", &gen_function_string(CurrentNetwork::MAX_FUNCTIONS + 1), false);
+
+        // Initialize a program which is too big.
+        let program_too_big = format!(
+            "{} {} {} {} {}",
+            gen_struct_string(CurrentNetwork::MAX_STRUCTS),
+            gen_record_string(CurrentNetwork::MAX_RECORDS),
+            gen_mapping_string(CurrentNetwork::MAX_MAPPINGS),
+            gen_closure_string(CurrentNetwork::MAX_CLOSURES),
+            gen_function_string(CurrentNetwork::MAX_FUNCTIONS)
+        );
+        // A program which is too big should fail.
+        test_parse("", &program_too_big, false);
     }
 }
