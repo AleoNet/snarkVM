@@ -62,6 +62,7 @@ use aleo_std::prelude::{finish, lap, timer};
 use indexmap::{IndexMap, IndexSet};
 use lru::LruCache;
 use parking_lot::{Mutex, RwLock};
+use rand::{rngs::StdRng, SeedableRng};
 use std::{num::NonZeroUsize, sync::Arc};
 
 #[cfg(not(feature = "serial"))]
