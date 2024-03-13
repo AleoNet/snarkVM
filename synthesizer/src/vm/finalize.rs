@@ -20,6 +20,8 @@ use rand::{rngs::StdRng, SeedableRng};
 
 impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// Speculates on the given list of transactions in the VM.
+    /// This function aborts all transactions that are not are well-formed or unique.
+    ///
     ///
     /// Returns the confirmed transactions, aborted transaction IDs,
     /// and finalize operations from pre-ratify and post-ratify.
@@ -111,17 +113,29 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     }
 
     /// Checks the speculation on the given transactions in the VM.
+    /// This function also ensure that the given transactions are well-formed and unique.
     ///
     /// Returns the finalize operations from pre-ratify and post-ratify.
     #[inline]
-    pub fn check_speculate(
+    pub fn check_speculate<R: Rng + CryptoRng>(
         &self,
         state: FinalizeGlobalState,
         ratifications: &Ratifications<N>,
         solutions: &Solutions<N>,
         transactions: &Transactions<N>,
+        rng: &mut R,
     ) -> Result<Vec<FinalizeOperation<N>>> {
         let timer = timer!("VM::check_speculate");
+
+        // Ensure each transaction is well-formed and unique.
+        // NOTE: We perform the transaction checks here prior to `atomic_speculate` because we must
+        // ensure that the `Fee` transactions are valid. We can't unify the transaction checks in `atomic_speculate`
+        // because we run speculation on the unconfirmed variant of the transactions.
+        let rngs = (0..transactions.len()).map(|_| StdRng::from_seed(rng.gen())).collect::<Vec<_>>();
+        cfg_iter!(transactions).zip(rngs).try_for_each(|(transaction, mut rng)| {
+            self.check_transaction(transaction, transaction.to_rejected_id()?, &mut rng)
+                .map_err(|e| anyhow!("Invalid transaction found in the transactions list: {e}"))
+        })?;
 
         // Reconstruct the candidate ratifications to verify the speculation.
         let candidate_ratifications = ratifications.iter().cloned().collect::<Vec<_>>();
