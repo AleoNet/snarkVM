@@ -1,0 +1,5 @@
+[codespell]
+skip = .git,node_modules,artifacts-zk,yarn.lock,contracts-preprocessed,Cargo.lock
+count =
+quiet-level = 3
+ignore-words = ./.codespell/wordlist.txt
