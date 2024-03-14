@@ -352,7 +352,6 @@ mod tests {
     use console::prelude::TestRng;
 
     use parking_lot::RwLock;
-    use rayon::prelude::*;
     use std::sync::Arc;
 
     type CurrentNetwork = console::network::MainnetV0;
@@ -362,7 +361,7 @@ mod tests {
         // Initialize a tracker for the leaders.
         let leaders = Arc::new(RwLock::new(IndexMap::<Address<CurrentNetwork>, i64>::new()));
         // Iterate through the rounds.
-        (1..=num_rounds).into_par_iter().for_each(|round| {
+        cfg_into_iter!(1..=num_rounds).for_each(|round| {
             // Compute the leader.
             let leader = committee.get_leader(round).unwrap();
             // Increment the leader count for the current leader.
