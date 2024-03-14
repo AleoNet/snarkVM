@@ -16,8 +16,6 @@ use super::*;
 
 use ledger_committee::{MAX_DELEGATORS, MIN_DELEGATOR_STAKE, MIN_VALIDATOR_STAKE};
 
-use rand::{rngs::StdRng, SeedableRng};
-
 impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// Speculates on the given list of transactions in the VM.
     /// This function aborts all transactions that are not are well-formed or unique.
@@ -111,15 +109,16 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     ) -> Result<Vec<FinalizeOperation<N>>> {
         let timer = timer!("VM::check_speculate");
 
+        // Retrieve the transactions and their rejected IDs.
+        let transactions_and_rejected_ids = transactions
+            .iter()
+            .map(|transaction| transaction.to_rejected_id().map(|rejected_id| (transaction.deref(), rejected_id)))
+            .collect::<Result<Vec<_>>>()?;
         // Ensure each transaction is well-formed and unique.
         // NOTE: We perform the transaction checks here prior to `atomic_speculate` because we must
         // ensure that the `Fee` transactions are valid. We can't unify the transaction checks in `atomic_speculate`
         // because we run speculation on the unconfirmed variant of the transactions.
-        let rngs = (0..transactions.len()).map(|_| StdRng::from_seed(rng.gen())).collect::<Vec<_>>();
-        cfg_iter!(transactions).zip(rngs).try_for_each(|(transaction, mut rng)| {
-            self.check_transaction(transaction, transaction.to_rejected_id()?, &mut rng)
-                .map_err(|e| anyhow!("Invalid transaction found in the transactions list: {e}"))
-        })?;
+        self.check_transactions(&transactions_and_rejected_ids, rng)?;
 
         // Reconstruct the candidate ratifications to verify the speculation.
         let candidate_ratifications = ratifications.iter().cloned().collect::<Vec<_>>();
