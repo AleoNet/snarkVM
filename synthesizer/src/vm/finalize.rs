@@ -47,32 +47,16 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         let candidate_transactions: Vec<_> = candidate_transactions.collect::<Vec<_>>();
         let candidate_transaction_ids: Vec<_> = candidate_transactions.iter().map(|tx| tx.id()).collect();
 
+        // Determine if the vm is currently processing the genesis block.
+        let is_genesis =
+            self.block_store().find_block_height_from_state_root(self.block_store().current_state_root())?.is_none();
         // If the transactions are not part of the genesis block, ensure each transaction is well-formed and unique. Abort any transactions that are not.
-        let (verified_transactions, verification_aborted_transactions) =
-            match self.block_store().find_block_height_from_state_root(self.block_store().current_state_root())? {
-                // If the current state root does not exist in the block store, then the genesis block has not been introduced yet.
-                None => (candidate_transactions, vec![]),
-                // Verify transactions for all non-genesis cases.
-                _ => {
-                    let rngs =
-                        (0..candidate_transactions.len()).map(|_| StdRng::from_seed(rng.gen())).collect::<Vec<_>>();
-                    // Verify the transactions and collect the error message if there is one.
-                    cfg_into_iter!(candidate_transactions).zip(rngs).partition_map(|(transaction, mut rng)| {
-                        // Abort the transaction if it is a fee transaction.
-                        if transaction.is_fee() {
-                            return Either::Right((
-                                transaction,
-                                "Fee transactions are not allowed in speculate".to_string(),
-                            ));
-                        }
-                        // Verify the transaction.
-                        match self.check_transaction(transaction, None, &mut rng) {
-                            Ok(_) => Either::Left(transaction),
-                            Err(e) => Either::Right((transaction, e.to_string())),
-                        }
-                    })
-                }
-            };
+        let (verified_transactions, verification_aborted_transactions) = match is_genesis {
+            // If the current state root does not exist in the block store, then the genesis block has not been introduced yet.
+            true => (candidate_transactions, vec![]),
+            // Verify transactions for all non-genesis cases.
+            false => self.prepare_transactions_for_speculate(&candidate_transactions, rng)?,
+        };
 
         // Performs a **dry-run** over the list of ratifications, solutions, and transactions.
         let (ratifications, confirmed_transactions, speculation_aborted_transactions, ratified_finalize_operations) =
