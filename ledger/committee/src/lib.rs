@@ -28,10 +28,13 @@ use console::{
     program::{Literal, LiteralType},
     types::{Address, Field},
 };
+use ledger_narwhal_batch_header::BatchHeader;
 
 use indexmap::IndexMap;
-use ledger_narwhal_batch_header::BatchHeader;
 use std::collections::HashSet;
+
+#[cfg(not(feature = "serial"))]
+use rayon::prelude::*;
 
 /// The minimum amount of stake required for a validator to bond.
 pub const MIN_VALIDATOR_STAKE: u64 = 1_000_000_000_000u64; // microcredits
