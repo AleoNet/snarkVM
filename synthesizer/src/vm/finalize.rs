@@ -16,8 +16,12 @@ use super::*;
 
 use ledger_committee::{MAX_DELEGATORS, MIN_DELEGATOR_STAKE, MIN_VALIDATOR_STAKE};
 
+use rand::{rngs::StdRng, SeedableRng};
+
 impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// Speculates on the given list of transactions in the VM.
+    /// This function aborts all transactions that are not are well-formed or unique.
+    ///
     ///
     /// Returns the confirmed transactions, aborted transaction IDs,
     /// and finalize operations from pre-ratify and post-ratify.
@@ -28,32 +32,74 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     ///     `Ratify::BlockReward(block_reward)` and `Ratify::PuzzleReward(puzzle_reward)`
     ///     to the front of the `ratifications` list.
     #[inline]
-    pub fn speculate<'a>(
+    pub fn speculate<'a, R: Rng + CryptoRng>(
         &self,
         state: FinalizeGlobalState,
         coinbase_reward: Option<u64>,
         candidate_ratifications: Vec<Ratify<N>>,
         candidate_solutions: &Solutions<N>,
         candidate_transactions: impl ExactSizeIterator<Item = &'a Transaction<N>>,
+        rng: &mut R,
     ) -> Result<(Ratifications<N>, Transactions<N>, Vec<N::TransactionID>, Vec<FinalizeOperation<N>>)> {
         let timer = timer!("VM::speculate");
 
+        // Collect the candidate transactions into a vector.
+        let candidate_transactions: Vec<_> = candidate_transactions.collect::<Vec<_>>();
+        let candidate_transaction_ids: Vec<_> = candidate_transactions.iter().map(|tx| tx.id()).collect();
+
+        // If the transactions are not part of the genesis block, ensure each transaction is well-formed and unique. Abort any transactions that are not.
+        let (verified_transactions, verification_aborted_transactions) =
+            match self.block_store().find_block_height_from_state_root(self.block_store().current_state_root())? {
+                // If the current state root does not exist in the block store, then the genesis block has not been introduced yet.
+                None => (candidate_transactions, vec![]),
+                // Verify transactions for all non-genesis cases.
+                _ => {
+                    let rngs =
+                        (0..candidate_transactions.len()).map(|_| StdRng::from_seed(rng.gen())).collect::<Vec<_>>();
+                    // Verify the transactions and collect the error message if there is one.
+                    cfg_into_iter!(candidate_transactions).zip(rngs).partition_map(|(transaction, mut rng)| {
+                        // Abort the transaction if it is a fee transaction.
+                        if transaction.is_fee() {
+                            return Either::Right((
+                                transaction,
+                                "Fee transactions are not allowed in speculate".to_string(),
+                            ));
+                        }
+                        // Verify the transaction.
+                        match self.check_transaction(transaction, None, &mut rng) {
+                            Ok(_) => Either::Left(transaction),
+                            Err(e) => Either::Right((transaction, e.to_string())),
+                        }
+                    })
+                }
+            };
+
         // Performs a **dry-run** over the list of ratifications, solutions, and transactions.
-        let (ratifications, confirmed_transactions, aborted_transactions, ratified_finalize_operations) = self
-            .atomic_speculate(
+        let (ratifications, confirmed_transactions, speculation_aborted_transactions, ratified_finalize_operations) =
+            self.atomic_speculate(
                 state,
                 coinbase_reward,
                 candidate_ratifications,
                 candidate_solutions,
-                candidate_transactions,
+                verified_transactions.into_iter(),
             )?;
 
-        // Convert the aborted transactions into aborted transaction IDs.
-        let mut aborted_transaction_ids = Vec::with_capacity(aborted_transactions.len());
-        for (tx, error) in aborted_transactions {
-            warn!("Speculation safely aborted a transaction - {error} ({})", tx.id());
-            aborted_transaction_ids.push(tx.id());
-        }
+        // Get the aborted transaction ids.
+        let verification_aborted_transaction_ids = verification_aborted_transactions.iter().map(|(tx, e)| (tx.id(), e));
+        let speculation_aborted_transaction_ids = speculation_aborted_transactions.iter().map(|(tx, e)| (tx.id(), e));
+        let unordered_aborted_transaction_ids: IndexMap<N::TransactionID, &String> =
+            verification_aborted_transaction_ids.chain(speculation_aborted_transaction_ids).collect();
+
+        // Filter and order the aborted transaction ids according to candidate_transactions
+        let aborted_transaction_ids: Vec<_> = candidate_transaction_ids
+            .into_iter()
+            .filter_map(|tx_id| {
+                unordered_aborted_transaction_ids.get(&tx_id).map(|error| {
+                    warn!("Speculation safely aborted a transaction - {error} ({tx_id})");
+                    tx_id
+                })
+            })
+            .collect();
 
         finish!(timer, "Finished dry-run of the transactions");
 
@@ -67,17 +113,29 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     }
 
     /// Checks the speculation on the given transactions in the VM.
+    /// This function also ensure that the given transactions are well-formed and unique.
     ///
     /// Returns the finalize operations from pre-ratify and post-ratify.
     #[inline]
-    pub fn check_speculate(
+    pub fn check_speculate<R: Rng + CryptoRng>(
         &self,
         state: FinalizeGlobalState,
         ratifications: &Ratifications<N>,
         solutions: &Solutions<N>,
         transactions: &Transactions<N>,
+        rng: &mut R,
     ) -> Result<Vec<FinalizeOperation<N>>> {
         let timer = timer!("VM::check_speculate");
+
+        // Ensure each transaction is well-formed and unique.
+        // NOTE: We perform the transaction checks here prior to `atomic_speculate` because we must
+        // ensure that the `Fee` transactions are valid. We can't unify the transaction checks in `atomic_speculate`
+        // because we run speculation on the unconfirmed variant of the transactions.
+        let rngs = (0..transactions.len()).map(|_| StdRng::from_seed(rng.gen())).collect::<Vec<_>>();
+        cfg_iter!(transactions).zip(rngs).try_for_each(|(transaction, mut rng)| {
+            self.check_transaction(transaction, transaction.to_rejected_id()?, &mut rng)
+                .map_err(|e| anyhow!("Invalid transaction found in the transactions list: {e}"))
+        })?;
 
         // Reconstruct the candidate ratifications to verify the speculation.
         let candidate_ratifications = ratifications.iter().cloned().collect::<Vec<_>>();
@@ -1135,6 +1193,7 @@ finalize transfer_public:
             vec![],
             &None.into(),
             transactions.iter(),
+            rng,
         )?;
 
         // Construct the metadata associated with the block.
@@ -1399,7 +1458,14 @@ finalize transfer_public:
 
         // Prepare the confirmed transactions.
         let (ratifications, confirmed_transactions, aborted_transaction_ids, _) = vm
-            .speculate(sample_finalize_state(1), None, vec![], &None.into(), [deployment_transaction.clone()].iter())
+            .speculate(
+                sample_finalize_state(1),
+                None,
+                vec![],
+                &None.into(),
+                [deployment_transaction.clone()].iter(),
+                rng,
+            )
             .unwrap();
         assert_eq!(confirmed_transactions.len(), 1);
         assert!(aborted_transaction_ids.is_empty());
@@ -1687,7 +1753,7 @@ function ped_hash:
 
             // Speculatively execute the transaction. Ensure that this call does not panic and returns a rejected transaction.
             let (_, confirmed_transactions, aborted_transaction_ids, _) = vm
-                .speculate(sample_finalize_state(1), None, vec![], &None.into(), [transaction.clone()].iter())
+                .speculate(sample_finalize_state(1), None, vec![], &None.into(), [transaction.clone()].iter(), rng)
                 .unwrap();
             assert!(aborted_transaction_ids.is_empty());
 

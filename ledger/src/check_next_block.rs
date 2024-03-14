@@ -36,15 +36,6 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             }
         }
 
-        // Retrieve the transactions and their rejected IDs.
-        let transactions = block
-            .transactions()
-            .iter()
-            .map(|transaction| transaction.to_rejected_id().map(|rejected_id| (transaction.deref(), rejected_id)))
-            .collect::<Result<Vec<_>>>()?;
-        // Ensure each transaction is well-formed and unique.
-        self.check_transactions_basic(&transactions, rng)?;
-
         // TODO (howardwu): Remove this after moving the total supply into credits.aleo.
         {
             // // Retrieve the latest total supply.
@@ -77,9 +68,9 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             block.previous_hash(),
         )?;
 
-        // Ensure speculation over the unconfirmed transactions is correct.
+        // Ensure speculation over the unconfirmed transactions is correct and ensure each transaction is well-formed and unique.
         let ratified_finalize_operations =
-            self.vm.check_speculate(state, block.ratifications(), block.solutions(), block.transactions())?;
+            self.vm.check_speculate(state, block.ratifications(), block.solutions(), block.transactions(), rng)?;
 
         // Retrieve the committee lookback.
         let committee_lookback = {

@@ -16,10 +16,11 @@ use super::*;
 
 impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
     /// Returns a candidate for the next block in the ledger, using a committed subdag and its transmissions.
-    pub fn prepare_advance_to_next_quorum_block(
+    pub fn prepare_advance_to_next_quorum_block<R: Rng + CryptoRng>(
         &self,
         subdag: Subdag<N>,
         transmissions: IndexMap<TransmissionID<N>, Transmission<N>>,
+        rng: &mut R,
     ) -> Result<Block<N>> {
         // Retrieve the latest block as the previous block (for the next block).
         let previous_block = self.latest_block();
@@ -30,7 +31,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         ensure!(ratifications.is_empty(), "Ratifications are currently unsupported from the memory pool");
         // Construct the block template.
         let (header, ratifications, solutions, aborted_solution_ids, transactions, aborted_transaction_ids) =
-            self.construct_block_template(&previous_block, Some(&subdag), ratifications, solutions, transactions)?;
+            self.construct_block_template(&previous_block, Some(&subdag), ratifications, solutions, transactions, rng)?;
 
         // Construct the new quorum block.
         Block::new_quorum(
@@ -68,6 +69,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                 candidate_ratifications,
                 candidate_solutions,
                 candidate_transactions,
+                rng,
             )?;
 
         // Construct the new beacon block.
@@ -168,13 +170,14 @@ where
 impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
     /// Constructs a block template for the next block in the ledger.
     #[allow(clippy::type_complexity)]
-    fn construct_block_template(
+    fn construct_block_template<R: Rng + CryptoRng>(
         &self,
         previous_block: &Block<N>,
         subdag: Option<&Subdag<N>>,
         candidate_ratifications: Vec<Ratify<N>>,
         candidate_solutions: Vec<ProverSolution<N>>,
         candidate_transactions: Vec<Transaction<N>>,
+        rng: &mut R,
     ) -> Result<(
         Header<N>,
         Ratifications<N>,
@@ -317,6 +320,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             candidate_ratifications,
             &solutions,
             candidate_transactions.iter(),
+            rng,
         )?;
 
         // Compute the ratifications root.
