@@ -258,8 +258,11 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             Address::try_from(private_keys[3])? => remaining_supply / 4,
         };
         // Construct the bonded balances.
-        let bonded_balances =
-            committee.members().iter().map(|(address, (amount, _))| (*address, (*address, *amount))).collect();
+        let bonded_balances = committee
+            .members()
+            .iter()
+            .map(|(address, (amount, _))| (*address, (*address, *address, *amount)))
+            .collect();
         // Return the genesis block.
         self.genesis_quorum(private_key, committee, public_balances, bonded_balances, rng)
     }
@@ -270,7 +273,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         private_key: &PrivateKey<N>,
         committee: Committee<N>,
         public_balances: IndexMap<Address<N>, u64>,
-        bonded_balances: IndexMap<Address<N>, (Address<N>, u64)>,
+        bonded_balances: IndexMap<Address<N>, (Address<N>, Address<N>, u64)>,
         rng: &mut R,
     ) -> Result<Block<N>> {
         // Retrieve the total stake.

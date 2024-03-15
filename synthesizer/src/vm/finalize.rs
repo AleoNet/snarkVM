@@ -820,6 +820,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         let account_mapping = Identifier::from_str("account")?;
         // Construct the metadata mapping name.
         let metadata_mapping = Identifier::from_str("metadata")?;
+        // Construct the withdraw mapping name.
+        let withdraw_mapping = Identifier::from_str("withdraw")?;
 
         // Initialize a list of finalize operations.
         let mut finalize_operations = Vec::new();
@@ -865,7 +867,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
                     // Calculate the stake per validator using `bonded_balances`.
                     let mut stake_per_validator = IndexMap::with_capacity(committee.members().len());
-                    for (address, (validator_address, amount)) in bonded_balances.iter() {
+                    for (address, (validator_address, _, amount)) in bonded_balances.iter() {
                         // Check that the amount meets the minimum requirement, depending on whether the address is a validator.
                         if *address == *validator_address {
                             ensure!(
@@ -913,9 +915,25 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                         "Ratify::Genesis(..) incorrect total total stake for the committee"
                     );
 
+                    // Split the bonded balances into stakers and withdrawal addresses.
+                    let (next_stakers, withdrawal_addresses) = bonded_balances.iter().fold(
+                        (
+                            IndexMap::with_capacity(bonded_balances.len()),
+                            IndexMap::with_capacity(bonded_balances.len()),
+                        ),
+                        |(mut stakers, mut withdrawal_addresses), (staker, (validator, withdrawal_address, amount))| {
+                            stakers.insert(*staker, (*validator, *amount));
+                            withdrawal_addresses.insert(*staker, *withdrawal_address);
+                            (stakers, withdrawal_addresses)
+                        },
+                    );
+
                     // Construct the next committee map and next bonded map.
                     let (next_committee_map, next_bonded_map) =
-                        to_next_commitee_map_and_bonded_map(committee, bonded_balances);
+                        to_next_commitee_map_and_bonded_map(committee, &next_stakers);
+
+                    // Construct the next withdraw map.
+                    let next_withdraw_map = to_next_withdraw_map(&withdrawal_addresses);
 
                     // Insert the next committee into storage.
                     store.committee_store().insert(state.block_height(), *(committee.clone()))?;
@@ -925,6 +943,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                         store.replace_mapping(program_id, committee_mapping, next_committee_map)?,
                         // Replace the bonded mapping in storage.
                         store.replace_mapping(program_id, bonded_mapping, next_bonded_map)?,
+                        // Replace the withdraw mapping in storage.
+                        store.replace_mapping(program_id, withdraw_mapping, next_withdraw_map)?,
                     ]);
 
                     // Update the number of validators.
@@ -1409,18 +1429,19 @@ finalize transfer_public:
     }
 
     /// Returns the `bonded_balances` given the validators and delegators.
+    /// Note that the withdrawal address is the same as the staker address.
     fn sample_bonded_balances<N: Network>(
         validators: &IndexMap<PrivateKey<N>, (u64, bool)>,
         delegators: &IndexMap<PrivateKey<N>, (Address<N>, u64)>,
-    ) -> IndexMap<Address<N>, (Address<N>, u64)> {
+    ) -> IndexMap<Address<N>, (Address<N>, Address<N>, u64)> {
         let mut bonded_balances = IndexMap::with_capacity(validators.len() + delegators.len());
         for (private_key, (amount, _)) in validators {
             let address = Address::try_from(private_key).unwrap();
-            bonded_balances.insert(address, (address, *amount));
+            bonded_balances.insert(address, (address, address, *amount));
         }
         for (private_key, (validator, amount)) in delegators {
             let address = Address::try_from(private_key).unwrap();
-            bonded_balances.insert(address, (*validator, *amount));
+            bonded_balances.insert(address, (*validator, address, *amount));
         }
         bonded_balances
     }
@@ -2163,6 +2184,7 @@ finalize compute:
         let bonded_mapping_name = Identifier::from_str("bonded").unwrap();
         let metadata_mapping_name = Identifier::from_str("metadata").unwrap();
         let unbonding_mapping_name = Identifier::from_str("unbonding").unwrap();
+        let withdraw_mapping_name = Identifier::from_str("withdraw").unwrap();
 
         // Get and check the committee mapping.
         let actual_committee = vm.finalize_store().get_mapping_confirmed(program_id, committee_mapping_name).unwrap();
@@ -2212,7 +2234,7 @@ finalize compute:
         let actual_bonded = vm.finalize_store().get_mapping_confirmed(program_id, bonded_mapping_name).unwrap();
         let expected_bonded = bonded_balances
             .iter()
-            .map(|(address, (validator, amount))| {
+            .map(|(address, (validator, _, amount))| {
                 (
                     Plaintext::from_str(&address.to_string()).unwrap(),
                     Value::from_str(&format!("{{ validator: {validator}, microcredits: {amount}u64 }}")).unwrap(),
@@ -2225,6 +2247,25 @@ finalize compute:
         assert_eq!(actual_bonded.len(), expected_bonded.len());
         for entry in actual_bonded.iter() {
             assert!(expected_bonded.contains(entry));
+        }
+
+        // Get and check the withdraw mapping.
+        let actual_withdraw = vm.finalize_store().get_mapping_confirmed(program_id, withdraw_mapping_name).unwrap();
+        let expected_withdraw = bonded_balances
+            .iter()
+            .map(|(address, (_, withdrawal_address, _))| {
+                (
+                    Plaintext::from_str(&address.to_string()).unwrap(),
+                    Value::from_str(&withdrawal_address.to_string()).unwrap(),
+                )
+            })
+            .collect_vec();
+        // Note that `actual_withdraw` and `expected_withdraw` are vectors and not necessarily in the same order.
+        // By checking that the lengths of the vector are equal and that all entries in `actual_withdraw` are in `expected_withdraw`,
+        // we can ensure that the two vectors contain the same data.
+        assert_eq!(actual_withdraw.len(), expected_withdraw.len());
+        for entry in actual_withdraw.iter() {
+            assert!(expected_withdraw.contains(entry));
         }
 
         // Get and check the entry in metadata mapping corresponding to the number of validators.
@@ -2340,6 +2381,8 @@ finalize compute:
                     ("credits.aleo", "bond_public"),
                     vec![
                         Value::<CurrentNetwork>::from_str(&validator.to_string()).unwrap(),
+                        Value::<CurrentNetwork>::from_str(&Address::try_from(private_key).unwrap().to_string())
+                            .unwrap(),
                         Value::<CurrentNetwork>::from_str(&format!("{amount}u64")).unwrap(),
                     ]
                     .into_iter(),
@@ -2408,6 +2451,7 @@ finalize compute:
         let unbonding_mapping_name = Identifier::from_str("unbonding").unwrap();
         let account_mapping_name = Identifier::from_str("account").unwrap();
         let metadata_mapping_name = Identifier::from_str("metadata").unwrap();
+        let withdraw_mapping_name = Identifier::from_str("withdraw").unwrap();
 
         let committee_1 = vm_1.finalize_store().get_mapping_confirmed(program_id, committee_mapping_name).unwrap();
         let committee_2 = vm_2.finalize_store().get_mapping_confirmed(program_id, committee_mapping_name).unwrap();
@@ -2442,6 +2486,11 @@ finalize compute:
         let metadata_1 = vm_1.finalize_store().get_mapping_confirmed(program_id, metadata_mapping_name).unwrap();
         let metadata_2 = vm_2.finalize_store().get_mapping_confirmed(program_id, metadata_mapping_name).unwrap();
         assert_eq!(metadata_1, metadata_2);
+
+        // Check that the withdraw mapping across both VMs are equal.
+        let withdraw_1 = vm_1.finalize_store().get_mapping_confirmed(program_id, withdraw_mapping_name).unwrap();
+        let withdraw_2 = vm_2.finalize_store().get_mapping_confirmed(program_id, withdraw_mapping_name).unwrap();
+        assert_eq!(withdraw_1, withdraw_2);
     }
 
     #[test]
@@ -2739,6 +2788,7 @@ finalize compute:
                         &Address::try_from(validators.keys().next().unwrap()).unwrap().to_string(),
                     )
                     .unwrap(),
+                    Value::<CurrentNetwork>::from_str(&Address::try_from(delegator_key).unwrap().to_string()).unwrap(),
                     Value::<CurrentNetwork>::from_str(&format!("{MIN_DELEGATOR_STAKE}u64")).unwrap(),
                 ]
                 .into_iter(),
@@ -2777,6 +2827,7 @@ finalize compute:
                         &Address::try_from(validators.keys().nth(1).unwrap()).unwrap().to_string(),
                     )
                     .unwrap(),
+                    Value::<CurrentNetwork>::from_str(&Address::try_from(delegator_key).unwrap().to_string()).unwrap(),
                     Value::<CurrentNetwork>::from_str(&format!("{MIN_DELEGATOR_STAKE}u64")).unwrap(),
                 ]
                 .into_iter(),
@@ -2810,5 +2861,91 @@ finalize compute:
             )
             .unwrap();
         assert_eq!(bonded_mapping.len(), validators.len() + 1);
+    }
+
+    #[test]
+    fn test_ratify_genesis_withdrawal_address() {
+        const NUM_VALIDATORS: usize = 5;
+        const NUM_DELEGATORS: usize = 8;
+
+        // Sample an RNG.
+        let rng = &mut TestRng::default();
+
+        // Initialize the VM.
+        let vm =
+            VM::from(ConsensusStore::<CurrentNetwork, ConsensusMemory<CurrentNetwork>>::open(None).unwrap()).unwrap();
+
+        // Sample the validators.
+        let validators = sample_validators(NUM_VALIDATORS, rng);
+
+        // Sample the delegators, cycling through the validators.
+        let delegators: IndexMap<_, _> = (0..NUM_DELEGATORS)
+            .map(|i| {
+                let private_key = PrivateKey::new(rng).unwrap();
+                let validator = Address::try_from(validators.keys().nth(i % NUM_VALIDATORS).unwrap()).unwrap();
+                let amount = MIN_DELEGATOR_STAKE;
+                (private_key, (validator, amount))
+            })
+            .collect();
+
+        // Construct the committee.
+        // Track the allocated amount.
+        let (committee_map, allocated_amount) = sample_committee_map_and_allocated_amount(&validators, &delegators);
+        let committee = Committee::new_genesis(committee_map).unwrap();
+
+        // Construct the public balances, allocating the remaining supply to the validators and zero to the delegators.
+        let mut public_balances = sample_public_balances(
+            &validators.keys().map(|private_key| Address::try_from(private_key).unwrap()).collect::<Vec<_>>(),
+            <CurrentNetwork as Network>::STARTING_SUPPLY - allocated_amount,
+        );
+        public_balances.extend(sample_public_balances(
+            &delegators.keys().map(|private_key| Address::try_from(private_key).unwrap()).collect::<Vec<_>>(),
+            0,
+        ));
+
+        // Construct the bonded balances.
+        let mut bonded_balances = sample_bonded_balances(&validators, &delegators);
+
+        // Randomly sample and update the withdrawal addresses in the bonded balances.
+        for (_, (_, withdrawal_address, _)) in bonded_balances.iter_mut() {
+            *withdrawal_address = Address::rand(rng);
+        }
+
+        // Construct the genesis block.
+        let genesis = vm
+            .genesis_quorum(
+                validators.keys().next().unwrap(),
+                committee.clone(),
+                public_balances.clone(),
+                bonded_balances.clone(),
+                rng,
+            )
+            .unwrap();
+
+        // Add the genesis block to the VM.
+        vm.add_next_block(&genesis).unwrap();
+
+        // Check that the state of the `credits.aleo` program is correct.
+        let program_id = ProgramID::from_str("credits.aleo").unwrap();
+        let withdraw_mapping_name = Identifier::from_str("withdraw").unwrap();
+
+        // Get and check the withdraw mapping.
+        let actual_withdraw = vm.finalize_store().get_mapping_confirmed(program_id, withdraw_mapping_name).unwrap();
+        let expected_withdraw = bonded_balances
+            .iter()
+            .map(|(address, (_, withdrawal_address, _))| {
+                (
+                    Plaintext::from_str(&address.to_string()).unwrap(),
+                    Value::from_str(&withdrawal_address.to_string()).unwrap(),
+                )
+            })
+            .collect_vec();
+        // Note that `actual_withdraw` and `expected_withdraw` are vectors and not necessarily in the same order.
+        // By checking that the lengths of the vector are equal and that all entries in `actual_withdraw` are in `expected_withdraw`,
+        // we can ensure that the two vectors contain the same data.
+        assert_eq!(actual_withdraw.len(), expected_withdraw.len());
+        for entry in actual_withdraw.iter() {
+            assert!(expected_withdraw.contains(entry));
+        }
     }
 }
