@@ -4,15 +4,15 @@ outputs:
   execute:
     arrays_in_finalize.aleo/test_arrays:
       outputs:
-      - '{"type":"public","id":"4191132437526469726810078556702976385142790887134762205329564706486407091452field","value":"[\n  [\n    true,\n    false,\n    true,\n    false\n  ]\n]"}'
-      - '{"type":"public","id":"7732313354599796556273728553000823036918857772412470351533433477903799198179field","value":"[\n  [\n    false,\n    true,\n    false,\n    true\n  ]\n]"}'
-      - '{"type":"public","id":"5608636510680839107900624676979657593964288488498543523280649635497192868408field","value":"[\n  [\n    false,\n    false,\n    false,\n    false\n  ]\n]"}'
-      - '{"type":"private","id":"17838117880873163791217811658586530829235665776709065547754152530705294791field","value":"ciphertext1qvqgms88ec4yhlndrj62c2eupwvd4u3efn4u2dtgl6gd29ll52y87z7ncynzwv9ntktucne95h0mvgdstwsqejzhv5klrg9cn2se2g7xqhlr94w0j6h7m0nt2l0deyg2c7hfud0s8r8euldthva35k4k7u0sc44p593"}'
-      - '{"type":"future","id":"1297781464149960028797060285986265412679573504857528613822702946616595852889field","value":"{\n  program_id: arrays_in_finalize.aleo,\n  function_name: test_arrays,\n  arguments: [\n    [\n  [\n    true,\n    false,\n    true,\n    false\n  ]\n],\n    [\n  [\n    false,\n    true,\n    false,\n    true\n  ]\n]\n  ]\n}"}'
+      - '{"type":"public","id":"5118967490510389498563593408332855643361881818167099838056367495551683196086field","value":"[\n  [\n    true,\n    false,\n    true,\n    false\n  ]\n]"}'
+      - '{"type":"public","id":"161244190800350724515604266901291103671352113673202215208394633608141402826field","value":"[\n  [\n    false,\n    true,\n    false,\n    true\n  ]\n]"}'
+      - '{"type":"public","id":"732180900540213101598934684824468886231161382295639155627335564133876613960field","value":"[\n  [\n    false,\n    false,\n    false,\n    false\n  ]\n]"}'
+      - '{"type":"private","id":"3616430215374655411967163606466924889426035845343017410873880387198363014495field","value":"ciphertext1qvqrc4mrjecujgr0g5x0qm3ra4hexhgyg37yvvcmsa235vxy8zvscq9yvve3egaugcevxduuqpjfazej54lpjjtme2wflhzkwr2yzdcfpq0pmeuu5deqde6c9mqj93t7r66eytj7kpdwmqzlfyszqzph8cwq2rfmq75"}'
+      - '{"type":"future","id":"3184185279581827020862519880740546694254080631373935662875123969347427956025field","value":"{\n  program_id: arrays_in_finalize.aleo,\n  function_name: test_arrays,\n  arguments: [\n    [\n  [\n    true,\n    false,\n    true,\n    false\n  ]\n],\n    [\n  [\n    false,\n    true,\n    false,\n    true\n  ]\n]\n  ]\n}"}'
   speculate: the execution was accepted
   add_next_block: succeeded.
 additional:
 - child_outputs:
     credits.aleo/fee_public:
       outputs:
-      - '{"type":"future","id":"2715104495799396615741890969708845641129834494989002430629962063572161077357field","value":"{\n  program_id: credits.aleo,\n  function_name: fee_public,\n  arguments: [\n    aleo1y9t0y4lvhm43qdzlfjmfzh8985vfnx9ms368p07x5lsemet5ey8qt0ssjn,\n    7030u64\n  ]\n}"}'
+      - '{"type":"future","id":"3000589134503000271678431837168879644758861415863210971558080085500903023542field","value":"{\n  program_id: credits.aleo,\n  function_name: fee_public,\n  arguments: [\n    aleo1y9t0y4lvhm43qdzlfjmfzh8985vfnx9ms368p07x5lsemet5ey8qt0ssjn,\n    7030u64\n  ]\n}"}'
