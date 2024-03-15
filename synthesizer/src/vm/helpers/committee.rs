@@ -229,6 +229,20 @@ pub fn to_next_commitee_map_and_bonded_map<N: Network>(
     (committee_map, bonded_map)
 }
 
+/// Returns the withdraw map, given the withdrawal addresses.
+pub fn to_next_withdraw_map<N: Network>(
+    withdrawal_addresses: &IndexMap<Address<N>, Address<N>>,
+) -> Vec<(Plaintext<N>, Value<N>)> {
+    cfg_iter!(withdrawal_addresses)
+        .map(|(staker, withdraw_address)| {
+            (
+                Plaintext::from(Literal::Address(*staker)),
+                Value::Plaintext(Plaintext::Literal(Literal::Address(*withdraw_address), Default::default())),
+            )
+        })
+        .collect::<Vec<_>>()
+}
+
 #[cfg(test)]
 pub(crate) mod test_helpers {
     use super::*;
@@ -275,6 +289,23 @@ pub(crate) mod test_helpers {
                 }
                 // Return the stakers.
                 stakers
+            })
+            .collect()
+    }
+
+    /// Returns the withdrawal addresses, given the stakers.
+    /// This method simulates the existence of unique withdrawal addresses for the stakers.
+    pub(crate) fn to_withdraw_addresses<N: Network, R: Rng + CryptoRng>(
+        stakers: &IndexMap<Address<N>, (Address<N>, u64)>,
+        rng: &mut R,
+    ) -> IndexMap<Address<N>, Address<N>> {
+        stakers
+            .into_iter()
+            .map(|(staker, _)| {
+                // Sample a random withdraw address.
+                let withdraw_address = Address::<N>::new(rng.gen());
+                // Return the withdraw address.
+                (*staker, withdraw_address)
             })
             .collect()
     }
@@ -325,6 +356,31 @@ mod tests {
                 )
             })
             .collect()
+    }
+
+    /// Returns the withdrawal addresses given the withdraw map from finalize storage.
+    pub fn withdraw_map_to_withdrawal_addresses<N: Network>(
+        withdraw_map: Vec<(Plaintext<N>, Value<N>)>,
+    ) -> Result<IndexMap<Address<N>, Address<N>>> {
+        // Convert the given key and value into a staker entry.
+        let convert = |key, value| {
+            // Extract the staker from the key.
+            let staker = match key {
+                Plaintext::Literal(Literal::Address(address), _) => address,
+                _ => bail!("Invalid withdraw key (missing staker) - {key}"),
+            };
+
+            // Extract the withdrawal address from the value.
+            let withdrawal_address = match value {
+                Value::Plaintext(Plaintext::Literal(Literal::Address(address), _)) => address,
+                _ => bail!("Invalid withdraw value (missing address) - {key}"),
+            };
+
+            Ok((staker, withdrawal_address))
+        };
+
+        // Convert the withdraw map into withdrawal addresses.
+        withdraw_map.into_iter().map(|(key, value)| convert(key, value)).collect::<Result<IndexMap<_, _>>>()
     }
 
     #[test]
@@ -418,5 +474,25 @@ mod tests {
         println!("to_next_commitee_map_and_bonded_map: {}ms", timer.elapsed().as_millis());
         assert_eq!(committee_map, to_committee_map(committee.members()));
         assert_eq!(bonded_map, to_bonded_map(&stakers));
+    }
+
+    #[test]
+    fn test_to_withdraw_map() {
+        let rng = &mut TestRng::default();
+
+        // Sample a committee.
+        let committee = ledger_committee::test_helpers::sample_committee(rng);
+        // Convert the committee into stakers.
+        let stakers = crate::committee::test_helpers::to_stakers(committee.members(), rng);
+
+        // Construct the withdraw addresses.
+        let withdrawal_addresses = crate::committee::test_helpers::to_withdraw_addresses(&stakers, rng);
+
+        // Start a timer.
+        let timer = std::time::Instant::now();
+        // Ensure the withdrawal map is correct.
+        let withdrawal_map = to_next_withdraw_map(&withdrawal_addresses);
+        println!("to_next_withdraw_map: {}ms", timer.elapsed().as_millis());
+        assert_eq!(withdrawal_addresses, withdraw_map_to_withdrawal_addresses(withdrawal_map).unwrap());
     }
 }
