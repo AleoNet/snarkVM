@@ -29,7 +29,7 @@ mod tests {
     use super::*;
     use snarkvm_console_network_environment::Console;
 
-    use std::collections::HashSet;
+    use std::collections::HashMap;
 
     type CurrentEnvironment = Console;
 
@@ -37,19 +37,21 @@ mod tests {
 
     #[test]
     fn test_random() {
-        // Initialize a set to store all seen random elements.
-        let mut set = HashSet::with_capacity(ITERATIONS);
+        // Initialize a map[string]=>occurences to store all seen random elements.
+        let mut map = HashMap::with_capacity(ITERATIONS);
 
         let mut rng = TestRng::default();
 
-        // Note: This test technically has a `(1 + 2 + ... + ITERATIONS) / MODULUS` probability of being flaky.
         for _ in 0..ITERATIONS {
             // Sample a random value.
             let string: StringType<CurrentEnvironment> = Uniform::rand(&mut rng);
-            assert!(!set.contains(&string), "{}", string);
 
             // Add the new random value to the set.
-            set.insert(string);
+            map.entry(string).and_modify(|count| *count += 1).or_insert(1);
+        }
+        for (string, count) in map {
+            let allowed_occurences = 1 + ITERATIONS / (string.len() * 10);
+            assert!(count <= allowed_occurences, "Encountered an element with a count of {}: {}", count, string);
         }
     }
 }

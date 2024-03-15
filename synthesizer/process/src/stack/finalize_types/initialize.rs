@@ -13,24 +13,16 @@
 // limitations under the License.
 
 use super::*;
-use crate::RegisterTypes;
-use synthesizer_program::{
-    Await,
-    Branch,
-    CallOperator,
-    CastType,
-    Contains,
-    Get,
-    GetOrUse,
-    RandChaCha,
-    Remove,
-    Set,
-    MAX_ADDITIONAL_SEEDS,
-};
 
 impl<N: Network> FinalizeTypes<N> {
     /// Initializes a new instance of `FinalizeTypes` for the given finalize.
     /// Checks that the given finalize is well-formed for the given stack.
+    ///
+    /// Attention: To support user-defined ordering for awaiting on futures, this method does **not** check
+    /// that all input futures are awaited **exactly** once. It does however check that all input
+    /// futures are awaited at least once. This means that it is possible to deploy a program
+    /// whose finalize is not well-formed, but it is not possible to execute a program whose finalize
+    /// is not well-formed.
     #[inline]
     pub(super) fn initialize_finalize_types(
         stack: &(impl StackMatches<N> + StackProgram<N>),
@@ -53,31 +45,33 @@ impl<N: Network> FinalizeTypes<N> {
             }
         }
 
-        // Initialize a list of consumed futures.
-        let mut consumed_futures = Vec::new();
+        // Initialize the set of consumed futures.
+        let mut consumed_futures = HashSet::new();
 
-        // Step 2. Check the commands are well-formed. Store the futures consumed by the `await` commands.
+        // Step 2. Check the commands are well-formed. Make sure all the input futures are awaited.
         for command in finalize.commands() {
             // Check the command opcode, operands, and destinations.
             finalize_types.check_command(stack, finalize, command)?;
 
-            // If the command is an `await`, add the future to the list of consumed futures.
+            // If the command is an `await`, add the future to the set of consumed futures.
             if let Command::Await(await_) = command {
                 // Note: `check_command` ensures that the register is a future. This is an additional check.
                 let locator = match finalize_types.get_type(stack, await_.register())? {
                     FinalizeType::Future(locator) => locator,
                     FinalizeType::Plaintext(..) => bail!("Expected a future in '{await_}'"),
                 };
-                consumed_futures.push((await_.register(), locator));
+                consumed_futures.insert((await_.register(), locator));
             }
         }
 
-        // Check that the input futures are consumed in the order they are passed in.
-        ensure!(
-            input_futures == consumed_futures,
-            "Futures in finalize '{}' are not awaited in the order they are passed in.",
-            finalize.name()
-        );
+        // Check that all input futures are consumed.
+        for input_future in &input_futures {
+            ensure!(
+                consumed_futures.contains(input_future),
+                "Futures in finalize '{}' are not all awaited.",
+                finalize.name()
+            )
+        }
 
         Ok(finalize_types)
     }

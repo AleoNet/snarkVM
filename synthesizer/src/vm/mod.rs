@@ -55,11 +55,12 @@ use ledger_store::{
     TransactionStore,
     TransitionStore,
 };
-use synthesizer_process::{Authorization, Process, Trace};
+use synthesizer_process::{deployment_cost, execution_cost, Authorization, Process, Trace};
 use synthesizer_program::{FinalizeGlobalState, FinalizeOperation, FinalizeStoreTrait, Program};
 
 use aleo_std::prelude::{finish, lap, timer};
 use indexmap::{IndexMap, IndexSet};
+use itertools::Either;
 use lru::LruCache;
 use parking_lot::{Mutex, RwLock};
 use std::{num::NonZeroUsize, sync::Arc};
@@ -312,7 +313,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         let state = FinalizeGlobalState::new_genesis::<N>()?;
         // Speculate on the ratifications, solutions, and transactions.
         let (ratifications, transactions, aborted_transaction_ids, ratified_finalize_operations) =
-            self.speculate(state, None, ratifications, &solutions, transactions.iter())?;
+            self.speculate(state, None, ratifications, &solutions, transactions.iter(), rng)?;
         ensure!(
             aborted_transaction_ids.is_empty(),
             "Failed to initialize a genesis block - found aborted transaction IDs"
@@ -358,22 +359,45 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             block.previous_hash(),
         )?;
 
-        // Attention: The following order is crucial because if 'finalize' fails, we can rollback the block.
-        // If one first calls 'finalize', then calls 'insert(block)' and it fails, there is no way to rollback 'finalize'.
+        // Pause the atomic writes, so that both the insertion and finalization belong to a single batch.
+        #[cfg(feature = "rocks")]
+        self.block_store().pause_atomic_writes()?;
 
         // First, insert the block.
         self.block_store().insert(block)?;
         // Next, finalize the transactions.
         match self.finalize(state, block.ratifications(), block.solutions(), block.transactions()) {
-            Ok(_ratified_finalize_operations) => Ok(()),
+            Ok(_ratified_finalize_operations) => {
+                // Unpause the atomic writes, executing the ones queued from block insertion and finalization.
+                #[cfg(feature = "rocks")]
+                self.block_store().unpause_atomic_writes::<false>()?;
+                Ok(())
+            }
             Err(finalize_error) => {
-                // Rollback the block.
-                self.block_store().remove_last_n(1).map_err(|removal_error| {
-                    // Log the finalize error.
-                    error!("Failed to finalize block {} - {finalize_error}", block.height());
-                    // Return the removal error.
-                    removal_error
-                })?;
+                if cfg!(feature = "rocks") {
+                    // Clear all pending atomic operations so that unpausing the atomic writes
+                    // doesn't execute any of the queued storage operations.
+                    self.block_store().abort_atomic();
+                    self.finalize_store().abort_atomic();
+                    // Disable the atomic batch override.
+                    // Note: This call is guaranteed to succeed (without error), because `DISCARD_BATCH == true`.
+                    self.block_store().unpause_atomic_writes::<true>()?;
+                    // Rollback the Merkle tree.
+                    self.block_store().remove_last_n_from_tree_only(1).map_err(|removal_error| {
+                        // Log the finalize error.
+                        error!("Failed to finalize block {} - {finalize_error}", block.height());
+                        // Return the removal error.
+                        removal_error
+                    })?;
+                } else {
+                    // Rollback the block.
+                    self.block_store().remove_last_n(1).map_err(|removal_error| {
+                        // Log the finalize error.
+                        error!("Failed to finalize block {} - {finalize_error}", block.height());
+                        // Return the removal error.
+                        removal_error
+                    })?;
+                }
                 // Return the finalize error.
                 Err(finalize_error)
             }
@@ -676,7 +700,7 @@ function compute:
 
         // Construct the new block header.
         let (ratifications, transactions, aborted_transaction_ids, ratified_finalize_operations) =
-            vm.speculate(sample_finalize_state(1), None, vec![], &None.into(), transactions.iter())?;
+            vm.speculate(sample_finalize_state(1), None, vec![], &None.into(), transactions.iter(), rng)?;
         assert!(aborted_transaction_ids.is_empty());
 
         // Construct the metadata associated with the block.
@@ -974,7 +998,7 @@ function a:
             // Note: `deployment_transaction_ids` is sorted lexicographically by transaction ID, so the order may change if we update internal methods.
             assert_eq!(
                 deployment_transaction_ids,
-                vec![deployment_1.id(), deployment_2.id(), deployment_3.id(), deployment_4.id()],
+                vec![deployment_2.id(), deployment_1.id(), deployment_4.id(), deployment_3.id()],
                 "Update me if serialization has changed"
             );
         }

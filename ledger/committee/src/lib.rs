@@ -18,6 +18,7 @@
 mod bytes;
 mod serialize;
 mod string;
+mod to_id;
 
 #[cfg(any(test, feature = "prop-tests"))]
 pub mod prop_tests;
@@ -41,6 +42,8 @@ pub const MAX_DELEGATORS: u32 = 100_000u32;
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct Committee<N: Network> {
+    /// The committee ID, defined as the hash of the starting round, members, and total stake.
+    id: Field<N>,
     /// The starting round number for this committee.
     starting_round: u64,
     /// A map of `address` to `(stake, is_open)` state.
@@ -78,14 +81,21 @@ impl<N: Network> Committee<N> {
         );
         // Compute the total stake of the committee for this round.
         let total_stake = Self::compute_total_stake(&members)?;
+        // Compute the committee ID.
+        let id = Self::compute_committee_id(starting_round, &members, total_stake)?;
         #[cfg(feature = "metrics")]
         metrics::gauge(metrics::committee::TOTAL_STAKE, total_stake as f64);
         // Return the new committee.
-        Ok(Self { starting_round, members, total_stake })
+        Ok(Self { id, starting_round, members, total_stake })
     }
 }
 
 impl<N: Network> Committee<N> {
+    /// Returns the committee ID.
+    pub const fn id(&self) -> Field<N> {
+        self.id
+    }
+
     /// Returns the starting round number for this committee.
     pub const fn starting_round(&self) -> u64 {
         self.starting_round
@@ -171,7 +181,7 @@ impl<N: Network> Committee<N> {
         // Retrieve the total stake of the committee.
         let total_stake = self.total_stake();
         // Construct the round seed.
-        let seed = [self.starting_round, current_round, total_stake].map(Field::from_u64);
+        let seed = [current_round].map(Field::from_u64);
         // Hash the round seed.
         let hash = Literal::Field(N::hash_to_group_psd4(&seed)?.to_x_coordinate());
         // Compute the stake index from the hash output.
@@ -201,17 +211,13 @@ impl<N: Network> Committee<N> {
         Ok(leader.unwrap())
     }
 
-    /// Returns the committee members sorted by stake in decreasing order.
-    /// For members with matching stakes, we further sort by their address' x-coordinate in decreasing order.
+    /// Returns the committee members sorted by their address' x-coordinate in decreasing order.
     /// Note: This ensures the method returns a deterministic result that is SNARK-friendly.
     fn sorted_members(&self) -> indexmap::map::IntoIter<Address<N>, (u64, bool)> {
         let members = self.members.clone();
         // Note: The use of 'sorted_unstable_by' is safe here because the addresses are guaranteed to be unique.
-        members.sorted_unstable_by(|address1, (stake1, _), address2, (stake2, _)| {
-            // Sort by stake in decreasing order.
-            let cmp = stake2.cmp(stake1);
-            // If the stakes are equal, sort by x-coordinate in decreasing order.
-            if cmp == Ordering::Equal { address2.to_x_coordinate().cmp(&address1.to_x_coordinate()) } else { cmp }
+        members.sorted_unstable_by(|address1, (_, _), address2, (_, _)| {
+            address2.to_x_coordinate().cmp(&address1.to_x_coordinate())
         })
     }
 }
@@ -423,34 +429,9 @@ mod tests {
         println!("sorted_members: {}ms", timer.elapsed().as_millis());
         // Check that the members are sorted based on our sorting criteria.
         for i in 0..sorted_members.len() - 1 {
-            let (address1, (stake1, _)) = sorted_members[i];
-            let (address2, (stake2, _)) = sorted_members[i + 1];
-            assert!(stake1 >= stake2);
-            if stake1 == stake2 {
-                assert!(address1.to_x_coordinate() > address2.to_x_coordinate());
-            }
-        }
-    }
-
-    #[test]
-    fn test_sorted_members_with_equal_stake() {
-        // Initialize the RNG.
-        let rng = &mut TestRng::default();
-        // Sample a committee.
-        let committee = crate::test_helpers::sample_committee_equal_stake_committee(200, rng);
-        // Start a timer.
-        let timer = std::time::Instant::now();
-        // Sort the members.
-        let sorted_members = committee.sorted_members().collect::<Vec<_>>();
-        println!("sorted_members: {}ms", timer.elapsed().as_millis());
-        // Check that the members are sorted based on our sorting criteria.
-        for i in 0..sorted_members.len() - 1 {
-            let (address1, (stake1, _)) = sorted_members[i];
-            let (address2, (stake2, _)) = sorted_members[i + 1];
-            assert!(stake1 >= stake2);
-            if stake1 == stake2 {
-                assert!(address1.to_x_coordinate() > address2.to_x_coordinate());
-            }
+            let (address1, (_, _)) = sorted_members[i];
+            let (address2, (_, _)) = sorted_members[i + 1];
+            assert!(address1.to_x_coordinate() > address2.to_x_coordinate());
         }
     }
 

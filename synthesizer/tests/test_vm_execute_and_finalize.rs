@@ -91,7 +91,14 @@ fn run_test(test: &ProgramTest) -> serde_yaml::Mapping {
             )
             .unwrap();
         let (ratifications, transactions, aborted_transaction_ids, ratified_finalize_operations) = vm
-            .speculate(construct_finalize_global_state(&vm), Some(0u64), vec![], &None.into(), [transaction].iter())
+            .speculate(
+                construct_finalize_global_state(&vm),
+                Some(0u64),
+                vec![],
+                &None.into(),
+                [transaction].iter(),
+                rng,
+            )
             .unwrap();
         assert!(aborted_transaction_ids.is_empty());
 
@@ -128,7 +135,14 @@ fn run_test(test: &ProgramTest) -> serde_yaml::Mapping {
         };
 
         let (ratifications, transactions, aborted_transaction_ids, ratified_finalize_operations) = vm
-            .speculate(construct_finalize_global_state(&vm), Some(0u64), vec![], &None.into(), [transaction].iter())
+            .speculate(
+                construct_finalize_global_state(&vm),
+                Some(0u64),
+                vec![],
+                &None.into(),
+                [transaction].iter(),
+                rng,
+            )
             .unwrap();
         assert!(aborted_transaction_ids.is_empty());
 
@@ -267,8 +281,14 @@ fn run_test(test: &ProgramTest) -> serde_yaml::Mapping {
 
             // Speculate on the ratifications, solutions, and transaction.
             let (ratifications, transactions, aborted_transaction_ids, ratified_finalize_operations) = match vm
-                .speculate(construct_finalize_global_state(&vm), Some(0u64), vec![], &None.into(), [transaction].iter())
-            {
+                .speculate(
+                    construct_finalize_global_state(&vm),
+                    Some(0u64),
+                    vec![],
+                    &None.into(),
+                    [transaction].iter(),
+                    rng,
+                ) {
                 Ok((ratifications, transactions, aborted_transaction_ids, ratified_finalize_operations)) => {
                     result.insert(
                         serde_yaml::Value::String("speculate".to_string()),
@@ -403,7 +423,7 @@ fn construct_fee_records<C: ConsensusStorage<CurrentNetwork>, R: Rng + CryptoRng
         }
 
         let (ratifications, transactions, aborted_transaction_ids, ratified_finalize_operations) = vm
-            .speculate(construct_finalize_global_state(vm), Some(0u64), vec![], &None.into(), transactions.iter())
+            .speculate(construct_finalize_global_state(vm), Some(0u64), vec![], &None.into(), transactions.iter(), rng)
             .unwrap();
         assert!(aborted_transaction_ids.is_empty());
 

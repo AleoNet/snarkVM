@@ -24,11 +24,12 @@ use console::{
     network::prelude::*,
     program::{Entry, Identifier, Literal, Plaintext, ProgramID, Value},
 };
-use indexmap::IndexMap;
 use ledger_block::{ConfirmedTransaction, Rejected, Transaction};
 use ledger_committee::{Committee, MIN_VALIDATOR_STAKE};
 use ledger_store::{helpers::memory::ConsensusMemory, ConsensusStore};
 use synthesizer::{prelude::cost_in_microcredits, program::Program, vm::VM, Stack};
+
+use indexmap::IndexMap;
 
 #[test]
 fn test_load() {
@@ -1252,6 +1253,105 @@ function simple_output:
 }
 
 #[test]
+fn test_abort_fee_transaction() {
+    let rng = &mut TestRng::default();
+
+    // Initialize the test environment.
+    let crate::test_helpers::TestEnv { ledger, private_key, address, .. } = crate::test_helpers::sample_test_env(rng);
+
+    // Construct valid transaction for the ledger.
+    let inputs = [Value::from_str(&format!("{address}")).unwrap(), Value::from_str("1000u64").unwrap()];
+    let transaction = ledger
+        .vm
+        .execute(&private_key, ("credits.aleo", "transfer_public"), inputs.clone().into_iter(), None, 0, None, rng)
+        .unwrap();
+    let transaction_id = transaction.id();
+
+    // Convert a fee transaction.
+    let transaction_to_convert_to_fee = ledger
+        .vm
+        .execute(&private_key, ("credits.aleo", "transfer_public"), inputs.into_iter(), None, 0, None, rng)
+        .unwrap();
+    let fee_transaction = Transaction::from_fee(transaction_to_convert_to_fee.fee_transition().unwrap()).unwrap();
+    let fee_transaction_id = fee_transaction.id();
+
+    // Create a block using a fee transaction.
+    let block = ledger
+        .prepare_advance_to_next_beacon_block(&private_key, vec![], vec![], vec![fee_transaction, transaction], rng)
+        .unwrap();
+
+    // Check that the block aborts the invalid transaction.
+    assert_eq!(block.aborted_transaction_ids(), &vec![fee_transaction_id]);
+    assert_eq!(block.transaction_ids().collect::<Vec<_>>(), vec![&transaction_id]);
+
+    // Check that the next block is valid.
+    ledger.check_next_block(&block, rng).unwrap();
+
+    // Add the block to the ledger.
+    ledger.advance_to_next_block(&block).unwrap();
+}
+
+#[test]
+fn test_abort_invalid_transaction() {
+    let rng = &mut TestRng::default();
+
+    // Initialize the test environment.
+    let crate::test_helpers::TestEnv { ledger, private_key, address, .. } = crate::test_helpers::sample_test_env(rng);
+
+    // Initialize a new VM.
+    let vm = VM::from(ConsensusStore::<CurrentNetwork, ConsensusMemory<CurrentNetwork>>::open(None).unwrap()).unwrap();
+
+    // Construct a custom genesis block.
+    let custom_genesis = vm.genesis_beacon(&private_key, rng).unwrap();
+
+    // Update the VM.
+    vm.add_next_block(&custom_genesis).unwrap();
+
+    // Generate a transaction that will be invalid on another network.
+    let inputs = [Value::from_str(&format!("{address}")).unwrap(), Value::from_str("1000u64").unwrap()];
+    let invalid_transaction = vm
+        .execute(&private_key, ("credits.aleo", "transfer_public"), inputs.clone().into_iter(), None, 0, None, rng)
+        .unwrap();
+    let invalid_transaction_id = invalid_transaction.id();
+
+    // Check that the ledger deems this transaction invalid.
+    assert!(ledger.check_transaction_basic(&invalid_transaction, None, rng).is_err());
+
+    // Construct valid transactions for the ledger.
+    let valid_transaction_1 = ledger
+        .vm
+        .execute(&private_key, ("credits.aleo", "transfer_public"), inputs.clone().into_iter(), None, 0, None, rng)
+        .unwrap();
+    let valid_transaction_2 = ledger
+        .vm
+        .execute(&private_key, ("credits.aleo", "transfer_public"), inputs.into_iter(), None, 0, None, rng)
+        .unwrap();
+    let valid_transaction_id_1 = valid_transaction_1.id();
+    let valid_transaction_id_2 = valid_transaction_2.id();
+
+    // Create a block.
+    let block = ledger
+        .prepare_advance_to_next_beacon_block(
+            &private_key,
+            vec![],
+            vec![],
+            vec![valid_transaction_1, invalid_transaction, valid_transaction_2],
+            rng,
+        )
+        .unwrap();
+
+    // Check that the block aborts the invalid transaction.
+    assert_eq!(block.aborted_transaction_ids(), &vec![invalid_transaction_id]);
+    assert_eq!(block.transaction_ids().collect::<Vec<_>>(), vec![&valid_transaction_id_1, &valid_transaction_id_2]);
+
+    // Check that the next block is valid.
+    ledger.check_next_block(&block, rng).unwrap();
+
+    // Add the block to the ledger.
+    ledger.advance_to_next_block(&block).unwrap();
+}
+
+#[test]
 fn test_deployment_duplicate_program_id() {
     let rng = &mut TestRng::default();
 
@@ -1525,15 +1625,9 @@ fn test_deployment_exceeding_max_transaction_spend() {
         ))
         .unwrap();
 
-        // Initialize a stack for the program.
-        let stack = Stack::<CurrentNetwork>::new(&ledger.vm().process().read(), &program).unwrap();
-
-        // Check the finalize cost.
-        let finalize_cost = cost_in_microcredits(&stack, &Identifier::from_str("foo").unwrap()).unwrap();
-
-        // If the finalize cost exceeds the maximum transaction spend, assign the program to the exceeding program and break.
-        // Otherwise, assign the program to the allowed program and continue.
-        if finalize_cost > <CurrentNetwork as Network>::TRANSACTION_SPEND_LIMIT {
+        // Attempt to initialize a `Stack` for the program.
+        // If this fails, then by `Stack::initialize` the finalize cost exceeds the `TRANSACTION_SPEND_LIMIT`.
+        if Stack::<CurrentNetwork>::new(&ledger.vm().process().read(), &program).is_err() {
             exceeding_program = Some(program);
             break;
         } else {
@@ -1567,11 +1661,11 @@ fn test_deployment_exceeding_max_transaction_spend() {
     // Check that the program exists in the VM.
     assert!(ledger.vm().contains_program(allowed_program.id()));
 
-    // Deploy the exceeding program.
-    let deployment = ledger.vm().deploy(&private_key, &exceeding_program, None, 0, None, rng).unwrap();
+    // Attempt to deploy the exceeding program.
+    let result = ledger.vm().deploy(&private_key, &exceeding_program, None, 0, None, rng);
 
-    // Verify the deployment transaction.
-    assert!(ledger.vm().check_transaction(&deployment, None, rng).is_err());
+    // Check that the deployment failed.
+    assert!(result.is_err());
 }
 
 #[test]
