@@ -248,7 +248,7 @@ pub(crate) mod test_helpers {
             .flat_map(|(validator, (microcredits, _))| {
                 // Keep a tally of the remaining microcredits.
                 let remaining_microcredits = microcredits.saturating_sub(MIN_VALIDATOR_STAKE);
-                // Set the staker amount to 10 credit.
+                // Set the staker amount to `MIN_DELEGATOR_STAKE` microcredits.
                 let staker_amount = MIN_DELEGATOR_STAKE;
                 // Determine the number of iterations.
                 let num_iterations = (remaining_microcredits / staker_amount).saturating_sub(1);
