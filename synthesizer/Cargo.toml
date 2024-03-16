@@ -161,6 +161,11 @@ package = "snarkvm-ledger-committee"
 path = "../ledger/committee"
 features = [ "test-helpers" ]
 
+[dev-dependencies.ledger-narwhal-batch-header]
+package = "snarkvm-ledger-narwhal-batch-header"
+path = "../ledger/narwhal/batch-header"
+features = [ "test-helpers" ]
+
 [dev-dependencies.ledger-test-helpers]
 package = "snarkvm-ledger-test-helpers"
 path = "../ledger/test-helpers"

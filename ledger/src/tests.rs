@@ -502,7 +502,7 @@ fn test_bond_and_unbond_validator() {
     // Fund the new committee member.
     let inputs = [
         Value::from_str(&format!("{new_member_address}")).unwrap(),
-        Value::from_str("10000000000000u64").unwrap(), // 10 million credits.
+        Value::from_str("20000000000000u64").unwrap(), // 20 million credits.
     ];
     let transfer_transaction = ledger
         .vm
@@ -521,7 +521,7 @@ fn test_bond_and_unbond_validator() {
     ledger.advance_to_next_block(&transfer_block).unwrap();
 
     // Construct the bond public
-    let bond_amount = 1000000000000u64; // 1 million credits.
+    let bond_amount = MIN_VALIDATOR_STAKE;
     let inputs = [
         Value::from_str(&format!("{new_member_address}")).unwrap(),
         Value::from_str(&format!("{new_member_address}")).unwrap(),
@@ -569,7 +569,7 @@ fn test_bond_and_unbond_validator() {
     assert_eq!(num_validators, committee.num_members());
 
     // Construct the bond public
-    let unbond_amount = committee.get_stake(new_member_address); // 1 million credits.
+    let unbond_amount = committee.get_stake(new_member_address);
     let inputs = [Value::from_str(&format!("{unbond_amount}u64")).unwrap()];
     let unbond_public_transaction = ledger
         .vm

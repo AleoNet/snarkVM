@@ -247,7 +247,7 @@ pub fn to_next_withdraw_map<N: Network>(
 pub(crate) mod test_helpers {
     use super::*;
     use crate::vm::TestRng;
-    use ledger_committee::MIN_VALIDATOR_STAKE;
+    use ledger_committee::{MIN_DELEGATOR_STAKE, MIN_VALIDATOR_STAKE};
 
     use rand::{CryptoRng, Rng};
 
@@ -262,8 +262,8 @@ pub(crate) mod test_helpers {
             .flat_map(|(validator, (microcredits, _))| {
                 // Keep a tally of the remaining microcredits.
                 let remaining_microcredits = microcredits.saturating_sub(MIN_VALIDATOR_STAKE);
-                // Set the staker amount to 10 credit.
-                let staker_amount = 10_000_000;
+                // Set the staker amount to `MIN_DELEGATOR_STAKE` microcredits.
+                let staker_amount = MIN_DELEGATOR_STAKE;
                 // Determine the number of iterations.
                 let num_iterations = (remaining_microcredits / staker_amount).saturating_sub(1);
 
