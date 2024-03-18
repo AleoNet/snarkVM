@@ -257,9 +257,9 @@ impl<N: Network> Output<N> {
 #[cfg(test)]
 pub(crate) mod test_helpers {
     use super::*;
-    use console::{network::Testnet3, program::Literal};
+    use console::{network::MainnetV0, program::Literal};
 
-    type CurrentNetwork = Testnet3;
+    type CurrentNetwork = MainnetV0;
 
     /// Sample the transition outputs.
     pub(crate) fn sample_outputs() -> Vec<(<CurrentNetwork as Network>::TransitionID, Output<CurrentNetwork>)> {

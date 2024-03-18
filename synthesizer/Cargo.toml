@@ -35,7 +35,6 @@ rocks = [ "ledger-store/rocks" ]
 serial = [
   "console/serial",
   "ledger-block/serial",
-  "ledger-coinbase/serial",
   "ledger-committee/serial",
   "ledger-query/serial",
   "ledger-store/serial",
@@ -53,7 +52,6 @@ wasm = [
   "snark",
   "console/wasm",
   "ledger-block/wasm",
-  "ledger-coinbase/wasm",
   "ledger-committee/wasm",
   "ledger-query/wasm",
   "ledger-store/wasm",
@@ -85,11 +83,6 @@ version = "=0.16.19"
 [dependencies.ledger-block]
 package = "snarkvm-ledger-block"
 path = "../ledger/block"
-version = "=0.16.19"
-
-[dependencies.ledger-coinbase]
-package = "snarkvm-ledger-coinbase"
-path = "../ledger/coinbase"
 version = "=0.16.19"
 
 [dependencies.ledger-committee]
@@ -138,6 +131,9 @@ version = "1.0"
 version = "2.0"
 features = [ "serde", "rayon" ]
 
+[dependencies.itertools]
+version = "0.11.0"
+
 [dependencies.lru]
 version = "0.12"
 
@@ -160,12 +156,14 @@ version = "1.0.73"
 [dev-dependencies.criterion]
 version = "0.5"
 
-[dev-dependencies.itertools]
-version = "0.11.0"
-
 [dev-dependencies.ledger-committee]
 package = "snarkvm-ledger-committee"
 path = "../ledger/committee"
+features = [ "test-helpers" ]
+
+[dev-dependencies.ledger-narwhal-batch-header]
+package = "snarkvm-ledger-narwhal-batch-header"
+path = "../ledger/narwhal/batch-header"
 features = [ "test-helpers" ]
 
 [dev-dependencies.ledger-test-helpers]

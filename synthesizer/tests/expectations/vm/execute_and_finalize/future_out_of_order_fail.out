@@ -1,3 +1,0 @@
-errors:
-- 'Failed to run `VM::deploy for program parent.aleo: Function ''foo'' contains futures, but the ''async'' instruction does not consume all of them in the order they were produced'
-outputs: []

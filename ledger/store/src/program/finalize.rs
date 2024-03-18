@@ -244,7 +244,7 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
         })?;
 
         // Return the finalize operation.
-        Ok(FinalizeOperation::UpdateKeyValue(to_mapping_id(&program_id, &mapping_name)?, 0u64, key_id, value_id))
+        Ok(FinalizeOperation::UpdateKeyValue(to_mapping_id(&program_id, &mapping_name)?, key_id, value_id))
     }
 
     /// Removes the key-value pair for the given `program ID`, `mapping name`, and `key` from storage.
@@ -264,6 +264,9 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
             return Ok(None);
         }
 
+        // Compute the key ID.
+        let key_id = to_key_id(&program_id, &mapping_name, key)?;
+
         atomic_batch_scope!(self, {
             // Update the key-value map with the new key.
             self.key_value_map().remove_key(&(program_id, mapping_name), key)?;
@@ -272,7 +275,7 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
         })?;
 
         // Return the finalize operation.
-        Ok(Some(FinalizeOperation::RemoveKeyValue(to_mapping_id(&program_id, &mapping_name)?, 0u64)))
+        Ok(Some(FinalizeOperation::RemoveKeyValue(to_mapping_id(&program_id, &mapping_name)?, key_id)))
     }
 
     /// Replaces the mapping for the given `program ID` and `mapping name` from storage,
@@ -769,9 +772,9 @@ impl<N: Network, P: FinalizeStorage<N>> FinalizeStore<N, P> {
 mod tests {
     use super::*;
     use crate::helpers::memory::FinalizeMemory;
-    use console::{network::Testnet3, program::Literal, types::U64};
+    use console::{network::MainnetV0, program::Literal, types::U64};
 
-    type CurrentNetwork = Testnet3;
+    type CurrentNetwork = MainnetV0;
 
     /// Checks `initialize_mapping`, `insert_key_value`, `remove_key_value`, and `remove_mapping`.
     fn check_initialize_insert_remove<N: Network>(
@@ -1314,7 +1317,7 @@ mod tests {
 
         // Insert the key and value.
         let timer = std::time::Instant::now();
-        finalize_store.insert_key_value(program_id, mapping_name, key.clone(), value.clone()).unwrap();
+        finalize_store.insert_key_value(program_id, mapping_name, key.clone(), value).unwrap();
         println!("FinalizeStore::insert_key_value - {} μs", timer.elapsed().as_micros());
 
         // Insert the list of keys and values.

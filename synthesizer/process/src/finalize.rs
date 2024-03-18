@@ -13,9 +13,11 @@
 // limitations under the License.
 
 use super::*;
-use console::program::{Future, Register};
+use console::program::{FinalizeType, Future, Register};
 use synthesizer_program::{Await, FinalizeRegistersState, Operand};
 use utilities::handle_halting;
+
+use std::collections::HashSet;
 
 impl<N: Network> Process<N> {
     /// Finalizes the deployment and fee.
@@ -209,13 +211,13 @@ fn finalize_transition<N: Network, P: FinalizeStorage<N>>(
     states.push(initialize_finalize_state(state, future, stack, *transition.id())?);
 
     // While there are active finalize states, finalize them.
-    while let Some(FinalizeState {
+    'outer: while let Some(FinalizeState {
         mut counter,
         finalize,
         mut registers,
         stack,
         mut call_counter,
-        mut recent_call_locator,
+        mut awaited,
     }) = states.pop()
     {
         // Evaluate the commands.
@@ -253,18 +255,16 @@ fn finalize_transition<N: Network, P: FinalizeStorage<N>>(
                     }
                 }
                 Command::Await(await_) => {
-                    // Check that the `await` register's locator is greater than the last seen call locator.
-                    // This ensures that futures are invoked in the order they are called.
-                    let locator = *match await_.register() {
-                        Register::Locator(locator) => locator,
-                        Register::Access(..) => bail!("The 'await' register must be a locator"),
+                    // Check that the `await` register's is a locator.
+                    if let Register::Access(_, _) = await_.register() {
+                        bail!("The 'await' register must be a locator")
                     };
-                    if let Some(recent_call_locator) = recent_call_locator {
-                        ensure!(
-                            locator > recent_call_locator,
-                            "Await register's locator '{locator}' must be greater than the last seen call locator '{recent_call_locator}'",
-                        )
-                    }
+                    // Check that the future has not previously been awaited.
+                    ensure!(
+                        !awaited.contains(await_.register()),
+                        "The future register '{}' has already been awaited",
+                        await_.register()
+                    );
 
                     // Get the current transition ID.
                     let transition_id = registers.transition_id();
@@ -288,23 +288,22 @@ fn finalize_transition<N: Network, P: FinalizeStorage<N>>(
                         Err(_) => bail!("'finalize' failed to evaluate command ({command})"),
                     };
 
-                    // Set the last seen call locator.
-                    recent_call_locator = Some(locator);
                     // Increment the call counter.
                     call_counter += 1;
                     // Increment the counter.
                     counter += 1;
+                    // Add the awaited register to the tracked set.
+                    awaited.insert(await_.register().clone());
 
                     // Aggregate the caller state.
-                    let caller_state =
-                        FinalizeState { counter, finalize, registers, stack, call_counter, recent_call_locator };
+                    let caller_state = FinalizeState { counter, finalize, registers, stack, call_counter, awaited };
 
                     // Push the caller state onto the stack.
                     states.push(caller_state);
                     // Push the callee state onto the stack.
                     states.push(callee_state);
 
-                    break;
+                    continue 'outer;
                 }
                 _ => {
                     let result =
@@ -323,6 +322,18 @@ fn finalize_transition<N: Network, P: FinalizeStorage<N>>(
                 }
             };
         }
+        // Check that all future registers have been awaited.
+        let mut unawaited = Vec::new();
+        for input in finalize.inputs() {
+            if matches!(input.finalize_type(), FinalizeType::Future(_)) && !awaited.contains(input.register()) {
+                unawaited.push(input.register().clone());
+            }
+        }
+        ensure!(
+            unawaited.is_empty(),
+            "The following future registers have not been awaited: {}",
+            unawaited.iter().map(|r| r.to_string()).collect::<Vec<_>>().join(", ")
+        );
     }
 
     // Return the finalize operations.
@@ -341,8 +352,8 @@ struct FinalizeState<'a, N: Network> {
     stack: &'a Stack<N>,
     // Call counter.
     call_counter: usize,
-    // Recent call register.
-    recent_call_locator: Option<u64>,
+    // Awaited futures.
+    awaited: HashSet<Register<N>>,
 }
 
 // A helper function to initialize the finalize state.
@@ -385,7 +396,7 @@ fn initialize_finalize_state<'a, N: Network>(
         },
     )?;
 
-    Ok(FinalizeState { counter: 0, finalize, registers, stack, call_counter: 0, recent_call_locator: None })
+    Ok(FinalizeState { counter: 0, finalize, registers, stack, call_counter: 0, awaited: Default::default() })
 }
 
 // A helper function that sets up the await operation.
@@ -448,7 +459,7 @@ mod tests {
         BlockStore,
     };
 
-    type CurrentNetwork = console::network::Testnet3;
+    type CurrentNetwork = console::network::MainnetV0;
     type CurrentAleo = circuit::network::AleoV0;
 
     #[test]

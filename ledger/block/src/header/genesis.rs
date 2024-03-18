@@ -69,9 +69,9 @@ impl<N: Network> Header<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use console::network::Testnet3;
+    use console::network::MainnetV0;
 
-    type CurrentNetwork = Testnet3;
+    type CurrentNetwork = MainnetV0;
 
     /// Returns the expected block header size by summing its subcomponent sizes.
     /// Update this method if the contents of a block header have changed.

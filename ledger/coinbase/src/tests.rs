@@ -13,7 +13,7 @@
 // limitations under the License.
 
 use super::*;
-use console::{account::*, network::Testnet3};
+use console::{account::*, network::MainnetV0};
 use snarkvm_utilities::Uniform;
 
 use rand::RngCore;
@@ -26,18 +26,18 @@ fn test_coinbase_puzzle() {
 
     let max_degree = 1 << 15;
     let max_config = PuzzleConfig { degree: max_degree };
-    let srs = CoinbasePuzzle::<Testnet3>::setup(max_config).unwrap();
+    let srs = CoinbasePuzzle::<MainnetV0>::setup(max_config).unwrap();
 
     for log_degree in 5..10 {
         let degree = (1 << log_degree) - 1;
         let config = PuzzleConfig { degree };
-        let puzzle = CoinbasePuzzle::<Testnet3>::trim(&srs, config).unwrap();
+        let puzzle = CoinbasePuzzle::<MainnetV0>::trim(&srs, config).unwrap();
         let epoch_challenge = EpochChallenge::new(rng.next_u32(), Default::default(), degree).unwrap();
 
         for batch_size in 1..10 {
             let solutions = (0..batch_size)
                 .map(|_| {
-                    let private_key = PrivateKey::<Testnet3>::new(&mut rng).unwrap();
+                    let private_key = PrivateKey::<MainnetV0>::new(&mut rng).unwrap();
                     let address = Address::try_from(private_key).unwrap();
                     let nonce = u64::rand(&mut rng);
                     puzzle.prove(&epoch_challenge, address, nonce, None).unwrap()
@@ -58,16 +58,16 @@ fn test_prover_solution_minimum_target() {
 
     let max_degree = 1 << 15;
     let max_config = PuzzleConfig { degree: max_degree };
-    let srs = CoinbasePuzzle::<Testnet3>::setup(max_config).unwrap();
+    let srs = CoinbasePuzzle::<MainnetV0>::setup(max_config).unwrap();
 
     for log_degree in 5..10 {
         let degree = (1 << log_degree) - 1;
         let config = PuzzleConfig { degree };
-        let puzzle = CoinbasePuzzle::<Testnet3>::trim(&srs, config).unwrap();
+        let puzzle = CoinbasePuzzle::<MainnetV0>::trim(&srs, config).unwrap();
         let epoch_challenge = EpochChallenge::new(rng.next_u32(), Default::default(), degree).unwrap();
 
         for _ in 0..ITERATIONS {
-            let private_key = PrivateKey::<Testnet3>::new(&mut rng).unwrap();
+            let private_key = PrivateKey::<MainnetV0>::new(&mut rng).unwrap();
             let address = Address::try_from(private_key).unwrap();
             let nonce = u64::rand(&mut rng);
 
@@ -90,14 +90,14 @@ fn test_edge_case_for_degree() {
     // Generate srs.
     let max_degree = 1 << 15;
     let max_config = PuzzleConfig { degree: max_degree };
-    let srs = CoinbasePuzzle::<Testnet3>::setup(max_config).unwrap();
+    let srs = CoinbasePuzzle::<MainnetV0>::setup(max_config).unwrap();
 
     // Generate PK and VK.
     let degree = (1 << 13) - 1;
-    let puzzle = CoinbasePuzzle::<Testnet3>::trim(&srs, PuzzleConfig { degree }).unwrap();
+    let puzzle = CoinbasePuzzle::<MainnetV0>::trim(&srs, PuzzleConfig { degree }).unwrap();
 
     // Generate proof inputs
-    let private_key = PrivateKey::<Testnet3>::new(&mut rng).unwrap();
+    let private_key = PrivateKey::<MainnetV0>::new(&mut rng).unwrap();
     let address = Address::try_from(private_key).unwrap();
     let epoch_challenge = EpochChallenge::new(rng.gen(), Default::default(), degree).unwrap();
 
@@ -111,7 +111,7 @@ fn test_edge_case_for_degree() {
 #[ignore]
 #[test]
 fn test_profiler() -> Result<()> {
-    fn sample_address_and_nonce(rng: &mut (impl CryptoRng + RngCore)) -> (Address<Testnet3>, u64) {
+    fn sample_address_and_nonce(rng: &mut (impl CryptoRng + RngCore)) -> (Address<MainnetV0>, u64) {
         let private_key = PrivateKey::new(rng).unwrap();
         let address = Address::try_from(private_key).unwrap();
         let nonce = rng.next_u64();
@@ -123,7 +123,7 @@ fn test_profiler() -> Result<()> {
     // Generate srs.
     let max_degree = 1 << 15;
     let max_config = PuzzleConfig { degree: max_degree };
-    let universal_srs = CoinbasePuzzle::<Testnet3>::setup(max_config).unwrap();
+    let universal_srs = CoinbasePuzzle::<MainnetV0>::setup(max_config).unwrap();
 
     // Generate PK and VK.
     let degree = (1 << 13) - 1;
@@ -133,7 +133,7 @@ fn test_profiler() -> Result<()> {
     // Generate proof inputs
     let epoch_challenge = EpochChallenge::new(rng.next_u32(), Default::default(), degree).unwrap();
 
-    for batch_size in [10, 100, <Testnet3 as Network>::MAX_SOLUTIONS] {
+    for batch_size in [10, 100, <MainnetV0 as Network>::MAX_SOLUTIONS] {
         // Generate the solutions.
         let solutions = (0..batch_size)
             .map(|_| {

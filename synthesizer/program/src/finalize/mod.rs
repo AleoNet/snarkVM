@@ -168,7 +168,7 @@ mod tests {
 
     use crate::{Command, Finalize};
 
-    type CurrentNetwork = console::network::Testnet3;
+    type CurrentNetwork = console::network::MainnetV0;
 
     #[test]
     fn test_add_input() {
@@ -202,7 +202,7 @@ mod tests {
 
         // Ensure that a command can be added.
         let command = Command::<CurrentNetwork>::from_str("add r0 r1 into r2;").unwrap();
-        assert!(finalize.add_command(command.clone()).is_ok());
+        assert!(finalize.add_command(command).is_ok());
 
         // Ensure that adding more than the maximum number of commands will fail.
         for i in 3..CurrentNetwork::MAX_COMMANDS * 2 {

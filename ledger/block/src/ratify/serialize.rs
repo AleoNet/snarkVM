@@ -19,11 +19,12 @@ impl<N: Network> Serialize for Ratify<N> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
             true => match self {
-                Self::Genesis(committee, public_balances) => {
-                    let mut input = serializer.serialize_struct("Ratify", 3)?;
+                Self::Genesis(committee, public_balances, bonded_balances) => {
+                    let mut input = serializer.serialize_struct("Ratify", 4)?;
                     input.serialize_field("type", "genesis")?;
                     input.serialize_field("committee", &committee)?;
                     input.serialize_field("public_balances", &public_balances)?;
+                    input.serialize_field("bonded_balances", &bonded_balances)?;
                     input.end()
                 }
                 Self::BlockReward(amount) => {
@@ -60,8 +61,11 @@ impl<'de, N: Network> Deserialize<'de> for Ratify<N> {
                         // Retrieve the public balances.
                         let public_balances: PublicBalances<N> =
                             DeserializeExt::take_from_value::<D>(&mut object, "public_balances")?;
+                        // Retrieve the bonded balances.
+                        let bonded_balances: BondedBalances<N> =
+                            DeserializeExt::take_from_value::<D>(&mut object, "bonded_balances")?;
                         // Construct the ratify object.
-                        Ratify::Genesis(committee, public_balances)
+                        Ratify::Genesis(Box::new(committee), Box::new(public_balances), Box::new(bonded_balances))
                     }
                     Some("block_reward") => {
                         // Retrieve the amount.

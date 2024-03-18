@@ -49,9 +49,9 @@ pub use view_key::*;
 #[cfg(test)]
 mod tests {
     use crate::{Address, ComputeKey, PrivateKey, Signature, ViewKey};
-    use snarkvm_console_network::{prelude::*, Testnet3};
+    use snarkvm_console_network::{prelude::*, MainnetV0};
 
-    type CurrentNetwork = Testnet3;
+    type CurrentNetwork = MainnetV0;
 
     const ALEO_PRIVATE_KEY: &str = "APrivateKey1zkp8cC4jgHEBnbtu3xxs1Ndja2EMizcvTRDq5Nikdkukg1p";
     const ALEO_VIEW_KEY: &str = "AViewKey1n1n3ZbnVEtXVe3La2xWkUvY3EY7XaCG6RZJJ3tbvrrrD";

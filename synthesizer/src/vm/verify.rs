@@ -160,7 +160,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 let Ok(deployment_id) = deployment.to_deployment_id() else {
                     bail!("Failed to compute the Merkle root for deployment transaction '{id}'")
                 };
-                // Compute the deployment cost.
+                // Compute the minimum deployment cost.
                 let (cost, _) = deployment_cost(deployment)?;
                 // Ensure the fee is sufficient to cover the cost.
                 if *fee.base_amount()? < cost {
@@ -183,7 +183,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     // If the fee is required, then check that the base fee amount is satisfied.
                     if is_fee_required {
                         // Compute the execution cost.
-                        let (cost, _) = execution_cost(self, execution)?;
+                        let (cost, _) = execution_cost(&self.process().read(), execution)?;
                         // Ensure the fee is sufficient to cover the cost.
                         if *fee.base_amount()? < cost {
                             bail!(
@@ -488,8 +488,9 @@ mod tests {
         let deployment_transaction = vm.deploy(&caller_private_key, &program, Some(credits), 10, None, rng).unwrap();
 
         // Construct the new block header.
-        let (ratifications, transactions, aborted_transaction_ids, ratified_finalize_operations) =
-            vm.speculate(sample_finalize_state(1), Some(0u64), vec![], None, [deployment_transaction].iter()).unwrap();
+        let (ratifications, transactions, aborted_transaction_ids, ratified_finalize_operations) = vm
+            .speculate(sample_finalize_state(1), Some(0u64), vec![], &None.into(), [deployment_transaction].iter(), rng)
+            .unwrap();
         assert!(aborted_transaction_ids.is_empty());
 
         // Construct the metadata associated with the block.
@@ -524,7 +525,8 @@ mod tests {
             genesis.hash(),
             deployment_header,
             ratifications,
-            None,
+            None.into(),
+            vec![],
             transactions,
             aborted_transaction_ids,
             rng,

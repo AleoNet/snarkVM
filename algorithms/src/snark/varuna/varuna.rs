@@ -657,7 +657,7 @@ where
         let mut input_domains = BTreeMap::new();
         let mut circuit_infos = BTreeMap::new();
         let mut circuit_ids = Vec::with_capacity(keys_to_inputs.len());
-        for (vk, public_inputs_i) in keys_to_inputs.iter() {
+        for (&vk, &public_inputs_i) in keys_to_inputs.iter() {
             max_num_constraints = max_num_constraints.max(vk.circuit_info.num_constraints);
             max_num_variables = max_num_variables.max(vk.circuit_info.num_variables);
 
@@ -670,17 +670,25 @@ where
 
             let input_fields = public_inputs_i
                 .iter()
-                .map(|input| input.borrow().to_field_elements())
+                .map(|input| {
+                    let input = input.borrow().to_field_elements()?;
+                    ensure!(input.len() > 0);
+                    ensure!(input[0] == E::Fr::one());
+                    if input.len() > input_domain.size() {
+                        bail!(SNARKError::PublicInputSizeMismatch);
+                    }
+                    Ok(input)
+                })
                 .collect::<Result<Vec<_>, _>>()?;
 
             let (padded_public_inputs_i, parsed_public_inputs_i): (Vec<_>, Vec<_>) = {
                 input_fields
                     .iter()
                     .map(|input| {
-                        let mut new_input = Vec::with_capacity((1 + input.len()).max(input_domain.size()));
-                        new_input.push(E::Fr::one());
+                        let input_len = input.len().max(input_domain.size());
+                        let mut new_input = Vec::with_capacity(input_len);
                         new_input.extend_from_slice(input);
-                        new_input.resize(input.len().max(input_domain.size()), E::Fr::zero());
+                        new_input.resize(input_len, E::Fr::zero());
                         if cfg!(debug_assertions) {
                             println!("Number of padded public variables: {}", new_input.len());
                         }

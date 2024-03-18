@@ -29,7 +29,7 @@ use std::{
 };
 use test_strategy::proptest;
 
-type CurrentNetwork = console::network::Testnet3;
+type CurrentNetwork = console::network::MainnetV0;
 
 #[derive(Debug, Clone)]
 pub struct Validator {
@@ -193,7 +193,7 @@ fn committee_members(input: CommitteeContext) {
 fn invalid_stakes(#[strategy(too_low_stake_committee())] committee: Result<Committee<CurrentNetwork>>) {
     assert!(committee.is_err());
     if let Err(err) = committee {
-        assert_eq!(err.to_string().as_str(), "All members must have at least 1000000000000 microcredits in stake");
+        assert_eq!(err.to_string().as_str(), "All members must have at least 10000000000000 microcredits in stake");
     }
 }
 

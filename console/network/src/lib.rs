@@ -25,8 +25,8 @@ pub use snarkvm_console_network_environment::*;
 mod helpers;
 pub use helpers::*;
 
-mod testnet3;
-pub use testnet3::*;
+mod mainnet_v0;
+pub use mainnet_v0::*;
 
 pub mod prelude {
     pub use crate::{environment::prelude::*, Network};
@@ -98,8 +98,14 @@ pub trait Network:
     const STARTING_SUPPLY: u64 = 1_500_000_000_000_000; // 1.5B credits
     /// The cost in microcredits per byte for the deployment transaction.
     const DEPLOYMENT_FEE_MULTIPLIER: u64 = 1_000; // 1 millicredit per byte
+    /// The cost in microcredits per constraint for the deployment transaction.
+    const SYNTHESIS_FEE_MULTIPLIER: u64 = 25; // 25 microcredits per constraint
+    /// The maximum number of constraints in a deployment.
+    const MAX_DEPLOYMENT_LIMIT: u64 = 1 << 20; // 1,048,576 constraints
     /// The maximum number of microcredits that can be spent as a fee.
     const MAX_FEE: u64 = 1_000_000_000_000_000;
+    /// The maximum number of microcredits that can be spent on a finalize block.
+    const TRANSACTION_SPEND_LIMIT: u64 = 100_000_000;
 
     /// The anchor height, defined as the expected number of blocks to reach the coinbase target.
     const ANCHOR_HEIGHT: u32 = Self::ANCHOR_TIME as u32 / Self::BLOCK_TIME as u32;
@@ -138,10 +144,19 @@ pub trait Network:
     /// The maximum number of entries in a record.
     const MAX_RECORD_ENTRIES: usize = Self::MIN_RECORD_ENTRIES.saturating_add(Self::MAX_DATA_ENTRIES);
 
+    /// The maximum program size by number of characters.
+    const MAX_PROGRAM_SIZE: usize = 100_000; // 100 KB
+
     /// The maximum number of mappings in a program.
     const MAX_MAPPINGS: usize = 31;
     /// The maximum number of functions in a program.
     const MAX_FUNCTIONS: usize = 31;
+    /// The maximum number of structs in a program.
+    const MAX_STRUCTS: usize = 10 * Self::MAX_FUNCTIONS;
+    /// The maximum number of records in a program.
+    const MAX_RECORDS: usize = 10 * Self::MAX_FUNCTIONS;
+    /// The maximum number of closures in a program.
+    const MAX_CLOSURES: usize = 2 * Self::MAX_FUNCTIONS;
     /// The maximum number of operands in an instruction.
     const MAX_OPERANDS: usize = Self::MAX_INPUTS;
     /// The maximum number of instructions in a closure or function.
@@ -155,6 +170,11 @@ pub trait Network:
     const MAX_INPUTS: usize = 16;
     /// The maximum number of outputs per transition.
     const MAX_OUTPUTS: usize = 16;
+
+    /// The maximum program depth.
+    const MAX_PROGRAM_DEPTH: usize = 64;
+    /// The maximum number of imports.
+    const MAX_IMPORTS: usize = 64;
 
     /// The state root type.
     type StateRoot: Bech32ID<Field<Self>>;

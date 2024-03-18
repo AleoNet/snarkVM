@@ -43,11 +43,11 @@ impl<N: Network> ToBytes for EpochChallenge<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use console::network::Testnet3;
+    use console::network::MainnetV0;
 
     use rand::RngCore;
 
-    type CurrentNetwork = Testnet3;
+    type CurrentNetwork = MainnetV0;
 
     const ITERATIONS: usize = 100;
 

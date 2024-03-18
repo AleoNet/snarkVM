@@ -16,10 +16,11 @@ use super::*;
 
 impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
     /// Returns a candidate for the next block in the ledger, using a committed subdag and its transmissions.
-    pub fn prepare_advance_to_next_quorum_block(
+    pub fn prepare_advance_to_next_quorum_block<R: Rng + CryptoRng>(
         &self,
         subdag: Subdag<N>,
         transmissions: IndexMap<TransmissionID<N>, Transmission<N>>,
+        rng: &mut R,
     ) -> Result<Block<N>> {
         // Retrieve the latest block as the previous block (for the next block).
         let previous_block = self.latest_block();
@@ -29,8 +30,8 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         // Currently, we do not support ratifications from the memory pool.
         ensure!(ratifications.is_empty(), "Ratifications are currently unsupported from the memory pool");
         // Construct the block template.
-        let (header, ratifications, solutions, transactions, aborted_transaction_ids) =
-            self.construct_block_template(&previous_block, Some(&subdag), ratifications, solutions, transactions)?;
+        let (header, ratifications, solutions, aborted_solution_ids, transactions, aborted_transaction_ids) =
+            self.construct_block_template(&previous_block, Some(&subdag), ratifications, solutions, transactions, rng)?;
 
         // Construct the new quorum block.
         Block::new_quorum(
@@ -39,6 +40,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             subdag,
             ratifications,
             solutions,
+            aborted_solution_ids,
             transactions,
             aborted_transaction_ids,
         )
@@ -60,13 +62,15 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         let previous_block = self.latest_block();
 
         // Construct the block template.
-        let (header, ratifications, solutions, transactions, aborted_transaction_ids) = self.construct_block_template(
-            &previous_block,
-            None,
-            candidate_ratifications,
-            candidate_solutions,
-            candidate_transactions,
-        )?;
+        let (header, ratifications, solutions, aborted_solution_ids, transactions, aborted_transaction_ids) = self
+            .construct_block_template(
+                &previous_block,
+                None,
+                candidate_ratifications,
+                candidate_solutions,
+                candidate_transactions,
+                rng,
+            )?;
 
         // Construct the new beacon block.
         Block::new_beacon(
@@ -75,6 +79,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             header,
             ratifications,
             solutions,
+            aborted_solution_ids,
             transactions,
             aborted_transaction_ids,
             rng,
@@ -165,26 +170,33 @@ where
 impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
     /// Constructs a block template for the next block in the ledger.
     #[allow(clippy::type_complexity)]
-    fn construct_block_template(
+    fn construct_block_template<R: Rng + CryptoRng>(
         &self,
         previous_block: &Block<N>,
         subdag: Option<&Subdag<N>>,
         candidate_ratifications: Vec<Ratify<N>>,
         candidate_solutions: Vec<ProverSolution<N>>,
         candidate_transactions: Vec<Transaction<N>>,
-    ) -> Result<(Header<N>, Ratifications<N>, Option<CoinbaseSolution<N>>, Transactions<N>, Vec<N::TransactionID>)>
-    {
+        rng: &mut R,
+    ) -> Result<(
+        Header<N>,
+        Ratifications<N>,
+        Solutions<N>,
+        Vec<PuzzleCommitment<N>>,
+        Transactions<N>,
+        Vec<N::TransactionID>,
+    )> {
         // Construct the solutions.
-        let (solutions, solutions_root, combined_proof_target) = match candidate_solutions.is_empty() {
-            true => (None, Field::<N>::zero(), 0u128),
+        let (solutions, aborted_solutions, solutions_root, combined_proof_target) = match candidate_solutions.is_empty()
+        {
+            true => (None, vec![], Field::<N>::zero(), 0u128),
             false => {
                 // Retrieve the coinbase verifying key.
                 let coinbase_verifying_key = self.coinbase_puzzle.coinbase_verifying_key();
                 // Retrieve the latest epoch challenge.
                 let latest_epoch_challenge = self.latest_epoch_challenge()?;
-                // TODO: For mainnet - Add `aborted_solution_ids` to the block.
                 // Separate the candidate solutions into valid and aborted solutions.
-                let (valid_candidate_solutions, _aborted_candidate_solutions) =
+                let (valid_candidate_solutions, aborted_candidate_solutions) =
                     split_candidate_solutions(candidate_solutions, N::MAX_SOLUTIONS, |solution| {
                         solution
                             .verify(coinbase_verifying_key, &latest_epoch_challenge, self.latest_proof_target())
@@ -193,7 +205,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
 
                 // Check if there are any valid solutions.
                 match valid_candidate_solutions.is_empty() {
-                    true => (None, Field::<N>::zero(), 0u128),
+                    true => (None, aborted_candidate_solutions, Field::<N>::zero(), 0u128),
                     false => {
                         // Construct the solutions.
                         let solutions = CoinbaseSolution::new(valid_candidate_solutions)?;
@@ -202,11 +214,17 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                         // Compute the combined proof target.
                         let combined_proof_target = solutions.to_combined_proof_target()?;
                         // Output the solutions, solutions root, and combined proof target.
-                        (Some(solutions), solutions_root, combined_proof_target)
+                        (Some(solutions), aborted_candidate_solutions, solutions_root, combined_proof_target)
                     }
                 }
             }
         };
+        // Prepare the solutions.
+        let solutions = Solutions::from(solutions);
+
+        // Construct the aborted solution IDs.
+        let aborted_solution_ids =
+            aborted_solutions.into_iter().map(|solution| solution.commitment()).collect::<Vec<_>>();
 
         // Retrieve the latest state root.
         let latest_state_root = self.latest_state_root();
@@ -224,7 +242,27 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         let next_height = previous_block.height().saturating_add(1);
         // Determine the timestamp for the next block.
         let next_timestamp = match subdag {
-            Some(subdag) => subdag.timestamp(),
+            Some(subdag) => {
+                // Retrieve the previous committee lookback.
+                let previous_committee_lookback = {
+                    // Calculate the penultimate round, which is the round before the anchor round.
+                    let penultimate_round = subdag.anchor_round().saturating_sub(1);
+                    // Get the round number for the previous committee. Note, we subtract 2 from odd rounds,
+                    // because committees are updated in even rounds.
+                    let previous_penultimate_round = match penultimate_round % 2 == 0 {
+                        true => penultimate_round.saturating_sub(1),
+                        false => penultimate_round.saturating_sub(2),
+                    };
+                    // Get the previous committee lookback round.
+                    let penultimate_committee_lookback_round =
+                        previous_penultimate_round.saturating_sub(Committee::<N>::COMMITTEE_LOOKBACK_RANGE);
+                    // Output the previous committee lookback.
+                    self.get_committee_for_round(penultimate_committee_lookback_round)?
+                        .ok_or(anyhow!("Failed to fetch committee for round {penultimate_committee_lookback_round}"))?
+                };
+                // Return the timestamp for the given committee lookback.
+                subdag.timestamp(&previous_committee_lookback)
+            }
             None => OffsetDateTime::now_utc().unix_timestamp(),
         };
         // Compute the next cumulative weight.
@@ -280,8 +318,9 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             state,
             Some(coinbase_reward),
             candidate_ratifications,
-            solutions.as_ref(),
+            &solutions,
             candidate_transactions.iter(),
+            rng,
         )?;
 
         // Compute the ratifications root.
@@ -319,6 +358,6 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         )?;
 
         // Return the block template.
-        Ok((header, ratifications, solutions, transactions, aborted_transaction_ids))
+        Ok((header, ratifications, solutions, aborted_solution_ids, transactions, aborted_transaction_ids))
     }
 }

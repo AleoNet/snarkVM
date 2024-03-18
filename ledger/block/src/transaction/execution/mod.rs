@@ -147,7 +147,7 @@ impl<N: Network> Execution<N> {
 pub mod test_helpers {
     use super::*;
 
-    type CurrentNetwork = console::network::Testnet3;
+    type CurrentNetwork = console::network::MainnetV0;
 
     /// Samples a random execution.
     pub(crate) fn sample_execution(rng: &mut TestRng) -> Execution<CurrentNetwork> {

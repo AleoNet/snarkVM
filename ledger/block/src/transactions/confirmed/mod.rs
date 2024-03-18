@@ -17,7 +17,7 @@ mod serialize;
 mod string;
 
 use crate::{rejected::Rejected, Transaction};
-use console::{network::prelude::*, types::Field};
+use console::{network::prelude::*, program::FINALIZE_ID_DEPTH, types::Field};
 use synthesizer_program::FinalizeOperation;
 
 pub type NumFinalizeSize = u16;
@@ -261,6 +261,16 @@ impl<N: Network> ConfirmedTransaction<N> {
         }
     }
 
+    /// Returns the finalize ID, by computing the root of a (small) Merkle tree comprised of
+    /// the ordered finalize operations for the transaction.
+    pub fn to_finalize_id(&self) -> Result<Field<N>> {
+        // Prepare the leaves.
+        let leaves = self.finalize_operations().iter().map(ToBits::to_bits_le).collect::<Vec<_>>();
+        // Compute the finalize ID.
+        // Note: This call will ensure the number of finalize operations is within the size of the Merkle tree.
+        Ok(*N::merkle_tree_bhp::<FINALIZE_ID_DEPTH>(&leaves)?.root())
+    }
+
     /// Returns the rejected ID, if the confirmed transaction is rejected.
     pub fn to_rejected_id(&self) -> Result<Option<Field<N>>> {
         match self {
@@ -328,9 +338,9 @@ impl<N: Network> Deref for ConfirmedTransaction<N> {
 #[cfg(test)]
 pub mod test_helpers {
     use super::*;
-    use console::network::Testnet3;
+    use console::network::MainnetV0;
 
-    type CurrentNetwork = Testnet3;
+    type CurrentNetwork = MainnetV0;
 
     /// Samples an accepted deploy transaction at the given index.
     pub(crate) fn sample_accepted_deploy(
@@ -346,12 +356,7 @@ pub mod test_helpers {
             true => vec![FinalizeOperation::InitializeMapping(Uniform::rand(rng))],
             false => vec![
                 FinalizeOperation::InitializeMapping(Uniform::rand(rng)),
-                FinalizeOperation::UpdateKeyValue(
-                    Uniform::rand(rng),
-                    Uniform::rand(rng),
-                    Uniform::rand(rng),
-                    Uniform::rand(rng),
-                ),
+                FinalizeOperation::UpdateKeyValue(Uniform::rand(rng), Uniform::rand(rng), Uniform::rand(rng)),
             ],
         };
 
@@ -439,7 +444,7 @@ mod test {
     use super::*;
     use crate::transactions::confirmed::test_helpers;
 
-    type CurrentNetwork = console::network::Testnet3;
+    type CurrentNetwork = console::network::MainnetV0;
 
     #[test]
     fn test_accepted_execute() {
@@ -451,12 +456,7 @@ mod test {
         // Create an `AcceptedExecution` with valid `FinalizeOperation`s.
         let finalize_operations = vec![
             FinalizeOperation::InsertKeyValue(Uniform::rand(rng), Uniform::rand(rng), Uniform::rand(rng)),
-            FinalizeOperation::UpdateKeyValue(
-                Uniform::rand(rng),
-                Uniform::rand(rng),
-                Uniform::rand(rng),
-                Uniform::rand(rng),
-            ),
+            FinalizeOperation::UpdateKeyValue(Uniform::rand(rng), Uniform::rand(rng), Uniform::rand(rng)),
             FinalizeOperation::RemoveKeyValue(Uniform::rand(rng), Uniform::rand(rng)),
         ];
         let confirmed = ConfirmedTransaction::accepted_execute(index, tx.clone(), finalize_operations.clone()).unwrap();

@@ -14,7 +14,7 @@
 
 use snarkvm_algorithms::crypto_hash::sha256::sha256;
 use snarkvm_circuit::Aleo;
-use snarkvm_console::network::{prelude::ToBytes, Network, Testnet3};
+use snarkvm_console::network::{prelude::ToBytes, MainnetV0, Network};
 use snarkvm_synthesizer::{Process, Program};
 
 use anyhow::Result;
@@ -60,7 +60,7 @@ fn write_metadata(filename: &str, metadata: &Value) -> Result<()> {
 
 /// (Do not use) Writes the metadata files. (cargo run --release --example setup usrs)
 pub fn usrs() -> Result<()> {
-    let paths = fs::read_dir("../src/testnet3/resources/").unwrap();
+    let paths = fs::read_dir("../src/mainnet/resources/").unwrap();
     for path in paths {
         let path = path?.path();
         if let Some("usrs") = path.extension().and_then(|s| s.to_str()) {
@@ -149,7 +149,7 @@ pub fn main() -> Result<()> {
 
     match args[1].as_str() {
         "usrs" => usrs()?,
-        "credits" => credits_program::<Testnet3, snarkvm_circuit::AleoV0>()?,
+        "credits" => credits_program::<MainnetV0, snarkvm_circuit::AleoV0>()?,
         _ => panic!("Invalid parameter"),
     };
 

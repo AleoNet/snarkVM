@@ -18,7 +18,7 @@ use snarkvm_circuit_types::environment::assert_scope;
 mod to_tpk;
 mod verify;
 
-use crate::{Identifier, Plaintext, ProgramID, Record, Value};
+use crate::{compute_function_id, Identifier, Plaintext, ProgramID, Record, Value};
 use snarkvm_circuit_account::Signature;
 use snarkvm_circuit_network::Aleo;
 use snarkvm_circuit_types::{environment::prelude::*, Address, Boolean, Field, Group, U16};
@@ -136,6 +136,8 @@ pub struct Request<A: Aleo> {
     tvk: Field<A>,
     /// The transition commitment.
     tcm: Field<A>,
+    /// The signer commitment.
+    scm: Field<A>,
 }
 
 #[cfg(console)]
@@ -146,6 +148,9 @@ impl<A: Aleo> Inject for Request<A> {
     fn new(mode: Mode, request: Self::Primitive) -> Self {
         // Inject the transition commitment `tcm` as `Mode::Public`.
         let tcm = Field::new(Mode::Public, *request.tcm());
+
+        // Inject the signer commitment `scm` as `Mode::Public`.
+        let scm = Field::new(Mode::Public, *request.scm());
 
         // Inject the inputs.
         let inputs = match request
@@ -218,6 +223,7 @@ impl<A: Aleo> Inject for Request<A> {
             sk_tag: Field::new(mode, *request.sk_tag()),
             tvk: Field::new(mode, *request.tvk()),
             tcm,
+            scm,
         }
     }
 }
@@ -272,6 +278,11 @@ impl<A: Aleo> Request<A> {
     pub const fn tcm(&self) -> &Field<A> {
         &self.tcm
     }
+
+    /// Returns the signer commitment.
+    pub const fn scm(&self) -> &Field<A> {
+        &self.scm
+    }
 }
 
 #[cfg(console)]
@@ -290,6 +301,7 @@ impl<A: Aleo> Eject for Request<A> {
             self.sk_tag.eject_mode(),
             self.tvk.eject_mode(),
             self.tcm.eject_mode(),
+            self.scm.eject_mode(),
         ])
     }
 
@@ -306,6 +318,7 @@ impl<A: Aleo> Eject for Request<A> {
             self.sk_tag.eject_value(),
             self.tvk.eject_value(),
             self.tcm.eject_value(),
+            self.scm.eject_value(),
         ))
     }
 }

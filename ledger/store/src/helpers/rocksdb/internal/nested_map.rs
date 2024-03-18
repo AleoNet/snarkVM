@@ -767,14 +767,14 @@ mod tests {
     };
     use console::{
         account::{Address, FromStr},
-        network::Testnet3,
+        network::MainnetV0,
     };
 
     use anyhow::anyhow;
     use serial_test::serial;
     use tracing_test::traced_test;
 
-    type CurrentNetwork = Testnet3;
+    type CurrentNetwork = MainnetV0;
 
     // Below are a few objects that mimic the way our NestedDataMaps are organized,
     // in order to provide a more accurate test setup for some scenarios.

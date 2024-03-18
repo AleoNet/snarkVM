@@ -40,6 +40,11 @@ impl<F: Field> core::fmt::Debug for TestCircuit<F> {
 
 impl<ConstraintF: Field> ConstraintSynthesizer<ConstraintF> for TestCircuit<ConstraintF> {
     fn generate_constraints<CS: ConstraintSystem<ConstraintF>>(&self, cs: &mut CS) -> Result<(), SynthesisError> {
+        // Ensure the given `cs` is starting off clean.
+        assert_eq!(1, cs.num_public_variables());
+        assert_eq!(0, cs.num_private_variables());
+        assert_eq!(0, cs.num_constraints());
+
         let a = cs.alloc(|| "a", || self.a.ok_or(SynthesisError::AssignmentMissing))?;
         let b = cs.alloc(|| "b", || self.b.ok_or(SynthesisError::AssignmentMissing))?;
 
@@ -91,7 +96,9 @@ impl<F: Field> TestCircuit<F> {
         num_variables: usize,
         rng: &mut R,
     ) -> (Self, Vec<F>) {
-        let mut public_inputs: Vec<F> = Vec::with_capacity(mul_depth);
+        let mut public_inputs: Vec<F> = Vec::with_capacity(1 + mul_depth);
+        public_inputs.push(F::one());
+
         let a = F::rand(rng);
         let b = F::rand(rng);
 
@@ -114,7 +121,8 @@ impl<F: Field> TestCircuit<F> {
         num_constraints: usize,
         num_variables: usize,
     ) -> (Self, Vec<F>) {
-        let mut public_inputs: Vec<F> = Vec::with_capacity(mul_depth);
+        let mut public_inputs: Vec<F> = Vec::with_capacity(1 + mul_depth);
+        public_inputs.push(F::one());
         let a = F::from(a);
         let b = F::from(b);
         for j in 1..(mul_depth + 1) {

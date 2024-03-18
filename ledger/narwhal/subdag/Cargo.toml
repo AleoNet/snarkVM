@@ -44,6 +44,11 @@ package = "snarkvm-ledger-narwhal-batch-header"
 path = "../batch-header"
 version = "=0.16.19"
 
+[dependencies.ledger-committee]
+package = "snarkvm-ledger-committee"
+path = "../../committee"
+version = "=0.16.19"
+
 [dependencies.narwhal-transmission-id]
 package = "snarkvm-ledger-narwhal-transmission-id"
 path = "../transmission-id"

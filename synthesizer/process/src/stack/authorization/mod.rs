@@ -238,6 +238,13 @@ fn ensure_request_and_transition_matches<N: Network>(
         request.tcm(),
         transition.tcm(),
     );
+    // Ensure the request and transition have the same 'scm'.
+    ensure!(
+        request.scm() == transition.scm(),
+        "The request ({}) and transition ({}) at index {index} must have the same 'scm' in the authorization.",
+        request.scm(),
+        transition.scm(),
+    );
     Ok(())
 }
 
@@ -247,7 +254,7 @@ pub(crate) mod test_helpers {
     use crate::Process;
     use console::account::PrivateKey;
 
-    type CurrentNetwork = console::network::Testnet3;
+    type CurrentNetwork = console::network::MainnetV0;
     type CurrentAleo = circuit::AleoV0;
 
     /// Returns a sample authorization.

@@ -45,6 +45,8 @@ pub struct TransitionDB<N: Network> {
     tcm_map: DataMap<N::TransitionID, Field<N>>,
     /// The reverse `tcm` map.
     reverse_tcm_map: DataMap<Field<N>, N::TransitionID>,
+    /// The signer commitments.
+    scm_map: DataMap<N::TransitionID, Field<N>>,
 }
 
 #[rustfmt::skip]
@@ -56,6 +58,7 @@ impl<N: Network> TransitionStorage<N> for TransitionDB<N> {
     type ReverseTPKMap = DataMap<Group<N>, N::TransitionID>;
     type TCMMap = DataMap<N::TransitionID, Field<N>>;
     type ReverseTCMMap = DataMap<Field<N>, N::TransitionID>;
+    type SCMMap = DataMap<N::TransitionID, Field<N>>;
 
     /// Initializes the transition storage.
     fn open<S: Clone + Into<StorageMode>>(storage: S) -> Result<Self> {
@@ -66,7 +69,8 @@ impl<N: Network> TransitionStorage<N> for TransitionDB<N> {
             tpk_map: rocksdb::RocksDB::open_map(N::ID, storage.clone(), MapID::Transition(TransitionMap::TPK))?,
             reverse_tpk_map: rocksdb::RocksDB::open_map(N::ID, storage.clone(), MapID::Transition(TransitionMap::ReverseTPK))?,
             tcm_map: rocksdb::RocksDB::open_map(N::ID, storage.clone(), MapID::Transition(TransitionMap::TCM))?,
-            reverse_tcm_map: rocksdb::RocksDB::open_map(N::ID, storage,  MapID::Transition(TransitionMap::ReverseTCM))?,
+            reverse_tcm_map: rocksdb::RocksDB::open_map(N::ID, storage.clone(),  MapID::Transition(TransitionMap::ReverseTCM))?,
+            scm_map: rocksdb::RocksDB::open_map(N::ID, storage.clone(), MapID::Transition(TransitionMap::SCM))?,
         })
     }
 
@@ -103,6 +107,11 @@ impl<N: Network> TransitionStorage<N> for TransitionDB<N> {
     /// Returns the reverse `tcm` map.
     fn reverse_tcm_map(&self) -> &Self::ReverseTCMMap {
         &self.reverse_tcm_map
+    }
+
+    /// Returns the signer commitments.
+    fn scm_map(&self) -> &Self::SCMMap {
+        &self.scm_map
     }
 }
 

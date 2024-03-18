@@ -180,11 +180,11 @@ impl<N: Network> Package<N> {
 #[cfg(test)]
 pub(crate) mod test_helpers {
     use super::*;
-    use snarkvm_console::{account::Address, network::Testnet3, prelude::TestRng};
+    use snarkvm_console::{account::Address, network::MainnetV0, prelude::TestRng};
 
     use std::{fs::File, io::Write};
 
-    type CurrentNetwork = Testnet3;
+    type CurrentNetwork = MainnetV0;
 
     fn temp_dir() -> PathBuf {
         tempfile::tempdir().expect("Failed to open temporary directory").into_path()
@@ -389,7 +389,7 @@ function main:
         let _manifest_file = Manifest::create(&directory, main_program_id).unwrap();
 
         // Open the package at the temporary directory.
-        let package = Package::<Testnet3>::open(&directory).unwrap();
+        let package = Package::<MainnetV0>::open(&directory).unwrap();
         assert_eq!(package.program_id(), main_program_id);
 
         // Return the temporary directory and the package.
@@ -465,11 +465,11 @@ function main:
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::prelude::Testnet3;
+    use crate::prelude::MainnetV0;
     use snarkvm_utilities::TestRng;
 
     type CurrentAleo = snarkvm_circuit::network::AleoV0;
-    type CurrentNetwork = Testnet3;
+    type CurrentNetwork = MainnetV0;
 
     #[test]
     fn test_imports_directory() {

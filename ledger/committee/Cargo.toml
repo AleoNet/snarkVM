@@ -36,6 +36,10 @@ package = "snarkvm-console"
 path = "../../console"
 version = "=0.16.19"
 
+[dependencies.ledger-narwhal-batch-header]
+package = "snarkvm-ledger-narwhal-batch-header"
+path = "../narwhal/batch-header"
+
 [dependencies.indexmap]
 version = "2.0"
 features = [ "serde", "rayon" ]

@@ -18,13 +18,12 @@ impl<N: Network> BatchHeader<N> {
     /// Returns the batch ID.
     pub fn to_id(&self) -> Result<Field<N>> {
         Self::compute_batch_id(
-            self.version,
             self.author,
             self.round,
             self.timestamp,
+            self.committee_id,
             &self.transmission_ids,
             &self.previous_certificate_ids,
-            &self.last_election_certificate_ids,
         )
     }
 }
@@ -32,13 +31,12 @@ impl<N: Network> BatchHeader<N> {
 impl<N: Network> BatchHeader<N> {
     /// Returns the batch ID.
     pub fn compute_batch_id(
-        version: u8,
         author: Address<N>,
         round: u64,
         timestamp: i64,
+        committee_id: Field<N>,
         transmission_ids: &IndexSet<TransmissionID<N>>,
         previous_certificate_ids: &IndexSet<Field<N>>,
-        last_election_certificate_ids: &IndexSet<Field<N>>,
     ) -> Result<Field<N>> {
         let mut preimage = Vec::new();
         // Insert the author.
@@ -47,6 +45,8 @@ impl<N: Network> BatchHeader<N> {
         round.write_le(&mut preimage)?;
         // Insert the timestamp.
         timestamp.write_le(&mut preimage)?;
+        // Insert the committee ID.
+        committee_id.write_le(&mut preimage)?;
         // Insert the number of transmissions.
         u32::try_from(transmission_ids.len())?.write_le(&mut preimage)?;
         // Insert the transmission IDs.
@@ -59,17 +59,6 @@ impl<N: Network> BatchHeader<N> {
         for certificate_id in previous_certificate_ids {
             // Insert the certificate ID.
             certificate_id.write_le(&mut preimage)?;
-        }
-        // TODO (howardwu): For mainnet - Change this to always encode the number of committed certificate IDs.
-        //  We currently only encode the size and certificates only in the new version, for backwards compatibility.
-        if version != 1 {
-            // Insert the number of last election certificate IDs.
-            u32::try_from(last_election_certificate_ids.len())?.write_le(&mut preimage)?;
-            // Insert the last election certificate IDs.
-            for certificate_id in last_election_certificate_ids {
-                // Insert the certificate ID.
-                certificate_id.write_le(&mut preimage)?;
-            }
         }
         // Hash the preimage.
         N::hash_bhp1024(&preimage.to_bits_le())

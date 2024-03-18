@@ -15,12 +15,12 @@
 #[macro_use]
 extern crate criterion;
 
-use console::{network::Testnet3, prelude::*};
+use console::{network::MainnetV0, prelude::*};
 use ledger_block::Block;
 
 use criterion::Criterion;
 
-type CurrentNetwork = Testnet3;
+type CurrentNetwork = MainnetV0;
 
 /// Loads the genesis block.
 fn load_genesis_block() -> Block<CurrentNetwork> {

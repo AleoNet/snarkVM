@@ -413,7 +413,7 @@ mod tests {
     use super::*;
     use crate::helpers::memory::CommitteeMemory;
 
-    type CurrentNetwork = console::network::Testnet3;
+    type CurrentNetwork = console::network::MainnetV0;
 
     #[test]
     fn test_insert_get_remove() {

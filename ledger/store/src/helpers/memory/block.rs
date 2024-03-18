@@ -21,13 +21,15 @@ use crate::{
 };
 use console::{prelude::*, types::Field};
 use ledger_authority::Authority;
-use ledger_block::{Header, Ratifications, Rejected};
-use ledger_coinbase::{CoinbaseSolution, PuzzleCommitment};
+use ledger_block::{Header, Ratifications, Rejected, Solutions};
+use ledger_coinbase::PuzzleCommitment;
+use synthesizer_program::FinalizeOperation;
 
 use aleo_std_storage::StorageMode;
 
 /// An in-memory block storage.
 #[derive(Clone)]
+#[allow(clippy::type_complexity)]
 pub struct BlockMemory<N: Network> {
     /// The mapping of `block height` to `state root`.
     state_root_map: MemoryMap<u32, N::StateRoot>,
@@ -46,9 +48,13 @@ pub struct BlockMemory<N: Network> {
     /// The ratifications map.
     ratifications_map: MemoryMap<N::BlockHash, Ratifications<N>>,
     /// The solutions map.
-    solutions_map: MemoryMap<N::BlockHash, Option<CoinbaseSolution<N>>>,
+    solutions_map: MemoryMap<N::BlockHash, Solutions<N>>,
     /// The puzzle commitments map.
     puzzle_commitments_map: MemoryMap<PuzzleCommitment<N>, u32>,
+    /// The aborted solution IDs map.
+    aborted_solution_ids_map: MemoryMap<N::BlockHash, Vec<PuzzleCommitment<N>>>,
+    /// The aborted solution heights map.
+    aborted_solution_heights_map: MemoryMap<PuzzleCommitment<N>, u32>,
     /// The transactions map.
     transactions_map: MemoryMap<N::BlockHash, Vec<N::TransactionID>>,
     /// The aborted transaction IDs map.
@@ -56,7 +62,8 @@ pub struct BlockMemory<N: Network> {
     /// The rejected transaction ID or aborted transaction ID map.
     rejected_or_aborted_transaction_id_map: MemoryMap<N::TransactionID, N::BlockHash>,
     /// The confirmed transactions map.
-    confirmed_transactions_map: MemoryMap<N::TransactionID, (N::BlockHash, ConfirmedTxType, Vec<u8>)>,
+    confirmed_transactions_map:
+        MemoryMap<N::TransactionID, (N::BlockHash, ConfirmedTxType<N>, Vec<FinalizeOperation<N>>)>,
     /// The rejected deployment or execution map.
     rejected_deployment_or_execution_map: MemoryMap<Field<N>, Rejected<N>>,
     /// The transaction store.
@@ -73,12 +80,14 @@ impl<N: Network> BlockStorage<N> for BlockMemory<N> {
     type AuthorityMap = MemoryMap<N::BlockHash, Authority<N>>;
     type CertificateMap = MemoryMap<Field<N>, (u32, u64)>;
     type RatificationsMap = MemoryMap<N::BlockHash, Ratifications<N>>;
-    type SolutionsMap = MemoryMap<N::BlockHash, Option<CoinbaseSolution<N>>>;
+    type SolutionsMap = MemoryMap<N::BlockHash, Solutions<N>>;
     type PuzzleCommitmentsMap = MemoryMap<PuzzleCommitment<N>, u32>;
+    type AbortedSolutionIDsMap = MemoryMap<N::BlockHash, Vec<PuzzleCommitment<N>>>;
+    type AbortedSolutionHeightsMap = MemoryMap<PuzzleCommitment<N>, u32>;
     type TransactionsMap = MemoryMap<N::BlockHash, Vec<N::TransactionID>>;
     type AbortedTransactionIDsMap = MemoryMap<N::BlockHash, Vec<N::TransactionID>>;
     type RejectedOrAbortedTransactionIDMap = MemoryMap<N::TransactionID, N::BlockHash>;
-    type ConfirmedTransactionsMap = MemoryMap<N::TransactionID, (N::BlockHash, ConfirmedTxType, Vec<u8>)>;
+    type ConfirmedTransactionsMap = MemoryMap<N::TransactionID, (N::BlockHash, ConfirmedTxType<N>, Vec<FinalizeOperation<N>>)>;
     type RejectedDeploymentOrExecutionMap = MemoryMap<Field<N>, Rejected<N>>;
     type TransactionStorage = TransactionMemory<N>;
     type TransitionStorage = TransitionMemory<N>;
@@ -101,6 +110,8 @@ impl<N: Network> BlockStorage<N> for BlockMemory<N> {
             ratifications_map: MemoryMap::default(),
             solutions_map: MemoryMap::default(),
             puzzle_commitments_map: MemoryMap::default(),
+            aborted_solution_ids_map: MemoryMap::default(),
+            aborted_solution_heights_map: MemoryMap::default(),
             transactions_map: MemoryMap::default(),
             aborted_transaction_ids_map: MemoryMap::default(),
             rejected_or_aborted_transaction_id_map: MemoryMap::default(),
@@ -158,6 +169,16 @@ impl<N: Network> BlockStorage<N> for BlockMemory<N> {
     /// Returns the puzzle commitments map.
     fn puzzle_commitments_map(&self) -> &Self::PuzzleCommitmentsMap {
         &self.puzzle_commitments_map
+    }
+
+    /// Returns the aborted solution IDs map.
+    fn aborted_solution_ids_map(&self) -> &Self::AbortedSolutionIDsMap {
+        &self.aborted_solution_ids_map
+    }
+
+    /// Returns the aborted solution heights map.
+    fn aborted_solution_heights_map(&self) -> &Self::AbortedSolutionHeightsMap {
+        &self.aborted_solution_heights_map
     }
 
     /// Returns the transactions map.

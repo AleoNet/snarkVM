@@ -394,7 +394,7 @@ mod tests {
     use super::*;
     use crate::{helpers::memory::ExecutionMemory, TransitionStore};
 
-    type CurrentNetwork = console::network::Testnet3;
+    type CurrentNetwork = console::network::MainnetV0;
 
     fn insert_get_remove(transaction: Transaction<CurrentNetwork>) -> Result<()> {
         let transaction_id = transaction.id();

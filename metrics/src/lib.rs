@@ -98,3 +98,7 @@ pub fn histogram<V: Into<f64>>(name: &'static str, value: V) {
     let histogram = ::metrics::histogram!(name);
     histogram.record(value.into());
 }
+
+pub fn histogram_label<V: Into<f64>>(name: &'static str, label_key: &'static str, label_value: String, value: V) {
+    ::metrics::histogram!(name, label_key => label_value).record(value.into());
+}

@@ -16,16 +16,17 @@ use crate::{
     traits::{StackEvaluate, StackExecute},
     CallStack,
     Process,
+    Stack,
     Trace,
 };
 use circuit::{network::AleoV0, Aleo};
 use console::{
     account::{Address, PrivateKey, ViewKey},
-    network::{prelude::*, Testnet3},
+    network::{prelude::*, MainnetV0},
     program::{Identifier, Literal, Plaintext, ProgramID, Record, Value},
     types::{Field, U64},
 };
-use ledger_block::Fee;
+use ledger_block::{Fee, Transaction};
 use ledger_query::Query;
 use ledger_store::{
     helpers::memory::{BlockMemory, FinalizeMemory},
@@ -34,14 +35,14 @@ use ledger_store::{
     FinalizeStorage,
     FinalizeStore,
 };
-use synthesizer_program::{FinalizeGlobalState, FinalizeStoreTrait, Program};
+use synthesizer_program::{FinalizeGlobalState, FinalizeStoreTrait, Program, StackProgram};
 use synthesizer_snark::UniversalSRS;
 
 use indexmap::IndexMap;
 use parking_lot::RwLock;
 use std::sync::Arc;
 
-type CurrentNetwork = Testnet3;
+type CurrentNetwork = MainnetV0;
 type CurrentAleo = AleoV0;
 
 /// Samples a new finalize state.
@@ -395,7 +396,7 @@ output r4 as field.private;",
     // Re-run to ensure state continues to work.
     let trace = Arc::new(RwLock::new(Trace::new()));
     let call_stack = CallStack::execute(authorization, trace).unwrap();
-    let response = stack.execute_function::<CurrentAleo, _>(call_stack, None, rng).unwrap();
+    let response = stack.execute_function::<CurrentAleo, _>(call_stack, None, None, rng).unwrap();
     let candidate = response.outputs();
     assert_eq!(3, candidate.len());
     assert_eq!(r2, candidate[0]);
@@ -1926,7 +1927,7 @@ function a:
 
     // Construct the expected transition order.
     let expected_order = [
-        (program0.id(), Identifier::<Testnet3>::from_str("c").unwrap()),
+        (program0.id(), Identifier::<MainnetV0>::from_str("c").unwrap()),
         (program1.id(), Identifier::from_str("b").unwrap()),
         (program2.id(), Identifier::from_str("a").unwrap()),
     ];
@@ -2108,16 +2109,16 @@ fn test_complex_execution_order() {
 
     // Construct the expected execution order.
     let expected_order = [
-        (program0.id(), Identifier::<Testnet3>::from_str("c").unwrap()),
-        (program1.id(), Identifier::<Testnet3>::from_str("d").unwrap()),
-        (program2.id(), Identifier::<Testnet3>::from_str("b").unwrap()),
-        (program0.id(), Identifier::<Testnet3>::from_str("c").unwrap()),
-        (program1.id(), Identifier::<Testnet3>::from_str("d").unwrap()),
-        (program2.id(), Identifier::<Testnet3>::from_str("b").unwrap()),
-        (program1.id(), Identifier::<Testnet3>::from_str("d").unwrap()),
-        (program0.id(), Identifier::<Testnet3>::from_str("c").unwrap()),
-        (program3.id(), Identifier::<Testnet3>::from_str("e").unwrap()),
-        (program4.id(), Identifier::<Testnet3>::from_str("a").unwrap()),
+        (program0.id(), Identifier::<MainnetV0>::from_str("c").unwrap()),
+        (program1.id(), Identifier::<MainnetV0>::from_str("d").unwrap()),
+        (program2.id(), Identifier::<MainnetV0>::from_str("b").unwrap()),
+        (program0.id(), Identifier::<MainnetV0>::from_str("c").unwrap()),
+        (program1.id(), Identifier::<MainnetV0>::from_str("d").unwrap()),
+        (program2.id(), Identifier::<MainnetV0>::from_str("b").unwrap()),
+        (program1.id(), Identifier::<MainnetV0>::from_str("d").unwrap()),
+        (program0.id(), Identifier::<MainnetV0>::from_str("c").unwrap()),
+        (program3.id(), Identifier::<MainnetV0>::from_str("e").unwrap()),
+        (program4.id(), Identifier::<MainnetV0>::from_str("a").unwrap()),
     ];
     for (transition, (expected_program_id, expected_function_name)) in
         trace.transitions().iter().zip_eq(expected_order.iter())
@@ -2482,4 +2483,165 @@ function {function_name}:
     // Ensure that the transitions are unique.
     assert_ne!(execution_1.peek().unwrap().id(), execution_2.peek().unwrap().id());
     assert_ne!(execution_1.to_execution_id().unwrap(), execution_2.to_execution_id().unwrap());
+}
+
+#[test]
+fn test_long_import_chain() {
+    // Initialize a new program.
+    let program = Program::<CurrentNetwork>::from_str(
+        r"
+    program test0.aleo;
+    function c:",
+    )
+    .unwrap();
+
+    // Construct the process.
+    let mut process = crate::test_helpers::sample_process(&program);
+
+    // Add `MAX_PROGRAM_DEPTH` programs to the process.
+    for i in 1..=CurrentNetwork::MAX_PROGRAM_DEPTH {
+        println!("Adding program {i}");
+        // Initialize a new program.
+        let program = Program::from_str(&format!(
+            "
+        import test{}.aleo;
+        program test{}.aleo;
+        function c:",
+            i - 1,
+            i
+        ))
+        .unwrap();
+        // Add the program to the process.
+        process.add_program(&program).unwrap();
+    }
+
+    // Add the `MAX_PROGRAM_DEPTH + 1` program to the process, which should fail.
+    let program = Program::from_str(&format!(
+        "
+        import test{}.aleo;
+        program test{}.aleo;
+        function c:",
+        CurrentNetwork::MAX_PROGRAM_DEPTH,
+        CurrentNetwork::MAX_PROGRAM_DEPTH + 1
+    ))
+    .unwrap();
+    let result = process.add_program(&program);
+    assert!(result.is_err());
+}
+
+#[test]
+fn test_long_import_chain_with_calls() {
+    // Initialize a new program.
+    let program = Program::<CurrentNetwork>::from_str(
+        r"
+    program test0.aleo;
+    function c:",
+    )
+    .unwrap();
+
+    // Construct the process.
+    let mut process = crate::test_helpers::sample_process(&program);
+
+    // Check that the number of calls, up to `Transaction::MAX_TRANSITIONS - 1`, is correct.
+    for i in 1..(Transaction::<CurrentNetwork>::MAX_TRANSITIONS - 1) {
+        println!("Adding program {}", i);
+        // Initialize a new program.
+        let program = Program::from_str(&format!(
+            "
+        import test{}.aleo;
+        program test{}.aleo;
+        function c:
+            call test{}.aleo/c;",
+            i - 1,
+            i,
+            i - 1
+        ))
+        .unwrap();
+        // Add the program to the process.
+        process.add_program(&program).unwrap();
+        // Check that the number of calls is correct.
+        let stack = process.get_stack(program.id()).unwrap();
+        let number_of_calls = stack.get_number_of_calls(program.functions().into_iter().next().unwrap().0).unwrap();
+        assert_eq!(number_of_calls, i + 1);
+    }
+
+    // Check that `Transaction::MAX_TRANSITIONS - 1`-th call fails.
+    let program = Program::from_str(&format!(
+        "
+        import test{}.aleo;
+        program test{}.aleo;
+        function c:
+            call test{}.aleo/c;",
+        Transaction::<CurrentNetwork>::MAX_TRANSITIONS - 2,
+        Transaction::<CurrentNetwork>::MAX_TRANSITIONS - 1,
+        Transaction::<CurrentNetwork>::MAX_TRANSITIONS - 2
+    ))
+    .unwrap();
+    let result = process.add_program(&program);
+    assert!(result.is_err())
+}
+
+#[test]
+fn test_max_imports() {
+    // Construct the process.
+    let mut process = Process::<CurrentNetwork>::load().unwrap();
+
+    // Add `MAX_IMPORTS` programs to the process.
+    for i in 0..CurrentNetwork::MAX_IMPORTS {
+        println!("Adding program {i}");
+        // Initialize a new program.
+        let program = Program::from_str(&format!("program test{i}.aleo; function c:")).unwrap();
+        // Add the program to the process.
+        process.add_program(&program).unwrap();
+    }
+
+    // Add a program importing all `MAX_IMPORTS` programs, which should pass.
+    let import_string =
+        (0..CurrentNetwork::MAX_IMPORTS).map(|i| format!("import test{}.aleo;", i)).collect::<Vec<_>>().join(" ");
+    let program =
+        Program::from_str(&format!("{import_string}program test{}.aleo; function c:", CurrentNetwork::MAX_IMPORTS))
+            .unwrap();
+    process.add_program(&program).unwrap();
+
+    // Attempt to construct a program importing `MAX_IMPORTS + 1` programs, which should fail.
+    let import_string =
+        (0..CurrentNetwork::MAX_IMPORTS + 1).map(|i| format!("import test{}.aleo;", i)).collect::<Vec<_>>().join(" ");
+    let result = Program::<CurrentNetwork>::from_str(&format!(
+        "{import_string}program test{}.aleo; function c:",
+        CurrentNetwork::MAX_IMPORTS + 1
+    ));
+    assert!(result.is_err());
+}
+
+#[test]
+fn test_program_exceeding_transaction_spend_limit() {
+    // Construct a finalize body whose finalize cost is excessively large.
+    let mut finalize_body = r"
+    cast  0u8 0u8 0u8 0u8 0u8 0u8 0u8 0u8 0u8 0u8 0u8 0u8 0u8 0u8 0u8 0u8 into r0 as [u8; 16u32];
+    cast  r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 into r1 as [[u8; 16u32]; 16u32];
+    cast  r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 into r2 as [[[u8; 16u32]; 16u32]; 16u32];"
+        .to_string();
+    (3..500).for_each(|i| {
+        finalize_body.push_str(&format!("hash.bhp256 r2 into r{i} as field;\n"));
+    });
+    // Construct the program.
+    let program = Program::from_str(&format!(
+        r"program test_max_spend_limit.aleo;
+      function foo:
+      async foo into r0;
+      output r0 as test_max_spend_limit.aleo/foo.future;
+      finalize foo:{finalize_body}",
+    ))
+    .unwrap();
+
+    // Initialize a `Process`.
+    let mut process = Process::<CurrentNetwork>::load().unwrap();
+
+    // Attempt to add the program to the process, which should fail.
+    let result = process.add_program(&program);
+    assert!(result.is_err());
+
+    // Attempt to initialize a `Stack` directly with the program, which should fail.
+    let result = Stack::initialize(&process, &program);
+    assert!(result.is_err());
 }

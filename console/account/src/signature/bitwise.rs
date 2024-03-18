@@ -40,13 +40,3 @@ impl<N: Network> Ternary for Signature<N> {
         }
     }
 }
-
-impl<N: Network> Ternary for Box<Signature<N>> {
-    type Boolean = Boolean<N>;
-    type Output = Self;
-
-    /// Returns `first` if `condition` is `true`, otherwise returns `second`.
-    fn ternary(condition: &Self::Boolean, first: &Self, second: &Self) -> Self::Output {
-        Box::new(Signature::ternary(condition, first, second))
-    }
-}

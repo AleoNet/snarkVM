@@ -35,20 +35,19 @@ impl<N: Network> Serialize for FinalizeOperation<N> {
                         operation.serialize_field("value_id", value_id)?;
                         operation.end()
                     }
-                    Self::UpdateKeyValue(mapping_id, index, key_id, value_id) => {
-                        let mut operation = serializer.serialize_struct("FinalizeOperation", 5)?;
+                    Self::UpdateKeyValue(mapping_id, key_id, value_id) => {
+                        let mut operation = serializer.serialize_struct("FinalizeOperation", 4)?;
                         operation.serialize_field("type", "update_key_value")?;
                         operation.serialize_field("mapping_id", mapping_id)?;
-                        operation.serialize_field("index", index)?;
                         operation.serialize_field("key_id", key_id)?;
                         operation.serialize_field("value_id", value_id)?;
                         operation.end()
                     }
-                    Self::RemoveKeyValue(mapping_id, index) => {
+                    Self::RemoveKeyValue(mapping_id, key_id) => {
                         let mut operation = serializer.serialize_struct("FinalizeOperation", 3)?;
                         operation.serialize_field("type", "remove_key_value")?;
                         operation.serialize_field("mapping_id", mapping_id)?;
-                        operation.serialize_field("index", index)?;
+                        operation.serialize_field("key_id", key_id)?;
                         operation.end()
                     }
                     Self::ReplaceMapping(mapping_id) => {
@@ -97,22 +96,20 @@ impl<'de, N: Network> Deserialize<'de> for FinalizeOperation<N> {
                     Some("update_key_value") => {
                         // Deserialize the mapping ID.
                         let mapping_id = DeserializeExt::take_from_value::<D>(&mut operation, "mapping_id")?;
-                        // Deserialize the index.
-                        let index = DeserializeExt::take_from_value::<D>(&mut operation, "index")?;
                         // Deserialize the key ID.
                         let key_id = DeserializeExt::take_from_value::<D>(&mut operation, "key_id")?;
                         // Deserialize the value ID.
                         let value_id = DeserializeExt::take_from_value::<D>(&mut operation, "value_id")?;
                         // Return the operation.
-                        Self::UpdateKeyValue(mapping_id, index, key_id, value_id)
+                        Self::UpdateKeyValue(mapping_id, key_id, value_id)
                     }
                     Some("remove_key_value") => {
                         // Deserialize the mapping ID.
                         let mapping_id = DeserializeExt::take_from_value::<D>(&mut operation, "mapping_id")?;
-                        // Deserialize the index.
-                        let index = DeserializeExt::take_from_value::<D>(&mut operation, "index")?;
+                        // Deserialize the key ID.
+                        let key_id = DeserializeExt::take_from_value::<D>(&mut operation, "key_id")?;
                         // Return the operation.
-                        Self::RemoveKeyValue(mapping_id, index)
+                        Self::RemoveKeyValue(mapping_id, key_id)
                     }
                     Some("replace_mapping") => {
                         // Deserialize the mapping ID.

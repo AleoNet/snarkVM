@@ -384,9 +384,9 @@ impl<
 mod tests {
     use super::*;
     use crate::{atomic_batch_scope, atomic_finalize, FinalizeMode};
-    use console::{account::Address, network::Testnet3};
+    use console::{account::Address, network::MainnetV0};
 
-    type CurrentNetwork = Testnet3;
+    type CurrentNetwork = MainnetV0;
 
     #[test]
     fn test_contains_key_sanity_check() {
