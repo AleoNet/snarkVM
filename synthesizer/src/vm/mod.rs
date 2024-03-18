@@ -296,7 +296,10 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         // Prepare the locator.
         let locator = ("credits.aleo", "transfer_public_to_private");
         // Prepare the amount for each call to the function.
-        let amount = ledger_committee::MIN_DELEGATOR_STAKE;
+        let amount = public_balances
+            .get(&caller)
+            .ok_or_else(|| anyhow!("Missing public balance for {caller}"))?
+            .saturating_div(Block::<N>::NUM_GENESIS_TRANSACTIONS.saturating_mul(2) as u64);
         // Prepare the function inputs.
         let inputs = [caller.to_string(), format!("{amount}_u64")];
 
