@@ -296,7 +296,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         // Prepare the locator.
         let locator = ("credits.aleo", "transfer_public_to_private");
         // Prepare the amount for each call to the function.
-        let amount = ledger_committee::MIN_VALIDATOR_STAKE;
+        let amount = ledger_committee::MIN_DELEGATOR_STAKE;
         // Prepare the function inputs.
         let inputs = [caller.to_string(), format!("{amount}_u64")];
 
