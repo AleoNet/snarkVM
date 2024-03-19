@@ -935,7 +935,7 @@ function fee_public:
     // Add the fee and priority fee amounts.
     add r0 r1 into r3;
     // Decrement the balance of the sender publicly.
-    async fee_public self.caller r3 into r4;
+    async fee_public self.signer r3 into r4;
     // Output the finalize future.
     output r4 as credits.aleo/fee_public.future;
 
