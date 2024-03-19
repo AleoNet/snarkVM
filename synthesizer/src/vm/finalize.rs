@@ -1350,7 +1350,7 @@ finalize transfer_public:
     }
 
     /// Sample a public transfer transaction.
-    fn sample_transfer_public(
+    fn sample_transfer_public_as_caller(
         vm: &VM<CurrentNetwork, ConsensusMemory<CurrentNetwork>>,
         caller_private_key: PrivateKey<CurrentNetwork>,
         program_id: &str,
@@ -1364,7 +1364,7 @@ finalize transfer_public:
             Value::<CurrentNetwork>::from_str(&format!("{amount}u64")).unwrap(),
         ];
 
-        create_execution(vm, caller_private_key, program_id, "transfer_public", inputs, unspent_records, rng)
+        create_execution(vm, caller_private_key, program_id, "transfer_public_as_caller", inputs, unspent_records, rng)
     }
 
     /// A helper method to construct the rejected transaction format for `atomic_finalize`.
@@ -1574,7 +1574,7 @@ finalize transfer_public:
             sample_mint_public(&vm, caller_private_key, &program_id, caller_address, 10, &mut unspent_records, rng);
         let mint_20 =
             sample_mint_public(&vm, caller_private_key, &program_id, caller_address, 20, &mut unspent_records, rng);
-        let transfer_10 = sample_transfer_public(
+        let transfer_10 = sample_transfer_public_as_caller(
             &vm,
             caller_private_key,
             &program_id,
@@ -1583,7 +1583,7 @@ finalize transfer_public:
             &mut unspent_records,
             rng,
         );
-        let transfer_20 = sample_transfer_public(
+        let transfer_20 = sample_transfer_public_as_caller(
             &vm,
             caller_private_key,
             &program_id,
@@ -1592,7 +1592,7 @@ finalize transfer_public:
             &mut unspent_records,
             rng,
         );
-        let transfer_30 = sample_transfer_public(
+        let transfer_30 = sample_transfer_public_as_caller(
             &vm,
             caller_private_key,
             &program_id,

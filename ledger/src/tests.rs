@@ -210,7 +210,15 @@ fn test_insufficient_public_fees() {
             [Value::from_str(&format!("{recipient_address}")).unwrap(), Value::from_str("1000000000000u64").unwrap()];
         let transaction = ledger
             .vm
-            .execute(&private_key, ("credits.aleo", "transfer_public"), inputs.into_iter(), None, 0, None, rng)
+            .execute(
+                &private_key,
+                ("credits.aleo", "transfer_public_as_caller"),
+                inputs.into_iter(),
+                None,
+                0,
+                None,
+                rng,
+            )
             .unwrap();
 
         let block =
@@ -506,7 +514,7 @@ fn test_bond_and_unbond_validator() {
     ];
     let transfer_transaction = ledger
         .vm
-        .execute(&private_key, ("credits.aleo", "transfer_public"), inputs.iter(), None, 0, None, rng)
+        .execute(&private_key, ("credits.aleo", "transfer_public_as_caller"), inputs.iter(), None, 0, None, rng)
         .unwrap();
 
     // Construct the next block.
@@ -628,7 +636,7 @@ fn test_aborted_transaction_indexing() {
     let inputs = [Value::from_str(&format!("{recipient_address}")).unwrap(), Value::from_str("185000u64").unwrap()];
     let transfer_transaction = ledger
         .vm
-        .execute(&private_key, ("credits.aleo", "transfer_public"), inputs.iter(), None, 0, None, rng)
+        .execute(&private_key, ("credits.aleo", "transfer_public_as_caller"), inputs.iter(), None, 0, None, rng)
         .unwrap();
 
     // Construct the next block.
@@ -646,7 +654,15 @@ fn test_aborted_transaction_indexing() {
     let inputs = [Value::from_str(&format!("{recipient_address_2}")).unwrap(), Value::from_str("1u64").unwrap()];
     let transfer_transaction = ledger
         .vm
-        .execute(&recipient_private_key_2, ("credits.aleo", "transfer_public"), inputs.iter(), None, 0, None, rng)
+        .execute(
+            &recipient_private_key_2,
+            ("credits.aleo", "transfer_public_as_caller"),
+            inputs.iter(),
+            None,
+            0,
+            None,
+            rng,
+        )
         .unwrap();
     let aborted_transaction_id = transfer_transaction.id();
 
@@ -654,7 +670,7 @@ fn test_aborted_transaction_indexing() {
     let inputs = [Value::from_str(&format!("{recipient_address_2}")).unwrap(), Value::from_str("1u64").unwrap()];
     let transfer_transaction_2 = ledger
         .vm
-        .execute(&private_key, ("credits.aleo", "transfer_public"), inputs.iter(), None, 0, None, rng)
+        .execute(&private_key, ("credits.aleo", "transfer_public_as_caller"), inputs.iter(), None, 0, None, rng)
         .unwrap();
 
     // Create a block.
@@ -700,7 +716,7 @@ fn test_aborted_solution_ids() {
     let inputs = [Value::from_str(&format!("{address}")).unwrap(), Value::from_str("10u64").unwrap()];
     let transfer_transaction = ledger
         .vm
-        .execute(&private_key, ("credits.aleo", "transfer_public"), inputs.iter(), None, 0, None, rng)
+        .execute(&private_key, ("credits.aleo", "transfer_public_as_caller"), inputs.iter(), None, 0, None, rng)
         .unwrap();
 
     // Create a block.
@@ -780,7 +796,7 @@ fn test_execute_duplicate_input_ids() {
         .vm
         .execute(
             &private_key,
-            ("credits.aleo", "transfer_public"),
+            ("credits.aleo", "transfer_public_as_caller"),
             inputs.into_iter(),
             Some(record_1.clone()),
             0,
@@ -825,7 +841,7 @@ fn test_execute_duplicate_input_ids() {
     let inputs = [Value::from_str(&format!("{address}")).unwrap(), Value::from_str("1000u64").unwrap()];
     let transfer_5 = ledger
         .vm
-        .execute(&private_key, ("credits.aleo", "transfer_public"), inputs.into_iter(), None, 0, None, rng)
+        .execute(&private_key, ("credits.aleo", "transfer_public_as_caller"), inputs.into_iter(), None, 0, None, rng)
         .unwrap();
     let transfer_5_id = transfer_5.id();
 
@@ -961,7 +977,7 @@ function create_duplicate_record:
     let inputs = [Value::from_str(&format!("{address}")).unwrap(), Value::from_str("1000u64").unwrap()];
     let transfer_4 = ledger
         .vm
-        .execute(&private_key, ("credits.aleo", "transfer_public"), inputs.into_iter(), None, 0, None, rng)
+        .execute(&private_key, ("credits.aleo", "transfer_public_as_caller"), inputs.into_iter(), None, 0, None, rng)
         .unwrap();
     let transfer_4_id = transfer_4.id();
 
@@ -1091,7 +1107,7 @@ function empty_function:
     let inputs = [Value::from_str(&format!("{address}")).unwrap(), Value::from_str("1000u64").unwrap()];
     let transfer_transaction = ledger
         .vm
-        .execute(&private_key, ("credits.aleo", "transfer_public"), inputs.into_iter(), None, 0, None, rng)
+        .execute(&private_key, ("credits.aleo", "transfer_public_as_caller"), inputs.into_iter(), None, 0, None, rng)
         .unwrap();
     let transfer_transaction_id = transfer_transaction.id();
 
@@ -1228,7 +1244,7 @@ function simple_output:
     let inputs = [Value::from_str(&format!("{address}")).unwrap(), Value::from_str("1000u64").unwrap()];
     let transfer_transaction = ledger
         .vm
-        .execute(&private_key, ("credits.aleo", "transfer_public"), inputs.into_iter(), None, 0, None, rng)
+        .execute(&private_key, ("credits.aleo", "transfer_public_as_caller"), inputs.into_iter(), None, 0, None, rng)
         .unwrap();
     let transfer_transaction_id = transfer_transaction.id();
 
@@ -1266,14 +1282,22 @@ fn test_abort_fee_transaction() {
     let inputs = [Value::from_str(&format!("{address}")).unwrap(), Value::from_str("1000u64").unwrap()];
     let transaction = ledger
         .vm
-        .execute(&private_key, ("credits.aleo", "transfer_public"), inputs.clone().into_iter(), None, 0, None, rng)
+        .execute(
+            &private_key,
+            ("credits.aleo", "transfer_public_as_caller"),
+            inputs.clone().into_iter(),
+            None,
+            0,
+            None,
+            rng,
+        )
         .unwrap();
     let transaction_id = transaction.id();
 
     // Convert a fee transaction.
     let transaction_to_convert_to_fee = ledger
         .vm
-        .execute(&private_key, ("credits.aleo", "transfer_public"), inputs.into_iter(), None, 0, None, rng)
+        .execute(&private_key, ("credits.aleo", "transfer_public_as_caller"), inputs.into_iter(), None, 0, None, rng)
         .unwrap();
     let fee_transaction = Transaction::from_fee(transaction_to_convert_to_fee.fee_transition().unwrap()).unwrap();
     let fee_transaction_id = fee_transaction.id();
@@ -1313,7 +1337,15 @@ fn test_abort_invalid_transaction() {
     // Generate a transaction that will be invalid on another network.
     let inputs = [Value::from_str(&format!("{address}")).unwrap(), Value::from_str("1000u64").unwrap()];
     let invalid_transaction = vm
-        .execute(&private_key, ("credits.aleo", "transfer_public"), inputs.clone().into_iter(), None, 0, None, rng)
+        .execute(
+            &private_key,
+            ("credits.aleo", "transfer_public_as_caller"),
+            inputs.clone().into_iter(),
+            None,
+            0,
+            None,
+            rng,
+        )
         .unwrap();
     let invalid_transaction_id = invalid_transaction.id();
 
@@ -1323,11 +1355,19 @@ fn test_abort_invalid_transaction() {
     // Construct valid transactions for the ledger.
     let valid_transaction_1 = ledger
         .vm
-        .execute(&private_key, ("credits.aleo", "transfer_public"), inputs.clone().into_iter(), None, 0, None, rng)
+        .execute(
+            &private_key,
+            ("credits.aleo", "transfer_public_as_caller"),
+            inputs.clone().into_iter(),
+            None,
+            0,
+            None,
+            rng,
+        )
         .unwrap();
     let valid_transaction_2 = ledger
         .vm
-        .execute(&private_key, ("credits.aleo", "transfer_public"), inputs.into_iter(), None, 0, None, rng)
+        .execute(&private_key, ("credits.aleo", "transfer_public_as_caller"), inputs.into_iter(), None, 0, None, rng)
         .unwrap();
     let valid_transaction_id_1 = valid_transaction_1.id();
     let valid_transaction_id_2 = valid_transaction_2.id();

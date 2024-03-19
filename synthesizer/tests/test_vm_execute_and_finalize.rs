@@ -78,7 +78,7 @@ fn run_test(test: &ProgramTest) -> serde_yaml::Mapping {
         let transaction = vm
             .execute(
                 &genesis_private_key,
-                ("credits.aleo", "transfer_public"),
+                ("credits.aleo", "transfer_public_as_caller"),
                 vec![
                     Value::Plaintext(Plaintext::from(Literal::Address(Address::try_from(key).unwrap()))),
                     Value::Plaintext(Plaintext::from(Literal::U64(U64::new(1_000_000_000_000)))),

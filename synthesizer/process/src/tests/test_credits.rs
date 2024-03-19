@@ -2061,7 +2061,7 @@ mod sanity_checks {
     }
 
     #[test]
-    fn test_sanity_check_transfer_public() {
+    fn test_sanity_check_transfer_public_as_caller() {
         let rng = &mut TestRng::default();
 
         // Initialize a new caller account.
@@ -2074,7 +2074,7 @@ mod sanity_checks {
         let stack = process.get_stack(ProgramID::from_str("credits.aleo").unwrap()).unwrap();
 
         // Declare the function name.
-        let function_name = Identifier::from_str("transfer_public").unwrap();
+        let function_name = Identifier::from_str("transfer_public_as_caller").unwrap();
 
         // Declare the inputs.
         let r0 = Value::<CurrentNetwork>::from_str(&format!("{caller}")).unwrap();

@@ -282,7 +282,7 @@ mod tests {
     }
 
     #[test]
-    fn test_transfer_public_transaction_size() {
+    fn test_transfer_public_as_caller_transaction_size() {
         let rng = &mut TestRng::default();
 
         // Initialize a new caller.
@@ -300,8 +300,9 @@ mod tests {
         .into_iter();
 
         // Execute.
-        let transaction =
-            vm.execute(&caller_private_key, ("credits.aleo", "transfer_public"), inputs, None, 0, None, rng).unwrap();
+        let transaction = vm
+            .execute(&caller_private_key, ("credits.aleo", "transfer_public_as_caller"), inputs, None, 0, None, rng)
+            .unwrap();
 
         // Assert the size of the transaction.
         let transaction_size_in_bytes = transaction.to_bytes_le().unwrap().len();
