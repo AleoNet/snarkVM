@@ -296,7 +296,10 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         // Prepare the locator.
         let locator = ("credits.aleo", "transfer_public_to_private");
         // Prepare the amount for each call to the function.
-        let amount = ledger_committee::MIN_VALIDATOR_STAKE;
+        let amount = public_balances
+            .get(&caller)
+            .ok_or_else(|| anyhow!("Missing public balance for {caller}"))?
+            .saturating_div(Block::<N>::NUM_GENESIS_TRANSACTIONS.saturating_mul(2) as u64);
         // Prepare the function inputs.
         let inputs = [caller.to_string(), format!("{amount}_u64")];
 
@@ -1001,7 +1004,7 @@ function a:
             // Note: `deployment_transaction_ids` is sorted lexicographically by transaction ID, so the order may change if we update internal methods.
             assert_eq!(
                 deployment_transaction_ids,
-                vec![deployment_3.id(), deployment_4.id(), deployment_1.id(), deployment_2.id()],
+                vec![deployment_1.id(), deployment_4.id(), deployment_3.id(), deployment_2.id()],
                 "Update me if serialization has changed"
             );
         }
