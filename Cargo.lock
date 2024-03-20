@@ -3196,6 +3196,7 @@ version = "0.16.19"
 dependencies = [
  "bincode",
  "indexmap 2.1.0",
+ "rayon",
  "serde_json",
  "snarkvm-console",
  "snarkvm-ledger-narwhal-batch-header",

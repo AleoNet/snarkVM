@@ -24,7 +24,7 @@ license = "Apache-2.0"
 edition = "2021"
 
 [features]
-default = [ ]
+default = [ "rayon" ]
 serial = [ "console/serial" ]
 wasm = [ "console/wasm" ]
 test-helpers = [ "narwhal-transmission-id/test-helpers", "time" ]
@@ -42,6 +42,10 @@ version = "=0.16.19"
 [dependencies.indexmap]
 version = "2.0"
 features = [ "serde" ]
+
+[dependencies.rayon]
+version = "1"
+optional = true
 
 [dependencies.serde_json]
 version = "1.0"

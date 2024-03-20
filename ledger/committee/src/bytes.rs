@@ -37,18 +37,26 @@ impl<N: Network> FromBytes for Committee<N> {
                 Self::MAX_COMMITTEE_SIZE,
             )));
         }
+
+        // Calculate the number of bytes per member. Each member is a (address, stake, is_open) tuple.
+        let member_byte_size = Address::<N>::size_in_bytes() + 8 + 1;
+        // Read the member bytes.
+        let mut member_bytes = vec![0u8; num_members as usize * member_byte_size];
+        reader.read_exact(&mut member_bytes)?;
         // Read the members.
-        let mut members = IndexMap::with_capacity(num_members as usize);
-        for _ in 0..num_members {
-            // Read the address.
-            let member = Address::read_le(&mut reader)?;
-            // Read the stake.
-            let stake = u64::read_le(&mut reader)?;
-            // Read the is_open flag.
-            let is_open = bool::read_le(&mut reader)?;
-            // Insert the member and (stake, is_open).
-            members.insert(member, (stake, is_open));
-        }
+        let members = cfg_chunks!(member_bytes, member_byte_size)
+            .map(|mut bytes| {
+                // Read the address.
+                let member = Address::<N>::read_le(&mut bytes)?;
+                // Read the stake.
+                let stake = u64::read_le(&mut bytes)?;
+                // Read the is_open flag.
+                let is_open = bool::read_le(&mut bytes)?;
+                // Insert the member and (stake, is_open).
+                Ok((member, (stake, is_open)))
+            })
+            .collect::<Result<IndexMap<_, _>, std::io::Error>>()?;
+
         // Read the total stake.
         let total_stake = u64::read_le(&mut reader)?;
         // Construct the committee.
