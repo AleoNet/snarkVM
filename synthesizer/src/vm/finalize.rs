@@ -15,6 +15,7 @@
 use super::*;
 
 use ledger_committee::{MAX_DELEGATORS, MIN_DELEGATOR_STAKE, MIN_VALIDATOR_STAKE};
+use synthesizer_process::cost_in_microcredits;
 
 use rand::{rngs::StdRng, SeedableRng};
 
@@ -194,7 +195,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// The maximum number of confirmed transactions allowed in a block.
     /// This is set to a deliberately low value (8) for testing purposes only.
     #[cfg(any(test, feature = "test"))]
-    pub const MAXIMUM_CONFIRMED_TRANSACTIONS: usize = 8;
+    pub const MAXIMUM_CONFIRMED_TRANSACTIONS: usize = 256;
 
     /// Performs atomic speculation over a list of transactions.
     ///
@@ -300,6 +301,10 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             let mut output_ids: IndexSet<Field<N>> = IndexSet::new();
             // Initialize the list of created transition public keys.
             let mut tpks: IndexSet<Group<N>> = IndexSet::new();
+            // Initialize a counter for the total microcredits spent on finalizing executions.
+            let mut total_finalize_cost = 0u64;
+            // Initialize a counter for the total constraints found in deployments.
+            let mut total_constraints = 0u64;
 
             // Finalize the transactions.
             'outer: for transaction in transactions {
@@ -387,6 +392,35 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                                     })
                             };
 
+                        // Get the number of constraints.
+                        let num_constraints = match deployment.num_combined_constraints() {
+                            Ok(num_constraints) => num_constraints,
+                            Err(error) => {
+                                // Note: On failure, skip this transaction, and continue speculation.
+                                #[cfg(debug_assertions)]
+                                eprintln!("Failed to determine the number of constraints in a deployment - {error}");
+                                // Store the aborted transaction.
+                                aborted.push((transaction.clone(), error.to_string()));
+                                // Continue to the next transaction.
+                                continue 'outer;
+                            }
+                        };
+
+                        // Check that the number of constraints does not exceed the maximum.
+                        match num_constraints + total_constraints > N::BLOCK_DEPLOYMENT_LIMIT {
+                            // If the transaction does not exceed the block constraint limit, add the constraints to the total.
+                            false => {
+                                total_constraints += num_constraints;
+                            }
+                            // If the transaction exceeds the block constraint limit, abort the transaction.
+                            true => {
+                                // Store the aborted transaction.
+                                aborted.push((transaction.clone(), "Exceeds block constraint limit".to_string()));
+                                // Continue to the next transaction.
+                                continue 'outer;
+                            }
+                        }
+
                         // Check if the program has already been deployed in this block.
                         match deployments.contains(deployment.program_id()) {
                             // If the program has already been deployed, construct the rejected deploy transaction.
@@ -430,6 +464,45 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     // The finalize operation here involves calling 'update_key_value',
                     // and update the respective leaves of the finalize tree.
                     Transaction::Execute(_, execution, fee) => {
+                        // Get the finalize cost.
+                        let finalize_cost: Result<u64, String> = {
+                            // Get the root transition from the execution.
+                            let root_transition = execution.peek().map_err(|e| e.to_string())?;
+                            // Get the stack from the process.
+                            let stack = process.get_stack(root_transition.program_id()).map_err(|e| e.to_string())?;
+                            // Check that the total finalize cost does not exceed the maximum.
+                            let finalize_cost = cost_in_microcredits(stack, root_transition.function_name())
+                                .map_err(|e| e.to_string())?;
+                            // Return the result.
+                            Ok(finalize_cost)
+                        };
+                        // Determine if the accumulated finalize cost exceeds the block spend limit.
+                        match finalize_cost {
+                            Ok(finalize_cost) => match finalize_cost + total_finalize_cost > N::BLOCK_SPEND_LIMIT {
+                                // If the transaction does not exceed the block spend limit, add the finalize cost to the total.
+                                false => {
+                                    total_finalize_cost += finalize_cost;
+                                }
+                                // If the finalize cost exceeds the block spend limit, abort the transaction.
+                                true => {
+                                    // Store the aborted transaction.
+                                    aborted.push((transaction.clone(), "Exceeds block spend limit".to_string()));
+                                    // Continue to the next transaction.
+                                    continue 'outer;
+                                }
+                            },
+                            // If the finalize cost cannot be determined, abort the transaction.
+                            Err(error) => {
+                                // Note: On failure, skip this transaction, and continue speculation.
+                                #[cfg(debug_assertions)]
+                                eprintln!("Failed to determine finalize cost - {error}");
+                                // Store the aborted transaction.
+                                aborted.push((transaction.clone(), "Failed to determine finalize cost".to_string()));
+                                // Continue to the next transaction.
+                                continue 'outer;
+                            }
+                        }
+                        // Finalize the execution.
                         match process.finalize_execution(state, store, execution, fee.as_ref()) {
                             // Construct the accepted execute transaction.
                             Ok(finalize) => {
@@ -1318,7 +1391,7 @@ finalize transfer_public:
 
         // Prepare the additional fee.
         let view_key = ViewKey::<CurrentNetwork>::try_from(caller_private_key).unwrap();
-        let credits = Some(unspent_records.pop().unwrap().decrypt(&view_key).unwrap());
+        let credits = unspent_records.pop().and_then(|record| record.decrypt(&view_key).ok());
 
         // Execute.
         let transaction = vm
