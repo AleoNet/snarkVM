@@ -76,6 +76,7 @@ pub fn execution_cost<N: Network>(process: &Process<N>, execution: &Execution<N>
 
 /// Finalize costs for compute heavy operations, derived as:
 /// `BASE_COST + (PER_BYTE_COST * SIZE_IN_BYTES)`.
+
 const CAST_BASE_COST: u64 = 500;
 const CAST_PER_BYTE_COST: u64 = 30;
 
