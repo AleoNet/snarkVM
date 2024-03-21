@@ -21,22 +21,7 @@ impl<N: Network> Serialize for Future<N> {
                 let mut state = serializer.serialize_struct("Future", 3)?;
                 state.serialize_field("program_id", &self.program_id)?;
                 state.serialize_field("function_name", &self.function_name)?;
-                let arguments: Vec<serde_json::Value> = self
-                    .arguments
-                    .iter()
-                    .map(|arg| {
-                        match arg {
-                            Argument::Plaintext(plaintext) => {
-                                serde_json::to_value(plaintext).unwrap_or_else(|_| serde_json::Value::Null)
-                            }
-                            Argument::Future(future) => {
-                                // Recursively serialize the future type.
-                                serde_json::to_value(future).unwrap_or_else(|_| serde_json::Value::Null)
-                            }
-                        }
-                    })
-                    .collect();
-                state.serialize_field("arguments", &arguments)?;
+                state.serialize_field("arguments", &self.arguments)?;
                 state.end()
             }
             false => ToBytesSerializer::serialize_with_size_encoding(self, serializer),
@@ -51,29 +36,7 @@ impl<'de, N: Network> Deserialize<'de> for Future<N> {
                 let mut value = serde_json::Value::deserialize(deserializer)?;
                 let program_id: ProgramID<N> = DeserializeExt::take_from_value::<D>(&mut value, "program_id")?;
                 let function_name: Identifier<N> = DeserializeExt::take_from_value::<D>(&mut value, "function_name")?;
-
-                // Handling arguments based on their detected types (Plaintext or Future)
-                let arguments = value
-                    .get("arguments")
-                    .and_then(|v| v.as_array())
-                    .ok_or_else(|| de::Error::missing_field("arguments"))?;
-                let arguments = arguments
-                    .iter()
-                    .map(|arg| {
-                        if arg.get("program_id").is_some()
-                            || arg.get("function_name").is_some()
-                            || arg.get("arguments").is_some()
-                        {
-                            serde_json::from_value(arg.clone())
-                                .map(Argument::Future)
-                                .map_err(|e| de::Error::custom(e.to_string()))
-                        } else {
-                            serde_json::from_value(arg.clone())
-                                .map(Argument::Plaintext)
-                                .map_err(|e| de::Error::custom(e.to_string()))
-                        }
-                    })
-                    .collect::<Result<Vec<Argument<N>>, D::Error>>()?;
+                let arguments: Vec<Argument<N>> = DeserializeExt::take_from_value::<D>(&mut value, "arguments")?;
 
                 Ok(Future { program_id, function_name, arguments })
             }
