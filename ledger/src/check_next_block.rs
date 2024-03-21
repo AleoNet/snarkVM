@@ -31,7 +31,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
 
         // Ensure the solutions do not already exist.
         for solution_id in block.solutions().solution_ids() {
-            if self.contains_puzzle_commitment(solution_id)? {
+            if self.contains_solution_id(solution_id)? {
                 bail!("Solution ID {solution_id} already exists in the ledger");
             }
         }
@@ -111,15 +111,15 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             self.latest_state_root(),
             &previous_committee_lookback,
             &committee_lookback,
-            self.coinbase_puzzle(),
-            &self.latest_epoch_challenge()?,
+            self.puzzle(),
+            self.latest_epoch_hash()?,
             OffsetDateTime::now_utc().unix_timestamp(),
             ratified_finalize_operations,
         )?;
 
         // Ensure that each existing solution ID from the block exists in the ledger.
         for existing_solution_id in expected_existing_solution_ids {
-            if !self.contains_puzzle_commitment(&existing_solution_id)? {
+            if !self.contains_solution_id(&existing_solution_id)? {
                 bail!("Solution ID '{existing_solution_id}' does not exist in the ledger");
             }
         }

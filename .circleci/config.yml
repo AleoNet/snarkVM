@@ -493,6 +493,16 @@ jobs:
           workspace_member: ledger
           cache_key: snarkvm-ledger-with-rocksdb-cache
 
+  ledger-with-valid-solutions:
+    docker:
+      - image: cimg/rust:1.72.1
+    resource_class: 2xlarge
+    steps:
+      - run_serial:
+          flags: valid_solutions --features=test
+          workspace_member: ledger
+          cache_key: snarkvm-ledger-with-valid-solutions-cache
+
   ledger-authority:
     docker:
       - image: cimg/rust:1.72.1
@@ -510,15 +520,6 @@ jobs:
       - run_serial:
           workspace_member: ledger/block
           cache_key: snarkvm-ledger-block-cache
-
-  ledger-coinbase:
-    docker:
-      - image: cimg/rust:1.72.1
-    resource_class: 2xlarge
-    steps:
-      - run_serial:
-          workspace_member: ledger/coinbase
-          cache_key: snarkvm-ledger-coinbase-cache
 
   ledger-committee:
     docker:
@@ -591,6 +592,24 @@ jobs:
       - run_serial:
           workspace_member: ledger/narwhal/transmission-id
           cache_key: snarkvm-ledger-narwhal-transmission-id-cache
+
+  ledger-puzzle:
+    docker:
+      - image: cimg/rust:1.72.1
+    resource_class: 2xlarge
+    steps:
+      - run_serial:
+          workspace_member: ledger/puzzle
+          cache_key: snarkvm-ledger-puzzle-cache
+
+  ledger-puzzle-epoch:
+    docker:
+      - image: cimg/rust:1.72.1
+    resource_class: 2xlarge
+    steps:
+      - run_serial:
+          workspace_member: ledger/puzzle/epoch
+          cache_key: snarkvm-ledger-puzzle-epoch-cache
 
   ledger-query:
     docker:
@@ -869,9 +888,9 @@ workflows:
       - ledger
 # TODO (howardwu) - Implement `open_testing` on all storage, update to `CurrentConsensusStore::open_testing`, then re-enable.
 #      - ledger-with-rocksdb
+      - ledger-with-valid-solutions
       - ledger-authority
       - ledger-block
-      - ledger-coinbase
       - ledger-committee
       - ledger-narwhal
       - ledger-narwhal-batch-certificate
@@ -880,6 +899,8 @@ workflows:
       - ledger-narwhal-subdag
       - ledger-narwhal-transmission
       - ledger-narwhal-transmission-id
+      - ledger-puzzle
+      - ledger-puzzle-epoch
       - ledger-query
       - ledger-store
       - ledger-test-helpers

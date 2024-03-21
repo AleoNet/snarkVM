@@ -34,7 +34,7 @@ impl<N: Network> FromBytes for Solutions<N> {
             }
             1 => {
                 // Read the solutions.
-                let solutions: CoinbaseSolution<N> = FromBytes::read_le(&mut reader)?;
+                let solutions: PuzzleSolutions<N> = FromBytes::read_le(&mut reader)?;
                 // Return the solutions.
                 Self::new(solutions).map_err(error)
             }

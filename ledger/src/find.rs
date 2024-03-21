@@ -25,12 +25,9 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         self.vm.block_store().find_block_hash(transaction_id)
     }
 
-    /// Returns the block height that contains the given `puzzle commitment`.
-    pub fn find_block_height_from_puzzle_commitment(
-        &self,
-        puzzle_commitment: &PuzzleCommitment<N>,
-    ) -> Result<Option<u32>> {
-        self.vm.block_store().find_block_height_from_puzzle_commitment(puzzle_commitment)
+    /// Returns the block height that contains the given `solution ID`.
+    pub fn find_block_height_from_solution_id(&self, solution_id: &SolutionID<N>) -> Result<Option<u32>> {
+        self.vm.block_store().find_block_height_from_solution_id(solution_id)
     }
 
     /// Returns the transaction ID that contains the given `program ID`.

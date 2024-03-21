@@ -1,0 +1,67 @@
+[package]
+name = "snarkvm-ledger-puzzle-epoch"
+version = "0.16.19"
+authors = [ "The Aleo Team <hello@aleo.org>" ]
+description = "Epoch puzzle for a decentralized virtual machine"
+homepage = "https://aleo.org"
+repository = "https://github.com/AleoHQ/snarkVM"
+keywords = [
+  "aleo",
+  "cryptography",
+  "blockchain",
+  "decentralized",
+  "zero-knowledge"
+]
+categories = [
+  "compilers",
+  "cryptography",
+  "mathematics",
+  "wasm",
+  "web-programming"
+]
+include = [ "Cargo.toml", "src", "README.md", "LICENSE.md" ]
+license = "Apache-2.0"
+edition = "2021"
+
+[features]
+default = [ "merkle", "rayon" ]
+serial = [
+  "console/serial",
+  "snarkvm-ledger-puzzle/serial",
+]
+merkle = [ ]
+wasm = [ "console/wasm" ]
+
+[dependencies.console]
+package = "snarkvm-console"
+path = "../../../console"
+version = "=0.16.19"
+
+[dependencies.snarkvm-ledger-puzzle]
+path = "../."
+version = "=0.16.19"
+
+[dependencies.anyhow]
+version = "1.0.73"
+
+[dependencies.colored]
+version = "2"
+
+[dependencies.indexmap]
+version = "2.0"
+features = [ "serde", "rayon" ]
+
+[dependencies.rand]
+version = "0.8"
+
+[dependencies.rand_chacha]
+version = "0.3.1"
+
+[dependencies.rayon]
+version = "1"
+optional = true
+
+[dev-dependencies.console]
+package = "snarkvm-console"
+path = "../../../console"
+features = [ "test" ]
