@@ -628,15 +628,7 @@ function compute:
 
                 // Execute.
                 let transaction = vm
-                    .execute(
-                        &caller_private_key,
-                        ("credits.aleo", "transfer_public_as_caller"),
-                        inputs,
-                        record,
-                        0,
-                        None,
-                        rng,
-                    )
+                    .execute(&caller_private_key, ("credits.aleo", "transfer_public"), inputs, record, 0, None, rng)
                     .unwrap();
                 // Verify.
                 vm.check_transaction(&transaction, None, rng).unwrap();
@@ -671,15 +663,7 @@ function compute:
 
                 // Execute.
                 let transaction_without_fee = vm
-                    .execute(
-                        &caller_private_key,
-                        ("credits.aleo", "transfer_public_as_caller"),
-                        inputs,
-                        None,
-                        0,
-                        None,
-                        rng,
-                    )
+                    .execute(&caller_private_key, ("credits.aleo", "transfer_public"), inputs, None, 0, None, rng)
                     .unwrap();
                 let execution = transaction_without_fee.execution().unwrap().clone();
 
@@ -1440,7 +1424,7 @@ finalize do:
     }
 
     #[test]
-    fn test_transfer_public_as_caller_from_user() {
+    fn test_transfer_public_from_user() {
         let rng = &mut TestRng::default();
 
         // Initialize a new caller.
@@ -1481,7 +1465,7 @@ finalize do:
         let transaction = vm
             .execute(
                 &caller_private_key,
-                ("credits.aleo", "transfer_public_as_caller"),
+                ("credits.aleo", "transfer_public"),
                 [Value::from_str(&format!("{recipient_address}")).unwrap(), Value::from_str("1u64").unwrap()].iter(),
                 None,
                 0,
@@ -1512,7 +1496,7 @@ finalize do:
             Some(Value::Plaintext(Plaintext::Literal(Literal::U64(balance), _))) => *balance,
             _ => panic!("Expected a valid balance"),
         };
-        assert_eq!(balance, 324_999_999_843_163, "Update me if the initial balance changes.");
+        assert_eq!(balance, 324_999_999_843_183, "Update me if the initial balance changes.");
 
         // Check the balance of the recipient.
         let balance = match vm
@@ -1622,7 +1606,7 @@ finalize do:
     }
 
     #[test]
-    fn transfer_public_as_caller_from_program() {
+    fn transfer_public_from_program() {
         let rng = &mut TestRng::default();
 
         // Initialize a new caller.
@@ -1659,21 +1643,21 @@ finalize do:
         };
         assert_eq!(balance, 324_999_999_894_244, "Update me if the initial balance changes.");
 
-        // Initialize a wrapper program, importing `credits.aleo` and calling `transfer_public_as_caller`.
+        // Initialize a wrapper program, importing `credits.aleo` and calling `transfer_public`.
         let program = Program::from_str(
             r"
 import credits.aleo;
 program credits_wrapper.aleo;
 
-function transfer_public_as_caller:
+function transfer_public:
     input r0 as address.public;
     input r1 as u64.public;
-    call credits.aleo/transfer_public_as_caller r0 r1 into r2;
-    async transfer_public_as_caller r2 into r3;
-    output r3 as credits_wrapper.aleo/transfer_public_as_caller.future;
+    call credits.aleo/transfer_public r0 r1 into r2;
+    async transfer_public r2 into r3;
+    output r3 as credits_wrapper.aleo/transfer_public.future;
 
-finalize transfer_public_as_caller:
-    input r0 as credits.aleo/transfer_public_as_caller.future;
+finalize transfer_public:
+    input r0 as credits.aleo/transfer_public.future;
     await r0;
         ",
         )
@@ -1696,7 +1680,7 @@ finalize transfer_public_as_caller:
         let transaction = vm
             .execute(
                 &caller_private_key,
-                ("credits.aleo", "transfer_public_as_caller"),
+                ("credits.aleo", "transfer_public"),
                 [Value::from_str(&format!("{wrapper_program_address}")).unwrap(), Value::from_str("1u64").unwrap()]
                     .iter(),
                 None,
@@ -1728,7 +1712,7 @@ finalize transfer_public_as_caller:
             Some(Value::Plaintext(Plaintext::Literal(Literal::U64(balance), _))) => *balance,
             _ => panic!("Expected a valid balance"),
         };
-        assert_eq!(balance, 324_999_997_413_563, "Update me if the initial balance changes.");
+        assert_eq!(balance, 324_999_997_483_583, "Update me if the initial balance changes.");
 
         // Check the balance of the `credits_wrapper` program.
         let balance = match vm
@@ -1749,7 +1733,7 @@ finalize transfer_public_as_caller:
         let transaction = vm
             .execute(
                 &caller_private_key,
-                ("credits_wrapper.aleo", "transfer_public_as_caller"),
+                ("credits_wrapper.aleo", "transfer_public"),
                 [Value::from_str(&format!("{recipient_address}")).unwrap(), Value::from_str("1u64").unwrap()].iter(),
                 None,
                 0,
@@ -1780,7 +1764,7 @@ finalize transfer_public_as_caller:
             Some(Value::Plaintext(Plaintext::Literal(Literal::U64(balance), _))) => *balance,
             _ => panic!("Expected a valid balance"),
         };
-        assert_eq!(balance, 324_999_997_360_988, "Update me if the initial balance changes.");
+        assert_eq!(balance, 324_999_997_431_058, "Update me if the initial balance changes.");
 
         // Check the balance of the `credits_wrapper` program.
         let balance = match vm
@@ -1851,7 +1835,7 @@ finalize transfer_public_as_caller:
         };
         assert_eq!(balance, 324_999_999_894_244, "Update me if the initial balance changes.");
 
-        // Initialize a wrapper program, importing `credits.aleo` and calling `transfer_public_as_caller`.
+        // Initialize a wrapper program, importing `credits.aleo` and calling `transfer_public`.
         let program = Program::from_str(
             r"
 import credits.aleo;
