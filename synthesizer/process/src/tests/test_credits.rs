@@ -2111,9 +2111,9 @@ mod sanity_checks {
         // Compute the assignment.
         let assignment = get_assignment::<_, CurrentAleo>(stack, &private_key, function_name, &[r0, r1], rng);
         assert_eq!(11, assignment.num_public());
-        assert_eq!(12318, assignment.num_private());
-        assert_eq!(12325, assignment.num_constraints());
-        assert_eq!((28243, 38006, 16679), assignment.num_nonzeros());
+        assert_eq!(12323, assignment.num_private());
+        assert_eq!(12330, assignment.num_constraints());
+        assert_eq!((28257, 38029, 16684), assignment.num_nonzeros());
     }
 
     #[test]

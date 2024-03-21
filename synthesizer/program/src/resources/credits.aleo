@@ -758,7 +758,7 @@ function transfer_public_as_signer:
     output r2 as credits.aleo/transfer_public_as_signer.future;
 
 finalize transfer_public_as_signer:
-    // Input the caller.
+    // Input the signer.
     input r0 as address.public;
     // Input the receiver.
     input r1 as address.public;

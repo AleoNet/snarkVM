@@ -1349,7 +1349,7 @@ finalize transfer_public:
         create_execution(vm, caller_private_key, program_id, "mint_public", inputs, unspent_records, rng)
     }
 
-    /// Sample a public transfer as caller transaction.
+    /// Sample a public transfer transaction.
     fn sample_transfer_public(
         vm: &VM<CurrentNetwork, ConsensusMemory<CurrentNetwork>>,
         caller_private_key: PrivateKey<CurrentNetwork>,
