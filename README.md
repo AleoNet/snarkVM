@@ -52,7 +52,7 @@ We recommend installing Rust using [rustup](https://www.rustup.rs/). You can ins
   Download the [Windows 64-bit executable](https://win.rustup.rs/x86_64) or
   [Windows 32-bit executable](https://win.rustup.rs/i686) and follow the on-screen instructions.
 
-### 2.2a Build from Crates.io
+### 2.2.1 Build from Crates.io
 
 We recommend installing `snarkvm` this way. In your terminal, run:
 
@@ -65,7 +65,7 @@ Now to use `snarkvm`, in your terminal, run:
 snarkvm
 ```
 
-### 2.2b Build from Source Code
+### 2.2.2 Build from Source Code
 
 Alternatively, you can install `snarkvm` by building from the source code as follows:
 
