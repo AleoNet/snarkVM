@@ -60,12 +60,15 @@ impl<N: Network> FromBytes for BatchHeader<N> {
                 Self::MAX_CERTIFICATES
             )));
         }
+
+        // Read the previous certificate ID bytes.
+        let mut previous_certificate_id_bytes =
+            vec![0u8; num_previous_certificate_ids as usize * Field::<N>::size_in_bytes()];
+        reader.read_exact(&mut previous_certificate_id_bytes)?;
         // Read the previous certificate IDs.
-        let mut previous_certificate_ids = IndexSet::new();
-        for _ in 0..num_previous_certificate_ids {
-            // Read the certificate ID.
-            previous_certificate_ids.insert(Field::read_le(&mut reader)?);
-        }
+        let previous_certificate_ids = cfg_chunks!(previous_certificate_id_bytes, Field::<N>::size_in_bytes())
+            .map(Field::read_le)
+            .collect::<Result<IndexSet<_>, _>>()?;
 
         // Read the signature.
         let signature = Signature::read_le(&mut reader)?;

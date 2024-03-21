@@ -2022,7 +2022,7 @@ finalize compute:
         // Reset the validators.
         // Note: We use a smaller committee size to ensure that there is enough supply to allocate to the validators and genesis block transactions.
         let validators =
-            sample_validators::<CurrentNetwork>(Committee::<CurrentNetwork>::MAX_COMMITTEE_SIZE as usize / 4, rng);
+            sample_validators::<CurrentNetwork>(Committee::<CurrentNetwork>::MAX_COMMITTEE_SIZE as usize, rng);
 
         // Construct the committee.
         // Track the allocated amount.
@@ -2226,7 +2226,7 @@ finalize compute:
             // Note that the first validator is used to execute additional transactions in `VM::genesis_quorum`.
             // Therefore, the balance of the first validator will be different from the expected balance.
             if entry.0 == Plaintext::from_str(&first_validator.to_string()).unwrap() {
-                assert_eq!(entry.1, Value::from_str("249983999894244u64").unwrap());
+                assert_eq!(entry.1, Value::from_str("144991999894244u64").unwrap());
             } else {
                 assert!(expected_account.contains(entry));
             }

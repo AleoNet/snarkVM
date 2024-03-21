@@ -26,8 +26,12 @@ use console::{
     prelude::*,
     types::Field,
 };
-use indexmap::IndexSet;
 use narwhal_transmission_id::TransmissionID;
+
+use indexmap::IndexSet;
+
+#[cfg(not(feature = "serial"))]
+use rayon::prelude::*;
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct BatchHeader<N: Network> {
