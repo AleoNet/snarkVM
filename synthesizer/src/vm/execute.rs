@@ -317,6 +317,40 @@ mod tests {
     }
 
     #[test]
+    fn test_transfer_public_as_signer_transaction_size() {
+        let rng = &mut TestRng::default();
+
+        // Initialize a new signer.
+        let signer = crate::vm::test_helpers::sample_genesis_private_key(rng);
+        let address = Address::try_from(&signer).unwrap();
+
+        // Prepare the VM and records.
+        let (vm, _) = prepare_vm(rng).unwrap();
+
+        // Prepare the inputs.
+        let inputs = [
+            Value::<CurrentNetwork>::from_str(&address.to_string()).unwrap(),
+            Value::<CurrentNetwork>::from_str("1u64").unwrap(),
+        ]
+        .into_iter();
+
+        // Execute.
+        let transaction =
+            vm.execute(&signer, ("credits.aleo", "transfer_public_as_signer"), inputs, None, 0, None, rng).unwrap();
+
+        // Assert the size of the transaction.
+        let transaction_size_in_bytes = transaction.to_bytes_le().unwrap().len();
+        assert_eq!(2871, transaction_size_in_bytes, "Update me if serialization has changed");
+
+        // Assert the size of the execution.
+        assert!(matches!(transaction, Transaction::Execute(_, _, _)));
+        if let Transaction::Execute(_, execution, _) = &transaction {
+            let execution_size_in_bytes = execution.to_bytes_le().unwrap().len();
+            assert_eq!(1420, execution_size_in_bytes, "Update me if serialization has changed");
+        }
+    }
+
+    #[test]
     fn test_join_transaction_size() {
         let rng = &mut TestRng::default();
 
