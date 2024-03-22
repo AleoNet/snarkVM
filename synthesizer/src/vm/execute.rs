@@ -481,8 +481,8 @@ mod tests {
             vm.execute(&caller_private_key, ("credits.aleo", "split"), inputs, None, 0, None, rng).unwrap();
 
         // Ensure the transaction is a split transition.
-        assert_eq!(transaction.transitions().count(), 2);
-        assert!(transaction.transitions().take(1).next().unwrap().is_split());
+        assert_eq!(transaction.transitions().count(), 1);
+        assert!(transaction.transitions().next().unwrap().is_split());
 
         // Assert the size of the transaction.
         let transaction_size_in_bytes = transaction.to_bytes_le().unwrap().len();
