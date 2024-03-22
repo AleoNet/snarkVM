@@ -245,6 +245,78 @@ mod tests {
     }
 
     #[test]
+    fn test_bond_public_transaction_size() {
+        let rng = &mut TestRng::default();
+
+        // Initialize a new caller.
+        let caller_private_key = crate::vm::test_helpers::sample_genesis_private_key(rng);
+        let address = Address::try_from(&caller_private_key).unwrap();
+
+        // Prepare the VM and records.
+        let (vm, _) = prepare_vm(rng).unwrap();
+
+        // Prepare the inputs.
+        let inputs = [
+            Value::<CurrentNetwork>::from_str(&address.to_string()).unwrap(),
+            Value::<CurrentNetwork>::from_str(&address.to_string()).unwrap(),
+            Value::<CurrentNetwork>::from_str("1_000_000u64").unwrap(),
+        ]
+        .into_iter();
+
+        // Execute.
+        let transaction =
+            vm.execute(&caller_private_key, ("credits.aleo", "bond_public"), inputs, None, 0, None, rng).unwrap();
+
+        // Ensure the transaction is a bond public transition.
+        assert_eq!(transaction.transitions().count(), 2);
+        assert!(transaction.transitions().take(1).next().unwrap().is_bond_public());
+
+        // Assert the size of the transaction.
+        let transaction_size_in_bytes = transaction.to_bytes_le().unwrap().len();
+        assert_eq!(2970, transaction_size_in_bytes, "Update me if serialization has changed");
+
+        // Assert the size of the execution.
+        assert!(matches!(transaction, Transaction::Execute(_, _, _)));
+        if let Transaction::Execute(_, execution, _) = &transaction {
+            let execution_size_in_bytes = execution.to_bytes_le().unwrap().len();
+            assert_eq!(1519, execution_size_in_bytes, "Update me if serialization has changed");
+        }
+    }
+
+    #[test]
+    fn test_unbond_public_transaction_size() {
+        let rng = &mut TestRng::default();
+
+        // Initialize a new caller.
+        let caller_private_key = crate::vm::test_helpers::sample_genesis_private_key(rng);
+
+        // Prepare the VM and records.
+        let (vm, _) = prepare_vm(rng).unwrap();
+
+        // Prepare the inputs.
+        let inputs = [Value::<CurrentNetwork>::from_str("1u64").unwrap()].into_iter();
+
+        // Execute.
+        let transaction =
+            vm.execute(&caller_private_key, ("credits.aleo", "unbond_public"), inputs, None, 0, None, rng).unwrap();
+
+        // Ensure the transaction is an unbond public transition.
+        assert_eq!(transaction.transitions().count(), 2);
+        assert!(transaction.transitions().take(1).next().unwrap().is_unbond_public());
+
+        // Assert the size of the transaction.
+        let transaction_size_in_bytes = transaction.to_bytes_le().unwrap().len();
+        assert_eq!(2760, transaction_size_in_bytes, "Update me if serialization has changed");
+
+        // Assert the size of the execution.
+        assert!(matches!(transaction, Transaction::Execute(_, _, _)));
+        if let Transaction::Execute(_, execution, _) = &transaction {
+            let execution_size_in_bytes = execution.to_bytes_le().unwrap().len();
+            assert_eq!(1309, execution_size_in_bytes, "Update me if serialization has changed");
+        }
+    }
+
+    #[test]
     fn test_transfer_private_transaction_size() {
         let rng = &mut TestRng::default();
 
@@ -408,6 +480,10 @@ mod tests {
         let transaction =
             vm.execute(&caller_private_key, ("credits.aleo", "split"), inputs, None, 0, None, rng).unwrap();
 
+        // Ensure the transaction is a split transition.
+        assert_eq!(transaction.transitions().count(), 2);
+        assert!(transaction.transitions().take(1).next().unwrap().is_split());
+
         // Assert the size of the transaction.
         let transaction_size_in_bytes = transaction.to_bytes_le().unwrap().len();
         assert_eq!(2166, transaction_size_in_bytes, "Update me if serialization has changed");
@@ -431,6 +507,10 @@ mod tests {
             Transaction::Fee(_, fee) => fee,
             _ => panic!("Expected a fee transaction"),
         };
+
+        // Ensure the transition is a fee transition.
+        assert!(fee.is_fee_private());
+
         // Assert the size of the transition.
         let fee_size_in_bytes = fee.to_bytes_le().unwrap().len();
         assert_eq!(2043, fee_size_in_bytes, "Update me if serialization has changed");
@@ -447,6 +527,10 @@ mod tests {
             Transaction::Fee(_, fee) => fee,
             _ => panic!("Expected a fee transaction"),
         };
+
+        // Ensure the transition is a fee transition.
+        assert!(fee.is_fee_public());
+
         // Assert the size of the transition.
         let fee_size_in_bytes = fee.to_bytes_le().unwrap().len();
         assert_eq!(1416, fee_size_in_bytes, "Update me if serialization has changed");
