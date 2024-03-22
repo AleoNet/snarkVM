@@ -206,17 +206,17 @@ impl<'de, T: FromBytes + ToBytes + DeserializeOwned + Send + 'static> Deserializ
                         // Decode from bech32m.
                         let (hrp, data, variant) = bech32::decode(&encoding).map_err(de::Error::custom)?;
                         if hrp != PREFIX {
-                            return Err(error(format!("Invalid data HRP - {hrp}"))).map_err(de::Error::custom);
+                            return Err(de::Error::custom(error(format!("Invalid data HRP - {hrp}"))));
                         };
                         if data.is_empty() {
-                            return Err(error("Invalid bech32m data (empty)")).map_err(de::Error::custom);
+                            return Err(de::Error::custom(error("Invalid bech32m data (empty)")));
                         }
                         if variant != bech32::Variant::Bech32m {
-                            return Err(error("Invalid data - variant is not bech32m")).map_err(de::Error::custom);
+                            return Err(de::Error::custom(error("Invalid data - variant is not bech32m")));
                         }
                         Ok(Self::Buffer(Bytes::from(Vec::from_base32(&data).map_err(de::Error::custom)?)))
                     }
-                    _ => Err(error(format!("Invalid data type - {type_}"))).map_err(de::Error::custom),
+                    _ => Err(de::Error::custom(error(format!("Invalid data type - {type_}")))),
                 }
             }
             false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "data"),

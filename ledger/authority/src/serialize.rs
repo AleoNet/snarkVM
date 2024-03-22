@@ -55,7 +55,7 @@ impl<'de, N: Network> Deserialize<'de> for Authority<N> {
                     "quorum" => Ok(Self::from_quorum(
                         DeserializeExt::take_from_value::<D>(&mut authority, "subdag").map_err(de::Error::custom)?,
                     )),
-                    _ => Err(error("Invalid authority type")).map_err(de::Error::custom),
+                    _ => Err(de::Error::custom(error("Invalid authority type"))),
                 }
             }
             false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "authority"),

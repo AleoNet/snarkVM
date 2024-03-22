@@ -67,7 +67,7 @@ impl<'de, N: Network> Deserialize<'de> for Transition<N> {
                 // Ensure the transition ID is correct.
                 match id == *transition.id() {
                     true => Ok(transition),
-                    false => Err(error("Transition ID mismatch, possible data corruption")).map_err(de::Error::custom),
+                    false => Err(de::Error::custom(error("Transition ID mismatch, possible data corruption"))),
                 }
             }
             false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "transition"),

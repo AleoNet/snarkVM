@@ -51,7 +51,7 @@ impl<'de, N: Network> Deserialize<'de> for Solution<N> {
                 // Ensure the solution ID matches.
                 match solution_id == solution.id() {
                     true => Ok(solution),
-                    false => Err(error("Mismatching solution ID, possible data corruption")).map_err(de::Error::custom),
+                    false => Err(de::Error::custom(error("Mismatching solution ID, possible data corruption"))),
                 }
             }
             false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "solution"),

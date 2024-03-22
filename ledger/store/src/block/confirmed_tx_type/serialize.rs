@@ -83,7 +83,7 @@ impl<'de, N: Network> Deserialize<'de> for ConfirmedTxType<N> {
                             .map_err(de::Error::custom)?;
                         Ok(Self::RejectedExecute(index, rejected))
                     }
-                    _ => Err(error("Invalid confirmed transaction type")).map_err(de::Error::custom),
+                    _ => Err(de::Error::custom(error("Invalid confirmed transaction type"))),
                 }
             }
             false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(

@@ -120,7 +120,7 @@ impl<N: Network> Authorization<N> {
 impl<N: Network> Authorization<N> {
     /// Returns the next `Request` in the authorization.
     pub fn peek_next(&self) -> Result<Request<N>> {
-        self.requests.read().get(0).cloned().ok_or_else(|| anyhow!("Failed to peek at the next request."))
+        self.requests.read().front().cloned().ok_or_else(|| anyhow!("Failed to peek at the next request."))
     }
 
     /// Returns the next `Request` from the authorization.
