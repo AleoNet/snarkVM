@@ -1202,6 +1202,89 @@ function transfer:
     }
 
     #[test]
+    fn test_internal_fee_calls_are_invalid() {
+        let rng = &mut TestRng::default();
+
+        // Initialize a private key.
+        let private_key = sample_genesis_private_key(rng);
+        let view_key = ViewKey::try_from(&private_key).unwrap();
+
+        // Initialize the genesis block.
+        let genesis = sample_genesis_block(rng);
+
+        // Initialize the VM.
+        let vm = sample_vm();
+        // Update the VM.
+        vm.add_next_block(&genesis).unwrap();
+
+        // Fetch the unspent records.
+        let records =
+            genesis.transitions().cloned().flat_map(Transition::into_records).take(3).collect::<IndexMap<_, _>>();
+        trace!("Unspent Records:\n{:#?}", records);
+        let record_0 = records.values().next().unwrap().decrypt(&view_key).unwrap();
+
+        // Deploy the program.
+        let program = Program::from_str(
+            r"
+import credits.aleo;
+program test_program.aleo;
+
+function call_fee_public:
+    input r0 as u64.private;
+    input r1 as u64.private;
+    input r2 as field.private;
+    call credits.aleo/fee_public r0 r1 r2 into r3;
+    async call_fee_public r3 into r4;
+    output r4 as test_program.aleo/call_fee_public.future;
+
+finalize call_fee_public:
+    input r0 as credits.aleo/fee_public.future;
+    await r0;
+    
+function call_fee_private:
+    input r0 as credits.aleo/credits.record;
+    input r1 as u64.private;
+    input r2 as u64.private;
+    input r3 as field.private;
+    call credits.aleo/fee_private r0 r1 r2 r3 into r4;
+    output r4 as credits.aleo/credits.record;
+",
+        )
+        .unwrap();
+
+        let deployment = vm.deploy(&private_key, &program, None, 0, None, rng).unwrap();
+        assert!(vm.check_transaction(&deployment, None, rng).is_ok());
+        vm.add_next_block(&sample_next_block(&vm, &private_key, &[deployment], rng).unwrap()).unwrap();
+
+        // Execute the programs.
+        let internal_base_fee_amount: u64 = rng.gen_range(1..1000);
+        let internal_priority_fee_amount: u64 = rng.gen_range(1..1000);
+
+        // Ensure that the transaction that calls `fee_public` internally cannot be generated.
+        let inputs = [
+            Value::<MainnetV0>::from_str(&format!("{}u64", internal_base_fee_amount)).unwrap(),
+            Value::<MainnetV0>::from_str(&format!("{}u64", internal_priority_fee_amount)).unwrap(),
+            Value::<MainnetV0>::from_str("1field").unwrap(),
+        ];
+        assert!(
+            vm.execute(&private_key, ("test_program.aleo", "call_fee_public"), inputs.into_iter(), None, 0, None, rng)
+                .is_err()
+        );
+
+        // Ensure that the transaction that calls `fee_private` internally cannot be generated.
+        let inputs = [
+            Value::<MainnetV0>::Record(record_0),
+            Value::<MainnetV0>::from_str(&format!("{}u64", internal_base_fee_amount)).unwrap(),
+            Value::<MainnetV0>::from_str(&format!("{}u64", internal_priority_fee_amount)).unwrap(),
+            Value::<MainnetV0>::from_str("1field").unwrap(),
+        ];
+        assert!(
+            vm.execute(&private_key, ("test_program.aleo", "call_fee_private"), inputs.into_iter(), None, 0, None, rng)
+                .is_err()
+        );
+    }
+
+    #[test]
     fn test_deployment_synthesis_overload() {
         let rng = &mut TestRng::default();
 
