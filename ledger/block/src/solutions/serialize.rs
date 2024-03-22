@@ -63,23 +63,19 @@ impl<'de, N: Network> Deserialize<'de> for Solutions<N> {
 pub(super) mod tests {
     use super::*;
     use console::account::{Address, PrivateKey};
-    use ledger_coinbase::{PartialSolution, ProverSolution, PuzzleCommitment, PuzzleProof};
+    use ledger_puzzle::Solution;
 
     type CurrentNetwork = console::network::MainnetV0;
 
     pub(crate) fn sample_solutions(rng: &mut TestRng) -> Solutions<CurrentNetwork> {
         // Sample a new solutions.
-        let mut prover_solutions = vec![];
-        for _ in 0..rng.gen_range(1..10) {
+        let mut solutions = vec![];
+        for _ in 0..rng.gen_range(1..=CurrentNetwork::MAX_SOLUTIONS) {
             let private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
             let address = Address::try_from(private_key).unwrap();
-
-            let commitment = PuzzleCommitment::from_g1_affine(rng.gen());
-            let partial_solution = PartialSolution::new(address, u64::rand(rng), commitment);
-            let proof = PuzzleProof::<CurrentNetwork> { w: rng.gen(), random_v: None };
-            prover_solutions.push(ProverSolution::new(partial_solution, proof));
+            solutions.push(Solution::new(rng.gen(), address, u64::rand(rng)).unwrap());
         }
-        Solutions::new(CoinbaseSolution::new(prover_solutions).unwrap()).unwrap()
+        Solutions::new(PuzzleSolutions::new(solutions).unwrap()).unwrap()
     }
 
     #[test]

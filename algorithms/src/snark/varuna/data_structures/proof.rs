@@ -255,6 +255,10 @@ impl<E: PairingEngine> Proof<E> {
         Ok(Self { batch_sizes, commitments, evaluations, third_msg, fourth_msg, pc_proof })
     }
 
+    pub fn is_hiding(&self) -> bool {
+        self.pc_proof.is_hiding()
+    }
+
     pub fn batch_sizes(&self) -> &[usize] {
         &self.batch_sizes
     }

@@ -39,14 +39,14 @@ serial = [
   "console/serial",
   "ledger-authority/serial",
   "ledger-block/serial",
-  "ledger-coinbase/serial",
   "ledger-committee/serial",
   "ledger-narwhal/serial",
+  "ledger-puzzle/serial",
   "ledger-query/serial",
   "ledger-store/serial",
   "synthesizer/serial"
 ]
-test = [ "ledger-block/test", "ledger-store/test" ]
+test = [ "console/test", "ledger-block/test", "ledger-store/test" ]
 test-helpers = [
   "ledger-test-helpers",
   "ledger-committee/test-helpers",
@@ -69,11 +69,6 @@ package = "snarkvm-ledger-block"
 path = "./block"
 version = "=0.16.19"
 
-[dependencies.ledger-coinbase]
-package = "snarkvm-ledger-coinbase"
-path = "./coinbase"
-version = "=0.16.19"
-
 [dependencies.ledger-committee]
 package = "snarkvm-ledger-committee"
 path = "./committee"
@@ -82,6 +77,11 @@ version = "=0.16.19"
 [dependencies.ledger-narwhal]
 package = "snarkvm-ledger-narwhal"
 path = "./narwhal"
+version = "=0.16.19"
+
+[dependencies.ledger-puzzle]
+package = "snarkvm-ledger-puzzle"
+path = "puzzle"
 version = "=0.16.19"
 
 [dependencies.ledger-query]

@@ -21,8 +21,8 @@ mod string;
 
 use console::prelude::*;
 use ledger_block::Transaction;
-use ledger_coinbase::ProverSolution;
 use ledger_narwhal_data::Data;
+use ledger_puzzle::Solution;
 
 #[derive(Clone, PartialEq, Eq)]
 pub enum Transmission<N: Network> {
@@ -30,15 +30,15 @@ pub enum Transmission<N: Network> {
     Ratification,
     /// A prover solution.
     /// Attention: Observe that the solution is encapsulated in `Data`, and thus possibly unchecked.
-    Solution(Data<ProverSolution<N>>),
+    Solution(Data<Solution<N>>),
     /// A transaction.
     /// Attention: Observe that the transaction is encapsulated in `Data`, and thus possibly unchecked.
     Transaction(Data<Transaction<N>>),
 }
 
-impl<N: Network> From<ProverSolution<N>> for Transmission<N> {
+impl<N: Network> From<Solution<N>> for Transmission<N> {
     /// Converts the prover solution into a transmission.
-    fn from(solution: ProverSolution<N>) -> Self {
+    fn from(solution: Solution<N>) -> Self {
         Self::Solution(Data::Object(solution))
     }
 }
@@ -50,9 +50,9 @@ impl<N: Network> From<Transaction<N>> for Transmission<N> {
     }
 }
 
-impl<N: Network> From<Data<ProverSolution<N>>> for Transmission<N> {
+impl<N: Network> From<Data<Solution<N>>> for Transmission<N> {
     /// Converts the prover solution into a transmission.
-    fn from(solution: Data<ProverSolution<N>>) -> Self {
+    fn from(solution: Data<Solution<N>>) -> Self {
         Self::Solution(solution)
     }
 }

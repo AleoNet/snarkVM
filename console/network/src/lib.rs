@@ -90,9 +90,23 @@ pub trait Network:
     /// The fixed timestamp of the genesis block.
     const GENESIS_TIMESTAMP: i64 = 1696118400; // 2023-10-01 00:00:00 UTC
     /// The genesis block coinbase target.
-    const GENESIS_COINBASE_TARGET: u64 = (1u64 << 32).saturating_sub(1);
+    #[cfg(not(feature = "test"))]
+    const GENESIS_COINBASE_TARGET: u64 = (1u64 << 10).saturating_sub(1);
+    /// The genesis block coinbase target.
+    /// This is deliberately set to a low value (32) for testing purposes only.
+    #[cfg(feature = "test")]
+    const GENESIS_COINBASE_TARGET: u64 = (1u64 << 5).saturating_sub(1);
     /// The genesis block proof target.
-    const GENESIS_PROOF_TARGET: u64 = 1u64 << 25;
+    #[cfg(not(feature = "test"))]
+    const GENESIS_PROOF_TARGET: u64 = 1u64 << 8;
+    /// The genesis block proof target.
+    /// This is deliberately set to a low value (8) for testing purposes only.
+    #[cfg(feature = "test")]
+    const GENESIS_PROOF_TARGET: u64 = 1u64 << 3;
+    /// The maximum number of solutions that can be included per block as a power of 2.
+    const MAX_SOLUTIONS_AS_POWER_OF_TWO: u8 = 2; // 4 solutions
+    /// The maximum number of solutions that can be included per block.
+    const MAX_SOLUTIONS: usize = 1 << Self::MAX_SOLUTIONS_AS_POWER_OF_TWO; // 4 solutions
 
     /// The starting supply of Aleo credits.
     const STARTING_SUPPLY: u64 = 1_500_000_000_000_000; // 1.5B credits
@@ -113,10 +127,6 @@ pub trait Network:
     const ANCHOR_TIME: u16 = 25;
     /// The expected time per block in seconds.
     const BLOCK_TIME: u16 = 10;
-    /// The coinbase puzzle degree.
-    const COINBASE_PUZZLE_DEGREE: u32 = (1 << 13) - 1; // 8,191
-    /// The maximum number of solutions that can be included per block.
-    const MAX_SOLUTIONS: usize = 1 << 8; // 256 solutions
     /// The number of blocks per epoch.
     const NUM_BLOCKS_PER_EPOCH: u32 = 3600 / Self::BLOCK_TIME as u32; // 360 blocks == ~1 hour
 

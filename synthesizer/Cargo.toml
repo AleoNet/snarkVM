@@ -90,6 +90,16 @@ package = "snarkvm-ledger-committee"
 path = "../ledger/committee"
 version = "=0.16.19"
 
+[dependencies.ledger-puzzle]
+package = "snarkvm-ledger-puzzle"
+path = "../ledger/puzzle"
+version = "=0.16.19"
+
+[dependencies.ledger-puzzle-epoch]
+package = "snarkvm-ledger-puzzle-epoch"
+path = "../ledger/puzzle/epoch"
+version = "=0.16.19"
+
 [dependencies.ledger-query]
 package = "snarkvm-ledger-query"
 path = "../ledger/query"
