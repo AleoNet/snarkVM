@@ -21,7 +21,7 @@ mod execute;
 mod finalize;
 mod verify;
 
-use crate::{cast_mut_ref, cast_ref, process};
+use crate::{cast_mut_ref, cast_ref, convert, process};
 use console::{
     account::{Address, PrivateKey},
     network::prelude::*,
@@ -43,6 +43,7 @@ use ledger_block::{
     Transactions,
 };
 use ledger_committee::Committee;
+use ledger_puzzle::Puzzle;
 use ledger_query::Query;
 use ledger_store::{
     atomic_finalize,
@@ -72,6 +73,8 @@ use rayon::prelude::*;
 pub struct VM<N: Network, C: ConsensusStorage<N>> {
     /// The process.
     process: Arc<RwLock<Process<N>>>,
+    /// The puzzle.
+    puzzle: Puzzle<N>,
     /// The VM store.
     store: ConsensusStore<N, C>,
     /// The lock to guarantee atomicity over calls to speculate and finalize.
@@ -179,6 +182,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         // Return the new VM.
         Ok(Self {
             process: Arc::new(RwLock::new(process)),
+            puzzle: Self::new_puzzle()?,
             store,
             atomic_lock: Arc::new(Mutex::new(())),
             block_lock: Arc::new(Mutex::new(())),
@@ -198,6 +202,12 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     #[inline]
     pub fn process(&self) -> Arc<RwLock<Process<N>>> {
         self.process.clone()
+    }
+
+    /// Returns the puzzle.
+    #[inline]
+    pub const fn puzzle(&self) -> &Puzzle<N> {
+        &self.puzzle
     }
 
     /// Returns the partially-verified transactions.
@@ -230,6 +240,21 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     #[inline]
     pub fn transition_store(&self) -> &TransitionStore<N, C::TransitionStorage> {
         self.store.transition_store()
+    }
+}
+
+impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
+    /// Returns a new instance of the puzzle.
+    pub fn new_puzzle() -> Result<Puzzle<N>> {
+        // Initialize a new instance of the puzzle.
+        macro_rules! logic {
+            ($network:path, $aleo:path) => {{
+                let puzzle = Puzzle::new::<ledger_puzzle_epoch::MerklePuzzle<$network>>();
+                Ok(cast_ref!(puzzle as Puzzle<N>).clone())
+            }};
+        }
+        // Initialize the puzzle.
+        convert!(logic)
     }
 }
 
@@ -1177,6 +1202,89 @@ function transfer:
     }
 
     #[test]
+    fn test_internal_fee_calls_are_invalid() {
+        let rng = &mut TestRng::default();
+
+        // Initialize a private key.
+        let private_key = sample_genesis_private_key(rng);
+        let view_key = ViewKey::try_from(&private_key).unwrap();
+
+        // Initialize the genesis block.
+        let genesis = sample_genesis_block(rng);
+
+        // Initialize the VM.
+        let vm = sample_vm();
+        // Update the VM.
+        vm.add_next_block(&genesis).unwrap();
+
+        // Fetch the unspent records.
+        let records =
+            genesis.transitions().cloned().flat_map(Transition::into_records).take(3).collect::<IndexMap<_, _>>();
+        trace!("Unspent Records:\n{:#?}", records);
+        let record_0 = records.values().next().unwrap().decrypt(&view_key).unwrap();
+
+        // Deploy the program.
+        let program = Program::from_str(
+            r"
+import credits.aleo;
+program test_program.aleo;
+
+function call_fee_public:
+    input r0 as u64.private;
+    input r1 as u64.private;
+    input r2 as field.private;
+    call credits.aleo/fee_public r0 r1 r2 into r3;
+    async call_fee_public r3 into r4;
+    output r4 as test_program.aleo/call_fee_public.future;
+
+finalize call_fee_public:
+    input r0 as credits.aleo/fee_public.future;
+    await r0;
+    
+function call_fee_private:
+    input r0 as credits.aleo/credits.record;
+    input r1 as u64.private;
+    input r2 as u64.private;
+    input r3 as field.private;
+    call credits.aleo/fee_private r0 r1 r2 r3 into r4;
+    output r4 as credits.aleo/credits.record;
+",
+        )
+        .unwrap();
+
+        let deployment = vm.deploy(&private_key, &program, None, 0, None, rng).unwrap();
+        assert!(vm.check_transaction(&deployment, None, rng).is_ok());
+        vm.add_next_block(&sample_next_block(&vm, &private_key, &[deployment], rng).unwrap()).unwrap();
+
+        // Execute the programs.
+        let internal_base_fee_amount: u64 = rng.gen_range(1..1000);
+        let internal_priority_fee_amount: u64 = rng.gen_range(1..1000);
+
+        // Ensure that the transaction that calls `fee_public` internally cannot be generated.
+        let inputs = [
+            Value::<MainnetV0>::from_str(&format!("{}u64", internal_base_fee_amount)).unwrap(),
+            Value::<MainnetV0>::from_str(&format!("{}u64", internal_priority_fee_amount)).unwrap(),
+            Value::<MainnetV0>::from_str("1field").unwrap(),
+        ];
+        assert!(
+            vm.execute(&private_key, ("test_program.aleo", "call_fee_public"), inputs.into_iter(), None, 0, None, rng)
+                .is_err()
+        );
+
+        // Ensure that the transaction that calls `fee_private` internally cannot be generated.
+        let inputs = [
+            Value::<MainnetV0>::Record(record_0),
+            Value::<MainnetV0>::from_str(&format!("{}u64", internal_base_fee_amount)).unwrap(),
+            Value::<MainnetV0>::from_str(&format!("{}u64", internal_priority_fee_amount)).unwrap(),
+            Value::<MainnetV0>::from_str("1field").unwrap(),
+        ];
+        assert!(
+            vm.execute(&private_key, ("test_program.aleo", "call_fee_private"), inputs.into_iter(), None, 0, None, rng)
+                .is_err()
+        );
+    }
+
+    #[test]
     fn test_deployment_synthesis_overload() {
         let rng = &mut TestRng::default();
 
@@ -1424,5 +1532,21 @@ finalize do:
 
         // Verify.
         vm.check_transaction(&transaction, None, rng).unwrap();
+    }
+
+    #[test]
+    fn test_vm_puzzle() {
+        // Attention: This test is used to ensure that the VM has performed downcasting correctly for
+        // the puzzle, and that the underlying traits in the puzzle are working correctly. Please
+        // *do not delete* this test as it is a critical safety check for the integrity of the
+        // instantiation of the puzzle in the VM.
+
+        let rng = &mut TestRng::default();
+
+        // Initialize the VM.
+        let vm = sample_vm();
+
+        // Ensure this call succeeds.
+        vm.puzzle.prove(rng.gen(), rng.gen(), rng.gen(), None).unwrap();
     }
 }

@@ -18,7 +18,7 @@ use console::prelude::{ensure, Result};
 pub const MAX_COINBASE_REWARD: u64 = 190_258_739; // Coinbase reward at block 1.
 
 /// Calculate the block reward, given the total supply, block time, coinbase reward, and transaction fees.
-///     R_staking = floor((0.05 * S) / H_Y1) + CR / 2 + TX_F.
+///     R_staking = floor((0.05 * S) / H_Y1) + CR / 3 + TX_F.
 ///     S = Total supply.
 ///     H_Y1 = Expected block height at year 1.
 ///     CR = Coinbase reward.
@@ -31,13 +31,13 @@ pub const fn block_reward(total_supply: u64, block_time: u16, coinbase_reward: u
     // Compute the block reward: (0.05 * S) / H_Y1.
     let block_reward = annual_reward / block_height_at_year_1 as u64;
     // Return the sum of the block reward, coinbase reward, and transaction fees.
-    block_reward + (coinbase_reward / 2) + transaction_fees
+    block_reward + (coinbase_reward / 3) + transaction_fees
 }
 
 /// Calculate the puzzle reward, given the coinbase reward.
 pub const fn puzzle_reward(coinbase_reward: u64) -> u64 {
-    // Return the coinbase reward divided by 2.
-    coinbase_reward / 2
+    // Return the coinbase reward multiplied by 2 and divided by 3.
+    coinbase_reward.saturating_mul(2).saturating_div(3)
 }
 
 /// Calculates the coinbase reward for a given block.
@@ -132,8 +132,11 @@ pub fn coinbase_target(
 }
 
 /// Calculate the minimum proof target for the given coinbase target.
-pub fn proof_target(coinbase_target: u64, genesis_proof_target: u64) -> u64 {
-    coinbase_target.checked_shr(7).map(|target| target.saturating_add(1)).unwrap_or(genesis_proof_target)
+pub fn proof_target(coinbase_target: u64, genesis_proof_target: u64, max_solutions_as_power_of_two: u8) -> u64 {
+    coinbase_target
+        .checked_shr(max_solutions_as_power_of_two as u32)
+        .map(|target| target.saturating_add(1))
+        .unwrap_or(genesis_proof_target)
 }
 
 /// Retarget algorithm using fixed point arithmetic from https://www.reference.cash/protocol/forks/2020-11-15-asert.
@@ -543,7 +546,11 @@ mod tests {
 
         fn test_new_targets(rng: &mut TestRng, minimum_coinbase_target: u64) {
             let previous_coinbase_target: u64 = rng.gen_range(minimum_coinbase_target..u64::MAX);
-            let previous_prover_target = proof_target(previous_coinbase_target, CurrentNetwork::GENESIS_PROOF_TARGET);
+            let previous_prover_target = proof_target(
+                previous_coinbase_target,
+                CurrentNetwork::GENESIS_PROOF_TARGET,
+                CurrentNetwork::MAX_SOLUTIONS_AS_POWER_OF_TWO,
+            );
 
             let previous_timestamp = rng.gen();
 
@@ -558,7 +565,11 @@ mod tests {
                 CurrentNetwork::GENESIS_COINBASE_TARGET,
             )
             .unwrap();
-            let new_prover_target = proof_target(new_coinbase_target, CurrentNetwork::GENESIS_PROOF_TARGET);
+            let new_prover_target = proof_target(
+                new_coinbase_target,
+                CurrentNetwork::GENESIS_PROOF_TARGET,
+                CurrentNetwork::MAX_SOLUTIONS_AS_POWER_OF_TWO,
+            );
             assert_eq!(new_coinbase_target, previous_coinbase_target);
             assert_eq!(new_prover_target, previous_prover_target);
 
@@ -573,7 +584,11 @@ mod tests {
                 CurrentNetwork::GENESIS_COINBASE_TARGET,
             )
             .unwrap();
-            let new_prover_target = proof_target(new_coinbase_target, CurrentNetwork::GENESIS_PROOF_TARGET);
+            let new_prover_target = proof_target(
+                new_coinbase_target,
+                CurrentNetwork::GENESIS_PROOF_TARGET,
+                CurrentNetwork::MAX_SOLUTIONS_AS_POWER_OF_TWO,
+            );
             assert!(new_coinbase_target < previous_coinbase_target);
             assert!(new_prover_target < previous_prover_target);
 
@@ -588,7 +603,11 @@ mod tests {
                 CurrentNetwork::GENESIS_COINBASE_TARGET,
             )
             .unwrap();
-            let new_prover_target = proof_target(new_coinbase_target, CurrentNetwork::GENESIS_PROOF_TARGET);
+            let new_prover_target = proof_target(
+                new_coinbase_target,
+                CurrentNetwork::GENESIS_PROOF_TARGET,
+                CurrentNetwork::MAX_SOLUTIONS_AS_POWER_OF_TWO,
+            );
 
             assert!(new_coinbase_target > previous_coinbase_target);
             assert!(new_prover_target > previous_prover_target);

@@ -54,10 +54,10 @@ use console::{
     types::{Field, Group, U64},
 };
 use ledger_authority::Authority;
-use ledger_coinbase::{CoinbaseSolution, ProverSolution, PuzzleCommitment};
 use ledger_committee::Committee;
 use ledger_narwhal_subdag::Subdag;
 use ledger_narwhal_transmission_id::TransmissionID;
+use ledger_puzzle::{PuzzleSolutions, Solution, SolutionID};
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct Block<N: Network> {
@@ -74,7 +74,7 @@ pub struct Block<N: Network> {
     /// The solutions in the block.
     solutions: Solutions<N>,
     /// The aborted solution IDs in this block.
-    aborted_solution_ids: Vec<PuzzleCommitment<N>>,
+    aborted_solution_ids: Vec<SolutionID<N>>,
     /// The transactions in this block.
     transactions: Transactions<N>,
     /// The aborted transaction IDs in this block.
@@ -90,7 +90,7 @@ impl<N: Network> Block<N> {
         header: Header<N>,
         ratifications: Ratifications<N>,
         solutions: Solutions<N>,
-        aborted_solution_ids: Vec<PuzzleCommitment<N>>,
+        aborted_solution_ids: Vec<SolutionID<N>>,
         transactions: Transactions<N>,
         aborted_transaction_ids: Vec<N::TransactionID>,
         rng: &mut R,
@@ -120,7 +120,7 @@ impl<N: Network> Block<N> {
         subdag: Subdag<N>,
         ratifications: Ratifications<N>,
         solutions: Solutions<N>,
-        aborted_solution_ids: Vec<PuzzleCommitment<N>>,
+        aborted_solution_ids: Vec<SolutionID<N>>,
         transactions: Transactions<N>,
         aborted_transaction_ids: Vec<N::TransactionID>,
     ) -> Result<Self> {
@@ -147,7 +147,7 @@ impl<N: Network> Block<N> {
         authority: Authority<N>,
         ratifications: Ratifications<N>,
         solutions: Solutions<N>,
-        aborted_solution_ids: Vec<PuzzleCommitment<N>>,
+        aborted_solution_ids: Vec<SolutionID<N>>,
         transactions: Transactions<N>,
         aborted_transaction_ids: Vec<N::TransactionID>,
     ) -> Result<Self> {
@@ -235,7 +235,7 @@ impl<N: Network> Block<N> {
         authority: Authority<N>,
         ratifications: Ratifications<N>,
         solutions: Solutions<N>,
-        aborted_solution_ids: Vec<PuzzleCommitment<N>>,
+        aborted_solution_ids: Vec<SolutionID<N>>,
         transactions: Transactions<N>,
         aborted_transaction_ids: Vec<N::TransactionID>,
     ) -> Result<Self> {
@@ -281,7 +281,7 @@ impl<N: Network> Block<N> {
     }
 
     /// Returns the aborted solution IDs in this block.
-    pub const fn aborted_solution_ids(&self) -> &Vec<PuzzleCommitment<N>> {
+    pub const fn aborted_solution_ids(&self) -> &Vec<SolutionID<N>> {
         &self.aborted_solution_ids
     }
 
@@ -407,8 +407,8 @@ impl<N: Network> Block<N> {
 
 impl<N: Network> Block<N> {
     /// Returns the solution with the given solution ID, if it exists.
-    pub fn get_solution(&self, puzzle_commitment: &PuzzleCommitment<N>) -> Option<&ProverSolution<N>> {
-        self.solutions.as_ref().and_then(|solution| solution.get_solution(puzzle_commitment))
+    pub fn get_solution(&self, solution_id: &SolutionID<N>) -> Option<&Solution<N>> {
+        self.solutions.as_ref().and_then(|solution| solution.get_solution(solution_id))
     }
 
     /// Returns the transaction with the given transaction ID, if it exists.
@@ -460,9 +460,9 @@ impl<N: Network> Block<N> {
 }
 
 impl<N: Network> Block<N> {
-    /// Returns the puzzle commitments in this block.
-    pub fn puzzle_commitments(&self) -> Option<impl '_ + Iterator<Item = &PuzzleCommitment<N>>> {
-        self.solutions.as_ref().map(|solution| solution.puzzle_commitments())
+    /// Returns the solution IDs in this block.
+    pub fn solution_ids(&self) -> Option<impl '_ + Iterator<Item = &SolutionID<N>>> {
+        self.solutions.as_ref().map(|solution| solution.solution_ids())
     }
 
     /// Returns an iterator over the transaction IDs, for all transactions in `self`.
