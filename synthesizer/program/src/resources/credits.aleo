@@ -713,7 +713,7 @@ finalize set_validator_state:
 /**********************************************************************************************************************/
 
 // The `transfer_public` function sends the specified amount
-// from the sender's `account` to the receiver's `account`.
+// from the caller's `account` to the receiver's `account`.
 function transfer_public:
     // Input the receiver.
     input r0 as address.public;
@@ -725,7 +725,7 @@ function transfer_public:
     output r2 as credits.aleo/transfer_public.future;
 
 finalize transfer_public:
-    // Input the sender.
+    // Input the caller.
     input r0 as address.public;
     // Input the receiver.
     input r1 as address.public;
@@ -739,6 +739,39 @@ finalize transfer_public:
     // Increments `account[r1]` by `r2`.
     // If `account[r1]` does not exist, 0u64 is used.
     // If `account[r1] + r2` overflows, `transfer_public` is reverted.
+    get.or_use account[r1] 0u64 into r5;
+    add r5 r2 into r6;
+    set r6 into account[r1];
+
+/**********************************************************************************************************************/
+
+// The `transfer_public_as_signer` function sends the specified amount
+// from the signer's `account` to the receiver's `account`.
+function transfer_public_as_signer:
+    // Input the receiver.
+    input r0 as address.public;
+    // Input the amount.
+    input r1 as u64.public;
+    // Transfer the credits publicly.
+    async transfer_public_as_signer self.signer r0 r1 into r2;
+    // Output the finalize future.
+    output r2 as credits.aleo/transfer_public_as_signer.future;
+
+finalize transfer_public_as_signer:
+    // Input the signer.
+    input r0 as address.public;
+    // Input the receiver.
+    input r1 as address.public;
+    // Input the amount.
+    input r2 as u64.public;
+    // Decrements `account[r0]` by `r2`.
+    // If `account[r0] - r2` underflows, `transfer_public_as_signer` is reverted.
+    get account[r0] into r3;
+    sub r3 r2 into r4;
+    set r4 into account[r0];
+    // Increments `account[r1]` by `r2`.
+    // If `account[r1]` does not exist, 0u64 is used.
+    // If `account[r1] + r2` overflows, `transfer_public_as_signer` is reverted.
     get.or_use account[r1] 0u64 into r5;
     add r5 r2 into r6;
     set r6 into account[r1];
