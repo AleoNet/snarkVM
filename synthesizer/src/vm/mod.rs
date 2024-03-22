@@ -1462,7 +1462,7 @@ finalize do:
             Some(Value::Plaintext(Plaintext::Literal(Literal::U64(balance), _))) => *balance,
             _ => panic!("Expected a valid balance"),
         };
-        assert_eq!(balance, 324_999_999_894_244, "Update me if the initial balance changes.");
+        assert_eq!(balance, 182_499_999_894_244, "Update me if the initial balance changes.");
 
         // Transfer credits from the caller to the recipient.
         let transaction = vm
@@ -1499,7 +1499,7 @@ finalize do:
             Some(Value::Plaintext(Plaintext::Literal(Literal::U64(balance), _))) => *balance,
             _ => panic!("Expected a valid balance"),
         };
-        assert_eq!(balance, 324_999_999_843_183, "Update me if the initial balance changes.");
+        assert_eq!(balance, 182_499_999_843_183, "Update me if the initial balance changes.");
 
         // Check the balance of the recipient.
         let balance = match vm
@@ -1553,7 +1553,7 @@ finalize do:
             Some(Value::Plaintext(Plaintext::Literal(Literal::U64(balance), _))) => *balance,
             _ => panic!("Expected a valid balance"),
         };
-        assert_eq!(balance, 324_999_999_894_244, "Update me if the initial balance changes.");
+        assert_eq!(balance, 182_499_999_894_244, "Update me if the initial balance changes.");
 
         // Transfer credits from the caller to the recipient.
         let transaction = vm
@@ -1590,7 +1590,7 @@ finalize do:
             Some(Value::Plaintext(Plaintext::Literal(Literal::U64(balance), _))) => *balance,
             _ => panic!("Expected a valid balance"),
         };
-        assert_eq!(balance, 324_999_999_843_163, "Update me if the initial balance changes.");
+        assert_eq!(balance, 182_499_999_843_163, "Update me if the initial balance changes.");
 
         // Check the balance of the recipient.
         let balance = match vm
@@ -1644,7 +1644,7 @@ finalize do:
             Some(Value::Plaintext(Plaintext::Literal(Literal::U64(balance), _))) => *balance,
             _ => panic!("Expected a valid balance"),
         };
-        assert_eq!(balance, 324_999_999_894_244, "Update me if the initial balance changes.");
+        assert_eq!(balance, 182_499_999_894_244, "Update me if the initial balance changes.");
 
         // Initialize a wrapper program, importing `credits.aleo` and calling `transfer_public`.
         let program = Program::from_str(
@@ -1715,7 +1715,7 @@ finalize transfer_public:
             Some(Value::Plaintext(Plaintext::Literal(Literal::U64(balance), _))) => *balance,
             _ => panic!("Expected a valid balance"),
         };
-        assert_eq!(balance, 324_999_997_483_583, "Update me if the initial balance changes.");
+        assert_eq!(balance, 182_499_997_483_583, "Update me if the initial balance changes.");
 
         // Check the balance of the `credits_wrapper` program.
         let balance = match vm
@@ -1767,7 +1767,7 @@ finalize transfer_public:
             Some(Value::Plaintext(Plaintext::Literal(Literal::U64(balance), _))) => *balance,
             _ => panic!("Expected a valid balance"),
         };
-        assert_eq!(balance, 324_999_997_431_058, "Update me if the initial balance changes.");
+        assert_eq!(balance, 182_499_997_431_058, "Update me if the initial balance changes.");
 
         // Check the balance of the `credits_wrapper` program.
         let balance = match vm
@@ -1836,7 +1836,7 @@ finalize transfer_public:
             Some(Value::Plaintext(Plaintext::Literal(Literal::U64(balance), _))) => *balance,
             _ => panic!("Expected a valid balance"),
         };
-        assert_eq!(balance, 324_999_999_894_244, "Update me if the initial balance changes.");
+        assert_eq!(balance, 182_499_999_894_244, "Update me if the initial balance changes.");
 
         // Initialize a wrapper program, importing `credits.aleo` and calling `transfer_public`.
         let program = Program::from_str(
@@ -1906,7 +1906,7 @@ finalize transfer_public_as_signer:
             Some(Value::Plaintext(Plaintext::Literal(Literal::U64(balance), _))) => *balance,
             _ => panic!("Expected a valid balance"),
         };
-        assert_eq!(balance, 324_999_997_412_068, "Update me if the initial balance changes.");
+        assert_eq!(balance, 182_499_997_412_068, "Update me if the initial balance changes.");
 
         // Check the `credits_wrapper` program does not have any balance.
         let balance = vm
