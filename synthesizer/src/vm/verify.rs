@@ -202,6 +202,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 }
                 // Verify the deployment if it has not been verified before.
                 if !is_partially_verified {
+                    // Catch any panics during verification.
                     match handle_halting!(panic::AssertUnwindSafe(|| {
                         self.check_deployment_internal(deployment, rng)
                     })) {
