@@ -69,7 +69,7 @@ impl Eject for Vec<Mode> {
     fn eject_mode(&self) -> Mode {
         // TODO (howardwu): Determine if a default mode of `constant` is appropriate.
         // Retrieve the mode of the first circuit.
-        match self.get(0) {
+        match self.first() {
             Some(first) => Mode::combine(*first, self.iter().copied().skip(1)),
             // None => Mode::Constant,
             None => panic!("Attempted to eject the mode on an empty circuit"),
@@ -123,7 +123,7 @@ impl<C: Eject<Primitive = P>, P> Eject for &[C] {
     fn eject_mode(&self) -> Mode {
         // TODO (howardwu): Determine if a default mode of `constant` is appropriate.
         // Retrieve the mode of the first circuit.
-        match self.get(0) {
+        match self.first() {
             Some(first) => Mode::combine(first.eject_mode(), self.iter().skip(1).map(Eject::eject_mode)),
             None => Mode::Constant,
             // None => panic!("Attempted to eject the mode on an empty circuit"),
