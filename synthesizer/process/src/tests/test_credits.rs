@@ -1008,8 +1008,6 @@ fn test_bond_validator_and_delegator_multiple_times() {
         delegator_public_balance - delegator_amount
     );
 
-    /* Ensure bonding to a closed validator succeeds for the existing stakers. */
-
     // Bond the validator again.
     bond_public(
         &process,
