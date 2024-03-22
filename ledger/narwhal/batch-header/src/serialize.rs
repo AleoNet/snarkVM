@@ -58,10 +58,10 @@ impl<'de, N: Network> Deserialize<'de> for BatchHeader<N> {
                 // Ensure that the batch ID matches the recovered header.
                 match batch_id == batch_header.batch_id() {
                     true => Ok(batch_header),
-                    false => {
-                        Err(error(format!("Batch ID mismatch: expected {batch_id}, got {}", batch_header.batch_id())))
-                            .map_err(de::Error::custom)
-                    }
+                    false => Err(de::Error::custom(error(format!(
+                        "Batch ID mismatch: expected {batch_id}, got {}",
+                        batch_header.batch_id()
+                    )))),
                 }
             }
             false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "batch header"),

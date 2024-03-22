@@ -28,7 +28,7 @@ use crate::{
 use console::{prelude::*, types::Field};
 use ledger_authority::Authority;
 use ledger_block::{Header, Ratifications, Rejected, Solutions};
-use ledger_coinbase::PuzzleCommitment;
+use ledger_puzzle::SolutionID;
 use synthesizer_program::FinalizeOperation;
 
 use aleo_std_storage::StorageMode;
@@ -55,12 +55,12 @@ pub struct BlockDB<N: Network> {
     ratifications_map: DataMap<N::BlockHash, Ratifications<N>>,
     /// The solutions map.
     solutions_map: DataMap<N::BlockHash, Solutions<N>>,
-    /// The puzzle commitments map.
-    puzzle_commitments_map: DataMap<PuzzleCommitment<N>, u32>,
+    /// The solution IDs map.
+    solution_ids_map: DataMap<SolutionID<N>, u32>,
     /// The aborted solution IDs map.
-    aborted_solution_ids_map: DataMap<N::BlockHash, Vec<PuzzleCommitment<N>>>,
+    aborted_solution_ids_map: DataMap<N::BlockHash, Vec<SolutionID<N>>>,
     /// The aborted solution heights map.
-    aborted_solution_heights_map: DataMap<PuzzleCommitment<N>, u32>,
+    aborted_solution_heights_map: DataMap<SolutionID<N>, u32>,
     /// The transactions map.
     transactions_map: DataMap<N::BlockHash, Vec<N::TransactionID>>,
     /// The aborted transaction IDs map.
@@ -87,9 +87,9 @@ impl<N: Network> BlockStorage<N> for BlockDB<N> {
     type CertificateMap = DataMap<Field<N>, (u32, u64)>;
     type RatificationsMap = DataMap<N::BlockHash, Ratifications<N>>;
     type SolutionsMap = DataMap<N::BlockHash, Solutions<N>>;
-    type PuzzleCommitmentsMap = DataMap<PuzzleCommitment<N>, u32>;
-    type AbortedSolutionIDsMap = DataMap<N::BlockHash, Vec<PuzzleCommitment<N>>>;
-    type AbortedSolutionHeightsMap = DataMap<PuzzleCommitment<N>, u32>;
+    type SolutionIDsMap = DataMap<SolutionID<N>, u32>;
+    type AbortedSolutionIDsMap = DataMap<N::BlockHash, Vec<SolutionID<N>>>;
+    type AbortedSolutionHeightsMap = DataMap<SolutionID<N>, u32>;
     type TransactionsMap = DataMap<N::BlockHash, Vec<N::TransactionID>>;
     type AbortedTransactionIDsMap = DataMap<N::BlockHash, Vec<N::TransactionID>>;
     type RejectedOrAbortedTransactionIDMap = DataMap<N::TransactionID, N::BlockHash>;
@@ -115,7 +115,7 @@ impl<N: Network> BlockStorage<N> for BlockDB<N> {
             certificate_map: internal::RocksDB::open_map(N::ID, storage.clone(), MapID::Block(BlockMap::Certificate))?,
             ratifications_map: internal::RocksDB::open_map(N::ID, storage.clone(), MapID::Block(BlockMap::Ratifications))?,
             solutions_map: internal::RocksDB::open_map(N::ID, storage.clone(), MapID::Block(BlockMap::Solutions))?,
-            puzzle_commitments_map: internal::RocksDB::open_map(N::ID, storage.clone(), MapID::Block(BlockMap::PuzzleCommitments))?,
+            solution_ids_map: internal::RocksDB::open_map(N::ID, storage.clone(), MapID::Block(BlockMap::PuzzleCommitments))?,
             aborted_solution_ids_map: internal::RocksDB::open_map(N::ID, storage.clone(), MapID::Block(BlockMap::AbortedSolutionIDs))?,
             aborted_solution_heights_map: internal::RocksDB::open_map(N::ID, storage.clone(), MapID::Block(BlockMap::AbortedSolutionHeights))?,
             transactions_map: internal::RocksDB::open_map(N::ID, storage.clone(), MapID::Block(BlockMap::Transactions))?,
@@ -172,9 +172,9 @@ impl<N: Network> BlockStorage<N> for BlockDB<N> {
         &self.solutions_map
     }
 
-    /// Returns the puzzle commitments map.
-    fn puzzle_commitments_map(&self) -> &Self::PuzzleCommitmentsMap {
-        &self.puzzle_commitments_map
+    /// Returns the solution IDs map.
+    fn solution_ids_map(&self) -> &Self::SolutionIDsMap {
+        &self.solution_ids_map
     }
 
     /// Returns the aborted solution IDs map.

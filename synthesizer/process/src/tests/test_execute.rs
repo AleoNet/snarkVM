@@ -478,7 +478,7 @@ output r1 as token.record;",
 }
 
 #[test]
-fn test_process_execute_transfer_public() {
+fn test_process_execute_transfer_public_to_private() {
     // Initialize a new program.
     let program = Program::<CurrentNetwork>::credits().unwrap();
 

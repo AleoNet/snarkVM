@@ -48,6 +48,7 @@ default = [
 wasm = [ "snarkvm-console-network/wasm" ]
 test = [
   "snarkvm-console-account/test",
+  "snarkvm-console-network/test",
   "snarkvm-console-program/test"
 ]
 account = [ "network", "snarkvm-console-account" ]

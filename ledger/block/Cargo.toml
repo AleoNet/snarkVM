@@ -21,7 +21,7 @@ default = [ "indexmap/rayon", "rayon" ]
 serial = [
   "console/serial",
   "ledger-authority/serial",
-  "ledger-coinbase/serial",
+  "ledger-puzzle/serial",
   "ledger-committee/serial",
   "synthesizer-program/serial",
   "synthesizer-snark/serial"
@@ -29,7 +29,7 @@ serial = [
 wasm = [
   "console/wasm",
   "ledger-authority/wasm",
-  "ledger-coinbase/wasm",
+  "ledger-puzzle/wasm",
   "ledger-committee/wasm",
   "synthesizer-program/wasm",
   "synthesizer-snark/wasm"
@@ -44,11 +44,6 @@ version = "=0.16.19"
 [dependencies.ledger-authority]
 package = "snarkvm-ledger-authority"
 path = "../authority"
-version = "=0.16.19"
-
-[dependencies.ledger-coinbase]
-package = "snarkvm-ledger-coinbase"
-path = "../../ledger/coinbase"
 version = "=0.16.19"
 
 [dependencies.ledger-committee]
@@ -69,6 +64,11 @@ version = "=0.16.19"
 [dependencies.ledger-narwhal-transmission-id]
 package = "snarkvm-ledger-narwhal-transmission-id"
 path = "../narwhal/transmission-id"
+version = "=0.16.19"
+
+[dependencies.ledger-puzzle]
+package = "snarkvm-ledger-puzzle"
+path = "../puzzle"
 version = "=0.16.19"
 
 [dependencies.synthesizer-program]

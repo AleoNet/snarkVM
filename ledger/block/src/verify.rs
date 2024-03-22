@@ -16,7 +16,7 @@
 #![allow(clippy::type_complexity)]
 
 use super::*;
-use ledger_coinbase::{CoinbasePuzzle, EpochChallenge};
+use ledger_puzzle::Puzzle;
 use synthesizer_program::FinalizeOperation;
 
 use std::collections::HashSet;
@@ -32,11 +32,11 @@ impl<N: Network> Block<N> {
         current_state_root: N::StateRoot,
         previous_committee_lookback: &Committee<N>,
         current_committee_lookback: &Committee<N>,
-        current_puzzle: &CoinbasePuzzle<N>,
-        current_epoch_challenge: &EpochChallenge<N>,
+        current_puzzle: &Puzzle<N>,
+        current_epoch_hash: N::BlockHash,
         current_timestamp: i64,
         ratified_finalize_operations: Vec<FinalizeOperation<N>>,
-    ) -> Result<(Vec<PuzzleCommitment<N>>, Vec<N::TransactionID>)> {
+    ) -> Result<(Vec<SolutionID<N>>, Vec<N::TransactionID>)> {
         // Ensure the block hash is correct.
         self.verify_hash(previous_block.height(), previous_block.hash())?;
 
@@ -64,7 +64,7 @@ impl<N: Network> Block<N> {
             expected_last_coinbase_timestamp,
             expected_block_reward,
             expected_puzzle_reward,
-        ) = self.verify_solutions(previous_block, current_puzzle, current_epoch_challenge)?;
+        ) = self.verify_solutions(previous_block, current_puzzle, current_epoch_hash)?;
 
         // Ensure the block ratifications are correct.
         self.verify_ratifications(expected_block_reward, expected_puzzle_reward)?;
@@ -151,7 +151,7 @@ impl<N: Network> Block<N> {
         previous_height: u32,
         previous_committee_lookback: &Committee<N>,
         current_committee_lookback: &Committee<N>,
-    ) -> Result<(u64, u32, i64, Vec<PuzzleCommitment<N>>, Vec<N::TransactionID>)> {
+    ) -> Result<(u64, u32, i64, Vec<SolutionID<N>>, Vec<N::TransactionID>)> {
         // Note: Do not remove this. This ensures that all blocks after genesis are quorum blocks.
         #[cfg(not(any(test, feature = "test")))]
         ensure!(self.authority.is_quorum(), "The next block must be a quorum block");
@@ -304,8 +304,8 @@ impl<N: Network> Block<N> {
     fn verify_solutions(
         &self,
         previous_block: &Block<N>,
-        current_puzzle: &CoinbasePuzzle<N>,
-        current_epoch_challenge: &EpochChallenge<N>,
+        current_puzzle: &Puzzle<N>,
+        current_epoch_hash: N::BlockHash,
     ) -> Result<(u128, u128, u64, u64, u64, i64, u64, u64)> {
         let height = self.height();
         let timestamp = self.timestamp();
@@ -334,7 +334,7 @@ impl<N: Network> Block<N> {
         if has_duplicates(
             self.solutions
                 .as_ref()
-                .map(CoinbaseSolution::puzzle_commitments)
+                .map(PuzzleSolutions::solution_ids)
                 .into_iter()
                 .flatten()
                 .chain(self.aborted_solution_ids()),
@@ -343,13 +343,16 @@ impl<N: Network> Block<N> {
         }
 
         // Compute the combined proof target.
-        let combined_proof_target = self.solutions.to_combined_proof_target()?;
+        let combined_proof_target = match self.solutions.deref() {
+            Some(solutions) => current_puzzle.get_combined_proof_target(solutions)?,
+            None => 0u128,
+        };
 
         let (expected_cumulative_proof_target, is_coinbase_target_reached) = match self.solutions.deref() {
             Some(coinbase) => {
                 // Ensure the puzzle proof is valid.
                 if let Err(e) =
-                    current_puzzle.check_solutions(coinbase, current_epoch_challenge, previous_block.proof_target())
+                    current_puzzle.check_solutions(coinbase, current_epoch_hash, previous_block.proof_target())
                 {
                     bail!("Block {height} contains an invalid puzzle proof - {e}");
                 }
@@ -397,7 +400,8 @@ impl<N: Network> Block<N> {
             N::GENESIS_COINBASE_TARGET,
         )?;
         // Ensure the proof target is correct.
-        let expected_proof_target = proof_target(expected_coinbase_target, N::GENESIS_PROOF_TARGET);
+        let expected_proof_target =
+            proof_target(expected_coinbase_target, N::GENESIS_PROOF_TARGET, N::MAX_SOLUTIONS_AS_POWER_OF_TWO);
 
         // Determine the expected last coinbase target.
         let expected_last_coinbase_target = match is_coinbase_target_reached {
@@ -565,11 +569,11 @@ impl<N: Network> Block<N> {
     /// Returns the IDs of the transactions and solutions that should already exist in the ledger.
     pub(super) fn check_subdag_transmissions(
         subdag: &Subdag<N>,
-        solutions: &Option<CoinbaseSolution<N>>,
-        aborted_solution_ids: &[PuzzleCommitment<N>],
+        solutions: &Option<PuzzleSolutions<N>>,
+        aborted_solution_ids: &[SolutionID<N>],
         transactions: &Transactions<N>,
         aborted_transaction_ids: &[N::TransactionID],
-    ) -> Result<(Vec<PuzzleCommitment<N>>, Vec<N::TransactionID>)> {
+    ) -> Result<(Vec<SolutionID<N>>, Vec<N::TransactionID>)> {
         // Prepare an iterator over the solution IDs.
         let mut solutions = solutions.as_ref().map(|s| s.deref()).into_iter().flatten().peekable();
         // Prepare an iterator over the unconfirmed transaction IDs.
@@ -599,7 +603,7 @@ impl<N: Network> Block<N> {
                 TransmissionID::Solution(solution_id) => {
                     match solutions.peek() {
                         // Check the next solution matches the expected solution ID.
-                        Some((_, solution)) if solution.commitment() == *solution_id => {
+                        Some((_, solution)) if solution.id() == *solution_id => {
                             // Increment the solution iterator.
                             solutions.next();
                         }

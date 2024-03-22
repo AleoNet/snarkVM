@@ -94,10 +94,6 @@ version = "0.4"
 [dev-dependencies.rayon]
 version = "1"
 
-[dev-dependencies.ledger-narwhal-batch-header]
-package = "snarkvm-ledger-narwhal-batch-header"
-path = "../narwhal/batch-header"
-
 [dev-dependencies.snarkvm-ledger-committee]
 path = "."
 features = [ "prop-tests" ]

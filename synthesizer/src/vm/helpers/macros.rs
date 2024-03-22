@@ -54,6 +54,21 @@ macro_rules! cast_mut_ref {
 
 /// A helper macro to dedup the `Network` trait and `Aleo` trait and process its given logic.
 #[macro_export]
+macro_rules! convert {
+    // Example: convert!(logic)
+    ($logic:ident) => {{
+        match N::ID {
+            console::network::MainnetV0::ID => {
+                // Process the logic.
+                $logic!(console::network::MainnetV0, circuit::AleoV0)
+            }
+            _ => bail!("Unsupported VM configuration for network: {}", N::ID),
+        }
+    }};
+}
+
+/// A helper macro to dedup the `Network` trait and `Aleo` trait and process its given logic.
+#[macro_export]
 macro_rules! process {
     // Example: process!(self, logic)
     ($self:ident, $logic:ident) => {{
