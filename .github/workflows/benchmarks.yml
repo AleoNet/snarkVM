@@ -84,7 +84,7 @@ jobs:
       - name: Benchmark ledger/coinbase
         run: |
           cd ledger/coinbase
-          cargo bench --bench coinbase_puzzle --features "setup" -- --output-format bencher | tee -a ../../output.txt
+          cargo bench --bench puzzle --features "setup" -- --output-format bencher | tee -a ../../output.txt
           cd ../..
 
       # Clean benchmark output to remove unnecessary lines

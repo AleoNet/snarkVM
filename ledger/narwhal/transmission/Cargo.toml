@@ -39,14 +39,14 @@ package = "snarkvm-ledger-block"
 path = "../../block"
 version = "=0.16.19"
 
-[dependencies.ledger-coinbase]
-package = "snarkvm-ledger-coinbase"
-path = "../../coinbase"
-version = "=0.16.19"
-
 [dependencies.ledger-narwhal-data]
 package = "snarkvm-ledger-narwhal-data"
 path = "../data"
+version = "=0.16.19"
+
+[dependencies.ledger-puzzle]
+package = "snarkvm-ledger-puzzle"
+path = "../../puzzle"
 version = "=0.16.19"
 
 [dependencies.bytes]

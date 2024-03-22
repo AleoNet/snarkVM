@@ -34,9 +34,9 @@ package = "snarkvm-console"
 path = "../../../console"
 version = "=0.16.19"
 
-[dependencies.ledger-coinbase]
-package = "snarkvm-ledger-coinbase"
-path = "../../coinbase"
+[dependencies.ledger-puzzle]
+package = "snarkvm-ledger-puzzle"
+path = "../../puzzle"
 version = "=0.16.19"
 
 [dev-dependencies.bincode]
