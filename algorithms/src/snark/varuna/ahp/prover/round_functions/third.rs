@@ -153,9 +153,7 @@ impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
             let fft_precomputation = &circuit.fft_precomputation;
             let ifft_precomputation = &circuit.ifft_precomputation;
 
-            for (_j, (&instance_combiner, assignment)) in
-                itertools::izip!(instance_combiners, assignments_i).enumerate()
-            {
+            for (&instance_combiner, assignment) in itertools::izip!(instance_combiners, assignments_i) {
                 for (label, matrix_combiner) in itertools::izip!(matrix_labels, matrix_combiners) {
                     let matrix_transpose = &matrix_transposes_i[label];
                     let combiner = circuit_combiner * instance_combiner * matrix_combiner;
