@@ -120,6 +120,11 @@ path = "./snark"
 version = "=0.16.19"
 optional = true
 
+[dependencies.utilities]
+package = "snarkvm-utilities"
+path = "../utilities"
+version = "=0.16.19"
+
 [dependencies.aleo-std]
 version = "0.1.24"
 default-features = false
