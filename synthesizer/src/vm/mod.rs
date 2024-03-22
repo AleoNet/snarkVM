@@ -442,7 +442,7 @@ pub(crate) mod test_helpers {
     use console::{
         account::{Address, ViewKey},
         network::MainnetV0,
-        program::Value,
+        program::{Entry, Value},
         types::Field,
     };
     use ledger_block::{Block, Header, Metadata, Transition};
@@ -1532,6 +1532,701 @@ finalize do:
 
         // Verify.
         vm.check_transaction(&transaction, None, rng).unwrap();
+    }
+
+    #[test]
+    fn test_transfer_public_from_user() {
+        let rng = &mut TestRng::default();
+
+        // Initialize a new caller.
+        let caller_private_key = crate::vm::test_helpers::sample_genesis_private_key(rng);
+        let caller_address = Address::try_from(&caller_private_key).unwrap();
+
+        // Initialize a recipient.
+        let recipient_private_key = PrivateKey::new(rng).unwrap();
+        let recipient_address = Address::try_from(&recipient_private_key).unwrap();
+
+        // Initialize the genesis block.
+        let genesis = crate::vm::test_helpers::sample_genesis_block(rng);
+
+        // Initialize the VM.
+        let vm = crate::vm::test_helpers::sample_vm();
+
+        // Update the VM.
+        vm.add_next_block(&genesis).unwrap();
+
+        // Check the balance of the caller.
+        let credits_program_id = ProgramID::from_str("credits.aleo").unwrap();
+        let account_mapping_name = Identifier::from_str("account").unwrap();
+        let balance = match vm
+            .finalize_store()
+            .get_value_confirmed(
+                credits_program_id,
+                account_mapping_name,
+                &Plaintext::from(Literal::Address(caller_address)),
+            )
+            .unwrap()
+        {
+            Some(Value::Plaintext(Plaintext::Literal(Literal::U64(balance), _))) => *balance,
+            _ => panic!("Expected a valid balance"),
+        };
+        assert_eq!(balance, 182_499_999_894_244, "Update me if the initial balance changes.");
+
+        // Transfer credits from the caller to the recipient.
+        let transaction = vm
+            .execute(
+                &caller_private_key,
+                ("credits.aleo", "transfer_public"),
+                [Value::from_str(&format!("{recipient_address}")).unwrap(), Value::from_str("1u64").unwrap()].iter(),
+                None,
+                0,
+                None,
+                rng,
+            )
+            .unwrap();
+
+        // Verify the transaction.
+        vm.check_transaction(&transaction, None, rng).unwrap();
+
+        // Add the transaction to a block and update the VM.
+        let block = sample_next_block(&vm, &caller_private_key, &[transaction], rng).unwrap();
+
+        // Update the VM.
+        vm.add_next_block(&block).unwrap();
+
+        // Check the balance of the caller.
+        let balance = match vm
+            .finalize_store()
+            .get_value_confirmed(
+                credits_program_id,
+                account_mapping_name,
+                &Plaintext::from(Literal::Address(caller_address)),
+            )
+            .unwrap()
+        {
+            Some(Value::Plaintext(Plaintext::Literal(Literal::U64(balance), _))) => *balance,
+            _ => panic!("Expected a valid balance"),
+        };
+        assert_eq!(balance, 182_499_999_843_183, "Update me if the initial balance changes.");
+
+        // Check the balance of the recipient.
+        let balance = match vm
+            .finalize_store()
+            .get_value_confirmed(
+                credits_program_id,
+                account_mapping_name,
+                &Plaintext::from(Literal::Address(recipient_address)),
+            )
+            .unwrap()
+        {
+            Some(Value::Plaintext(Plaintext::Literal(Literal::U64(balance), _))) => *balance,
+            _ => panic!("Expected a valid balance"),
+        };
+        assert_eq!(balance, 1, "Update me if the test amount changes.");
+    }
+
+    #[test]
+    fn test_transfer_public_as_signer_from_user() {
+        let rng = &mut TestRng::default();
+
+        // Initialize a new caller.
+        let caller_private_key = crate::vm::test_helpers::sample_genesis_private_key(rng);
+        let caller_address = Address::try_from(&caller_private_key).unwrap();
+
+        // Initialize a recipient.
+        let recipient_private_key = PrivateKey::new(rng).unwrap();
+        let recipient_address = Address::try_from(&recipient_private_key).unwrap();
+
+        // Initialize the genesis block.
+        let genesis = crate::vm::test_helpers::sample_genesis_block(rng);
+
+        // Initialize the VM.
+        let vm = crate::vm::test_helpers::sample_vm();
+
+        // Update the VM.
+        vm.add_next_block(&genesis).unwrap();
+
+        // Check the balance of the caller.
+        let credits_program_id = ProgramID::from_str("credits.aleo").unwrap();
+        let account_mapping_name = Identifier::from_str("account").unwrap();
+        let balance = match vm
+            .finalize_store()
+            .get_value_confirmed(
+                credits_program_id,
+                account_mapping_name,
+                &Plaintext::from(Literal::Address(caller_address)),
+            )
+            .unwrap()
+        {
+            Some(Value::Plaintext(Plaintext::Literal(Literal::U64(balance), _))) => *balance,
+            _ => panic!("Expected a valid balance"),
+        };
+        assert_eq!(balance, 182_499_999_894_244, "Update me if the initial balance changes.");
+
+        // Transfer credits from the caller to the recipient.
+        let transaction = vm
+            .execute(
+                &caller_private_key,
+                ("credits.aleo", "transfer_public_as_signer"),
+                [Value::from_str(&format!("{recipient_address}")).unwrap(), Value::from_str("1u64").unwrap()].iter(),
+                None,
+                0,
+                None,
+                rng,
+            )
+            .unwrap();
+
+        // Verify the transaction.
+        vm.check_transaction(&transaction, None, rng).unwrap();
+
+        // Add the transaction to a block and update the VM.
+        let block = sample_next_block(&vm, &caller_private_key, &[transaction], rng).unwrap();
+
+        // Update the VM.
+        vm.add_next_block(&block).unwrap();
+
+        // Check the balance of the caller.
+        let balance = match vm
+            .finalize_store()
+            .get_value_confirmed(
+                credits_program_id,
+                account_mapping_name,
+                &Plaintext::from(Literal::Address(caller_address)),
+            )
+            .unwrap()
+        {
+            Some(Value::Plaintext(Plaintext::Literal(Literal::U64(balance), _))) => *balance,
+            _ => panic!("Expected a valid balance"),
+        };
+        assert_eq!(balance, 182_499_999_843_163, "Update me if the initial balance changes.");
+
+        // Check the balance of the recipient.
+        let balance = match vm
+            .finalize_store()
+            .get_value_confirmed(
+                credits_program_id,
+                account_mapping_name,
+                &Plaintext::from(Literal::Address(recipient_address)),
+            )
+            .unwrap()
+        {
+            Some(Value::Plaintext(Plaintext::Literal(Literal::U64(balance), _))) => *balance,
+            _ => panic!("Expected a valid balance"),
+        };
+        assert_eq!(balance, 1, "Update me if the test amount changes.");
+    }
+
+    #[test]
+    fn transfer_public_from_program() {
+        let rng = &mut TestRng::default();
+
+        // Initialize a new caller.
+        let caller_private_key = crate::vm::test_helpers::sample_genesis_private_key(rng);
+        let caller_address = Address::try_from(&caller_private_key).unwrap();
+
+        // Initialize a recipient.
+        let recipient_private_key = PrivateKey::new(rng).unwrap();
+        let recipient_address = Address::try_from(&recipient_private_key).unwrap();
+
+        // Initialize the genesis block.
+        let genesis = crate::vm::test_helpers::sample_genesis_block(rng);
+
+        // Initialize the VM.
+        let vm = crate::vm::test_helpers::sample_vm();
+
+        // Update the VM.
+        vm.add_next_block(&genesis).unwrap();
+
+        // Check the balance of the caller.
+        let credits_program_id = ProgramID::from_str("credits.aleo").unwrap();
+        let account_mapping_name = Identifier::from_str("account").unwrap();
+        let balance = match vm
+            .finalize_store()
+            .get_value_confirmed(
+                credits_program_id,
+                account_mapping_name,
+                &Plaintext::from(Literal::Address(caller_address)),
+            )
+            .unwrap()
+        {
+            Some(Value::Plaintext(Plaintext::Literal(Literal::U64(balance), _))) => *balance,
+            _ => panic!("Expected a valid balance"),
+        };
+        assert_eq!(balance, 182_499_999_894_244, "Update me if the initial balance changes.");
+
+        // Initialize a wrapper program, importing `credits.aleo` and calling `transfer_public`.
+        let program = Program::from_str(
+            r"
+import credits.aleo;
+program credits_wrapper.aleo;
+
+function transfer_public:
+    input r0 as address.public;
+    input r1 as u64.public;
+    call credits.aleo/transfer_public r0 r1 into r2;
+    async transfer_public r2 into r3;
+    output r3 as credits_wrapper.aleo/transfer_public.future;
+
+finalize transfer_public:
+    input r0 as credits.aleo/transfer_public.future;
+    await r0;
+        ",
+        )
+        .unwrap();
+
+        // Get the address of the wrapper program.
+        let wrapper_program_id = ProgramID::from_str("credits_wrapper.aleo").unwrap();
+        let wrapper_program_address = wrapper_program_id.to_address().unwrap();
+
+        // Deploy the wrapper program.
+        let deployment = vm.deploy(&caller_private_key, &program, None, 0, None, rng).unwrap();
+
+        // Add the deployment to a block and update the VM.
+        let block = sample_next_block(&vm, &caller_private_key, &[deployment], rng).unwrap();
+
+        // Update the VM.
+        vm.add_next_block(&block).unwrap();
+
+        // Transfer credits from the caller to the `credits_wrapper` program.
+        let transaction = vm
+            .execute(
+                &caller_private_key,
+                ("credits.aleo", "transfer_public"),
+                [Value::from_str(&format!("{wrapper_program_address}")).unwrap(), Value::from_str("1u64").unwrap()]
+                    .iter(),
+                None,
+                0,
+                None,
+                rng,
+            )
+            .unwrap();
+
+        // Verify the transaction.
+        vm.check_transaction(&transaction, None, rng).unwrap();
+
+        // Add the transaction to a block and update the VM.
+        let block = sample_next_block(&vm, &caller_private_key, &[transaction], rng).unwrap();
+
+        // Update the VM.
+        vm.add_next_block(&block).unwrap();
+
+        // Check the balance of the caller.
+        let balance = match vm
+            .finalize_store()
+            .get_value_confirmed(
+                credits_program_id,
+                account_mapping_name,
+                &Plaintext::from(Literal::Address(caller_address)),
+            )
+            .unwrap()
+        {
+            Some(Value::Plaintext(Plaintext::Literal(Literal::U64(balance), _))) => *balance,
+            _ => panic!("Expected a valid balance"),
+        };
+        assert_eq!(balance, 182_499_997_483_583, "Update me if the initial balance changes.");
+
+        // Check the balance of the `credits_wrapper` program.
+        let balance = match vm
+            .finalize_store()
+            .get_value_confirmed(
+                credits_program_id,
+                account_mapping_name,
+                &Plaintext::from(Literal::Address(wrapper_program_address)),
+            )
+            .unwrap()
+        {
+            Some(Value::Plaintext(Plaintext::Literal(Literal::U64(balance), _))) => *balance,
+            _ => panic!("Expected a valid balance"),
+        };
+        assert_eq!(balance, 1, "Update me if the test amount changes.");
+
+        // Transfer credits from the `credits_wrapper` program to the recipient.
+        let transaction = vm
+            .execute(
+                &caller_private_key,
+                ("credits_wrapper.aleo", "transfer_public"),
+                [Value::from_str(&format!("{recipient_address}")).unwrap(), Value::from_str("1u64").unwrap()].iter(),
+                None,
+                0,
+                None,
+                rng,
+            )
+            .unwrap();
+
+        // Verify the transaction.
+        vm.check_transaction(&transaction, None, rng).unwrap();
+
+        // Add the transaction to a block and update the VM.
+        let block = sample_next_block(&vm, &caller_private_key, &[transaction], rng).unwrap();
+
+        // Update the VM.
+        vm.add_next_block(&block).unwrap();
+
+        // Check the balance of the caller.
+        let balance = match vm
+            .finalize_store()
+            .get_value_confirmed(
+                credits_program_id,
+                account_mapping_name,
+                &Plaintext::from(Literal::Address(caller_address)),
+            )
+            .unwrap()
+        {
+            Some(Value::Plaintext(Plaintext::Literal(Literal::U64(balance), _))) => *balance,
+            _ => panic!("Expected a valid balance"),
+        };
+        assert_eq!(balance, 182_499_997_431_058, "Update me if the initial balance changes.");
+
+        // Check the balance of the `credits_wrapper` program.
+        let balance = match vm
+            .finalize_store()
+            .get_value_confirmed(
+                credits_program_id,
+                account_mapping_name,
+                &Plaintext::from(Literal::Address(wrapper_program_address)),
+            )
+            .unwrap()
+        {
+            Some(Value::Plaintext(Plaintext::Literal(Literal::U64(balance), _))) => *balance,
+            _ => panic!("Expected a valid balance"),
+        };
+        assert_eq!(balance, 0);
+
+        // Check the balance of the recipient.
+        let balance = match vm
+            .finalize_store()
+            .get_value_confirmed(
+                credits_program_id,
+                account_mapping_name,
+                &Plaintext::from(Literal::Address(recipient_address)),
+            )
+            .unwrap()
+        {
+            Some(Value::Plaintext(Plaintext::Literal(Literal::U64(balance), _))) => *balance,
+            _ => panic!("Expected a valid balance"),
+        };
+        assert_eq!(balance, 1, "Update me if the test amount changes.");
+    }
+
+    #[test]
+    fn transfer_public_as_signer_from_program() {
+        let rng = &mut TestRng::default();
+
+        // Initialize a new caller.
+        let caller_private_key = crate::vm::test_helpers::sample_genesis_private_key(rng);
+        let caller_address = Address::try_from(&caller_private_key).unwrap();
+
+        // Initialize a recipient.
+        let recipient_private_key = PrivateKey::new(rng).unwrap();
+        let recipient_address = Address::try_from(&recipient_private_key).unwrap();
+
+        // Initialize the genesis block.
+        let genesis = crate::vm::test_helpers::sample_genesis_block(rng);
+
+        // Initialize the VM.
+        let vm = crate::vm::test_helpers::sample_vm();
+
+        // Update the VM.
+        vm.add_next_block(&genesis).unwrap();
+
+        // Check the balance of the caller.
+        let credits_program_id = ProgramID::from_str("credits.aleo").unwrap();
+        let account_mapping_name = Identifier::from_str("account").unwrap();
+        let balance = match vm
+            .finalize_store()
+            .get_value_confirmed(
+                credits_program_id,
+                account_mapping_name,
+                &Plaintext::from(Literal::Address(caller_address)),
+            )
+            .unwrap()
+        {
+            Some(Value::Plaintext(Plaintext::Literal(Literal::U64(balance), _))) => *balance,
+            _ => panic!("Expected a valid balance"),
+        };
+        assert_eq!(balance, 182_499_999_894_244, "Update me if the initial balance changes.");
+
+        // Initialize a wrapper program, importing `credits.aleo` and calling `transfer_public`.
+        let program = Program::from_str(
+            r"
+import credits.aleo;
+program credits_wrapper.aleo;
+
+function transfer_public_as_signer:
+    input r0 as address.public;
+    input r1 as u64.public;
+    call credits.aleo/transfer_public_as_signer r0 r1 into r2;
+    async transfer_public_as_signer r2 into r3;
+    output r3 as credits_wrapper.aleo/transfer_public_as_signer.future;
+
+finalize transfer_public_as_signer:
+    input r0 as credits.aleo/transfer_public_as_signer.future;
+    await r0;
+        ",
+        )
+        .unwrap();
+
+        // Get the address of the wrapper program.
+        let wrapper_program_id = ProgramID::from_str("credits_wrapper.aleo").unwrap();
+        let wrapper_program_address = wrapper_program_id.to_address().unwrap();
+
+        // Deploy the wrapper program.
+        let deployment = vm.deploy(&caller_private_key, &program, None, 0, None, rng).unwrap();
+
+        // Add the deployment to a block and update the VM.
+        let block = sample_next_block(&vm, &caller_private_key, &[deployment], rng).unwrap();
+
+        // Update the VM.
+        vm.add_next_block(&block).unwrap();
+
+        // Transfer credits from the signer using `credits_wrapper` program.
+        let transaction = vm
+            .execute(
+                &caller_private_key,
+                ("credits_wrapper.aleo", "transfer_public_as_signer"),
+                [Value::from_str(&format!("{recipient_address}")).unwrap(), Value::from_str("1u64").unwrap()].iter(),
+                None,
+                0,
+                None,
+                rng,
+            )
+            .unwrap();
+
+        // Verify the transaction.
+        vm.check_transaction(&transaction, None, rng).unwrap();
+
+        // Add the transaction to a block and update the VM.
+        let block = sample_next_block(&vm, &caller_private_key, &[transaction], rng).unwrap();
+
+        // Update the VM.
+        vm.add_next_block(&block).unwrap();
+
+        // Check the balance of the caller.
+        let balance = match vm
+            .finalize_store()
+            .get_value_confirmed(
+                credits_program_id,
+                account_mapping_name,
+                &Plaintext::from(Literal::Address(caller_address)),
+            )
+            .unwrap()
+        {
+            Some(Value::Plaintext(Plaintext::Literal(Literal::U64(balance), _))) => *balance,
+            _ => panic!("Expected a valid balance"),
+        };
+        assert_eq!(balance, 182_499_997_412_068, "Update me if the initial balance changes.");
+
+        // Check the `credits_wrapper` program does not have any balance.
+        let balance = vm
+            .finalize_store()
+            .get_value_confirmed(
+                credits_program_id,
+                account_mapping_name,
+                &Plaintext::from(Literal::Address(wrapper_program_address)),
+            )
+            .unwrap();
+        assert!(balance.is_none());
+
+        // Check the balance of the recipient.
+        let balance = match vm
+            .finalize_store()
+            .get_value_confirmed(
+                credits_program_id,
+                account_mapping_name,
+                &Plaintext::from(Literal::Address(recipient_address)),
+            )
+            .unwrap()
+        {
+            Some(Value::Plaintext(Plaintext::Literal(Literal::U64(balance), _))) => *balance,
+            _ => panic!("Expected a valid balance"),
+        };
+        assert_eq!(balance, 1, "Update me if the test amount changes.");
+    }
+
+    #[test]
+    fn test_transfer_public_to_private_from_program() {
+        let rng = &mut TestRng::default();
+
+        // Initialize a new caller.
+        let caller_private_key = crate::vm::test_helpers::sample_genesis_private_key(rng);
+        let caller_address = Address::try_from(&caller_private_key).unwrap();
+
+        // Initialize a recipient.
+        let recipient_private_key = PrivateKey::new(rng).unwrap();
+        let recipient_address = Address::try_from(&recipient_private_key).unwrap();
+
+        // Initialize the genesis block.
+        let genesis = crate::vm::test_helpers::sample_genesis_block(rng);
+
+        // Initialize the VM.
+        let vm = crate::vm::test_helpers::sample_vm();
+
+        // Update the VM.
+        vm.add_next_block(&genesis).unwrap();
+
+        // Check the balance of the caller.
+        let credits_program_id = ProgramID::from_str("credits.aleo").unwrap();
+        let account_mapping_name = Identifier::from_str("account").unwrap();
+        let balance = match vm
+            .finalize_store()
+            .get_value_confirmed(
+                credits_program_id,
+                account_mapping_name,
+                &Plaintext::from(Literal::Address(caller_address)),
+            )
+            .unwrap()
+        {
+            Some(Value::Plaintext(Plaintext::Literal(Literal::U64(balance), _))) => *balance,
+            _ => panic!("Expected a valid balance"),
+        };
+        assert_eq!(balance, 182_499_999_894_244, "Update me if the initial balance changes.");
+
+        // Check that the recipient does not have a public balance.
+        let balance = vm
+            .finalize_store()
+            .get_value_confirmed(
+                credits_program_id,
+                account_mapping_name,
+                &Plaintext::from(Literal::Address(recipient_address)),
+            )
+            .unwrap();
+        assert!(balance.is_none());
+
+        // Initialize a wrapper program, importing `credits.aleo` and calling `transfer_public_as_signer` then `transfer_public_to_private`.
+        let program = Program::from_str(
+            r"
+import credits.aleo;
+
+program credits_wrapper.aleo;
+
+function transfer_public_to_private:
+    input r0 as address.private;
+    input r1 as u64.public;
+    call credits.aleo/transfer_public_as_signer credits_wrapper.aleo r1 into r2;
+    call credits.aleo/transfer_public_to_private r0 r1 into r3 r4;
+    async transfer_public_to_private r2 r4 into r5;
+    output r3 as credits.aleo/credits.record;
+    output r5 as credits_wrapper.aleo/transfer_public_to_private.future;
+
+finalize transfer_public_to_private:
+    input r0 as credits.aleo/transfer_public_as_signer.future;
+    input r1 as credits.aleo/transfer_public_to_private.future;
+    contains credits.aleo/account[credits_wrapper.aleo] into r2;
+    assert.eq r2 false;
+    await r0;
+    get credits.aleo/account[credits_wrapper.aleo] into r3;
+    assert.eq r3 r0[2u32];
+    await r1;
+        ",
+        )
+        .unwrap();
+
+        // Get the address of the wrapper program.
+        let wrapper_program_id = ProgramID::from_str("credits_wrapper.aleo").unwrap();
+
+        // Deploy the wrapper program.
+        let deployment = vm.deploy(&caller_private_key, &program, None, 0, None, rng).unwrap();
+
+        // Add the deployment to a block and update the VM.
+        let block = sample_next_block(&vm, &caller_private_key, &[deployment], rng).unwrap();
+
+        // Update the VM.
+        vm.add_next_block(&block).unwrap();
+
+        // Call the wrapper program to transfer credits from the caller to the recipient.
+        let transaction = vm
+            .execute(
+                &caller_private_key,
+                ("credits_wrapper.aleo", "transfer_public_to_private"),
+                [Value::from_str(&format!("{recipient_address}")).unwrap(), Value::from_str("1u64").unwrap()].iter(),
+                None,
+                0,
+                None,
+                rng,
+            )
+            .unwrap();
+
+        // Verify the transaction.
+        vm.check_transaction(&transaction, None, rng).unwrap();
+
+        // Add the transaction to a block and update the VM.
+        let block = sample_next_block(&vm, &caller_private_key, &[transaction.clone()], rng).unwrap();
+
+        // Update the VM.
+        vm.add_next_block(&block).unwrap();
+
+        // Check the balance of the caller.
+        let balance = match vm
+            .finalize_store()
+            .get_value_confirmed(
+                credits_program_id,
+                account_mapping_name,
+                &Plaintext::from(Literal::Address(caller_address)),
+            )
+            .unwrap()
+        {
+            Some(Value::Plaintext(Plaintext::Literal(Literal::U64(balance), _))) => *balance,
+            _ => panic!("Expected a valid balance"),
+        };
+
+        assert_eq!(balance, 182_499_996_924_681, "Update me if the initial balance changes.");
+
+        // Check that the `credits_wrapper` program has a balance of 0.
+        let balance = match vm
+            .finalize_store()
+            .get_value_confirmed(
+                credits_program_id,
+                account_mapping_name,
+                &Plaintext::from(Literal::Address(wrapper_program_id.to_address().unwrap())),
+            )
+            .unwrap()
+        {
+            Some(Value::Plaintext(Plaintext::Literal(Literal::U64(balance), _))) => *balance,
+            _ => panic!("Expected a valid balance"),
+        };
+        assert_eq!(balance, 0);
+
+        // Check that the recipient does not have a public balance.
+        let balance = vm
+            .finalize_store()
+            .get_value_confirmed(
+                credits_program_id,
+                account_mapping_name,
+                &Plaintext::from(Literal::Address(recipient_address)),
+            )
+            .unwrap();
+        assert!(balance.is_none());
+
+        // Get the output record from the transaction and check that it is well-formed.
+        let records = transaction.records().collect_vec();
+        assert_eq!(records.len(), 1);
+        let (commitment, record) = records[0];
+        let record = record.decrypt(&ViewKey::try_from(&recipient_private_key).unwrap()).unwrap();
+        assert_eq!(**record.owner(), recipient_address);
+        let data = record.data();
+        assert_eq!(data.len(), 1);
+        match data.get(&Identifier::from_str("microcredits").unwrap()) {
+            Some(Entry::<CurrentNetwork, _>::Private(Plaintext::Literal(Literal::U64(value), _))) => {
+                assert_eq!(**value, 1)
+            }
+            _ => panic!("Incorrect record."),
+        }
+
+        // Check that the record exists in the VM.
+        assert!(vm.transition_store().get_record(commitment).unwrap().is_some());
+
+        // Check that the serial number of the record does not exist in the VM.
+        assert!(
+            !vm.transition_store()
+                .contains_serial_number(
+                    &Record::<CurrentNetwork, Plaintext<CurrentNetwork>>::serial_number(
+                        recipient_private_key,
+                        *commitment
+                    )
+                    .unwrap()
+                )
+                .unwrap()
+        );
     }
 
     #[test]
