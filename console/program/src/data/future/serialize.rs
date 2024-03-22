@@ -44,3 +44,56 @@ impl<'de, N: Network> Deserialize<'de> for Future<N> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::Literal;
+    use once_cell::sync::OnceCell;
+    use snarkvm_console_network::MainnetV0;
+
+    type CurrentNetwork = MainnetV0;
+
+    #[test]
+    fn test_future_serde_json() -> Result<()> {
+        // Check a sample nested instance of Future
+        let future = Future {
+            program_id: ProgramID::from_str("test.aleo").unwrap(),
+            function_name: Identifier::from_str("test_function").unwrap(),
+            arguments: vec![
+                Argument::Plaintext(Plaintext::Literal(Literal::U64(U64::<CurrentNetwork>::new(10)), OnceCell::new())),
+                Argument::Future(Future {
+                    program_id: ProgramID::from_str("credits.aleo").unwrap(),
+                    function_name: Identifier::from_str("transfer_public").unwrap(),
+                    arguments: vec![],
+                }),
+            ],
+        };
+
+        let serialized = serde_json::to_string(&future).unwrap();
+        let deserialized = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(future, deserialized);
+        Ok(())
+    }
+
+    #[test]
+    fn test_future_bincode() -> Result<()> {
+        let future = Future {
+            program_id: ProgramID::from_str("test.aleo").unwrap(),
+            function_name: Identifier::from_str("test_function").unwrap(),
+            arguments: vec![
+                Argument::Plaintext(Plaintext::Literal(Literal::U64(U64::<CurrentNetwork>::new(10)), OnceCell::new())),
+                Argument::Future(Future {
+                    program_id: ProgramID::from_str("credits.aleo").unwrap(),
+                    function_name: Identifier::from_str("transfer_public").unwrap(),
+                    arguments: vec![],
+                }),
+            ],
+        };
+
+        let serialized = bincode::serialize(&future).unwrap();
+        let deserialized = bincode::deserialize(&serialized).unwrap();
+        assert_eq!(future, deserialized);
+        Ok(())
+    }
+}
