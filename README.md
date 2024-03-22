@@ -73,9 +73,23 @@ Alternatively, you can install `snarkvm` by building from the source code as fol
 # Download the source code
 git clone https://github.com/AleoHQ/snarkvm && cd snarkvm
 
-# Install snarkVM
-$ cargo install --path .
 ```
+if encounter any version error ': failed to compile `snarkvm v0.16.19 (/home/path/snarkvm)`, intermediate artifacts can be found at `/home/path/snarkvm/target`.
+To reuse those artifacts with a future compilation, set the environment variable `CARGO_TARGET_DIR` to that path.
+
+Caused by:
+  package `clap_lex v0.7.0` cannot be built because it requires rustc 1.74 or newer, while the currently active rustc version is 1.72.1
+  Either upgrade to rustc 1.74 or newer, or use
+  cargo update -p clap_lex@0.7.0 --precise ver
+  where `ver` is the latest version of `clap_lex` supporting rustc 1.72.1'
+
+  update your rust or go to your folder path `/home/path/snarkvm/rust-toolchain` to edit the version then run
+ ```bash
+  $ rustc --version 
+  ```
+  ```bash
+  $ cargo install --path .
+  ```
 
 Now to use `snarkvm`, in your terminal, run:
 ```bash
