@@ -41,8 +41,8 @@ use ledger_block::{
     Transaction,
     Transactions,
 };
-use ledger_coinbase::{ProverSolution, PuzzleCommitment};
 use ledger_narwhal_batch_certificate::BatchCertificate;
+use ledger_puzzle::{Solution, SolutionID};
 use synthesizer_program::{FinalizeOperation, Program};
 
 use aleo_std_storage::StorageMode;
@@ -123,12 +123,12 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
     type RatificationsMap: for<'a> Map<'a, N::BlockHash, Ratifications<N>>;
     /// The mapping of `block hash` to `block solutions`.
     type SolutionsMap: for<'a> Map<'a, N::BlockHash, Solutions<N>>;
-    /// The mapping of `puzzle commitment` to `block height`.
-    type PuzzleCommitmentsMap: for<'a> Map<'a, PuzzleCommitment<N>, u32>;
+    /// The mapping of `solution ID` to `block height`.
+    type SolutionIDsMap: for<'a> Map<'a, SolutionID<N>, u32>;
     /// The mapping of `block hash` to `[aborted solution ID]`.
-    type AbortedSolutionIDsMap: for<'a> Map<'a, N::BlockHash, Vec<PuzzleCommitment<N>>>;
+    type AbortedSolutionIDsMap: for<'a> Map<'a, N::BlockHash, Vec<SolutionID<N>>>;
     /// The mapping of aborted `solution ID` to `block height`.
-    type AbortedSolutionHeightsMap: for<'a> Map<'a, PuzzleCommitment<N>, u32>;
+    type AbortedSolutionHeightsMap: for<'a> Map<'a, SolutionID<N>, u32>;
     /// The mapping of `block hash` to `[transaction ID]`.
     type TransactionsMap: for<'a> Map<'a, N::BlockHash, Vec<N::TransactionID>>;
     /// The mapping of `block hash` to `[aborted transaction ID]`.
@@ -165,8 +165,8 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
     fn ratifications_map(&self) -> &Self::RatificationsMap;
     /// Returns the solutions map.
     fn solutions_map(&self) -> &Self::SolutionsMap;
-    /// Returns the puzzle commitments map.
-    fn puzzle_commitments_map(&self) -> &Self::PuzzleCommitmentsMap;
+    /// Returns the solution IDs map.
+    fn solution_ids_map(&self) -> &Self::SolutionIDsMap;
     /// Returns the aborted solution IDs map.
     fn aborted_solution_ids_map(&self) -> &Self::AbortedSolutionIDsMap;
     /// Returns the aborted solution heights map.
@@ -205,7 +205,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         self.certificate_map().start_atomic();
         self.ratifications_map().start_atomic();
         self.solutions_map().start_atomic();
-        self.puzzle_commitments_map().start_atomic();
+        self.solution_ids_map().start_atomic();
         self.aborted_solution_ids_map().start_atomic();
         self.aborted_solution_heights_map().start_atomic();
         self.transactions_map().start_atomic();
@@ -227,7 +227,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
             || self.certificate_map().is_atomic_in_progress()
             || self.ratifications_map().is_atomic_in_progress()
             || self.solutions_map().is_atomic_in_progress()
-            || self.puzzle_commitments_map().is_atomic_in_progress()
+            || self.solution_ids_map().is_atomic_in_progress()
             || self.aborted_solution_ids_map().is_atomic_in_progress()
             || self.aborted_solution_heights_map().is_atomic_in_progress()
             || self.transactions_map().is_atomic_in_progress()
@@ -249,7 +249,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         self.certificate_map().atomic_checkpoint();
         self.ratifications_map().atomic_checkpoint();
         self.solutions_map().atomic_checkpoint();
-        self.puzzle_commitments_map().atomic_checkpoint();
+        self.solution_ids_map().atomic_checkpoint();
         self.aborted_solution_ids_map().atomic_checkpoint();
         self.aborted_solution_heights_map().atomic_checkpoint();
         self.transactions_map().atomic_checkpoint();
@@ -271,7 +271,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         self.certificate_map().clear_latest_checkpoint();
         self.ratifications_map().clear_latest_checkpoint();
         self.solutions_map().clear_latest_checkpoint();
-        self.puzzle_commitments_map().clear_latest_checkpoint();
+        self.solution_ids_map().clear_latest_checkpoint();
         self.aborted_solution_ids_map().clear_latest_checkpoint();
         self.aborted_solution_heights_map().clear_latest_checkpoint();
         self.transactions_map().clear_latest_checkpoint();
@@ -293,7 +293,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         self.certificate_map().atomic_rewind();
         self.ratifications_map().atomic_rewind();
         self.solutions_map().atomic_rewind();
-        self.puzzle_commitments_map().atomic_rewind();
+        self.solution_ids_map().atomic_rewind();
         self.aborted_solution_ids_map().atomic_rewind();
         self.aborted_solution_heights_map().atomic_rewind();
         self.transactions_map().atomic_rewind();
@@ -315,7 +315,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         self.certificate_map().abort_atomic();
         self.ratifications_map().abort_atomic();
         self.solutions_map().abort_atomic();
-        self.puzzle_commitments_map().abort_atomic();
+        self.solution_ids_map().abort_atomic();
         self.aborted_solution_ids_map().abort_atomic();
         self.aborted_solution_heights_map().abort_atomic();
         self.transactions_map().abort_atomic();
@@ -337,7 +337,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         self.certificate_map().finish_atomic()?;
         self.ratifications_map().finish_atomic()?;
         self.solutions_map().finish_atomic()?;
-        self.puzzle_commitments_map().finish_atomic()?;
+        self.solution_ids_map().finish_atomic()?;
         self.aborted_solution_ids_map().finish_atomic()?;
         self.aborted_solution_heights_map().finish_atomic()?;
         self.transactions_map().finish_atomic()?;
@@ -417,7 +417,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
 
             // Store the block solution IDs.
             for solution_id in block.solutions().solution_ids() {
-                self.puzzle_commitments_map().insert(*solution_id, block.height())?;
+                self.solution_ids_map().insert(*solution_id, block.height())?;
             }
 
             // Store the aborted solution IDs.
@@ -548,7 +548,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
 
             // Remove the block solution IDs.
             for solution_id in solutions.solution_ids() {
-                self.puzzle_commitments_map().remove(solution_id)?;
+                self.solution_ids_map().remove(solution_id)?;
             }
 
             // Remove the aborted solution IDs.
@@ -627,9 +627,9 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         }
     }
 
-    /// Returns the block height that contains the given `puzzle commitment`.
-    fn find_block_height_from_puzzle_commitment(&self, solution_id: &PuzzleCommitment<N>) -> Result<Option<u32>> {
-        match self.puzzle_commitments_map().get_confirmed(solution_id)? {
+    /// Returns the block height that contains the given `solution ID`.
+    fn find_block_height_from_solution_id(&self, solution_id: &SolutionID<N>) -> Result<Option<u32>> {
+        match self.solution_ids_map().get_confirmed(solution_id)? {
             Some(block_height) => Ok(Some(cow_to_copied!(block_height))),
             None => match self.aborted_solution_heights_map().get_confirmed(solution_id)? {
                 Some(block_height) => Ok(Some(cow_to_copied!(block_height))),
@@ -826,9 +826,9 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
     }
 
     /// Returns the prover solution for the given solution ID.
-    fn get_solution(&self, solution_id: &PuzzleCommitment<N>) -> Result<ProverSolution<N>> {
+    fn get_solution(&self, solution_id: &SolutionID<N>) -> Result<Solution<N>> {
         // Retrieve the block height for the solution ID.
-        let Some(block_height) = self.find_block_height_from_puzzle_commitment(solution_id)? else {
+        let Some(block_height) = self.find_block_height_from_solution_id(solution_id)? else {
             bail!("The block height for solution ID '{solution_id}' is missing in block storage")
         };
         // Retrieve the block hash.
@@ -849,7 +849,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
     }
 
     /// Returns the block aborted solution IDs for the given `block hash`.
-    fn get_block_aborted_solution_ids(&self, block_hash: &N::BlockHash) -> Result<Option<Vec<PuzzleCommitment<N>>>> {
+    fn get_block_aborted_solution_ids(&self, block_hash: &N::BlockHash) -> Result<Option<Vec<SolutionID<N>>>> {
         match self.aborted_solution_ids_map().get_confirmed(block_hash)? {
             Some(aborted_solution_ids) => Ok(Some(cow_to_cloned!(aborted_solution_ids))),
             None => Ok(None),
@@ -1187,12 +1187,9 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
         self.storage.find_block_hash(transaction_id)
     }
 
-    /// Returns the block height that contains the given `puzzle commitment`.
-    pub fn find_block_height_from_puzzle_commitment(
-        &self,
-        puzzle_commitment: &PuzzleCommitment<N>,
-    ) -> Result<Option<u32>> {
-        self.storage.find_block_height_from_puzzle_commitment(puzzle_commitment)
+    /// Returns the block height that contains the given `solution ID`.
+    pub fn find_block_height_from_solution_id(&self, solution_id: &SolutionID<N>) -> Result<Option<u32>> {
+        self.storage.find_block_height_from_solution_id(solution_id)
     }
 }
 
@@ -1248,7 +1245,7 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
     }
 
     /// Returns the prover solution for the given solution ID.
-    pub fn get_solution(&self, solution_id: &PuzzleCommitment<N>) -> Result<ProverSolution<N>> {
+    pub fn get_solution(&self, solution_id: &SolutionID<N>) -> Result<Solution<N>> {
         self.storage.get_solution(solution_id)
     }
 
@@ -1336,13 +1333,13 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
     }
 
     /// Returns `true` if the given solution ID exists.
-    pub fn contains_puzzle_commitment(&self, solution_id: &PuzzleCommitment<N>) -> Result<bool> {
-        Ok(self.storage.puzzle_commitments_map().contains_key_confirmed(solution_id)?
-            || self.contains_aborted_puzzle_commitment(solution_id)?)
+    pub fn contains_solution_id(&self, solution_id: &SolutionID<N>) -> Result<bool> {
+        Ok(self.storage.solution_ids_map().contains_key_confirmed(solution_id)?
+            || self.contains_aborted_solution_id(solution_id)?)
     }
 
     /// Returns `true` if the given aborted solution ID exists.
-    fn contains_aborted_puzzle_commitment(&self, solution_id: &PuzzleCommitment<N>) -> Result<bool> {
+    fn contains_aborted_solution_id(&self, solution_id: &SolutionID<N>) -> Result<bool> {
         self.storage.aborted_solution_heights_map().contains_key_confirmed(solution_id)
     }
 }
@@ -1364,8 +1361,8 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
     }
 
     /// Returns an iterator over the solution IDs, for all blocks in `self`.
-    pub fn solution_ids(&self) -> impl '_ + Iterator<Item = Cow<'_, PuzzleCommitment<N>>> {
-        self.storage.puzzle_commitments_map().keys_confirmed()
+    pub fn solution_ids(&self) -> impl '_ + Iterator<Item = Cow<'_, SolutionID<N>>> {
+        self.storage.solution_ids_map().keys_confirmed()
     }
 }
 

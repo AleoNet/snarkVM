@@ -20,22 +20,22 @@ mod serialize;
 mod string;
 
 use console::{network::TRANSACTION_PREFIX, prelude::*};
-use ledger_coinbase::{PuzzleCommitment, PUZZLE_COMMITMENT_PREFIX};
+use ledger_puzzle::{SolutionID, SOLUTION_ID_PREFIX};
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub enum TransmissionID<N: Network> {
     /// A ratification.
     Ratification,
-    /// A prover solution.
-    Solution(PuzzleCommitment<N>),
+    /// A solution.
+    Solution(SolutionID<N>),
     /// A transaction.
     Transaction(N::TransactionID),
 }
 
-impl<N: Network> From<PuzzleCommitment<N>> for TransmissionID<N> {
-    /// Converts the puzzle commitment into a transmission ID.
-    fn from(puzzle_commitment: PuzzleCommitment<N>) -> Self {
-        Self::Solution(puzzle_commitment)
+impl<N: Network> From<SolutionID<N>> for TransmissionID<N> {
+    /// Converts the solution ID into a transmission ID.
+    fn from(solution_id: SolutionID<N>) -> Self {
+        Self::Solution(solution_id)
     }
 }
 
@@ -47,10 +47,10 @@ impl<N: Network> From<&N::TransactionID> for TransmissionID<N> {
 }
 
 impl<N: Network> TransmissionID<N> {
-    /// Returns the puzzle commitment if the transmission is a solution.
-    pub fn solution(&self) -> Option<PuzzleCommitment<N>> {
+    /// Returns the solution ID if the transmission is a solution.
+    pub fn solution(&self) -> Option<SolutionID<N>> {
         match self {
-            Self::Solution(puzzle_commitment) => Some(*puzzle_commitment),
+            Self::Solution(solution_id) => Some(*solution_id),
             _ => None,
         }
     }
@@ -79,9 +79,9 @@ pub mod test_helpers {
     pub fn sample_transmission_ids(rng: &mut TestRng) -> Vec<TransmissionID<CurrentNetwork>> {
         // Initialize a sample vector.
         let mut sample = Vec::with_capacity(10);
-        // Append sample puzzle commitments.
+        // Append sample solution IDs.
         for _ in 0..5 {
-            sample.push(TransmissionID::Solution(PuzzleCommitment::from_g1_affine(rng.gen())));
+            sample.push(TransmissionID::Solution(SolutionID::from(rng.gen::<u64>())));
         }
         // Append sample transaction IDs.
         for _ in 0..5 {

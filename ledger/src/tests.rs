@@ -24,11 +24,12 @@ use console::{
     network::prelude::*,
     program::{Entry, Identifier, Literal, Plaintext, ProgramID, Value},
 };
-use indexmap::IndexMap;
 use ledger_block::{ConfirmedTransaction, Rejected, Transaction};
 use ledger_committee::{Committee, MIN_VALIDATOR_STAKE};
 use ledger_store::{helpers::memory::ConsensusMemory, ConsensusStore};
 use synthesizer::{program::Program, vm::VM, Stack};
+
+use indexmap::IndexMap;
 
 #[test]
 fn test_load() {
@@ -685,15 +686,15 @@ fn test_aborted_solution_ids() {
     // Initialize the test environment.
     let crate::test_helpers::TestEnv { ledger, private_key, address, .. } = crate::test_helpers::sample_test_env(rng);
 
-    // Retrieve the coinbase puzzle parameters.
-    let coinbase_puzzle = ledger.coinbase_puzzle();
-    let epoch_challenge = ledger.latest_epoch_challenge().unwrap();
+    // Retrieve the puzzle parameters.
+    let puzzle = ledger.puzzle();
+    let latest_epoch_hash = ledger.latest_epoch_hash().unwrap();
     let minimum_proof_target = ledger.latest_proof_target();
 
     // Create a solution that is less than the minimum proof target.
-    let mut invalid_solution = coinbase_puzzle.prove(&epoch_challenge, address, rng.gen(), None).unwrap();
-    while invalid_solution.to_target().unwrap() >= minimum_proof_target {
-        invalid_solution = coinbase_puzzle.prove(&epoch_challenge, address, rng.gen(), None).unwrap();
+    let mut invalid_solution = puzzle.prove(latest_epoch_hash, address, rng.gen(), None).unwrap();
+    while puzzle.get_proof_target(&invalid_solution).unwrap() >= minimum_proof_target {
+        invalid_solution = puzzle.prove(latest_epoch_hash, address, rng.gen(), None).unwrap();
     }
 
     // Create a valid transaction for the block.
@@ -722,7 +723,7 @@ fn test_aborted_solution_ids() {
 
     // Enforce that the block solution was aborted properly.
     assert!(block.solutions().is_empty());
-    assert_eq!(block.aborted_solution_ids(), &vec![invalid_solution.commitment()]);
+    assert_eq!(block.aborted_solution_ids(), &vec![invalid_solution.id()]);
 }
 
 #[test]
@@ -1671,4 +1672,236 @@ fn test_deployment_exceeding_max_transaction_spend() {
 
     // Check that the deployment failed.
     assert!(result.is_err());
+}
+
+// These tests require the proof targets to be low enough to be able to generate **valid** solutions.
+// This requires the 'test' feature to be enabled for the `console` dependency.
+#[cfg(feature = "test")]
+mod valid_solutions {
+    use super::*;
+    use rand::prelude::SliceRandom;
+    use std::collections::HashSet;
+
+    #[test]
+    fn test_duplicate_solution_ids() {
+        // Print the cfg to ensure that the test is running in the correct environment.
+        let rng = &mut TestRng::default();
+
+        // Initialize the test environment.
+        let crate::test_helpers::TestEnv { ledger, private_key, address, .. } =
+            crate::test_helpers::sample_test_env(rng);
+
+        // Retrieve the puzzle parameters.
+        let puzzle = ledger.puzzle();
+        let latest_epoch_hash = ledger.latest_epoch_hash().unwrap();
+        let minimum_proof_target = ledger.latest_proof_target();
+
+        // Create a solution that is greater than the minimum proof target.
+        let mut valid_solution = puzzle.prove(latest_epoch_hash, address, rng.gen(), None).unwrap();
+        while puzzle.get_proof_target(&valid_solution).unwrap() < minimum_proof_target {
+            println!(
+                "Solution is invalid: {} < {}",
+                puzzle.get_proof_target(&valid_solution).unwrap(),
+                minimum_proof_target
+            );
+            valid_solution = puzzle.prove(latest_epoch_hash, address, rng.gen(), None).unwrap();
+        }
+
+        // Create a valid transaction for the block.
+        let inputs = [Value::from_str(&format!("{address}")).unwrap(), Value::from_str("10u64").unwrap()];
+        let transfer_transaction = ledger
+            .vm
+            .execute(&private_key, ("credits.aleo", "transfer_public"), inputs.iter(), None, 0, None, rng)
+            .unwrap();
+
+        // Check that block creation fails when duplicate solution IDs are provided.
+        let result = ledger.prepare_advance_to_next_beacon_block(
+            &private_key,
+            vec![],
+            vec![valid_solution, valid_solution],
+            vec![transfer_transaction.clone()],
+            rng,
+        );
+        assert!(result.is_err());
+
+        // Create a block.
+        let block = ledger
+            .prepare_advance_to_next_beacon_block(
+                &private_key,
+                vec![],
+                vec![valid_solution],
+                vec![transfer_transaction],
+                rng,
+            )
+            .unwrap();
+
+        // Check that the next block is valid.
+        ledger.check_next_block(&block, rng).unwrap();
+
+        // Add the deployment block to the ledger.
+        ledger.advance_to_next_block(&block).unwrap();
+
+        // Enforce that the block solution was accepted properly.
+        assert_eq!(block.solutions().len(), 1);
+        assert_eq!(block.aborted_solution_ids().len(), 0)
+    }
+
+    #[test]
+    fn test_excess_invalid_solution_ids() {
+        // Note that the sum of `NUM_INVALID_SOLUTIONS` and `NUM_VALID_SOLUTIONS` should exceed the maximum number of solutions.
+        const NUM_INVALID_SOLUTIONS: usize = CurrentNetwork::MAX_SOLUTIONS;
+        const NUM_VALID_SOLUTIONS: usize = CurrentNetwork::MAX_SOLUTIONS;
+
+        let rng = &mut TestRng::default();
+
+        // Initialize the test environment.
+        let crate::test_helpers::TestEnv { ledger, private_key, address, .. } =
+            crate::test_helpers::sample_test_env(rng);
+
+        // Retrieve the puzzle parameters.
+        let puzzle = ledger.puzzle();
+        let latest_epoch_hash = ledger.latest_epoch_hash().unwrap();
+        let minimum_proof_target = ledger.latest_proof_target();
+
+        // Initialize storage for the valid and invalid solutions
+        let mut valid_solutions = Vec::with_capacity(NUM_VALID_SOLUTIONS);
+        let mut invalid_solutions = Vec::with_capacity(NUM_INVALID_SOLUTIONS);
+
+        // Create solutions that are greater than the minimum proof target.
+        while valid_solutions.len() < NUM_VALID_SOLUTIONS {
+            let solution = puzzle.prove(latest_epoch_hash, address, rng.gen(), None).unwrap();
+            if puzzle.get_proof_target(&solution).unwrap() < minimum_proof_target {
+                if invalid_solutions.len() < NUM_INVALID_SOLUTIONS {
+                    invalid_solutions.push(solution);
+                }
+            } else {
+                valid_solutions.push(solution);
+            }
+        }
+        // Create the remaining solutions that are less than the minimum proof target.
+        while invalid_solutions.len() < NUM_INVALID_SOLUTIONS {
+            let solution = puzzle.prove(latest_epoch_hash, address, rng.gen(), None).unwrap();
+            if puzzle.get_proof_target(&solution).unwrap() < minimum_proof_target {
+                invalid_solutions.push(solution);
+            }
+        }
+
+        // Check the length of the valid and invalid solutions.
+        assert_eq!(valid_solutions.len(), NUM_VALID_SOLUTIONS);
+        assert_eq!(invalid_solutions.len(), NUM_INVALID_SOLUTIONS);
+
+        // Concatenate and shuffle the solutions.
+        let mut candidate_solutions = valid_solutions.clone();
+        candidate_solutions.extend(invalid_solutions.clone());
+        candidate_solutions.shuffle(rng);
+
+        // Create a valid transaction for the block.
+        let inputs = [Value::from_str(&format!("{address}")).unwrap(), Value::from_str("10u64").unwrap()];
+        let transfer_transaction = ledger
+            .vm
+            .execute(&private_key, ("credits.aleo", "transfer_public"), inputs.iter(), None, 0, None, rng)
+            .unwrap();
+
+        // Create a block.
+        let block = ledger
+            .prepare_advance_to_next_beacon_block(
+                &private_key,
+                vec![],
+                candidate_solutions,
+                vec![transfer_transaction],
+                rng,
+            )
+            .unwrap();
+
+        // Check that the next block is valid.
+        ledger.check_next_block(&block, rng).unwrap();
+
+        // Add the deployment block to the ledger.
+        ledger.advance_to_next_block(&block).unwrap();
+
+        // Check that the block's solutions are well-formed.
+        assert_eq!(block.aborted_solution_ids().len(), NUM_INVALID_SOLUTIONS);
+        assert_eq!(block.solutions().len(), NUM_VALID_SOLUTIONS);
+
+        let block_solutions = block.solutions().solution_ids().cloned().collect::<HashSet<_>>();
+        let valid_solutions = valid_solutions.iter().map(|s| s.id()).collect::<HashSet<_>>();
+        assert_eq!(block_solutions, valid_solutions, "Valid solutions do not match");
+
+        let block_aborted_solution_ids = block.aborted_solution_ids().iter().cloned().collect::<HashSet<_>>();
+        let invalid_solutions = invalid_solutions.iter().map(|s| s.id()).collect::<HashSet<_>>();
+        assert_eq!(block_aborted_solution_ids, invalid_solutions, "Invalid solutions do not match");
+    }
+
+    #[test]
+    fn test_excess_valid_solution_ids() {
+        // Note that this should be greater than the maximum number of solutions.
+        const NUM_VALID_SOLUTIONS: usize = 2 * CurrentNetwork::MAX_SOLUTIONS;
+
+        let rng = &mut TestRng::default();
+
+        // Initialize the test environment.
+        let crate::test_helpers::TestEnv { ledger, private_key, address, .. } =
+            crate::test_helpers::sample_test_env(rng);
+
+        // Retrieve the puzzle parameters.
+        let puzzle = ledger.puzzle();
+        let latest_epoch_hash = ledger.latest_epoch_hash().unwrap();
+        let minimum_proof_target = ledger.latest_proof_target();
+
+        // Initialize storage for the valid solutions
+        let mut valid_solutions = Vec::with_capacity(NUM_VALID_SOLUTIONS);
+
+        // Create solutions that are greater than the minimum proof target.
+        while valid_solutions.len() < NUM_VALID_SOLUTIONS {
+            let solution = puzzle.prove(latest_epoch_hash, address, rng.gen(), None).unwrap();
+            if puzzle.get_proof_target(&solution).unwrap() >= minimum_proof_target {
+                valid_solutions.push(solution);
+            }
+        }
+
+        // Check the length of the valid solutions.
+        assert_eq!(valid_solutions.len(), NUM_VALID_SOLUTIONS);
+
+        // Shuffle the solutions.
+        let mut candidate_solutions = valid_solutions;
+        candidate_solutions.shuffle(rng);
+
+        // Create a valid transaction for the block.
+        let inputs = [Value::from_str(&format!("{address}")).unwrap(), Value::from_str("10u64").unwrap()];
+        let transfer_transaction = ledger
+            .vm
+            .execute(&private_key, ("credits.aleo", "transfer_public"), inputs.iter(), None, 0, None, rng)
+            .unwrap();
+
+        // Create a block.
+        let block = ledger
+            .prepare_advance_to_next_beacon_block(
+                &private_key,
+                vec![],
+                candidate_solutions.clone(),
+                vec![transfer_transaction],
+                rng,
+            )
+            .unwrap();
+
+        // Check that the next block is valid.
+        ledger.check_next_block(&block, rng).unwrap();
+
+        // Add the deployment block to the ledger.
+        ledger.advance_to_next_block(&block).unwrap();
+
+        // Check that the block's solutions are well-formed.
+        assert_eq!(block.solutions().len(), CurrentNetwork::MAX_SOLUTIONS);
+        assert_eq!(block.aborted_solution_ids().len(), NUM_VALID_SOLUTIONS - CurrentNetwork::MAX_SOLUTIONS);
+
+        let block_solutions = block.solutions().solution_ids().cloned().collect::<HashSet<_>>();
+        let expected_accepted_solutions =
+            candidate_solutions.iter().take(CurrentNetwork::MAX_SOLUTIONS).map(|s| s.id()).collect::<HashSet<_>>();
+        assert_eq!(block_solutions, expected_accepted_solutions, "Accepted solutions do not match");
+
+        let block_aborted_solution_ids = block.aborted_solution_ids().iter().cloned().collect::<HashSet<_>>();
+        let expected_aborted_solutions =
+            candidate_solutions.iter().skip(CurrentNetwork::MAX_SOLUTIONS).map(|s| s.id()).collect::<HashSet<_>>();
+        assert_eq!(block_aborted_solution_ids, expected_aborted_solutions, "Aborted solutions do not match");
+    }
 }

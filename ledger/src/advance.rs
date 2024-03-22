@@ -51,7 +51,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         &self,
         private_key: &PrivateKey<N>,
         candidate_ratifications: Vec<Ratify<N>>,
-        candidate_solutions: Vec<ProverSolution<N>>,
+        candidate_solutions: Vec<Solution<N>>,
         candidate_transactions: Vec<Transaction<N>>,
         rng: &mut R,
     ) -> Result<Block<N>> {
@@ -102,10 +102,10 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             *self.current_committee.write() = Some(current_committee);
         }
 
-        // If the block is the start of a new epoch, or the epoch challenge has not been set, update the current epoch challenge.
-        if block.height() % N::NUM_BLOCKS_PER_EPOCH == 0 || self.current_epoch_challenge.read().is_none() {
-            // Update the current epoch challenge.
-            self.current_epoch_challenge.write().clone_from(&self.get_epoch_challenge(block.height()).ok());
+        // If the block is the start of a new epoch, or the epoch hash has not been set, update the current epoch hash.
+        if block.height() % N::NUM_BLOCKS_PER_EPOCH == 0 || self.current_epoch_hash.read().is_none() {
+            // Update the current epoch hash.
+            self.current_epoch_hash.write().clone_from(&self.get_epoch_hash(block.height()).ok());
         }
 
         Ok(())
@@ -119,8 +119,8 @@ pub fn split_candidate_solutions<T, F>(
     verification_fn: F,
 ) -> (Vec<T>, Vec<T>)
 where
-    T: Sized + Send,
-    F: Fn(&T) -> bool + Send + Sync,
+    T: Sized,
+    F: Fn(&T) -> bool,
 {
     // Separate the candidate solutions into valid and aborted solutions.
     let mut valid_candidate_solutions = Vec::with_capacity(max_solutions);
@@ -146,7 +146,8 @@ where
         };
 
         // Verify the solutions in the chunk.
-        let verification_results: Vec<_> = cfg_into_iter!(candidates_chunk)
+        let verification_results: Vec<_> = candidates_chunk
+            .into_iter()
             .rev()
             .map(|solution| {
                 let verified = verification_fn(&solution);
@@ -175,32 +176,24 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         previous_block: &Block<N>,
         subdag: Option<&Subdag<N>>,
         candidate_ratifications: Vec<Ratify<N>>,
-        candidate_solutions: Vec<ProverSolution<N>>,
+        candidate_solutions: Vec<Solution<N>>,
         candidate_transactions: Vec<Transaction<N>>,
         rng: &mut R,
-    ) -> Result<(
-        Header<N>,
-        Ratifications<N>,
-        Solutions<N>,
-        Vec<PuzzleCommitment<N>>,
-        Transactions<N>,
-        Vec<N::TransactionID>,
-    )> {
+    ) -> Result<(Header<N>, Ratifications<N>, Solutions<N>, Vec<SolutionID<N>>, Transactions<N>, Vec<N::TransactionID>)>
+    {
         // Construct the solutions.
         let (solutions, aborted_solutions, solutions_root, combined_proof_target) = match candidate_solutions.is_empty()
         {
             true => (None, vec![], Field::<N>::zero(), 0u128),
             false => {
-                // Retrieve the coinbase verifying key.
-                let coinbase_verifying_key = self.coinbase_puzzle.coinbase_verifying_key();
-                // Retrieve the latest epoch challenge.
-                let latest_epoch_challenge = self.latest_epoch_challenge()?;
+                // Retrieve the latest epoch hash.
+                let latest_epoch_hash = self.latest_epoch_hash()?;
+                // Retrieve the latest proof target.
+                let latest_proof_target = self.latest_proof_target();
                 // Separate the candidate solutions into valid and aborted solutions.
                 let (valid_candidate_solutions, aborted_candidate_solutions) =
                     split_candidate_solutions(candidate_solutions, N::MAX_SOLUTIONS, |solution| {
-                        solution
-                            .verify(coinbase_verifying_key, &latest_epoch_challenge, self.latest_proof_target())
-                            .unwrap_or(false)
+                        self.puzzle().check_solution(solution, latest_epoch_hash, latest_proof_target).is_ok()
                     });
 
                 // Check if there are any valid solutions.
@@ -208,11 +201,11 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                     true => (None, aborted_candidate_solutions, Field::<N>::zero(), 0u128),
                     false => {
                         // Construct the solutions.
-                        let solutions = CoinbaseSolution::new(valid_candidate_solutions)?;
+                        let solutions = PuzzleSolutions::new(valid_candidate_solutions)?;
                         // Compute the solutions root.
                         let solutions_root = solutions.to_accumulator_point()?;
                         // Compute the combined proof target.
-                        let combined_proof_target = solutions.to_combined_proof_target()?;
+                        let combined_proof_target = self.puzzle().get_combined_proof_target(&solutions)?;
                         // Output the solutions, solutions root, and combined proof target.
                         (Some(solutions), aborted_candidate_solutions, solutions_root, combined_proof_target)
                     }
@@ -223,8 +216,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         let solutions = Solutions::from(solutions);
 
         // Construct the aborted solution IDs.
-        let aborted_solution_ids =
-            aborted_solutions.into_iter().map(|solution| solution.commitment()).collect::<Vec<_>>();
+        let aborted_solution_ids = aborted_solutions.iter().map(Solution::id).collect::<Vec<_>>();
 
         // Retrieve the latest state root.
         let latest_state_root = self.latest_state_root();
@@ -286,7 +278,8 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             N::GENESIS_COINBASE_TARGET,
         )?;
         // Construct the next proof target.
-        let next_proof_target = proof_target(next_coinbase_target, N::GENESIS_PROOF_TARGET);
+        let next_proof_target =
+            proof_target(next_coinbase_target, N::GENESIS_PROOF_TARGET, N::MAX_SOLUTIONS_AS_POWER_OF_TWO);
 
         // Construct the next last coinbase target and next last coinbase timestamp.
         let (next_last_coinbase_target, next_last_coinbase_timestamp) = match is_coinbase_target_reached {

@@ -3073,9 +3073,9 @@ dependencies = [
  "snarkvm-console",
  "snarkvm-ledger-authority",
  "snarkvm-ledger-block",
- "snarkvm-ledger-coinbase",
  "snarkvm-ledger-committee",
  "snarkvm-ledger-narwhal",
+ "snarkvm-ledger-puzzle",
  "snarkvm-ledger-query",
  "snarkvm-ledger-store",
  "snarkvm-ledger-test-helpers",
@@ -3109,37 +3109,16 @@ dependencies = [
  "snarkvm-circuit",
  "snarkvm-console",
  "snarkvm-ledger-authority",
- "snarkvm-ledger-coinbase",
  "snarkvm-ledger-committee",
  "snarkvm-ledger-narwhal-batch-header",
  "snarkvm-ledger-narwhal-subdag",
  "snarkvm-ledger-narwhal-transmission-id",
+ "snarkvm-ledger-puzzle",
  "snarkvm-ledger-query",
  "snarkvm-ledger-store",
  "snarkvm-synthesizer-process",
  "snarkvm-synthesizer-program",
  "snarkvm-synthesizer-snark",
-]
-
-[[package]]
-name = "snarkvm-ledger-coinbase"
-version = "0.16.19"
-dependencies = [
- "aleo-std",
- "anyhow",
- "bincode",
- "blake2",
- "criterion",
- "indexmap 2.1.0",
- "rand",
- "rayon",
- "serde_json",
- "snarkvm-algorithms",
- "snarkvm-console",
- "snarkvm-curves",
- "snarkvm-fields",
- "snarkvm-synthesizer-snark",
- "snarkvm-utilities",
 ]
 
 [[package]]
@@ -3239,8 +3218,8 @@ dependencies = [
  "serde_json",
  "snarkvm-console",
  "snarkvm-ledger-block",
- "snarkvm-ledger-coinbase",
  "snarkvm-ledger-narwhal-data",
+ "snarkvm-ledger-puzzle",
 ]
 
 [[package]]
@@ -3250,7 +3229,42 @@ dependencies = [
  "bincode",
  "serde_json",
  "snarkvm-console",
- "snarkvm-ledger-coinbase",
+ "snarkvm-ledger-puzzle",
+]
+
+[[package]]
+name = "snarkvm-ledger-puzzle"
+version = "0.16.19"
+dependencies = [
+ "aleo-std",
+ "anyhow",
+ "bincode",
+ "criterion",
+ "indexmap 2.1.0",
+ "lru",
+ "once_cell",
+ "parking_lot",
+ "rand",
+ "rand_chacha",
+ "rayon",
+ "serde_json",
+ "snarkvm-algorithms",
+ "snarkvm-console",
+ "snarkvm-ledger-puzzle-epoch",
+]
+
+[[package]]
+name = "snarkvm-ledger-puzzle-epoch"
+version = "0.16.19"
+dependencies = [
+ "anyhow",
+ "colored",
+ "indexmap 2.1.0",
+ "rand",
+ "rand_chacha",
+ "rayon",
+ "snarkvm-console",
+ "snarkvm-ledger-puzzle",
 ]
 
 [[package]]
@@ -3283,9 +3297,9 @@ dependencies = [
  "snarkvm-console",
  "snarkvm-ledger-authority",
  "snarkvm-ledger-block",
- "snarkvm-ledger-coinbase",
  "snarkvm-ledger-committee",
  "snarkvm-ledger-narwhal-batch-certificate",
+ "snarkvm-ledger-puzzle",
  "snarkvm-ledger-test-helpers",
  "snarkvm-synthesizer-program",
  "snarkvm-synthesizer-snark",
@@ -3371,6 +3385,8 @@ dependencies = [
  "snarkvm-ledger-block",
  "snarkvm-ledger-committee",
  "snarkvm-ledger-narwhal-batch-header",
+ "snarkvm-ledger-puzzle",
+ "snarkvm-ledger-puzzle-epoch",
  "snarkvm-ledger-query",
  "snarkvm-ledger-store",
  "snarkvm-ledger-test-helpers",
@@ -4105,9 +4121,9 @@ checksum = "4d91413b1c31d7539ba5ef2451af3f0b833a005eb27a631cec32bc0635a8602b"
 
 [[package]]
 name = "wasm-bindgen-test"
-version = "0.3.40"
+version = "0.3.37"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "139bd73305d50e1c1c4333210c0db43d989395b64a237bd35c10ef3832a7f70c"
+checksum = "6e6e302a7ea94f83a6d09e78e7dc7d9ca7b186bc2829c24a22d0753efd680671"
 dependencies = [
  "console_error_panic_hook",
  "js-sys",
@@ -4119,13 +4135,12 @@ dependencies = [
 
 [[package]]
 name = "wasm-bindgen-test-macro"
-version = "0.3.40"
+version = "0.3.37"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "70072aebfe5da66d2716002c729a14e4aec4da0e23cc2ea66323dac541c93928"
+checksum = "ecb993dd8c836930ed130e020e77d9b2e65dd0fbab1b67c790b0f5d80b11a575"
 dependencies = [
  "proc-macro2",
  "quote 1.0.35",
- "syn 2.0.48",
 ]
 
 [[package]]

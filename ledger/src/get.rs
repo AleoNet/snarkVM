@@ -35,16 +35,16 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         self.vm.block_store().get_state_path_for_commitment(commitment)
     }
 
-    /// Returns the epoch challenge for the given block height.
-    pub fn get_epoch_challenge(&self, block_height: u32) -> Result<EpochChallenge<N>> {
+    /// Returns the epoch hash for the given block height.
+    pub fn get_epoch_hash(&self, block_height: u32) -> Result<N::BlockHash> {
         // Compute the epoch number from the current block height.
-        let epoch_number = block_height / N::NUM_BLOCKS_PER_EPOCH;
+        let epoch_number = block_height.saturating_div(N::NUM_BLOCKS_PER_EPOCH);
         // Compute the epoch starting height (a multiple of `NUM_BLOCKS_PER_EPOCH`).
-        let epoch_starting_height = epoch_number * N::NUM_BLOCKS_PER_EPOCH;
-        // Retrieve the epoch block hash, defined as the 'previous block hash' from the epoch starting height.
-        let epoch_block_hash = self.get_previous_hash(epoch_starting_height)?;
-        // Construct the epoch challenge.
-        EpochChallenge::new(epoch_number, epoch_block_hash, N::COINBASE_PUZZLE_DEGREE)
+        let epoch_starting_height = epoch_number.saturating_mul(N::NUM_BLOCKS_PER_EPOCH);
+        // Retrieve the epoch hash, defined as the 'previous block hash' from the epoch starting height.
+        let epoch_hash = self.get_previous_hash(epoch_starting_height)?;
+        // Construct the epoch hash.
+        Ok(epoch_hash)
     }
 
     /// Returns the block for the given block height.
@@ -215,7 +215,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
     }
 
     /// Returns the solution for the given solution ID.
-    pub fn get_solution(&self, solution_id: &PuzzleCommitment<N>) -> Result<ProverSolution<N>> {
+    pub fn get_solution(&self, solution_id: &SolutionID<N>) -> Result<Solution<N>> {
         self.vm.block_store().get_solution(solution_id)
     }
 

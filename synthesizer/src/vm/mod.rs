@@ -21,7 +21,7 @@ mod execute;
 mod finalize;
 mod verify;
 
-use crate::{cast_mut_ref, cast_ref, process};
+use crate::{cast_mut_ref, cast_ref, convert, process};
 use console::{
     account::{Address, PrivateKey},
     network::prelude::*,
@@ -43,6 +43,7 @@ use ledger_block::{
     Transactions,
 };
 use ledger_committee::Committee;
+use ledger_puzzle::Puzzle;
 use ledger_query::Query;
 use ledger_store::{
     atomic_finalize,
@@ -72,6 +73,8 @@ use rayon::prelude::*;
 pub struct VM<N: Network, C: ConsensusStorage<N>> {
     /// The process.
     process: Arc<RwLock<Process<N>>>,
+    /// The puzzle.
+    puzzle: Puzzle<N>,
     /// The VM store.
     store: ConsensusStore<N, C>,
     /// The lock to guarantee atomicity over calls to speculate and finalize.
@@ -179,6 +182,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         // Return the new VM.
         Ok(Self {
             process: Arc::new(RwLock::new(process)),
+            puzzle: Self::new_puzzle()?,
             store,
             atomic_lock: Arc::new(Mutex::new(())),
             block_lock: Arc::new(Mutex::new(())),
@@ -198,6 +202,12 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     #[inline]
     pub fn process(&self) -> Arc<RwLock<Process<N>>> {
         self.process.clone()
+    }
+
+    /// Returns the puzzle.
+    #[inline]
+    pub const fn puzzle(&self) -> &Puzzle<N> {
+        &self.puzzle
     }
 
     /// Returns the partially-verified transactions.
@@ -230,6 +240,21 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     #[inline]
     pub fn transition_store(&self) -> &TransitionStore<N, C::TransitionStorage> {
         self.store.transition_store()
+    }
+}
+
+impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
+    /// Returns a new instance of the puzzle.
+    pub fn new_puzzle() -> Result<Puzzle<N>> {
+        // Initialize a new instance of the puzzle.
+        macro_rules! logic {
+            ($network:path, $aleo:path) => {{
+                let puzzle = Puzzle::new::<ledger_puzzle_epoch::MerklePuzzle<$network>>();
+                Ok(cast_ref!(puzzle as Puzzle<N>).clone())
+            }};
+        }
+        // Initialize the puzzle.
+        convert!(logic)
     }
 }
 
@@ -1424,5 +1449,21 @@ finalize do:
 
         // Verify.
         vm.check_transaction(&transaction, None, rng).unwrap();
+    }
+
+    #[test]
+    fn test_vm_puzzle() {
+        // Attention: This test is used to ensure that the VM has performed downcasting correctly for
+        // the puzzle, and that the underlying traits in the puzzle are working correctly. Please
+        // *do not delete* this test as it is a critical safety check for the integrity of the
+        // instantiation of the puzzle in the VM.
+
+        let rng = &mut TestRng::default();
+
+        // Initialize the VM.
+        let vm = sample_vm();
+
+        // Ensure this call succeeds.
+        vm.puzzle.prove(rng.gen(), rng.gen(), rng.gen(), None).unwrap();
     }
 }

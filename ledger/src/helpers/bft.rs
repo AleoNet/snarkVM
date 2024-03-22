@@ -16,8 +16,8 @@
 
 use console::network::Network;
 use ledger_block::{Ratify, Transaction};
-use ledger_coinbase::ProverSolution;
 use ledger_narwhal::{Transmission, TransmissionID};
+use ledger_puzzle::Solution;
 
 use anyhow::{bail, ensure, Result};
 use std::collections::HashSet;
@@ -28,7 +28,7 @@ use std::collections::HashSet;
 /// This method guarantees that the output is 1) order-preserving, and 2) unique.
 pub fn decouple_transmissions<N: Network>(
     transmissions: impl Iterator<Item = (TransmissionID<N>, Transmission<N>)>,
-) -> Result<(Vec<Ratify<N>>, Vec<ProverSolution<N>>, Vec<Transaction<N>>)> {
+) -> Result<(Vec<Ratify<N>>, Vec<Solution<N>>, Vec<Transaction<N>>)> {
     // Initialize a list for the ratifications.
     let ratifications = Vec::new();
     // Initialize a list for the solutions.
@@ -50,7 +50,7 @@ pub fn decouple_transmissions<N: Network>(
                 // Deserialize the solution.
                 let solution = solution.deserialize_blocking()?;
                 // Ensure the transmission ID corresponds to the solution.
-                ensure!(commitment == solution.commitment(), "Mismatching transmission ID (solution)");
+                ensure!(commitment == solution.id(), "Mismatching transmission ID (solution)");
                 // Insert the solution into the list.
                 solutions.push(solution);
             }

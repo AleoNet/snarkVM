@@ -192,7 +192,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     #[cfg(not(any(test, feature = "test")))]
     pub const MAXIMUM_CONFIRMED_TRANSACTIONS: usize = Transactions::<N>::MAX_TRANSACTIONS;
     /// The maximum number of confirmed transactions allowed in a block.
-    /// This is set to a deliberately low value (8) for testing purposes only.
+    /// This is deliberately set to a low value (8) for testing purposes only.
     #[cfg(any(test, feature = "test"))]
     pub const MAXIMUM_CONFIRMED_TRANSACTIONS: usize = 8;
 
@@ -539,7 +539,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             let post_ratifications = reward_ratifications.iter().chain(post_ratifications);
 
             // Process the post-ratifications.
-            match Self::atomic_post_ratify(store, state, post_ratifications, solutions) {
+            match Self::atomic_post_ratify(&self.puzzle, store, state, post_ratifications, solutions) {
                 // Store the finalize operations from the post-ratify.
                 Ok(operations) => ratified_finalize_operations.extend(operations),
                 // Note: This will abort the entire atomic batch.
@@ -783,7 +783,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
             /* Perform the ratifications after finalize. */
 
-            match Self::atomic_post_ratify(store, state, post_ratifications, solutions) {
+            match Self::atomic_post_ratify(&self.puzzle, store, state, post_ratifications, solutions) {
                 // Store the finalize operations from the post-ratify.
                 Ok(operations) => ratified_finalize_operations.extend(operations),
                 // Note: This will abort the entire atomic batch.
@@ -1000,6 +1000,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// Performs the post-ratifications after finalizing transactions.
     #[inline]
     fn atomic_post_ratify<'a>(
+        puzzle: &Puzzle<N>,
         store: &FinalizeStore<N, C::FinalizeStorage>,
         state: FinalizeGlobalState,
         post_ratifications: impl Iterator<Item = &'a Ratify<N>>,
@@ -1077,8 +1078,10 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                         continue;
                     };
                     // Compute the proof targets, with the corresponding addresses.
-                    let proof_targets =
-                        solutions.values().map(|s| Ok((s.address(), s.to_target()?))).collect::<Result<Vec<_>>>()?;
+                    let proof_targets = solutions
+                        .values()
+                        .map(|s| Ok((s.address(), puzzle.get_proof_target(s)?)))
+                        .collect::<Result<Vec<_>>>()?;
                     // Calculate the proving rewards.
                     let proving_rewards = proving_rewards(proof_targets, *puzzle_reward);
                     // Iterate over the proving rewards.
