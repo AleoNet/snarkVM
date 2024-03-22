@@ -1589,6 +1589,9 @@ fn test_max_committee_limit_with_bonds() {
         )
         .unwrap();
 
+    // Ensure that the `bond_second_transaction` is rejected.
+    assert_eq!(block.transactions().num_rejected(), 1);
+
     // Check that the next block is valid.
     ledger.check_next_block(&block, rng).unwrap();
 
