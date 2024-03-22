@@ -1754,7 +1754,7 @@ finalize transfer_public:
         // Update the VM.
         vm.add_next_block(&block).unwrap();
 
-        // Check the balance of the caller, which should be the same as before.
+        // Check the balance of the caller.
         let balance = match vm
             .finalize_store()
             .get_value_confirmed(
