@@ -47,6 +47,8 @@ pub struct Committee<N: Network> {
 }
 
 impl<N: Network> Committee<N> {
+    /// The committee lookback range.
+    pub const COMMITTEE_LOOKBACK_RANGE: u64 = 50;
     /// The maximum number of members that may be in a committee.
     pub const MAX_COMMITTEE_SIZE: u16 = 200;
 
