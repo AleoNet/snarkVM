@@ -34,7 +34,7 @@ pub trait PathHash: Clone + Send + Sync {
 
     /// Returns the hash for each child node.
     /// If there are no children, the supplied empty node hash is used instead.
-    fn hash_all_children<const ARITY: u8>(
+    fn hash_all_children(
         &self,
         child_nodes: &[Option<Vec<Self::Hash>>],
         empty_node_hash: Self::Hash,
