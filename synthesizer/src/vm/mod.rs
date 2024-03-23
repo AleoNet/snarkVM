@@ -60,8 +60,9 @@ use synthesizer_program::{FinalizeGlobalState, FinalizeOperation, FinalizeStoreT
 
 use aleo_std::prelude::{finish, lap, timer};
 use indexmap::{IndexMap, IndexSet};
+use lru::LruCache;
 use parking_lot::{Mutex, RwLock};
-use std::sync::Arc;
+use std::{num::NonZeroUsize, sync::Arc};
 
 #[cfg(not(feature = "serial"))]
 use rayon::prelude::*;
@@ -76,6 +77,8 @@ pub struct VM<N: Network, C: ConsensusStorage<N>> {
     atomic_lock: Arc<Mutex<()>>,
     /// The lock for ensuring there is no concurrency when advancing blocks.
     block_lock: Arc<Mutex<()>>,
+    /// A cache containing the list of recent partially-verified transactions.
+    partially_verified_transactions: Arc<RwLock<LruCache<N::TransactionID, ()>>>,
 }
 
 impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
@@ -178,6 +181,9 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             store,
             atomic_lock: Arc::new(Mutex::new(())),
             block_lock: Arc::new(Mutex::new(())),
+            partially_verified_transactions: Arc::new(RwLock::new(LruCache::new(
+                NonZeroUsize::new(Transactions::<console::network::Testnet3>::MAX_TRANSACTIONS).unwrap(),
+            ))),
         })
     }
 
@@ -191,6 +197,12 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     #[inline]
     pub fn process(&self) -> Arc<RwLock<Process<N>>> {
         self.process.clone()
+    }
+
+    /// Returns the partially-verified transactions.
+    #[inline]
+    pub fn partially_verified_transactions(&self) -> Arc<RwLock<LruCache<N::TransactionID, ()>>> {
+        self.partially_verified_transactions.clone()
     }
 }
 
@@ -332,22 +344,45 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             block.previous_hash(),
         )?;
 
-        // Attention: The following order is crucial because if 'finalize' fails, we can rollback the block.
-        // If one first calls 'finalize', then calls 'insert(block)' and it fails, there is no way to rollback 'finalize'.
+        // Pause the atomic writes, so that both the insertion and finalization belong to a single batch.
+        #[cfg(feature = "rocks")]
+        self.block_store().pause_atomic_writes()?;
 
         // First, insert the block.
         self.block_store().insert(block)?;
         // Next, finalize the transactions.
         match self.finalize(state, block.ratifications(), block.solutions(), block.transactions()) {
-            Ok(_ratified_finalize_operations) => Ok(()),
+            Ok(_ratified_finalize_operations) => {
+                // Unpause the atomic writes, executing the ones queued from block insertion and finalization.
+                #[cfg(feature = "rocks")]
+                self.block_store().unpause_atomic_writes::<false>()?;
+                Ok(())
+            }
             Err(finalize_error) => {
-                // Rollback the block.
-                self.block_store().remove_last_n(1).map_err(|removal_error| {
-                    // Log the finalize error.
-                    error!("Failed to finalize block {} - {finalize_error}", block.height());
-                    // Return the removal error.
-                    removal_error
-                })?;
+                if cfg!(feature = "rocks") {
+                    // Clear all pending atomic operations so that unpausing the atomic writes
+                    // doesn't execute any of the queued storage operations.
+                    self.block_store().abort_atomic();
+                    self.finalize_store().abort_atomic();
+                    // Disable the atomic batch override.
+                    // Note: This call is guaranteed to succeed (without error), because `DISCARD_BATCH == true`.
+                    self.block_store().unpause_atomic_writes::<true>()?;
+                    // Rollback the Merkle tree.
+                    self.block_store().remove_last_n_from_tree_only(1).map_err(|removal_error| {
+                        // Log the finalize error.
+                        error!("Failed to finalize block {} - {finalize_error}", block.height());
+                        // Return the removal error.
+                        removal_error
+                    })?;
+                } else {
+                    // Rollback the block.
+                    self.block_store().remove_last_n(1).map_err(|removal_error| {
+                        // Log the finalize error.
+                        error!("Failed to finalize block {} - {finalize_error}", block.height());
+                        // Return the removal error.
+                        removal_error
+                    })?;
+                }
                 // Return the finalize error.
                 Err(finalize_error)
             }

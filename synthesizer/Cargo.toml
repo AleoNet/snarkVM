@@ -31,6 +31,7 @@ snark = [ "synthesizer-snark" ]
 aleo-cli = [ ]
 async = [ "ledger-query/async", "synthesizer-process/async" ]
 cuda = [ "algorithms/cuda" ]
+rocks = [ "ledger-store/rocks" ]
 serial = [
   "console/serial",
   "ledger-block/serial",
@@ -136,6 +137,9 @@ version = "1.0"
 [dependencies.indexmap]
 version = "2.0"
 features = [ "serde", "rayon" ]
+
+[dependencies.lru]
+version = "0.12"
 
 [dependencies.parking_lot]
 version = "0.12"
