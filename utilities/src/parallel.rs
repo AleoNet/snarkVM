@@ -198,6 +198,20 @@ macro_rules! cfg_reduce_with {
 
 /// Turns a collection into an iterator.
 #[macro_export]
+macro_rules! cfg_keys {
+    ($e: expr) => {{
+        #[cfg(not(feature = "serial"))]
+        let result = $e.par_keys();
+
+        #[cfg(feature = "serial")]
+        let result = $e.keys();
+
+        result
+    }};
+}
+
+/// Turns a collection into an iterator.
+#[macro_export]
 macro_rules! cfg_values {
     ($e: expr) => {{
         #[cfg(not(feature = "serial"))]

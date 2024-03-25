@@ -404,7 +404,7 @@ impl<N: Network> CallTrait<N> for Call<N> {
             // Compute the transition commitment as `Hash(tvk)`.
             let candidate_tcm = A::hash_psd2(&[tvk.clone()]);
             // Ensure the transition commitment matches the computed transition commitment.
-            A::assert_eq(&tcm, &candidate_tcm);
+            A::assert_eq(&tcm, candidate_tcm);
             // Inject the input IDs (from the request) as `Mode::Public`.
             let input_ids = request
                 .input_ids()

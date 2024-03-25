@@ -78,7 +78,7 @@ impl<N: Network> Fee<N> {
     pub fn payer(&self) -> Option<Address<N>> {
         // Retrieve the payer.
         match self.transition.outputs().last() {
-            Some(Output::Future(_, Some(future))) => match future.arguments().get(0) {
+            Some(Output::Future(_, Some(future))) => match future.arguments().first() {
                 Some(Argument::Plaintext(Plaintext::Literal(Literal::Address(address), _))) => Some(*address),
                 _ => None,
             },

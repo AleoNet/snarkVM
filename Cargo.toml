@@ -22,7 +22,7 @@ categories = [
 include = [ "Cargo.toml", "vm", "README.md", "LICENSE.md" ]
 license = "Apache-2.0"
 edition = "2021"
-rust-version = "1.72.1"
+rust-version = "1.76.0" # Attention - Change the MSRV in rust-toolchain and in .circleci/config.yml as well
 
 [workspace]
 members = [
@@ -64,7 +64,6 @@ members = [
   "ledger",
   "ledger/authority",
   "ledger/block",
-  "ledger/coinbase",
   "ledger/committee",
   "ledger/narwhal",
   "ledger/narwhal/batch-certificate",
@@ -73,6 +72,8 @@ members = [
   "ledger/narwhal/subdag",
   "ledger/narwhal/transmission",
   "ledger/narwhal/transmission-id",
+  "ledger/puzzle",
+  "ledger/puzzle/epoch",
   "ledger/query",
   "ledger/store",
   "ledger/test-helpers",

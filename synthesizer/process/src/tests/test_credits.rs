@@ -2089,6 +2089,34 @@ mod sanity_checks {
     }
 
     #[test]
+    fn test_sanity_check_transfer_public_as_signer() {
+        let rng = &mut TestRng::default();
+
+        // Initialize a new signer account.
+        let private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+        let signer = Address::try_from(&private_key).unwrap();
+
+        // Construct a new process.
+        let process = Process::load().unwrap();
+        // Retrieve the stack.
+        let stack = process.get_stack(ProgramID::from_str("credits.aleo").unwrap()).unwrap();
+
+        // Declare the function name.
+        let function_name = Identifier::from_str("transfer_public_as_signer").unwrap();
+
+        // Declare the inputs.
+        let r0 = Value::<CurrentNetwork>::from_str(&format!("{signer}")).unwrap();
+        let r1 = Value::<CurrentNetwork>::from_str("1_500_000_000_000_000_u64").unwrap();
+
+        // Compute the assignment.
+        let assignment = get_assignment::<_, CurrentAleo>(stack, &private_key, function_name, &[r0, r1], rng);
+        assert_eq!(11, assignment.num_public());
+        assert_eq!(12323, assignment.num_private());
+        assert_eq!(12330, assignment.num_constraints());
+        assert_eq!((28257, 38029, 16684), assignment.num_nonzeros());
+    }
+
+    #[test]
     fn test_sanity_check_fee_private() {
         let rng = &mut TestRng::default();
 

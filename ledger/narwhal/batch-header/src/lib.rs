@@ -26,8 +26,12 @@ use console::{
     prelude::*,
     types::Field,
 };
-use indexmap::IndexSet;
 use narwhal_transmission_id::TransmissionID;
+
+use indexmap::IndexSet;
+
+#[cfg(not(feature = "serial"))]
+use rayon::prelude::*;
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct BatchHeader<N: Network> {
@@ -55,7 +59,7 @@ impl<N: Network> BatchHeader<N> {
     #[cfg(not(any(test, feature = "test-helpers")))]
     pub const MAX_CERTIFICATES: u16 = 10;
     /// The maximum number of certificates in a batch.
-    /// This is set to a deliberately high value (100) for testing purposes only.
+    /// This is deliberately set to a high value (100) for testing purposes only.
     #[cfg(any(test, feature = "test-helpers"))]
     pub const MAX_CERTIFICATES: u16 = 100;
     /// The maximum number of rounds to store before garbage collecting.

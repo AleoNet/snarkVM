@@ -24,7 +24,7 @@ license = "Apache-2.0"
 edition = "2021"
 
 [features]
-default = [ ]
+default = [ "rayon" ]
 serial = [ "console/serial" ]
 wasm = [ "console/wasm" ]
 metrics = [ "dep:metrics" ]
@@ -74,6 +74,10 @@ optional = true
 version = "0.4"
 optional = true
 
+[dependencies.rayon]
+version = "1"
+optional = true
+
 [dependencies.test-strategy]
 version = "0.3.1"
 optional = true
@@ -89,10 +93,6 @@ version = "0.4"
 
 [dev-dependencies.rayon]
 version = "1"
-
-[dev-dependencies.ledger-narwhal-batch-header]
-package = "snarkvm-ledger-narwhal-batch-header"
-path = "../narwhal/batch-header"
 
 [dev-dependencies.snarkvm-ledger-committee]
 path = "."

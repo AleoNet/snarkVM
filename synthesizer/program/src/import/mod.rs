@@ -66,7 +66,7 @@ impl<N: Network> Ord for Import<N> {
 impl<N: Network> PartialOrd for Import<N> {
     /// Ordering is determined by the NLD first, then the program name second.
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        self.program_id.partial_cmp(&other.program_id)
+        Some(self.cmp(other))
     }
 }
 

@@ -28,10 +28,13 @@ use console::{
     program::{Literal, LiteralType},
     types::{Address, Field},
 };
+use ledger_narwhal_batch_header::BatchHeader;
 
 use indexmap::IndexMap;
-use ledger_narwhal_batch_header::BatchHeader;
 use std::collections::HashSet;
+
+#[cfg(not(feature = "serial"))]
+use rayon::prelude::*;
 
 /// The minimum amount of stake required for a validator to bond.
 pub const MIN_VALIDATOR_STAKE: u64 = 10_000_000_000_000u64; // microcredits
@@ -349,7 +352,6 @@ mod tests {
     use console::prelude::TestRng;
 
     use parking_lot::RwLock;
-    use rayon::prelude::*;
     use std::sync::Arc;
 
     type CurrentNetwork = console::network::MainnetV0;
@@ -359,7 +361,7 @@ mod tests {
         // Initialize a tracker for the leaders.
         let leaders = Arc::new(RwLock::new(IndexMap::<Address<CurrentNetwork>, i64>::new()));
         // Iterate through the rounds.
-        (1..=num_rounds).into_par_iter().for_each(|round| {
+        cfg_into_iter!(1..=num_rounds).for_each(|round| {
             // Compute the leader.
             let leader = committee.get_leader(round).unwrap();
             // Increment the leader count for the current leader.
