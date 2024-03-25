@@ -230,12 +230,19 @@ impl<N: Network> Puzzle<N> {
         expected_proof_target: u64,
     ) -> Result<()> {
         // Ensure the epoch hash matches.
-        if solution.epoch_hash() != expected_epoch_hash {
-            bail!("Solution does not match the expected epoch hash")
+        let epoch_hash = solution.epoch_hash();
+        if epoch_hash != expected_epoch_hash {
+            bail!(
+                "Solution epoch hash does not match the expected epoch hash (solution: {epoch_hash} - expected: {expected_epoch_hash})"
+            )
         }
+
         // Ensure the solution is greater than or equal to the expected proof target.
+        let proof_target = self.get_proof_target(solution)?;
         if self.get_proof_target(solution)? < expected_proof_target {
-            bail!("Solution does not meet the proof target requirement")
+            bail!(
+                "Solution proof target was below the expected proof target ({proof_target} < {expected_proof_target})"
+            )
         }
         Ok(())
     }
