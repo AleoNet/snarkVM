@@ -61,7 +61,7 @@ impl<'de, N: Network> Deserialize<'de> for Transmission<N> {
                         DeserializeExt::take_from_value::<D>(&mut transmission, "transmission")
                             .map_err(de::Error::custom)?,
                     )),
-                    _ => Err(error("Invalid transmission type")).map_err(de::Error::custom),
+                    _ => Err(de::Error::custom(error("Invalid transmission type"))),
                 }
             }
             false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "transmission"),

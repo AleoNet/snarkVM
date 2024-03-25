@@ -66,6 +66,7 @@ pub mod prelude {
         cfg_into_iter,
         cfg_iter,
         cfg_iter_mut,
+        cfg_keys,
         cfg_reduce,
         cfg_values,
         error,

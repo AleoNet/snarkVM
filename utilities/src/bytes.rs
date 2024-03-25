@@ -456,7 +456,7 @@ impl<'a, T: 'a + ToBytes> ToBytes for &'a T {
 }
 
 #[inline]
-pub fn bits_from_bytes_le(bytes: &[u8]) -> impl Iterator<Item = bool> + DoubleEndedIterator<Item = bool> + '_ {
+pub fn bits_from_bytes_le(bytes: &[u8]) -> impl DoubleEndedIterator<Item = bool> + '_ {
     bytes.iter().flat_map(|byte| (0..8).map(move |i| (*byte >> i) & 1 == 1))
 }
 

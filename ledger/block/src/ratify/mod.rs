@@ -24,8 +24,9 @@ use indexmap::IndexMap;
 type Variant = u8;
 /// A helper type to represent the public balances.
 type PublicBalances<N> = IndexMap<Address<N>, u64>;
-/// A helper type to represent the bonded balances.
-type BondedBalances<N> = IndexMap<Address<N>, (Address<N>, u64)>;
+/// A helper type to represent the bonded balances, as a
+/// mapping of `staker_address` to `(validator_address, withdrawal_address, amount)`.
+type BondedBalances<N> = IndexMap<Address<N>, (Address<N>, Address<N>, u64)>;
 
 // Note: The size of the `Ratify` object is 32 bytes.
 #[derive(Clone, PartialEq, Eq)]
@@ -58,8 +59,11 @@ pub(crate) mod test_helpers {
         for (address, _) in committee.members().iter() {
             public_balances.insert(*address, rng.gen());
         }
-        let bonded_balances =
-            committee.members().iter().map(|(address, (amount, _))| (*address, (*address, *amount))).collect();
+        let bonded_balances = committee
+            .members()
+            .iter()
+            .map(|(address, (amount, _))| (*address, (*address, *address, *amount)))
+            .collect();
 
         vec![
             Ratify::Genesis(Box::new(committee), Box::new(public_balances), Box::new(bonded_balances)),

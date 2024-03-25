@@ -12,6 +12,7 @@ wasm = [
   "snarkvm-algorithms/polycommit_wasm",
   "snarkvm-parameters/wasm"
 ]
+test = []
 
 [dependencies.snarkvm-algorithms]
 path = "../../algorithms"

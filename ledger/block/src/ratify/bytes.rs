@@ -50,10 +50,12 @@ impl<N: Network> FromBytes for Ratify<N> {
                     let address: Address<N> = FromBytes::read_le(&mut reader)?;
                     // Read the validator address.
                     let validator_address: Address<N> = FromBytes::read_le(&mut reader)?;
+                    // Read the withdrawal address.
+                    let withdrawal_address: Address<N> = FromBytes::read_le(&mut reader)?;
                     // Read the amount.
                     let amount: u64 = FromBytes::read_le(&mut reader)?;
                     // Insert the bonded balance.
-                    bonded_balances.insert(address, (validator_address, amount));
+                    bonded_balances.insert(address, (validator_address, withdrawal_address, amount));
                 }
                 // Return the ratify object.
                 Self::Genesis(Box::new(committee), Box::new(public_balances), Box::new(bonded_balances))
@@ -92,9 +94,10 @@ impl<N: Network> ToBytes for Ratify<N> {
                     amount.write_le(&mut writer)?;
                 }
                 u16::try_from(bonded_balances.len()).map_err(|e| error(e.to_string()))?.write_le(&mut writer)?;
-                for (address, (validator_address, amount)) in bonded_balances.iter() {
+                for (address, (validator_address, withdrawal_address, amount)) in bonded_balances.iter() {
                     address.write_le(&mut writer)?;
                     validator_address.write_le(&mut writer)?;
+                    withdrawal_address.write_le(&mut writer)?;
                     amount.write_le(&mut writer)?;
                 }
                 Ok(())

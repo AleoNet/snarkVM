@@ -175,7 +175,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     #[cfg(not(any(test, feature = "test")))]
     pub const MAXIMUM_CONFIRMED_TRANSACTIONS: usize = Transactions::<N>::MAX_TRANSACTIONS;
     /// The maximum number of confirmed transactions allowed in a block.
-    /// This is set to a deliberately low value (8) for testing purposes only.
+    /// This is deliberately set to a low value (8) for testing purposes only.
     #[cfg(any(test, feature = "test"))]
     pub const MAXIMUM_CONFIRMED_TRANSACTIONS: usize = 8;
 
@@ -413,7 +413,10 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     // The finalize operation here involves calling 'update_key_value',
                     // and update the respective leaves of the finalize tree.
                     Transaction::Execute(_, execution, fee) => {
-                        match process.finalize_execution(state, store, execution, fee.as_ref()) {
+                        // Determine if the transaction is safe for execution, and proceed to execute it.
+                        match Self::prepare_for_execution(store, execution)
+                            .and_then(|_| process.finalize_execution(state, store, execution, fee.as_ref()))
+                        {
                             // Construct the accepted execute transaction.
                             Ok(finalize) => {
                                 ConfirmedTransaction::accepted_execute(counter, transaction.clone(), finalize)
@@ -522,7 +525,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             let post_ratifications = reward_ratifications.iter().chain(post_ratifications);
 
             // Process the post-ratifications.
-            match Self::atomic_post_ratify(store, state, post_ratifications, solutions) {
+            match Self::atomic_post_ratify(&self.puzzle, store, state, post_ratifications, solutions) {
                 // Store the finalize operations from the post-ratify.
                 Ok(operations) => ratified_finalize_operations.extend(operations),
                 // Note: This will abort the entire atomic batch.
@@ -766,7 +769,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
             /* Perform the ratifications after finalize. */
 
-            match Self::atomic_post_ratify(store, state, post_ratifications, solutions) {
+            match Self::atomic_post_ratify(&self.puzzle, store, state, post_ratifications, solutions) {
                 // Store the finalize operations from the post-ratify.
                 Ok(operations) => ratified_finalize_operations.extend(operations),
                 // Note: This will abort the entire atomic batch.
@@ -786,6 +789,61 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         })
     }
 
+    /// Performs precondition checks on the transaction prior to execution.
+    ///
+    /// This method is used to check the following conditions:
+    /// - If the transaction contains a `credits.aleo/bond_public` transition,
+    ///   then the outcome should not exceed the maximum committee size.
+    #[inline]
+    fn prepare_for_execution(store: &FinalizeStore<N, C::FinalizeStorage>, execution: &Execution<N>) -> Result<()> {
+        // Construct the program ID.
+        let program_id = ProgramID::from_str("credits.aleo")?;
+        // Construct the committee mapping name.
+        let committee_mapping = Identifier::from_str("committee")?;
+
+        // Check if the execution has any `bond_public` transitions, and collect
+        // the unique validator addresses if so.
+        // Note: This does not dedup for existing and new validator addresses.
+        let bond_validator_addresses: HashSet<_> = execution
+            .transitions()
+            .filter_map(|transition| match transition.is_bond_public() {
+                // Check the first input of the transition for the validator address.
+                true => match transition.inputs().first() {
+                    Some(Input::Public(_, Some(Plaintext::Literal(Literal::Address(address), _)))) => Some(address),
+                    _ => None,
+                },
+                false => None,
+            })
+            .collect();
+
+        // Check if we need to reject the execution if the number of new validators exceeds the maximum committee size.
+        match bond_validator_addresses.is_empty() {
+            false => {
+                // Retrieve the committee members from storage.
+                let committee_members = store
+                    .get_mapping_speculative(program_id, committee_mapping)?
+                    .into_iter()
+                    .map(|(key, _)| match key {
+                        // Extract the address from the key.
+                        Plaintext::Literal(Literal::Address(address), _) => Ok(address),
+                        _ => Err(anyhow!("Invalid committee key (missing address) - {key}")),
+                    })
+                    .collect::<Result<HashSet<_>>>()?;
+                // Get the number of new validators being bonded to.
+                let num_new_validators =
+                    bond_validator_addresses.into_iter().filter(|address| !committee_members.contains(address)).count();
+                // Compute the next committee size.
+                let next_committee_size = committee_members.len().saturating_add(num_new_validators);
+                // Check that the number of new validators being bonded does not exceed the maximum number of validators.
+                match next_committee_size > Committee::<N>::MAX_COMMITTEE_SIZE as usize {
+                    true => Err(anyhow!("Call to 'credits.aleo/bond_public' exceeds the committee size")),
+                    false => Ok(()),
+                }
+            }
+            true => Ok(()),
+        }
+    }
+
     /// Performs the pre-ratifications before finalizing transactions.
     #[inline]
     fn atomic_pre_ratify<'a>(
@@ -803,6 +861,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         let account_mapping = Identifier::from_str("account")?;
         // Construct the metadata mapping name.
         let metadata_mapping = Identifier::from_str("metadata")?;
+        // Construct the withdraw mapping name.
+        let withdraw_mapping = Identifier::from_str("withdraw")?;
 
         // Initialize a list of finalize operations.
         let mut finalize_operations = Vec::new();
@@ -848,7 +908,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
                     // Calculate the stake per validator using `bonded_balances`.
                     let mut stake_per_validator = IndexMap::with_capacity(committee.members().len());
-                    for (address, (validator_address, amount)) in bonded_balances.iter() {
+                    for (address, (validator_address, _, amount)) in bonded_balances.iter() {
                         // Check that the amount meets the minimum requirement, depending on whether the address is a validator.
                         if *address == *validator_address {
                             ensure!(
@@ -896,9 +956,25 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                         "Ratify::Genesis(..) incorrect total total stake for the committee"
                     );
 
+                    // Split the bonded balances into stakers and withdrawal addresses.
+                    let (next_stakers, withdrawal_addresses) = bonded_balances.iter().fold(
+                        (
+                            IndexMap::with_capacity(bonded_balances.len()),
+                            IndexMap::with_capacity(bonded_balances.len()),
+                        ),
+                        |(mut stakers, mut withdrawal_addresses), (staker, (validator, withdrawal_address, amount))| {
+                            stakers.insert(*staker, (*validator, *amount));
+                            withdrawal_addresses.insert(*staker, *withdrawal_address);
+                            (stakers, withdrawal_addresses)
+                        },
+                    );
+
                     // Construct the next committee map and next bonded map.
                     let (next_committee_map, next_bonded_map) =
-                        to_next_commitee_map_and_bonded_map(committee, bonded_balances);
+                        to_next_commitee_map_and_bonded_map(committee, &next_stakers);
+
+                    // Construct the next withdraw map.
+                    let next_withdraw_map = to_next_withdraw_map(&withdrawal_addresses);
 
                     // Insert the next committee into storage.
                     store.committee_store().insert(state.block_height(), *(committee.clone()))?;
@@ -908,6 +984,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                         store.replace_mapping(program_id, committee_mapping, next_committee_map)?,
                         // Replace the bonded mapping in storage.
                         store.replace_mapping(program_id, bonded_mapping, next_bonded_map)?,
+                        // Replace the withdraw mapping in storage.
+                        store.replace_mapping(program_id, withdraw_mapping, next_withdraw_map)?,
                     ]);
 
                     // Update the number of validators.
@@ -963,6 +1041,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// Performs the post-ratifications after finalizing transactions.
     #[inline]
     fn atomic_post_ratify<'a>(
+        puzzle: &Puzzle<N>,
         store: &FinalizeStore<N, C::FinalizeStorage>,
         state: FinalizeGlobalState,
         post_ratifications: impl Iterator<Item = &'a Ratify<N>>,
@@ -1040,8 +1119,10 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                         continue;
                     };
                     // Compute the proof targets, with the corresponding addresses.
-                    let proof_targets =
-                        solutions.values().map(|s| Ok((s.address(), s.to_target()?))).collect::<Result<Vec<_>>>()?;
+                    let proof_targets = solutions
+                        .values()
+                        .map(|s| Ok((s.address(), puzzle.get_proof_target(s)?)))
+                        .collect::<Result<Vec<_>>>()?;
                     // Calculate the proving rewards.
                     let proving_rewards = proving_rewards(proof_targets, *puzzle_reward);
                     // Iterate over the proving rewards.
@@ -1392,18 +1473,19 @@ finalize transfer_public:
     }
 
     /// Returns the `bonded_balances` given the validators and delegators.
+    /// Note that the withdrawal address is the same as the staker address.
     fn sample_bonded_balances<N: Network>(
         validators: &IndexMap<PrivateKey<N>, (u64, bool)>,
         delegators: &IndexMap<PrivateKey<N>, (Address<N>, u64)>,
-    ) -> IndexMap<Address<N>, (Address<N>, u64)> {
+    ) -> IndexMap<Address<N>, (Address<N>, Address<N>, u64)> {
         let mut bonded_balances = IndexMap::with_capacity(validators.len() + delegators.len());
         for (private_key, (amount, _)) in validators {
             let address = Address::try_from(private_key).unwrap();
-            bonded_balances.insert(address, (address, *amount));
+            bonded_balances.insert(address, (address, address, *amount));
         }
         for (private_key, (validator, amount)) in delegators {
             let address = Address::try_from(private_key).unwrap();
-            bonded_balances.insert(address, (*validator, *amount));
+            bonded_balances.insert(address, (*validator, address, *amount));
         }
         bonded_balances
     }
@@ -1982,6 +2064,7 @@ finalize compute:
         assert!(result.is_err());
 
         // Reset the validators.
+        // Note: We use a smaller committee size to ensure that there is enough supply to allocate to the validators and genesis block transactions.
         let validators =
             sample_validators::<CurrentNetwork>(Committee::<CurrentNetwork>::MAX_COMMITTEE_SIZE as usize, rng);
 
@@ -2025,8 +2108,9 @@ finalize compute:
             VM::from(ConsensusStore::<CurrentNetwork, ConsensusMemory<CurrentNetwork>>::open(None).unwrap()).unwrap();
 
         // Construct the validators.
+        // Note: We use a smaller committee size to ensure that there is enough supply to allocate to the validators and genesis block transactions.
         let validators =
-            sample_validators::<CurrentNetwork>(Committee::<CurrentNetwork>::MAX_COMMITTEE_SIZE as usize, rng);
+            sample_validators::<CurrentNetwork>(Committee::<CurrentNetwork>::MAX_COMMITTEE_SIZE as usize / 4, rng);
 
         // Construct the delegators, greater than the maximum delegator size.
         let delegators = (0..MAX_DELEGATORS + 1)
@@ -2146,6 +2230,7 @@ finalize compute:
         let bonded_mapping_name = Identifier::from_str("bonded").unwrap();
         let metadata_mapping_name = Identifier::from_str("metadata").unwrap();
         let unbonding_mapping_name = Identifier::from_str("unbonding").unwrap();
+        let withdraw_mapping_name = Identifier::from_str("withdraw").unwrap();
 
         // Get and check the committee mapping.
         let actual_committee = vm.finalize_store().get_mapping_confirmed(program_id, committee_mapping_name).unwrap();
@@ -2185,7 +2270,7 @@ finalize compute:
             // Note that the first validator is used to execute additional transactions in `VM::genesis_quorum`.
             // Therefore, the balance of the first validator will be different from the expected balance.
             if entry.0 == Plaintext::from_str(&first_validator.to_string()).unwrap() {
-                assert_eq!(entry.1, Value::from_str("294999983894244u64").unwrap());
+                assert_eq!(entry.1, Value::from_str("144991999894244u64").unwrap());
             } else {
                 assert!(expected_account.contains(entry));
             }
@@ -2195,7 +2280,7 @@ finalize compute:
         let actual_bonded = vm.finalize_store().get_mapping_confirmed(program_id, bonded_mapping_name).unwrap();
         let expected_bonded = bonded_balances
             .iter()
-            .map(|(address, (validator, amount))| {
+            .map(|(address, (validator, _, amount))| {
                 (
                     Plaintext::from_str(&address.to_string()).unwrap(),
                     Value::from_str(&format!("{{ validator: {validator}, microcredits: {amount}u64 }}")).unwrap(),
@@ -2208,6 +2293,25 @@ finalize compute:
         assert_eq!(actual_bonded.len(), expected_bonded.len());
         for entry in actual_bonded.iter() {
             assert!(expected_bonded.contains(entry));
+        }
+
+        // Get and check the withdraw mapping.
+        let actual_withdraw = vm.finalize_store().get_mapping_confirmed(program_id, withdraw_mapping_name).unwrap();
+        let expected_withdraw = bonded_balances
+            .iter()
+            .map(|(address, (_, withdrawal_address, _))| {
+                (
+                    Plaintext::from_str(&address.to_string()).unwrap(),
+                    Value::from_str(&withdrawal_address.to_string()).unwrap(),
+                )
+            })
+            .collect_vec();
+        // Note that `actual_withdraw` and `expected_withdraw` are vectors and not necessarily in the same order.
+        // By checking that the lengths of the vector are equal and that all entries in `actual_withdraw` are in `expected_withdraw`,
+        // we can ensure that the two vectors contain the same data.
+        assert_eq!(actual_withdraw.len(), expected_withdraw.len());
+        for entry in actual_withdraw.iter() {
+            assert!(expected_withdraw.contains(entry));
         }
 
         // Get and check the entry in metadata mapping corresponding to the number of validators.
@@ -2323,6 +2427,8 @@ finalize compute:
                     ("credits.aleo", "bond_public"),
                     vec![
                         Value::<CurrentNetwork>::from_str(&validator.to_string()).unwrap(),
+                        Value::<CurrentNetwork>::from_str(&Address::try_from(private_key).unwrap().to_string())
+                            .unwrap(),
                         Value::<CurrentNetwork>::from_str(&format!("{amount}u64")).unwrap(),
                     ]
                     .into_iter(),
@@ -2391,6 +2497,7 @@ finalize compute:
         let unbonding_mapping_name = Identifier::from_str("unbonding").unwrap();
         let account_mapping_name = Identifier::from_str("account").unwrap();
         let metadata_mapping_name = Identifier::from_str("metadata").unwrap();
+        let withdraw_mapping_name = Identifier::from_str("withdraw").unwrap();
 
         let committee_1 = vm_1.finalize_store().get_mapping_confirmed(program_id, committee_mapping_name).unwrap();
         let committee_2 = vm_2.finalize_store().get_mapping_confirmed(program_id, committee_mapping_name).unwrap();
@@ -2425,6 +2532,11 @@ finalize compute:
         let metadata_1 = vm_1.finalize_store().get_mapping_confirmed(program_id, metadata_mapping_name).unwrap();
         let metadata_2 = vm_2.finalize_store().get_mapping_confirmed(program_id, metadata_mapping_name).unwrap();
         assert_eq!(metadata_1, metadata_2);
+
+        // Check that the withdraw mapping across both VMs are equal.
+        let withdraw_1 = vm_1.finalize_store().get_mapping_confirmed(program_id, withdraw_mapping_name).unwrap();
+        let withdraw_2 = vm_2.finalize_store().get_mapping_confirmed(program_id, withdraw_mapping_name).unwrap();
+        assert_eq!(withdraw_1, withdraw_2);
     }
 
     #[test]
@@ -2722,6 +2834,7 @@ finalize compute:
                         &Address::try_from(validators.keys().next().unwrap()).unwrap().to_string(),
                     )
                     .unwrap(),
+                    Value::<CurrentNetwork>::from_str(&Address::try_from(delegator_key).unwrap().to_string()).unwrap(),
                     Value::<CurrentNetwork>::from_str(&format!("{MIN_DELEGATOR_STAKE}u64")).unwrap(),
                 ]
                 .into_iter(),
@@ -2760,6 +2873,7 @@ finalize compute:
                         &Address::try_from(validators.keys().nth(1).unwrap()).unwrap().to_string(),
                     )
                     .unwrap(),
+                    Value::<CurrentNetwork>::from_str(&Address::try_from(delegator_key).unwrap().to_string()).unwrap(),
                     Value::<CurrentNetwork>::from_str(&format!("{MIN_DELEGATOR_STAKE}u64")).unwrap(),
                 ]
                 .into_iter(),
@@ -2793,5 +2907,91 @@ finalize compute:
             )
             .unwrap();
         assert_eq!(bonded_mapping.len(), validators.len() + 1);
+    }
+
+    #[test]
+    fn test_ratify_genesis_withdrawal_address() {
+        const NUM_VALIDATORS: usize = 5;
+        const NUM_DELEGATORS: usize = 8;
+
+        // Sample an RNG.
+        let rng = &mut TestRng::default();
+
+        // Initialize the VM.
+        let vm =
+            VM::from(ConsensusStore::<CurrentNetwork, ConsensusMemory<CurrentNetwork>>::open(None).unwrap()).unwrap();
+
+        // Sample the validators.
+        let validators = sample_validators(NUM_VALIDATORS, rng);
+
+        // Sample the delegators, cycling through the validators.
+        let delegators: IndexMap<_, _> = (0..NUM_DELEGATORS)
+            .map(|i| {
+                let private_key = PrivateKey::new(rng).unwrap();
+                let validator = Address::try_from(validators.keys().nth(i % NUM_VALIDATORS).unwrap()).unwrap();
+                let amount = MIN_DELEGATOR_STAKE;
+                (private_key, (validator, amount))
+            })
+            .collect();
+
+        // Construct the committee.
+        // Track the allocated amount.
+        let (committee_map, allocated_amount) = sample_committee_map_and_allocated_amount(&validators, &delegators);
+        let committee = Committee::new_genesis(committee_map).unwrap();
+
+        // Construct the public balances, allocating the remaining supply to the validators and zero to the delegators.
+        let mut public_balances = sample_public_balances(
+            &validators.keys().map(|private_key| Address::try_from(private_key).unwrap()).collect::<Vec<_>>(),
+            <CurrentNetwork as Network>::STARTING_SUPPLY - allocated_amount,
+        );
+        public_balances.extend(sample_public_balances(
+            &delegators.keys().map(|private_key| Address::try_from(private_key).unwrap()).collect::<Vec<_>>(),
+            0,
+        ));
+
+        // Construct the bonded balances.
+        let mut bonded_balances = sample_bonded_balances(&validators, &delegators);
+
+        // Randomly sample and update the withdrawal addresses in the bonded balances.
+        for (_, (_, withdrawal_address, _)) in bonded_balances.iter_mut() {
+            *withdrawal_address = Address::rand(rng);
+        }
+
+        // Construct the genesis block.
+        let genesis = vm
+            .genesis_quorum(
+                validators.keys().next().unwrap(),
+                committee.clone(),
+                public_balances.clone(),
+                bonded_balances.clone(),
+                rng,
+            )
+            .unwrap();
+
+        // Add the genesis block to the VM.
+        vm.add_next_block(&genesis).unwrap();
+
+        // Check that the state of the `credits.aleo` program is correct.
+        let program_id = ProgramID::from_str("credits.aleo").unwrap();
+        let withdraw_mapping_name = Identifier::from_str("withdraw").unwrap();
+
+        // Get and check the withdraw mapping.
+        let actual_withdraw = vm.finalize_store().get_mapping_confirmed(program_id, withdraw_mapping_name).unwrap();
+        let expected_withdraw = bonded_balances
+            .iter()
+            .map(|(address, (_, withdrawal_address, _))| {
+                (
+                    Plaintext::from_str(&address.to_string()).unwrap(),
+                    Value::from_str(&withdrawal_address.to_string()).unwrap(),
+                )
+            })
+            .collect_vec();
+        // Note that `actual_withdraw` and `expected_withdraw` are vectors and not necessarily in the same order.
+        // By checking that the lengths of the vector are equal and that all entries in `actual_withdraw` are in `expected_withdraw`,
+        // we can ensure that the two vectors contain the same data.
+        assert_eq!(actual_withdraw.len(), expected_withdraw.len());
+        for entry in actual_withdraw.iter() {
+            assert!(expected_withdraw.contains(entry));
+        }
     }
 }

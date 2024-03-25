@@ -19,8 +19,8 @@ impl<N: Network> FromStr for TransmissionID<N> {
 
     /// Initializes the transmission ID from a string.
     fn from_str(input: &str) -> Result<Self, Self::Err> {
-        if input.starts_with(PUZZLE_COMMITMENT_PREFIX) {
-            Ok(Self::Solution(PuzzleCommitment::from_str(input)?))
+        if input.starts_with(SOLUTION_ID_PREFIX) {
+            Ok(Self::Solution(SolutionID::from_str(input)?))
         } else if input.starts_with(TRANSACTION_PREFIX) {
             Ok(Self::Transaction(
                 N::TransactionID::from_str(input).map_err(|_| anyhow!("Failed to parse transaction ID: {input}"))?,
