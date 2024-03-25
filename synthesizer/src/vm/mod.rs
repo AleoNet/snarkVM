@@ -35,6 +35,7 @@ use ledger_block::{
     Execution,
     Fee,
     Header,
+    Input,
     Ratifications,
     Ratify,
     Rejected,
@@ -64,7 +65,7 @@ use indexmap::{IndexMap, IndexSet};
 use itertools::Either;
 use lru::LruCache;
 use parking_lot::{Mutex, RwLock};
-use std::{num::NonZeroUsize, sync::Arc};
+use std::{collections::HashSet, num::NonZeroUsize, sync::Arc};
 
 #[cfg(not(feature = "serial"))]
 use rayon::prelude::*;

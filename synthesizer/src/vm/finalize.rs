@@ -430,7 +430,10 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     // The finalize operation here involves calling 'update_key_value',
                     // and update the respective leaves of the finalize tree.
                     Transaction::Execute(_, execution, fee) => {
-                        match process.finalize_execution(state, store, execution, fee.as_ref()) {
+                        // Determine if the transaction is safe for execution, and proceed to execute it.
+                        match Self::prepare_for_execution(store, execution)
+                            .and_then(|_| process.finalize_execution(state, store, execution, fee.as_ref()))
+                        {
                             // Construct the accepted execute transaction.
                             Ok(finalize) => {
                                 ConfirmedTransaction::accepted_execute(counter, transaction.clone(), finalize)
@@ -801,6 +804,61 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
             Ok(ratified_finalize_operations)
         })
+    }
+
+    /// Performs precondition checks on the transaction prior to execution.
+    ///
+    /// This method is used to check the following conditions:
+    /// - If the transaction contains a `credits.aleo/bond_public` transition,
+    ///   then the outcome should not exceed the maximum committee size.
+    #[inline]
+    fn prepare_for_execution(store: &FinalizeStore<N, C::FinalizeStorage>, execution: &Execution<N>) -> Result<()> {
+        // Construct the program ID.
+        let program_id = ProgramID::from_str("credits.aleo")?;
+        // Construct the committee mapping name.
+        let committee_mapping = Identifier::from_str("committee")?;
+
+        // Check if the execution has any `bond_public` transitions, and collect
+        // the unique validator addresses if so.
+        // Note: This does not dedup for existing and new validator addresses.
+        let bond_validator_addresses: HashSet<_> = execution
+            .transitions()
+            .filter_map(|transition| match transition.is_bond_public() {
+                // Check the first input of the transition for the validator address.
+                true => match transition.inputs().first() {
+                    Some(Input::Public(_, Some(Plaintext::Literal(Literal::Address(address), _)))) => Some(address),
+                    _ => None,
+                },
+                false => None,
+            })
+            .collect();
+
+        // Check if we need to reject the execution if the number of new validators exceeds the maximum committee size.
+        match bond_validator_addresses.is_empty() {
+            false => {
+                // Retrieve the committee members from storage.
+                let committee_members = store
+                    .get_mapping_speculative(program_id, committee_mapping)?
+                    .into_iter()
+                    .map(|(key, _)| match key {
+                        // Extract the address from the key.
+                        Plaintext::Literal(Literal::Address(address), _) => Ok(address),
+                        _ => Err(anyhow!("Invalid committee key (missing address) - {key}")),
+                    })
+                    .collect::<Result<HashSet<_>>>()?;
+                // Get the number of new validators being bonded to.
+                let num_new_validators =
+                    bond_validator_addresses.into_iter().filter(|address| !committee_members.contains(address)).count();
+                // Compute the next committee size.
+                let next_committee_size = committee_members.len().saturating_add(num_new_validators);
+                // Check that the number of new validators being bonded does not exceed the maximum number of validators.
+                match next_committee_size > Committee::<N>::MAX_COMMITTEE_SIZE as usize {
+                    true => Err(anyhow!("Call to 'credits.aleo/bond_public' exceeds the committee size")),
+                    false => Ok(()),
+                }
+            }
+            true => Ok(()),
+        }
     }
 
     /// Performs the pre-ratifications before finalizing transactions.
