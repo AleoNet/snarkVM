@@ -15,7 +15,7 @@
 use super::*;
 use console::program::{FinalizeType, Future, Register};
 use synthesizer_program::{Await, FinalizeRegistersState, Operand};
-use utilities::handle_halting;
+use utilities::try_vm_runtime;
 
 use std::collections::HashSet;
 
@@ -227,9 +227,7 @@ fn finalize_transition<N: Network, P: FinalizeStorage<N>>(
             // Finalize the command.
             match &command {
                 Command::BranchEq(branch_eq) => {
-                    let result = handle_halting!(panic::AssertUnwindSafe(|| {
-                        branch_to(counter, branch_eq, finalize, stack, &registers)
-                    }));
+                    let result = try_vm_runtime!(|| branch_to(counter, branch_eq, finalize, stack, &registers));
                     match result {
                         Ok(Ok(new_counter)) => {
                             counter = new_counter;
@@ -241,9 +239,7 @@ fn finalize_transition<N: Network, P: FinalizeStorage<N>>(
                     }
                 }
                 Command::BranchNeq(branch_neq) => {
-                    let result = handle_halting!(panic::AssertUnwindSafe(|| {
-                        branch_to(counter, branch_neq, finalize, stack, &registers)
-                    }));
+                    let result = try_vm_runtime!(|| branch_to(counter, branch_neq, finalize, stack, &registers));
                     match result {
                         Ok(Ok(new_counter)) => {
                             counter = new_counter;
@@ -277,16 +273,15 @@ fn finalize_transition<N: Network, P: FinalizeStorage<N>>(
                         None => bail!("Transition ID '{transition_id}' not found in call graph"),
                     };
 
-                    let callee_state = match handle_halting!(panic::AssertUnwindSafe(|| {
-                        // Set up the finalize state for the await.
-                        setup_await(state, await_, stack, &registers, child_transition_id)
-                    })) {
-                        Ok(Ok(callee_state)) => callee_state,
-                        // If the evaluation fails, bail and return the error.
-                        Ok(Err(error)) => bail!("'finalize' failed to evaluate command ({command}): {error}"),
-                        // If the evaluation fails, bail and return the error.
-                        Err(_) => bail!("'finalize' failed to evaluate command ({command})"),
-                    };
+                    // Set up the finalize state for the await.
+                    let callee_state =
+                        match try_vm_runtime!(|| setup_await(state, await_, stack, &registers, child_transition_id)) {
+                            Ok(Ok(callee_state)) => callee_state,
+                            // If the evaluation fails, bail and return the error.
+                            Ok(Err(error)) => bail!("'finalize' failed to evaluate command ({command}): {error}"),
+                            // If the evaluation fails, bail and return the error.
+                            Err(_) => bail!("'finalize' failed to evaluate command ({command})"),
+                        };
 
                     // Increment the call counter.
                     call_counter += 1;
@@ -306,8 +301,7 @@ fn finalize_transition<N: Network, P: FinalizeStorage<N>>(
                     continue 'outer;
                 }
                 _ => {
-                    let result =
-                        handle_halting!(panic::AssertUnwindSafe(|| { command.finalize(stack, store, &mut registers) }));
+                    let result = try_vm_runtime!(|| command.finalize(stack, store, &mut registers));
                     match result {
                         // If the evaluation succeeds with an operation, add it to the list.
                         Ok(Ok(Some(finalize_operation))) => finalize_operations.push(finalize_operation),

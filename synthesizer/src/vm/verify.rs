@@ -32,6 +32,38 @@ macro_rules! ensure_is_unique {
 }
 
 impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
+    /// The maximum number of deployments to verify in parallel.
+    pub(crate) const MAX_PARALLEL_DEPLOY_VERIFICATIONS: usize = 5;
+    /// The maximum number of executions to verify in parallel.
+    pub(crate) const MAX_PARALLEL_EXECUTE_VERIFICATIONS: usize = 1000;
+
+    /// Verifies the list of transactions in the VM. On failure, returns an error.
+    pub fn check_transactions<R: CryptoRng + Rng>(
+        &self,
+        transactions: &[(&Transaction<N>, Option<Field<N>>)],
+        rng: &mut R,
+    ) -> Result<()> {
+        // Separate the transactions into deploys and executions.
+        let (deployments, executions): (Vec<_>, Vec<_>) = transactions.iter().partition(|(tx, _)| tx.is_deploy());
+        // Chunk the deploys and executions into groups for parallel verification.
+        let deployments_for_verification = deployments.chunks(Self::MAX_PARALLEL_DEPLOY_VERIFICATIONS);
+        let executions_for_verification = executions.chunks(Self::MAX_PARALLEL_EXECUTE_VERIFICATIONS);
+
+        // Verify the transactions in batches.
+        for transactions in deployments_for_verification.chain(executions_for_verification) {
+            // Ensure each transaction is well-formed and unique.
+            let rngs = (0..transactions.len()).map(|_| StdRng::from_seed(rng.gen())).collect::<Vec<_>>();
+            cfg_iter!(transactions).zip(rngs).try_for_each(|((transaction, rejected_id), mut rng)| {
+                self.check_transaction(transaction, *rejected_id, &mut rng)
+                    .map_err(|e| anyhow!("Invalid transaction found in the transactions list: {e}"))
+            })?;
+        }
+
+        Ok(())
+    }
+}
+
+impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// Verifies the transaction in the VM. On failure, returns an error.
     #[inline]
     pub fn check_transaction<R: CryptoRng + Rng>(
@@ -121,7 +153,11 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 }
                 // Verify the deployment if it has not been verified before.
                 if !is_partially_verified {
-                    self.check_deployment_internal(deployment, rng)?;
+                    // Verify the deployment.
+                    match try_vm_runtime!(|| self.check_deployment_internal(deployment, rng)) {
+                        Ok(result) => result?,
+                        Err(_) => bail!("VM safely halted transaction '{id}' during verification"),
+                    }
                 }
             }
             Transaction::Execute(id, execution, _) => {
@@ -134,7 +170,10 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     bail!("Transaction '{id}' contains a previously rejected execution")
                 }
                 // Verify the execution.
-                self.check_execution_internal(execution, is_partially_verified)?;
+                match try_vm_runtime!(|| self.check_execution_internal(execution, is_partially_verified)) {
+                    Ok(result) => result?,
+                    Err(_) => bail!("VM safely halted transaction '{id}' during verification"),
+                }
             }
             Transaction::Fee(..) => { /* no-op */ }
         }
