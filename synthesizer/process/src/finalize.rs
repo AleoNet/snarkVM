@@ -17,7 +17,7 @@ use console::program::{FinalizeType, Future, Register};
 use synthesizer_program::{Await, FinalizeRegistersState, Operand};
 use utilities::handle_halting;
 
-use std::collections::HashSet;
+use std::{collections::HashSet, panic::AssertUnwindSafe};
 
 impl<N: Network> Process<N> {
     /// Finalizes the deployment and fee.
@@ -227,7 +227,7 @@ fn finalize_transition<N: Network, P: FinalizeStorage<N>>(
             // Finalize the command.
             match &command {
                 Command::BranchEq(branch_eq) => {
-                    let result = handle_halting!(panic::AssertUnwindSafe(|| {
+                    let result = handle_halting!(AssertUnwindSafe(|| {
                         branch_to(counter, branch_eq, finalize, stack, &registers)
                     }));
                     match result {
@@ -241,7 +241,7 @@ fn finalize_transition<N: Network, P: FinalizeStorage<N>>(
                     }
                 }
                 Command::BranchNeq(branch_neq) => {
-                    let result = handle_halting!(panic::AssertUnwindSafe(|| {
+                    let result = handle_halting!(AssertUnwindSafe(|| {
                         branch_to(counter, branch_neq, finalize, stack, &registers)
                     }));
                     match result {
@@ -277,7 +277,7 @@ fn finalize_transition<N: Network, P: FinalizeStorage<N>>(
                         None => bail!("Transition ID '{transition_id}' not found in call graph"),
                     };
 
-                    let callee_state = match handle_halting!(panic::AssertUnwindSafe(|| {
+                    let callee_state = match handle_halting!(AssertUnwindSafe(|| {
                         // Set up the finalize state for the await.
                         setup_await(state, await_, stack, &registers, child_transition_id)
                     })) {
@@ -307,7 +307,7 @@ fn finalize_transition<N: Network, P: FinalizeStorage<N>>(
                 }
                 _ => {
                     let result =
-                        handle_halting!(panic::AssertUnwindSafe(|| { command.finalize(stack, store, &mut registers) }));
+                        handle_halting!(AssertUnwindSafe(|| { command.finalize(stack, store, &mut registers) }));
                     match result {
                         // If the evaluation succeeds with an operation, add it to the list.
                         Ok(Ok(Some(finalize_operation))) => finalize_operations.push(finalize_operation),

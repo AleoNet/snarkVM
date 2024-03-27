@@ -67,7 +67,7 @@ use itertools::Either;
 use lru::LruCache;
 use parking_lot::{Mutex, RwLock};
 use rand::{rngs::StdRng, SeedableRng};
-use std::{collections::HashSet, num::NonZeroUsize, sync::Arc};
+use std::{collections::HashSet, num::NonZeroUsize, panic::AssertUnwindSafe, sync::Arc};
 
 #[cfg(not(feature = "serial"))]
 use rayon::prelude::*;
@@ -1433,13 +1433,9 @@ function do:
             Deployment::new(deployment.edition(), deployment.program().clone(), vks_with_underreport).unwrap();
         let adjusted_transaction = Transaction::Deploy(txid, program_owner, Box::new(adjusted_deployment), fee);
 
-        // Verify the deployment transaction. It should panic when enforcing the first constraint over the vk limit.
+        // Verify the deployment transaction. It should error when enforcing the first constraint over the vk limit.
         let result = vm.check_transaction(&adjusted_transaction, None, rng);
         assert!(result.is_err());
-        // Check that the error message mentions the panic.
-        if let Err(err) = result {
-            assert!(err.to_string().contains("panic"));
-        }
 
         // Create a standard transaction
         // Prepare the inputs.

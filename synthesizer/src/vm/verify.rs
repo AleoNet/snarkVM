@@ -202,12 +202,10 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 }
                 // Verify the deployment if it has not been verified before.
                 if !is_partially_verified {
-                    // Catch any panics during verification.
-                    match handle_halting!(panic::AssertUnwindSafe(|| {
-                        self.check_deployment_internal(deployment, rng)
-                    })) {
+                    // Verify the deployment.
+                    match handle_halting!(AssertUnwindSafe(|| { self.check_deployment_internal(deployment, rng) })) {
                         Ok(result) => result?,
-                        Err(_) => bail!("Transaction '{id}' panicked during verification"),
+                        Err(_) => bail!("VM safely halted transaction '{id}' during verification"),
                     }
                 }
             }
@@ -220,12 +218,12 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 if self.block_store().contains_rejected_deployment_or_execution_id(&execution_id)? {
                     bail!("Transaction '{id}' contains a previously rejected execution")
                 }
-                // Verify the execution and catch any panics.
-                match handle_halting!(panic::AssertUnwindSafe(|| {
+                // Verify the execution.
+                match handle_halting!(AssertUnwindSafe(|| {
                     self.check_execution_internal(execution, is_partially_verified)
                 })) {
                     Ok(result) => result?,
-                    Err(_) => bail!("Transaction '{id}' panicked during verification"),
+                    Err(_) => bail!("VM safely halted transaction '{id}' during verification"),
                 }
             }
             Transaction::Fee(..) => { /* no-op */ }
