@@ -33,9 +33,9 @@ macro_rules! ensure_is_unique {
 
 impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// The maximum number of deployments to verify in parallel.
-    const MAX_PARALLEL_DEPLOY_VERIFICATIONS: usize = 5;
+    pub(crate) const MAX_PARALLEL_DEPLOY_VERIFICATIONS: usize = 5;
     /// The maximum number of executions to verify in parallel.
-    const MAX_PARALLEL_EXECUTE_VERIFICATIONS: usize = 1000;
+    pub(crate) const MAX_PARALLEL_EXECUTE_VERIFICATIONS: usize = 1000;
 
     /// Verifies the list of transactions in the VM. On failure, returns an error.
     pub fn check_transactions<R: CryptoRng + Rng>(
@@ -60,55 +60,6 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         }
 
         Ok(())
-    }
-
-    /// Prepares the transactions for speculation. This function returns a list of valid transactions
-    /// and a list of transactions to be aborted.
-    ///
-    /// Transactions will be aborted if they are a fee transaction, or if they are invalid.
-    pub(crate) fn prepare_transactions_for_speculate<'a, R: CryptoRng + Rng>(
-        &self,
-        transactions: &[&'a Transaction<N>],
-        rng: &mut R,
-    ) -> Result<(Vec<&'a Transaction<N>>, Vec<(&'a Transaction<N>, String)>)> {
-        // Construct the list of valid and invalid transactions.
-        let mut valid_transactions = Vec::with_capacity(transactions.len());
-        let mut aborted_transactions = Vec::with_capacity(transactions.len());
-
-        // Separate the transactions into deploys and executions.
-        let (deployments, executions): (Vec<&Transaction<N>>, Vec<&Transaction<N>>) =
-            transactions.iter().partition(|tx| tx.is_deploy());
-        // Chunk the deploys and executions into groups for parallel verification.
-        let deployments_for_verification = deployments.chunks(Self::MAX_PARALLEL_DEPLOY_VERIFICATIONS);
-        let executions_for_verification = executions.chunks(Self::MAX_PARALLEL_EXECUTE_VERIFICATIONS);
-
-        // Verify the transactions in batches and separate the valid and invalid transactions.
-        for transactions in deployments_for_verification.chain(executions_for_verification) {
-            let rngs = (0..transactions.len()).map(|_| StdRng::from_seed(rng.gen())).collect::<Vec<_>>();
-            // Verify the transactions and collect the error message if there is one.
-            let (valid, invalid): (Vec<_>, Vec<_>) =
-                cfg_into_iter!(transactions).zip(rngs).partition_map(|(transaction, mut rng)| {
-                    // Abort the transaction if it is a fee transaction.
-                    if transaction.is_fee() {
-                        return Either::Right((
-                            *transaction,
-                            "Fee transactions are not allowed in speculate".to_string(),
-                        ));
-                    }
-                    // Verify the transaction.
-                    match self.check_transaction(transaction, None, &mut rng) {
-                        Ok(_) => Either::Left(*transaction),
-                        Err(e) => Either::Right((*transaction, e.to_string())),
-                    }
-                });
-
-            // Collect the valid and aborted transactions.
-            valid_transactions.extend(valid);
-            aborted_transactions.extend(invalid);
-        }
-
-        // Return the valid and invalid transactions.
-        Ok((valid_transactions, aborted_transactions))
     }
 }
 
