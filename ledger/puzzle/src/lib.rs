@@ -231,11 +231,15 @@ impl<N: Network> Puzzle<N> {
     ) -> Result<()> {
         // Ensure the epoch hash matches.
         if solution.epoch_hash() != expected_epoch_hash {
-            bail!("Solution does not match the expected epoch hash")
+            bail!(
+                "Solution does not match the expected epoch hash (found '{}', expected '{expected_epoch_hash}')",
+                solution.epoch_hash()
+            )
         }
         // Ensure the solution is greater than or equal to the expected proof target.
-        if self.get_proof_target(solution)? < expected_proof_target {
-            bail!("Solution does not meet the proof target requirement")
+        let proof_target = self.get_proof_target(solution)?;
+        if proof_target < expected_proof_target {
+            bail!("Solution does not meet the proof target requirement ({proof_target} < {expected_proof_target})")
         }
         Ok(())
     }
@@ -264,7 +268,7 @@ impl<N: Network> Puzzle<N> {
         // Ensure the epoch hash matches.
         cfg_iter!(solutions).try_for_each(|(solution_id, solution)| {
             if solution.epoch_hash() != expected_epoch_hash {
-                bail!("Solution '{solution_id}' did not match the expected epoch hash")
+                bail!("Solution '{solution_id}' did not match the expected epoch hash (found '{}', expected '{expected_epoch_hash}')", solution.epoch_hash())
             }
             Ok(())
         })?;
@@ -274,7 +278,7 @@ impl<N: Network> Puzzle<N> {
         cfg_into_iter!(self.get_proof_targets(solutions)?).enumerate().try_for_each(|(i, proof_target)| {
             if proof_target < expected_proof_target {
                 bail!(
-                    "Solution '{:?}' did not meet the proof target requirement",
+                    "Solution '{:?}' did not meet the proof target requirement ({proof_target} < {expected_proof_target})",
                     solutions.get_index(i).map(|(id, _)| id)
                 )
             }
