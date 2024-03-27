@@ -59,12 +59,14 @@ use ledger_store::{
 };
 use synthesizer_process::{deployment_cost, execution_cost, Authorization, Process, Trace};
 use synthesizer_program::{FinalizeGlobalState, FinalizeOperation, FinalizeStoreTrait, Program};
+use utilities::try_vm_runtime;
 
 use aleo_std::prelude::{finish, lap, timer};
 use indexmap::{IndexMap, IndexSet};
 use itertools::Either;
 use lru::LruCache;
 use parking_lot::{Mutex, RwLock};
+use rand::{rngs::StdRng, SeedableRng};
 use std::{collections::HashSet, num::NonZeroUsize, sync::Arc};
 
 #[cfg(not(feature = "serial"))]
@@ -733,7 +735,6 @@ function compute:
         // Construct the new block header.
         let (ratifications, transactions, aborted_transaction_ids, ratified_finalize_operations) =
             vm.speculate(sample_finalize_state(1), None, vec![], &None.into(), transactions.iter(), rng)?;
-        assert!(aborted_transaction_ids.is_empty());
 
         // Construct the metadata associated with the block.
         let metadata = Metadata::new(
@@ -1383,12 +1384,12 @@ function do:
     }
 
     #[test]
-    #[should_panic]
     fn test_deployment_synthesis_underreport() {
         let rng = &mut TestRng::default();
 
         // Initialize a private key.
         let private_key = sample_genesis_private_key(rng);
+        let address = Address::try_from(&private_key).unwrap();
 
         // Initialize the genesis block.
         let genesis = sample_genesis_block(rng);
@@ -1432,8 +1433,30 @@ function do:
             Deployment::new(deployment.edition(), deployment.program().clone(), vks_with_underreport).unwrap();
         let adjusted_transaction = Transaction::Deploy(txid, program_owner, Box::new(adjusted_deployment), fee);
 
-        // Verify the deployment transaction. It should panic when enforcing the first constraint over the vk limit.
-        let _ = vm.check_transaction(&adjusted_transaction, None, rng);
+        // Verify the deployment transaction. It should error when enforcing the first constraint over the vk limit.
+        let result = vm.check_transaction(&adjusted_transaction, None, rng);
+        assert!(result.is_err());
+
+        // Create a standard transaction
+        // Prepare the inputs.
+        let inputs = [
+            Value::<CurrentNetwork>::from_str(&address.to_string()).unwrap(),
+            Value::<CurrentNetwork>::from_str("1u64").unwrap(),
+        ]
+        .into_iter();
+
+        // Execute.
+        let transaction =
+            vm.execute(&private_key, ("credits.aleo", "transfer_public"), inputs, None, 0, None, rng).unwrap();
+
+        // Check that the deployment transaction will be aborted if injected into a block.
+        let block = sample_next_block(&vm, &private_key, &[transaction, adjusted_transaction.clone()], rng).unwrap();
+
+        // Check that the block aborts the deployment transaction.
+        assert_eq!(block.aborted_transaction_ids(), &vec![adjusted_transaction.id()]);
+
+        // Update the VM.
+        vm.add_next_block(&block).unwrap();
     }
 
     #[test]

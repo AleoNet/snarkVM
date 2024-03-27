@@ -16,8 +16,6 @@ use super::*;
 
 use ledger_committee::{MAX_DELEGATORS, MIN_DELEGATOR_STAKE, MIN_VALIDATOR_STAKE};
 
-use rand::{rngs::StdRng, SeedableRng};
-
 impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// Speculates on the given list of transactions in the VM.
     /// This function aborts all transactions that are not are well-formed or unique.
@@ -47,32 +45,16 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         let candidate_transactions: Vec<_> = candidate_transactions.collect::<Vec<_>>();
         let candidate_transaction_ids: Vec<_> = candidate_transactions.iter().map(|tx| tx.id()).collect();
 
+        // Determine if the vm is currently processing the genesis block.
+        let is_genesis =
+            self.block_store().find_block_height_from_state_root(self.block_store().current_state_root())?.is_none();
         // If the transactions are not part of the genesis block, ensure each transaction is well-formed and unique. Abort any transactions that are not.
-        let (verified_transactions, verification_aborted_transactions) =
-            match self.block_store().find_block_height_from_state_root(self.block_store().current_state_root())? {
-                // If the current state root does not exist in the block store, then the genesis block has not been introduced yet.
-                None => (candidate_transactions, vec![]),
-                // Verify transactions for all non-genesis cases.
-                _ => {
-                    let rngs =
-                        (0..candidate_transactions.len()).map(|_| StdRng::from_seed(rng.gen())).collect::<Vec<_>>();
-                    // Verify the transactions and collect the error message if there is one.
-                    cfg_into_iter!(candidate_transactions).zip(rngs).partition_map(|(transaction, mut rng)| {
-                        // Abort the transaction if it is a fee transaction.
-                        if transaction.is_fee() {
-                            return Either::Right((
-                                transaction,
-                                "Fee transactions are not allowed in speculate".to_string(),
-                            ));
-                        }
-                        // Verify the transaction.
-                        match self.check_transaction(transaction, None, &mut rng) {
-                            Ok(_) => Either::Left(transaction),
-                            Err(e) => Either::Right((transaction, e.to_string())),
-                        }
-                    })
-                }
-            };
+        let (verified_transactions, verification_aborted_transactions) = match is_genesis {
+            // If the current state root does not exist in the block store, then the genesis block has not been introduced yet.
+            true => (candidate_transactions, vec![]),
+            // Verify transactions for all non-genesis cases.
+            false => self.prepare_for_speculate(&candidate_transactions, rng)?,
+        };
 
         // Performs a **dry-run** over the list of ratifications, solutions, and transactions.
         let (ratifications, confirmed_transactions, speculation_aborted_transactions, ratified_finalize_operations) =
@@ -127,15 +109,15 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     ) -> Result<Vec<FinalizeOperation<N>>> {
         let timer = timer!("VM::check_speculate");
 
+        // Retrieve the transactions and their rejected IDs.
+        let transactions_and_rejected_ids = cfg_iter!(transactions)
+            .map(|transaction| transaction.to_rejected_id().map(|rejected_id| (transaction.deref(), rejected_id)))
+            .collect::<Result<Vec<_>>>()?;
         // Ensure each transaction is well-formed and unique.
         // NOTE: We perform the transaction checks here prior to `atomic_speculate` because we must
         // ensure that the `Fee` transactions are valid. We can't unify the transaction checks in `atomic_speculate`
         // because we run speculation on the unconfirmed variant of the transactions.
-        let rngs = (0..transactions.len()).map(|_| StdRng::from_seed(rng.gen())).collect::<Vec<_>>();
-        cfg_iter!(transactions).zip(rngs).try_for_each(|(transaction, mut rng)| {
-            self.check_transaction(transaction, transaction.to_rejected_id()?, &mut rng)
-                .map_err(|e| anyhow!("Invalid transaction found in the transactions list: {e}"))
-        })?;
+        self.check_transactions(&transactions_and_rejected_ids, rng)?;
 
         // Reconstruct the candidate ratifications to verify the speculation.
         let candidate_ratifications = ratifications.iter().cloned().collect::<Vec<_>>();
@@ -804,6 +786,56 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
             Ok(ratified_finalize_operations)
         })
+    }
+
+    /// Performs precondition checks on the transactions prior to speculation.
+    ///
+    /// This method is used to check the following conditions:
+    /// - If a transaction is a fee transaction or if it is invalid,
+    ///   then the transaction will be aborted.
+    pub(crate) fn prepare_for_speculate<'a, R: CryptoRng + Rng>(
+        &self,
+        transactions: &[&'a Transaction<N>],
+        rng: &mut R,
+    ) -> Result<(Vec<&'a Transaction<N>>, Vec<(&'a Transaction<N>, String)>)> {
+        // Construct the list of valid and invalid transactions.
+        let mut valid_transactions = Vec::with_capacity(transactions.len());
+        let mut aborted_transactions = Vec::with_capacity(transactions.len());
+
+        // Separate the transactions into deploys and executions.
+        let (deployments, executions): (Vec<&Transaction<N>>, Vec<&Transaction<N>>) =
+            transactions.iter().partition(|tx| tx.is_deploy());
+        // Chunk the deploys and executions into groups for parallel verification.
+        let deployments_for_verification = deployments.chunks(Self::MAX_PARALLEL_DEPLOY_VERIFICATIONS);
+        let executions_for_verification = executions.chunks(Self::MAX_PARALLEL_EXECUTE_VERIFICATIONS);
+
+        // Verify the transactions in batches and separate the valid and invalid transactions.
+        for transactions in deployments_for_verification.chain(executions_for_verification) {
+            let rngs = (0..transactions.len()).map(|_| StdRng::from_seed(rng.gen())).collect::<Vec<_>>();
+            // Verify the transactions and collect the error message if there is one.
+            let (valid, invalid): (Vec<_>, Vec<_>) =
+                cfg_into_iter!(transactions).zip(rngs).partition_map(|(transaction, mut rng)| {
+                    // Abort the transaction if it is a fee transaction.
+                    if transaction.is_fee() {
+                        return Either::Right((
+                            *transaction,
+                            "Fee transactions are not allowed in speculate".to_string(),
+                        ));
+                    }
+                    // Verify the transaction.
+                    match self.check_transaction(transaction, None, &mut rng) {
+                        Ok(_) => Either::Left(*transaction),
+                        Err(e) => Either::Right((*transaction, e.to_string())),
+                    }
+                });
+
+            // Collect the valid and aborted transactions.
+            valid_transactions.extend(valid);
+            aborted_transactions.extend(invalid);
+        }
+
+        // Return the valid and invalid transactions.
+        Ok((valid_transactions, aborted_transactions))
     }
 
     /// Performs precondition checks on the transaction prior to execution.
