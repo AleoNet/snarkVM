@@ -154,7 +154,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 // Verify the deployment if it has not been verified before.
                 if !is_partially_verified {
                     // Verify the deployment.
-                    match handle_halting!(AssertUnwindSafe(|| { self.check_deployment_internal(deployment, rng) })) {
+                    match try_vm_runtime!(|| self.check_deployment_internal(deployment, rng)) {
                         Ok(result) => result?,
                         Err(_) => bail!("VM safely halted transaction '{id}' during verification"),
                     }
@@ -170,9 +170,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     bail!("Transaction '{id}' contains a previously rejected execution")
                 }
                 // Verify the execution.
-                match handle_halting!(AssertUnwindSafe(|| {
-                    self.check_execution_internal(execution, is_partially_verified)
-                })) {
+                match try_vm_runtime!(|| self.check_execution_internal(execution, is_partially_verified)) {
                     Ok(result) => result?,
                     Err(_) => bail!("VM safely halted transaction '{id}' during verification"),
                 }

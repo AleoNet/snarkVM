@@ -59,7 +59,7 @@ use ledger_store::{
 };
 use synthesizer_process::{deployment_cost, execution_cost, Authorization, Process, Trace};
 use synthesizer_program::{FinalizeGlobalState, FinalizeOperation, FinalizeStoreTrait, Program};
-use utilities::handle_halting;
+use utilities::try_vm_runtime;
 
 use aleo_std::prelude::{finish, lap, timer};
 use indexmap::{IndexMap, IndexSet};
@@ -67,7 +67,7 @@ use itertools::Either;
 use lru::LruCache;
 use parking_lot::{Mutex, RwLock};
 use rand::{rngs::StdRng, SeedableRng};
-use std::{collections::HashSet, num::NonZeroUsize, panic::AssertUnwindSafe, sync::Arc};
+use std::{collections::HashSet, num::NonZeroUsize, sync::Arc};
 
 #[cfg(not(feature = "serial"))]
 use rayon::prelude::*;
