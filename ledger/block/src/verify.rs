@@ -364,20 +364,19 @@ impl<N: Network> Block<N> {
             }
         };
 
-        // Compute the expected cumulative weight.
-        let expected_cumulative_weight = previous_block.cumulative_weight().saturating_add(combined_proof_target);
-
         // Calculate the next coinbase targets and timestamps.
         let (
             expected_coinbase_target,
             expected_proof_target,
             expected_cumulative_proof_target,
+            expected_cumulative_weight,
             expected_last_coinbase_target,
             expected_last_coinbase_timestamp,
         ) = to_next_targets::<N>(
             self.cumulative_proof_target(),
             combined_proof_target,
             previous_block.coinbase_target(),
+            previous_block.cumulative_weight(),
             previous_block.last_coinbase_target(),
             previous_block.last_coinbase_timestamp(),
             timestamp,

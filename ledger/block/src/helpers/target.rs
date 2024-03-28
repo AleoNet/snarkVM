@@ -227,22 +227,29 @@ fn retarget(
 }
 
 /// This function calculates the next targets for the given attributes:
-///    `latest_cumulative_proof_target`: The latest cumulative proof target.
-///    `combined_proof_target`: The combined proof target of solutions in the block.
-///    `latest_coinbase_target`: The latest coinbase target.
-///    `last_coinbase_target`: The coinbase target for the last coinbase.
-///    `last_coinbase_timestamp`: The timestamp for the last coinbase.
-///    `next_timestamp`: The timestamp for the next block.
+///     `latest_cumulative_proof_target`: The latest cumulative proof target.
+///     `combined_proof_target`: The combined proof target of solutions in the block.
+///     `latest_coinbase_target`: The latest coinbase target.
+///     `last_coinbase_target`: The coinbase target for the last coinbase.
+///     `last_coinbase_timestamp`: The timestamp for the last coinbase.
+///     `next_timestamp`: The timestamp for the next block.
 ///
-/// Returns the `(next_coinbase_target, next_proof_target, next_cumulative_proof_target, next_last_coinbase_target, next_last_coinbase_timestamp)`.
+/// Returns the following as a tuple:
+///     `next_coinbase_target` - The next coinbase target.
+///     `next_proof_target` - The next proof target.
+///     `next_cumulative_proof_target` - The next cumulative proof target.
+///     `next_cumulative_weight` - The next cumulative weight.
+///     `next_last_coinbase_target` - The next last coinbase target.
+///     `next_last_coinbase_timestamp` - The next last coinbase timestamp.
 pub fn to_next_targets<N: Network>(
     latest_cumulative_proof_target: u128,
     combined_proof_target: u128,
     latest_coinbase_target: u64,
+    latest_cumulative_weight: u128,
     last_coinbase_target: u64,
     last_coinbase_timestamp: i64,
     next_timestamp: i64,
-) -> Result<(u64, u64, u128, u64, i64)> {
+) -> Result<(u64, u64, u128, u128, u64, i64)> {
     // Compute the coinbase target threshold.
     let latest_coinbase_threshold = latest_coinbase_target.saturating_div(2) as u128;
     // Compute the next cumulative proof target.
@@ -268,6 +275,9 @@ pub fn to_next_targets<N: Network>(
         false => next_cumulative_proof_target,
     };
 
+    // Compute the next cumulative weight.
+    let next_cumulative_weight = latest_cumulative_weight.saturating_add(combined_proof_target);
+
     // Construct the next last coinbase target and next last coinbase timestamp.
     let (next_last_coinbase_target, next_last_coinbase_timestamp) = match is_coinbase_threshold_reached {
         true => (next_coinbase_target, next_timestamp),
@@ -278,6 +288,7 @@ pub fn to_next_targets<N: Network>(
         next_coinbase_target,
         next_proof_target,
         next_cumulative_proof_target,
+        next_cumulative_weight,
         next_last_coinbase_target,
         next_last_coinbase_timestamp,
     ))

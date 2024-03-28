@@ -224,6 +224,8 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         let latest_cumulative_proof_target = previous_block.cumulative_proof_target();
         // Retrieve the latest coinbase target.
         let latest_coinbase_target = previous_block.coinbase_target();
+        // Retrieve the latest cumulative weight.
+        let latest_cumulative_weight = previous_block.cumulative_weight();
         // Retrieve the last coinbase target.
         let last_coinbase_target = previous_block.last_coinbase_target();
         // Retrieve the last coinbase timestamp.
@@ -261,20 +263,20 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             }
             None => OffsetDateTime::now_utc().unix_timestamp(),
         };
-        // Compute the next cumulative weight.
-        let next_cumulative_weight = previous_block.cumulative_weight().saturating_add(combined_proof_target);
 
         // Calculate the next coinbase targets and timestamps.
         let (
             next_coinbase_target,
             next_proof_target,
             next_cumulative_proof_target,
+            next_cumulative_weight,
             next_last_coinbase_target,
             next_last_coinbase_timestamp,
         ) = to_next_targets::<N>(
             latest_cumulative_proof_target,
             combined_proof_target,
             latest_coinbase_target,
+            latest_cumulative_weight,
             last_coinbase_target,
             last_coinbase_timestamp,
             next_timestamp,
