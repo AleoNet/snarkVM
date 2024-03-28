@@ -105,7 +105,12 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         // If the block is the start of a new epoch, or the epoch hash has not been set, update the current epoch hash.
         if block.height() % N::NUM_BLOCKS_PER_EPOCH == 0 || self.current_epoch_hash.read().is_none() {
             // Update the current epoch hash.
-            self.current_epoch_hash.write().clone_from(&self.get_epoch_hash(block.height()).ok());
+            info!("advance_to_next_block | Updating the current epoch hash using block height {}", block.height());
+            self.current_epoch_hash.write().clone_from(&{
+                let epoch_hash = self.get_epoch_hash(block.height()).ok();
+                info!("advance_to_next_block | Updated the current epoch hash to {epoch_hash:?}");
+                epoch_hash
+            });
         }
 
         Ok(())

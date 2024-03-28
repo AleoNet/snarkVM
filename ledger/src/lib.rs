@@ -188,7 +188,11 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         // Set the current committee (and ensures the latest committee exists).
         ledger.current_committee = Arc::new(RwLock::new(Some(ledger.latest_committee()?)));
         // Set the current epoch hash.
-        ledger.current_epoch_hash = Arc::new(RwLock::new(Some(ledger.get_epoch_hash(latest_height)?)));
+        ledger.current_epoch_hash = Arc::new(RwLock::new(Some({
+            let epoch_hash = ledger.get_epoch_hash(latest_height)?;
+            info!("load_unchecked | Updated current epoch hash to {epoch_hash:?}");
+            epoch_hash
+        })));
 
         finish!(timer, "Initialize ledger");
         Ok(ledger)
