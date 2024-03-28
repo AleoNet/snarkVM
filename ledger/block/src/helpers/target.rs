@@ -790,4 +790,111 @@ mod tests {
 
         assert_eq!(EXPECTED_NUM_BLOCKS_TO_DOUBLE, num_blocks);
     }
+
+    #[test]
+    fn test_to_next_targets_meets_threshold() {
+        let mut rng = TestRng::default();
+
+        let minimum_coinbase_target: u64 = 2u64.pow(10) - 1;
+
+        for _ in 0..ITERATIONS {
+            // Sample the initial values.
+            let latest_coinbase_target = rng.gen_range(minimum_coinbase_target..u64::MAX / 2);
+            let threshold = latest_coinbase_target as u128 / 2;
+            let last_coinbase_target = rng.gen_range(minimum_coinbase_target..latest_coinbase_target);
+            let last_coinbase_timestamp = rng.gen_range(0..i64::MAX / 2);
+            let next_timestamp = last_coinbase_timestamp + 100;
+            let latest_cumulative_weight = rng.gen_range(0..u128::MAX / 2);
+
+            // Sample a cumulative proof target and combined proof target pair that meets the threshold.
+            let latest_cumulative_proof_target = rng.gen_range(0..threshold);
+            let combined_proof_target =
+                rng.gen_range(threshold.saturating_sub(latest_cumulative_proof_target)..u128::MAX);
+
+            assert!(latest_cumulative_proof_target.saturating_add(combined_proof_target) >= threshold);
+
+            // Calculate the next targets.
+            let (
+                _,
+                _,
+                next_cumulative_proof_target,
+                next_cumulative_weight,
+                next_last_coinbase_target,
+                next_last_coinbase_timestamp,
+            ) = to_next_targets::<CurrentNetwork>(
+                latest_cumulative_proof_target,
+                combined_proof_target,
+                latest_coinbase_target,
+                latest_cumulative_weight,
+                last_coinbase_target,
+                last_coinbase_timestamp,
+                next_timestamp,
+            )
+            .unwrap();
+
+            // Check that meeting the target threshold does the following:
+            // 1. Resets the next_cumulative_proof_target.
+            // 2. Updates the last_coinbase_target.
+            // 3. Updates the last_coinbase_timestamp.
+            assert_eq!(next_cumulative_proof_target, 0);
+            assert_ne!(next_last_coinbase_target, last_coinbase_target);
+            assert_eq!(next_last_coinbase_timestamp, next_timestamp);
+
+            // Check that the cumulative_weight is updated correctly.
+            assert_eq!(next_cumulative_weight, latest_cumulative_weight.saturating_add(combined_proof_target));
+        }
+    }
+
+    #[test]
+    fn test_to_next_targets_does_not_meet_threshold() {
+        let mut rng = TestRng::default();
+
+        let minimum_coinbase_target: u64 = 2u64.pow(10) - 1;
+
+        for _ in 0..ITERATIONS {
+            // Sample the initial values.
+            let latest_coinbase_target = rng.gen_range(minimum_coinbase_target..u64::MAX / 2);
+            let threshold = latest_coinbase_target as u128 / 2;
+            let last_coinbase_target = rng.gen_range(minimum_coinbase_target..latest_coinbase_target);
+            let last_coinbase_timestamp = rng.gen_range(0..i64::MAX / 2);
+            let next_timestamp = last_coinbase_timestamp + 100;
+            let latest_cumulative_weight = rng.gen_range(0..u128::MAX / 2);
+
+            // Sample a cumulative proof target and combined proof target pair that meets the threshold.
+            let latest_cumulative_proof_target = rng.gen_range(0..threshold);
+            let combined_proof_target = rng.gen_range(0..threshold.saturating_sub(latest_cumulative_proof_target));
+
+            assert!(latest_cumulative_proof_target.saturating_add(combined_proof_target) < threshold);
+
+            // Calculate the next targets.
+            let (
+                _,
+                _,
+                next_cumulative_proof_target,
+                next_cumulative_weight,
+                next_last_coinbase_target,
+                next_last_coinbase_timestamp,
+            ) = to_next_targets::<CurrentNetwork>(
+                latest_cumulative_proof_target,
+                combined_proof_target,
+                latest_coinbase_target,
+                latest_cumulative_weight,
+                last_coinbase_target,
+                last_coinbase_timestamp,
+                next_timestamp,
+            )
+            .unwrap();
+
+            // Check that missing the target threshold does the following:
+            // 1. Does not reset the next_cumulative_proof_target.
+            // 2. Does not update the last_coinbase_target.
+            // 3. Does not update the last_coinbase_timestamp.
+            assert_eq!(next_cumulative_proof_target, latest_cumulative_proof_target + combined_proof_target);
+            assert_eq!(next_last_coinbase_target, last_coinbase_target);
+            assert_eq!(next_last_coinbase_timestamp, last_coinbase_timestamp);
+
+            // Check that the cumulative_weight is updated correctly.
+            assert_eq!(next_cumulative_weight, latest_cumulative_weight.saturating_add(combined_proof_target));
+        }
+    }
 }
