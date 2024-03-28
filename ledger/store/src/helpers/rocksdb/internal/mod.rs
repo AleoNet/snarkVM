@@ -116,6 +116,12 @@ impl Database for RocksDB {
                 let mut options = rocksdb::Options::default();
                 options.set_compression_type(rocksdb::DBCompressionType::Lz4);
 
+                use rocksdb::BlockBasedOptions;
+                let mut block_opts = BlockBasedOptions::default();
+                block_opts.disable_cache();
+                // block_opts.set_optimize_filters_for_memory(true);
+                options.set_block_based_table_factory(&block_opts);
+
                 // Register the prefix length.
                 let prefix_extractor = rocksdb::SliceTransform::create_fixed_prefix(PREFIX_LEN);
                 options.set_prefix_extractor(prefix_extractor);
