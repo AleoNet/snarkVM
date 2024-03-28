@@ -119,6 +119,7 @@ impl Database for RocksDB {
                 use rocksdb::BlockBasedOptions;
                 let mut block_opts = BlockBasedOptions::default();
                 block_opts.disable_cache();
+                block_opts.set_bloom_filter(10.0, true);
                 block_opts.set_optimize_filters_for_memory(true);
                 options.set_block_based_table_factory(&block_opts);
 
@@ -132,9 +133,9 @@ impl Database for RocksDB {
                     options.set_max_background_jobs(4);
                     options.create_if_missing(true);
                     options.set_write_buffer_size(1024 * 1024);
+                    // The default compaction style is `Level`
                     options.optimize_level_style_compaction(10 * 1024 * 1024);
-                    options.optimize_universal_style_compaction(10 * 1024 * 1024);
-                    options.set_max_open_files(100);
+                    // options.set_max_open_files(100); // This seems to significantly hurt performance
 
                     Arc::new(rocksdb::DB::open(&options, primary)?)
                 };
