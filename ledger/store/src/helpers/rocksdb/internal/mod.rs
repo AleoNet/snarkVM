@@ -132,6 +132,8 @@ impl Database for RocksDB {
                     options.set_max_background_jobs(4);
                     options.create_if_missing(true);
                     options.set_write_buffer_size(1024 * 1024);
+                    options.optimize_level_style_compaction(10 * 1024 * 1024);
+                    options.optimize_universal_style_compaction(10 * 1024 * 1024);
 
                     Arc::new(rocksdb::DB::open(&options, primary)?)
                 };
