@@ -119,7 +119,7 @@ impl Database for RocksDB {
                 use rocksdb::BlockBasedOptions;
                 let mut block_opts = BlockBasedOptions::default();
                 block_opts.disable_cache();
-                // block_opts.set_optimize_filters_for_memory(true);
+                block_opts.set_optimize_filters_for_memory(true);
                 options.set_block_based_table_factory(&block_opts);
 
                 // Register the prefix length.
