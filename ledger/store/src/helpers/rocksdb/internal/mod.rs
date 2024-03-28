@@ -134,6 +134,7 @@ impl Database for RocksDB {
                     options.set_write_buffer_size(1024 * 1024);
                     options.optimize_level_style_compaction(10 * 1024 * 1024);
                     options.optimize_universal_style_compaction(10 * 1024 * 1024);
+                    options.set_max_open_files(100);
 
                     Arc::new(rocksdb::DB::open(&options, primary)?)
                 };
