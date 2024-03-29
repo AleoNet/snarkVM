@@ -23,7 +23,7 @@ type Field = <console::TestnetV0 as console::Environment>::Field;
 
 thread_local! {
     static CONSTRAINT_LIMIT: Cell<Option<u64>> = Cell::new(None);
-    static CIRCUIT: RefCell<R1CS<Field>> = RefCell::new(R1CS::new());
+    pub(super) static TESTNET_CIRCUIT: RefCell<R1CS<Field>> = RefCell::new(R1CS::new());
     static IN_WITNESS: Cell<bool> = Cell::new(false);
     static ZERO: LinearCombination<Field> = LinearCombination::zero();
     static ONE: LinearCombination<Field> = LinearCombination::one();
@@ -53,7 +53,7 @@ impl Environment for TestnetCircuit {
         IN_WITNESS.with(|in_witness| {
             // Ensure we are not in witness mode.
             if !in_witness.get() {
-                CIRCUIT.with(|circuit| match mode {
+                TESTNET_CIRCUIT.with(|circuit| match mode {
                     Mode::Constant => circuit.borrow_mut().new_constant(value),
                     Mode::Public => circuit.borrow_mut().new_public(value),
                     Mode::Private => circuit.borrow_mut().new_private(value),
@@ -88,7 +88,7 @@ impl Environment for TestnetCircuit {
         IN_WITNESS.with(|in_witness| {
             // Ensure we are not in witness mode.
             if !in_witness.get() {
-                CIRCUIT.with(|circuit| {
+                TESTNET_CIRCUIT.with(|circuit| {
                     // Set the entire environment to the new scope.
                     let name = name.into();
                     if let Err(error) = circuit.borrow_mut().push_scope(&name) {
@@ -122,7 +122,7 @@ impl Environment for TestnetCircuit {
         IN_WITNESS.with(|in_witness| {
             // Ensure we are not in witness mode.
             if !in_witness.get() {
-                CIRCUIT.with(|circuit| {
+                TESTNET_CIRCUIT.with(|circuit| {
                     // Ensure that we do not surpass the constraint limit for the circuit.
                     CONSTRAINT_LIMIT.with(|constraint_limit| {
                         if let Some(limit) = constraint_limit.get() {
@@ -169,62 +169,62 @@ impl Environment for TestnetCircuit {
 
     /// Returns `true` if all constraints in the environment are satisfied.
     fn is_satisfied() -> bool {
-        CIRCUIT.with(|circuit| circuit.borrow().is_satisfied())
+        TESTNET_CIRCUIT.with(|circuit| circuit.borrow().is_satisfied())
     }
 
     /// Returns `true` if all constraints in the current scope are satisfied.
     fn is_satisfied_in_scope() -> bool {
-        CIRCUIT.with(|circuit| circuit.borrow().is_satisfied_in_scope())
+        TESTNET_CIRCUIT.with(|circuit| circuit.borrow().is_satisfied_in_scope())
     }
 
     /// Returns the number of constants in the entire circuit.
     fn num_constants() -> u64 {
-        CIRCUIT.with(|circuit| circuit.borrow().num_constants())
+        TESTNET_CIRCUIT.with(|circuit| circuit.borrow().num_constants())
     }
 
     /// Returns the number of public variables in the entire circuit.
     fn num_public() -> u64 {
-        CIRCUIT.with(|circuit| circuit.borrow().num_public())
+        TESTNET_CIRCUIT.with(|circuit| circuit.borrow().num_public())
     }
 
     /// Returns the number of private variables in the entire circuit.
     fn num_private() -> u64 {
-        CIRCUIT.with(|circuit| circuit.borrow().num_private())
+        TESTNET_CIRCUIT.with(|circuit| circuit.borrow().num_private())
     }
 
     /// Returns the number of constraints in the entire circuit.
     fn num_constraints() -> u64 {
-        CIRCUIT.with(|circuit| circuit.borrow().num_constraints())
+        TESTNET_CIRCUIT.with(|circuit| circuit.borrow().num_constraints())
     }
 
     /// Returns the number of nonzeros in the entire circuit.
     fn num_nonzeros() -> (u64, u64, u64) {
-        CIRCUIT.with(|circuit| circuit.borrow().num_nonzeros())
+        TESTNET_CIRCUIT.with(|circuit| circuit.borrow().num_nonzeros())
     }
 
     /// Returns the number of constants for the current scope.
     fn num_constants_in_scope() -> u64 {
-        CIRCUIT.with(|circuit| circuit.borrow().num_constants_in_scope())
+        TESTNET_CIRCUIT.with(|circuit| circuit.borrow().num_constants_in_scope())
     }
 
     /// Returns the number of public variables for the current scope.
     fn num_public_in_scope() -> u64 {
-        CIRCUIT.with(|circuit| circuit.borrow().num_public_in_scope())
+        TESTNET_CIRCUIT.with(|circuit| circuit.borrow().num_public_in_scope())
     }
 
     /// Returns the number of private variables for the current scope.
     fn num_private_in_scope() -> u64 {
-        CIRCUIT.with(|circuit| circuit.borrow().num_private_in_scope())
+        TESTNET_CIRCUIT.with(|circuit| circuit.borrow().num_private_in_scope())
     }
 
     /// Returns the number of constraints for the current scope.
     fn num_constraints_in_scope() -> u64 {
-        CIRCUIT.with(|circuit| circuit.borrow().num_constraints_in_scope())
+        TESTNET_CIRCUIT.with(|circuit| circuit.borrow().num_constraints_in_scope())
     }
 
     /// Returns the number of nonzeros for the current scope.
     fn num_nonzeros_in_scope() -> (u64, u64, u64) {
-        CIRCUIT.with(|circuit| circuit.borrow().num_nonzeros_in_scope())
+        TESTNET_CIRCUIT.with(|circuit| circuit.borrow().num_nonzeros_in_scope())
     }
 
     /// Halts the program from further synthesis, evaluation, and execution in the current environment.
@@ -246,7 +246,7 @@ impl Environment for TestnetCircuit {
 
     /// Returns the R1CS circuit, resetting the circuit.
     fn inject_r1cs(r1cs: R1CS<Self::BaseField>) {
-        CIRCUIT.with(|circuit| {
+        TESTNET_CIRCUIT.with(|circuit| {
             // Ensure the circuit is empty before injecting.
             assert_eq!(0, circuit.borrow().num_constants());
             assert_eq!(1, circuit.borrow().num_public());
@@ -264,7 +264,7 @@ impl Environment for TestnetCircuit {
 
     /// Returns the R1CS circuit, resetting the circuit.
     fn eject_r1cs_and_reset() -> R1CS<Self::BaseField> {
-        CIRCUIT.with(|circuit| {
+        TESTNET_CIRCUIT.with(|circuit| {
             // Reset the witness mode.
             IN_WITNESS.with(|in_witness| in_witness.replace(false));
             // Reset the constraint limit.
@@ -283,7 +283,7 @@ impl Environment for TestnetCircuit {
 
     /// Returns the R1CS assignment of the circuit, resetting the circuit.
     fn eject_assignment_and_reset() -> Assignment<<Self::Network as console::Environment>::Field> {
-        CIRCUIT.with(|circuit| {
+        TESTNET_CIRCUIT.with(|circuit| {
             // Reset the witness mode.
             IN_WITNESS.with(|in_witness| in_witness.replace(false));
             // Reset the constraint limit.
@@ -301,7 +301,7 @@ impl Environment for TestnetCircuit {
 
     /// Clears the circuit and initializes an empty environment.
     fn reset() {
-        CIRCUIT.with(|circuit| {
+        TESTNET_CIRCUIT.with(|circuit| {
             // Reset the witness mode.
             IN_WITNESS.with(|in_witness| in_witness.replace(false));
             // Reset the constraint limit.
@@ -318,7 +318,7 @@ impl Environment for TestnetCircuit {
 
 impl fmt::Display for TestnetCircuit {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        CIRCUIT.with(|circuit| write!(f, "{}", circuit.borrow()))
+        TESTNET_CIRCUIT.with(|circuit| write!(f, "{}", circuit.borrow()))
     }
 }
 
