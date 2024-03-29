@@ -57,7 +57,7 @@ pub struct BatchHeader<N: Network> {
 impl<N: Network> BatchHeader<N> {
     /// The maximum number of certificates in a batch.
     #[cfg(not(any(test, feature = "test-helpers")))]
-    pub const MAX_CERTIFICATES: u16 = 10;
+    pub const MAX_CERTIFICATES: u16 = N::MAX_CERTIFICATES;
     /// The maximum number of certificates in a batch.
     /// This is deliberately set to a high value (100) for testing purposes only.
     #[cfg(any(test, feature = "test-helpers"))]

@@ -129,6 +129,8 @@ impl Network for TestnetV0 {
     const ID: u16 = 1;
     /// The function name for the inclusion circuit.
     const INCLUSION_FUNCTION_NAME: &'static str = MainnetV0::INCLUSION_FUNCTION_NAME;
+    /// The maximum number of certificates in a batch.
+    const MAX_CERTIFICATES: usize = 100;
     /// The network name.
     const NAME: &'static str = "Aleo Testnet (v0)";
 

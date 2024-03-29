@@ -189,6 +189,9 @@ pub trait Network:
     /// The maximum number of imports.
     const MAX_IMPORTS: usize = 64;
 
+    /// The maximum number of certificates in a batch.
+    const MAX_CERTIFICATES: usize = 10;
+
     /// The state root type.
     type StateRoot: Bech32ID<Field<Self>>;
     /// The block hash type.
