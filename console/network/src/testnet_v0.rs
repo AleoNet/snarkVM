@@ -134,6 +134,7 @@ impl Network for TestnetV0 {
     /// The network name.
     const NAME: &'static str = "Aleo Testnet (v0)";
 
+    // TODO (raychu86): Use custom `TestnetV0::genesis_bytes` or invalidate this method.
     /// Returns the genesis block bytes.
     fn genesis_bytes() -> &'static [u8] {
         MainnetV0::genesis_bytes()
