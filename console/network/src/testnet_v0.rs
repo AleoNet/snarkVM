@@ -121,12 +121,10 @@ impl Network for TestnetV0 {
 
     /// The network edition.
     const EDITION: u16 = 0;
-    #[cfg(not(feature = "test"))]
     /// The genesis block coinbase target.
-    /// This is deliberately set to a low value (32) for testing purposes only.
     const GENESIS_COINBASE_TARGET: u64 = (1u64 << 5).saturating_sub(1);
     /// The genesis block proof target.
-    const GENESIS_PROOF_TARGET: u64 = 1u64 << 8;
+    const GENESIS_PROOF_TARGET: u64 = 1u64 << 3;
     /// The network ID.
     const ID: u16 = 1;
     /// The function name for the inclusion circuit.
