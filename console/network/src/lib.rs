@@ -28,6 +28,9 @@ pub use helpers::*;
 mod mainnet_v0;
 pub use mainnet_v0::*;
 
+mod testnet_v0;
+pub use testnet_v0::*;
+
 pub mod prelude {
     pub use crate::{environment::prelude::*, Network};
 }
