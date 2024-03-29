@@ -15,6 +15,9 @@
 #![forbid(unsafe_code)]
 #![allow(clippy::too_many_arguments)]
 
+pub mod testnet_v0;
+pub use testnet_v0::*;
+
 pub mod v0;
 pub use v0::*;
 

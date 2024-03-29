@@ -32,6 +32,9 @@ pub mod macros;
 #[allow(unused_imports)]
 pub use macros::*;
 
+pub mod testnet_circuit;
+pub use testnet_circuit::*;
+
 pub mod traits;
 pub use traits::*;
 
