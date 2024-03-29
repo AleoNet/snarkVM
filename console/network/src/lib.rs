@@ -190,7 +190,7 @@ pub trait Network:
     const MAX_IMPORTS: usize = 64;
 
     /// The maximum number of certificates in a batch.
-    const MAX_CERTIFICATES: u16 = 1;
+    const MAX_CERTIFICATES: u16;
 
     /// The state root type.
     type StateRoot: Bech32ID<Field<Self>>;
