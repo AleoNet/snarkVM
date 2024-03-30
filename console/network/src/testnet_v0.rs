@@ -67,6 +67,17 @@ lazy_static! {
     pub static ref TESTNET_POSEIDON_4: Poseidon4<TestnetV0> = Poseidon4::<TestnetV0>::setup("AleoPoseidon4").expect("Failed to setup Poseidon4");
     /// The Poseidon hash function, using a rate of 8.
     pub static ref TESTNET_POSEIDON_8: Poseidon8<TestnetV0> = Poseidon8::<TestnetV0>::setup("AleoPoseidon8").expect("Failed to setup Poseidon8");
+
+    pub static ref TESTNET_CREDITS_PROVING_KEYS: IndexMap<String, Arc<VarunaProvingKey<Console>>> = {
+        let mut map = IndexMap::new();
+        snarkvm_parameters::insert_testnet_credit_keys!(map, VarunaProvingKey<Console>, Prover);
+        map
+    };
+    pub static ref TESTNET_CREDITS_VERIFYING_KEYS: IndexMap<String, Arc<VarunaVerifyingKey<Console>>> = {
+        let mut map = IndexMap::new();
+        snarkvm_parameters::insert_testnet_credit_keys!(map, VarunaVerifyingKey<Console>, Verifier);
+        map
+    };
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -134,30 +145,47 @@ impl Network for TestnetV0 {
     /// The network name.
     const NAME: &'static str = "Aleo Testnet (v0)";
 
-    // TODO (raychu86): Use custom `TestnetV0::genesis_bytes` or invalidate this method.
     /// Returns the genesis block bytes.
     fn genesis_bytes() -> &'static [u8] {
-        MainnetV0::genesis_bytes()
+        snarkvm_parameters::testnet::GenesisBytes::load_bytes()
     }
 
     /// Returns the proving key for the given function name in `credits.aleo`.
     fn get_credits_proving_key(function_name: String) -> Result<&'static Arc<VarunaProvingKey<Self>>> {
-        MainnetV0::get_credits_proving_key(function_name)
+        TESTNET_CREDITS_PROVING_KEYS
+            .get(&function_name)
+            .ok_or_else(|| anyhow!("Proving key for credits.aleo/{function_name}' not found"))
     }
 
     /// Returns the verifying key for the given function name in `credits.aleo`.
     fn get_credits_verifying_key(function_name: String) -> Result<&'static Arc<VarunaVerifyingKey<Self>>> {
-        MainnetV0::get_credits_verifying_key(function_name)
+        TESTNET_CREDITS_VERIFYING_KEYS
+            .get(&function_name)
+            .ok_or_else(|| anyhow!("Verifying key for credits.aleo/{function_name}' not found"))
     }
 
     /// Returns the `proving key` for the inclusion circuit.
     fn inclusion_proving_key() -> &'static Arc<VarunaProvingKey<Self>> {
-        MainnetV0::inclusion_proving_key()
+        static INSTANCE: OnceCell<Arc<VarunaProvingKey<Console>>> = OnceCell::new();
+        INSTANCE.get_or_init(|| {
+            // Skipping the first byte, which is the encoded version.
+            Arc::new(
+                CircuitProvingKey::from_bytes_le(&snarkvm_parameters::testnet::INCLUSION_PROVING_KEY[1..])
+                    .expect("Failed to load inclusion proving key."),
+            )
+        })
     }
 
     /// Returns the `verifying key` for the inclusion circuit.
     fn inclusion_verifying_key() -> &'static Arc<VarunaVerifyingKey<Self>> {
-        MainnetV0::inclusion_verifying_key()
+        static INSTANCE: OnceCell<Arc<VarunaVerifyingKey<Console>>> = OnceCell::new();
+        INSTANCE.get_or_init(|| {
+            // Skipping the first byte, which is the encoded version.
+            Arc::new(
+                CircuitVerifyingKey::from_bytes_le(&snarkvm_parameters::testnet::INCLUSION_VERIFYING_KEY[1..])
+                    .expect("Failed to load inclusion verifying key."),
+            )
+        })
     }
 
     /// Returns the powers of `G`.

@@ -14,7 +14,7 @@
 
 use snarkvm_algorithms::crypto_hash::sha256::sha256;
 use snarkvm_circuit::Aleo;
-use snarkvm_console::network::{prelude::ToBytes, MainnetV0, Network};
+use snarkvm_console::network::{prelude::ToBytes, MainnetV0, Network, TestnetV0};
 use snarkvm_synthesizer::{Process, Program};
 
 use anyhow::Result;
@@ -142,14 +142,18 @@ pub fn credits_program<N: Network, A: Aleo<Network = N>>() -> Result<()> {
 /// `cargo run --example setup [variant]`
 pub fn main() -> Result<()> {
     let args: Vec<String> = std::env::args().collect();
-    if args.len() < 2 {
-        eprintln!("Invalid number of arguments. Given: {} - Required: 1", args.len() - 1);
+    if args.len() < 3 {
+        eprintln!("Invalid number of arguments. Given: {} - Required: 2", args.len() - 1);
         return Ok(());
     }
 
     match args[1].as_str() {
         "usrs" => usrs()?,
-        "credits" => credits_program::<MainnetV0, snarkvm_circuit::AleoV0>()?,
+        "credits" => match args[2].as_str() {
+            "mainnet" => credits_program::<MainnetV0, snarkvm_circuit::AleoV0>(),
+            "testnet" => credits_program::<TestnetV0, snarkvm_circuit::AleoTestnetV0>(),
+            _ => panic!("Invalid network"),
+        }?,
         _ => panic!("Invalid parameter"),
     };
 
