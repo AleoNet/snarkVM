@@ -96,6 +96,17 @@ impl<N: Network> FinalizeTypes<N> {
                         "Struct member '{struct_name}.{member_name}' expects {member_type}, but found '{block_height_type}' in the operand '{operand}'.",
                     )
                 }
+                // Ensure the network ID type (u16) matches the member type.
+                Operand::NetworkID => {
+                    // Retrieve the network ID type.
+                    let network_id_type = PlaintextType::Literal(LiteralType::U16);
+                    // Ensure the network ID type matches the member type.
+                    ensure!(
+                        &network_id_type == member_type,
+                        "Struct member '{struct_name}.{member_name}' expects {member_type}, but found '{network_id_type}' in the operand '{operand}'.",
+                    )
+
+                }
             }
         }
         Ok(())
@@ -174,6 +185,17 @@ impl<N: Network> FinalizeTypes<N> {
                     ensure!(
                         &block_height_type == array_type.next_element_type(),
                         "Array element expects {}, but found '{block_height_type}' in the operand '{operand}'.",
+                        array_type.next_element_type()
+                    )
+                }
+                // Ensure the network ID type (u16) matches the member type.
+                Operand::NetworkID => {
+                    // Retrieve the network ID type.
+                    let network_id_type = PlaintextType::Literal(LiteralType::U16);
+                    // Ensure the network ID type matches the member type.
+                    ensure!(
+                        &network_id_type == array_type.next_element_type(),
+                        "Array element expects {}, but found '{network_id_type}' in the operand '{operand}'.",
                         array_type.next_element_type()
                     )
                 }

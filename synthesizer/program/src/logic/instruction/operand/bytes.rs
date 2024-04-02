@@ -23,6 +23,7 @@ impl<N: Network> FromBytes for Operand<N> {
             3 => Ok(Self::Signer),
             4 => Ok(Self::Caller),
             5 => Ok(Self::BlockHeight),
+            6 => Ok(Self::NetworkID),
             variant => Err(error(format!("Failed to deserialize operand variant {variant}"))),
         }
     }
@@ -46,6 +47,7 @@ impl<N: Network> ToBytes for Operand<N> {
             Self::Signer => 3u8.write_le(&mut writer),
             Self::Caller => 4u8.write_le(&mut writer),
             Self::BlockHeight => 5u8.write_le(&mut writer),
+            Self::NetworkID => 6u8.write_le(&mut writer),
         }
     }
 }

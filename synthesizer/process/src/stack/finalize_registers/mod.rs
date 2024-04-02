@@ -19,7 +19,7 @@ use crate::FinalizeTypes;
 use console::{
     network::prelude::*,
     program::{Identifier, Literal, Plaintext, Register, Value},
-    types::U32,
+    types::{U16, U32},
 };
 use synthesizer_program::{
     FinalizeGlobalState,
