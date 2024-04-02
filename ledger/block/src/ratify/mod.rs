@@ -42,7 +42,12 @@ pub enum Ratify<N: Network> {
 impl<N: Network> Ratify<N> {
     /// Returns the ratification ID.
     pub fn to_id(&self) -> Result<N::RatificationID> {
-        Ok(N::hash_bhp1024(&self.to_bytes_le()?.to_bits_le())?.into())
+        match self {
+            Self::Genesis(committee, _, _) => {
+                Ok(N::hash_bhp1024(&committee.to_bytes_le()?.to_bits_le()[0..64])?.into())
+            }
+            _ => Ok(N::hash_bhp1024(&self.to_bytes_le()?.to_bits_le())?.into()),
+        }
     }
 }
 
