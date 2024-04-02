@@ -73,10 +73,14 @@ impl<E: Environment> Eject for Scalar<E> {
 
     /// Ejects the scalar circuit as a console scalar.
     fn eject_value(&self) -> Self::Primitive {
-        match console::Scalar::<E::Network>::from_bits_le(&self.field.eject_value().to_bits_le()) {
-            Ok(scalar) => scalar,
-            Err(error) => E::halt(format!("Failed to eject scalar value: {error}")),
-        }
+        let bits_le = self.field.eject_value().to_bits_le();
+        let bytes_le = bits_le
+            .chunks(8)
+            .map(|chunk| chunk.iter().fold(0u8, |byte, bit| (byte << 1) | (*bit as u8)))
+            .collect::<Vec<_>>();
+        console::Scalar::<E::Network>::new(<E::Network as console::Environment>::Scalar::from_bytes_le_mod_order(
+            &bytes_le,
+        ))
     }
 }
 
