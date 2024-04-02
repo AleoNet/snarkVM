@@ -76,7 +76,7 @@ impl<E: Environment> Eject for Scalar<E> {
         let bits_le = self.field.eject_value().to_bits_le();
         let bytes_le = bits_le
             .chunks(8)
-            .map(|chunk| chunk.iter().fold(0u8, |byte, bit| (byte << 1) | (*bit as u8)))
+            .map(|chunk| chunk.iter().rev().fold(0u8, |byte, bit| (byte << 1) | (*bit as u8)))
             .collect::<Vec<_>>();
         console::Scalar::<E::Network>::new(<E::Network as console::Environment>::Scalar::from_bytes_le_mod_order(
             &bytes_le,
