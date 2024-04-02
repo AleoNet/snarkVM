@@ -105,7 +105,6 @@ impl<N: Network> FinalizeTypes<N> {
                         &network_id_type == member_type,
                         "Struct member '{struct_name}.{member_name}' expects {member_type}, but found '{network_id_type}' in the operand '{operand}'.",
                     )
-
                 }
             }
         }

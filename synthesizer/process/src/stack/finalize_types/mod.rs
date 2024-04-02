@@ -103,7 +103,7 @@ impl<N: Network> FinalizeTypes<N> {
             Operand::Signer => bail!("'self.signer' is not a valid operand in a finalize context."),
             Operand::Caller => bail!("'self.caller' is not a valid operand in a finalize context."),
             Operand::BlockHeight => FinalizeType::Plaintext(PlaintextType::Literal(LiteralType::U32)),
-            Operand::NetworkID => FinalizeType::Plaintext(PlaintextType::Literal(LiteralType::U16))
+            Operand::NetworkID => FinalizeType::Plaintext(PlaintextType::Literal(LiteralType::U16)),
         })
     }
 
