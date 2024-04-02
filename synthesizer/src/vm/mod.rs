@@ -2254,6 +2254,79 @@ finalize transfer_public_to_private:
     }
 
     #[test]
+    fn test_deploy_with_cast() {
+        // Initialize an RNG.
+        let rng = &mut TestRng::default();
+
+        // Initialize the VM.
+        let vm = sample_vm();
+
+        // Initialize the genesis block.
+        let genesis = sample_genesis_block(rng);
+
+        // Update the VM.
+        vm.add_next_block(&genesis).unwrap();
+
+        // Initialize a private key.
+        let private_key = sample_genesis_private_key(rng);
+
+        // Construct the program.
+        let program = Program::from_str(
+            r"
+program primitive_casts.aleo;
+
+function group_casts:
+    input r0 as group.private;
+    cast r0 into r1 as address;
+    cast r0 into r2 as boolean;
+    cast r0 into r3 as field;
+    cast r0 into r4 as group;
+    cast r0 into r5 as i8;
+    cast r0 into r6 as i16;
+    cast r0 into r7 as i32;
+    cast r0 into r8 as i64;
+    cast r0 into r9 as i128;
+    cast r0 into r10 as u8;
+    cast r0 into r11 as u16;
+    cast r0 into r12 as u32;
+    cast r0 into r13 as u64;
+    cast r0 into r14 as u128;
+    cast r0 into r15 as scalar;
+    output r1 as address.private;
+    output r2 as boolean.private;
+    output r3 as field.private;
+    output r4 as group.private;
+    output r5 as i8.private;
+    output r6 as i16.private;
+    output r7 as i32.private;
+    output r8 as i64.private;
+    output r9 as i128.private;
+    output r10 as u8.private;
+    output r11 as u16.private;
+    output r12 as u32.private;
+    output r13 as u64.private;
+    output r14 as u128.private;
+    output r15 as scalar.private;
+    ",
+        )
+        .unwrap();
+
+        // Deploy the program.
+        let deployment = vm.deploy(&private_key, &program, None, 0, None, rng).unwrap();
+
+        // Verify the deployment.
+        vm.check_transaction(&deployment, None, rng).unwrap();
+
+        // Add the deployment to a block and update the VM.
+        let block = sample_next_block(&vm, &private_key, &[deployment], rng).unwrap();
+        vm.add_next_block(&block).unwrap();
+
+        // Check that the program was deployed successfully.
+        let program_id = ProgramID::from_str("primitive_casts.aleo").unwrap();
+        assert!(vm.contains_program(&program_id));
+    }
+
+    #[test]
     fn test_vm_puzzle() {
         // Attention: This test is used to ensure that the VM has performed downcasting correctly for
         // the puzzle, and that the underlying traits in the puzzle are working correctly. Please
