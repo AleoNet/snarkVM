@@ -74,10 +74,6 @@ impl<E: Environment> FromBits for Scalar<E> {
     }
 }
 
-impl<E: Environment> Signature<E> {
-
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
