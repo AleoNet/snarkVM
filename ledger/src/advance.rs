@@ -111,7 +111,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             // Log the update of the current epoch hash.
             match epoch_hash {
                 Some(epoch_hash) => {
-                    info!("Updating the `current_epoch_hash` at block height {height} to {epoch_hash}");
+                    trace!("Updating the current epoch hash at block {height} to '{epoch_hash}'");
                 }
                 None => {
                     error!("Failed to update the current epoch hash at block {height}");
