@@ -114,7 +114,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                     info!("Updating the `current_epoch_hash` at block height {height} to {epoch_hash}");
                 }
                 None => {
-                    info!("Failed to update the `current_epoch_hash` at block height {height}");
+                    error!("Failed to update the current epoch hash at block {height}");
                 }
             }
             // Update the current epoch hash.
