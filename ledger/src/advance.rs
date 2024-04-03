@@ -118,7 +118,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                 }
             }
             // Update the current epoch hash.
-            self.current_epoch_hash.write().clone_from(&self.get_epoch_hash(block.height()).ok());
+            self.current_epoch_hash.write().clone_from(epoch_hash);
         }
 
         Ok(())
