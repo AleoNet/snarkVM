@@ -120,11 +120,6 @@ impl<LH: LeafHash<Hash = PH::Hash>, PH: PathHash, const DEPTH: u8, const ARITY: 
                     // Prepare an iterator over then children, being mindful of possible missing leaves.
                     let child_iter = || child_indexes::<ARITY>(i).map(|child_index| tree.get(child_index).copied());
 
-                    // At the leaf level just return the leaves, or `None` in case the node has none.
-                    if current_empty_node_hash == empty_hash {
-                        return child_iter().collect::<Option<Vec<_>>>();
-                    }
-
                     // Check if the children aren't all derived from empty hashes.
                     if child_iter().all(|hash| hash == Some(current_empty_node_hash)) {
                         return None;
