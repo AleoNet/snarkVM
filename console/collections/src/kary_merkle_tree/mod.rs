@@ -129,8 +129,8 @@ impl<LH: LeafHash<Hash = PH::Hash>, PH: PathHash, const DEPTH: u8, const ARITY: 
             // Use the precomputed empty node hash for every empty node, if there are any.
             if start + num_full_nodes < end {
                 let empty_node_hash = path_hasher.hash_children(&vec![empty_hash; arity])?;
-                for idx in start + num_full_nodes..end {
-                    tree[idx] = empty_node_hash;
+                for node in tree.iter_mut().take(end).skip(start + num_full_nodes) {
+                    *node = empty_node_hash;
                 }
             }
             // Update the start index for the next level.
