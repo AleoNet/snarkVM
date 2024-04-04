@@ -33,7 +33,6 @@ pub trait PathHash: Clone + Send + Sync {
     }
 
     /// Returns the hash for each child node.
-    /// If there are no children, the supplied empty node hash is used instead.
     fn hash_all_children(&self, child_nodes: &[Vec<Self::Hash>]) -> Result<Vec<Self::Hash>> {
         match child_nodes.len() {
             0 => Ok(vec![]),
