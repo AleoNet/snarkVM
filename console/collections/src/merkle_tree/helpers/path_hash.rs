@@ -31,20 +31,11 @@ pub trait PathHash: Clone + Send + Sync {
     fn hash_children(&self, left: &Self::Hash, right: &Self::Hash) -> Result<Self::Hash>;
 
     /// Returns the hash for each tuple of child nodes.
-    /// If there are no children, the supplied empty hash is used.
-    fn hash_all_children(
-        &self,
-        child_nodes: &[Option<(Self::Hash, Self::Hash)>],
-        empty_node_hash: Self::Hash,
-    ) -> Result<Vec<Self::Hash>> {
-        let hash_children = |children: &Option<(Self::Hash, Self::Hash)>| {
-            if let Some((left, right)) = children { self.hash_children(left, right) } else { Ok(empty_node_hash) }
-        };
-
+    fn hash_all_children(&self, child_nodes: &[(Self::Hash, Self::Hash)]) -> Result<Vec<Self::Hash>> {
         match child_nodes.len() {
             0 => Ok(vec![]),
-            1..=100 => child_nodes.iter().map(hash_children).collect(),
-            _ => cfg_iter!(child_nodes).map(hash_children).collect(),
+            1..=100 => child_nodes.iter().map(|(left, right)| self.hash_children(left, right)).collect(),
+            _ => cfg_iter!(child_nodes).map(|(left, right)| self.hash_children(left, right)).collect(),
         }
     }
 }

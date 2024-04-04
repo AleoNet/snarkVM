@@ -78,6 +78,8 @@ impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>
         let empty_hash = path_hasher.hash_empty()?;
 
         // Calculate the size of the tree which excludes leafless nodes.
+        // The minimum tree size is either a single root node or the calculated number of nodes plus
+        // the supplied leaves; if the number of leaves is odd, an empty hash is added for padding.
         let minimum_tree_size =
             std::cmp::max(1, num_nodes + leaves.len() + if leaves.len() > 1 { leaves.len() % 2 } else { 0 });
 
@@ -90,22 +92,17 @@ impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>
 
         // Compute and store the hashes for each level, iterating from the penultimate level to the root level.
         let mut start_index = num_nodes;
-        let mut current_empty_node_hash = path_hasher.hash_children(&empty_hash, &empty_hash)?;
         // Compute the start index of the current level.
         while let Some(start) = parent(start_index) {
             // Compute the end index of the current level.
             let end = left_child(start);
             // Construct the children for each node in the current level.
             let tuples = (start..end)
-                .map(|i| {
+                .filter_map(|i| {
                     // Procure the children of the node.
                     let tuple = (tree.get(left_child(i)).copied(), tree.get(right_child(i)).copied());
-                    // If both children are empty hashes, return `None`.
-                    if tuple.0 == Some(current_empty_node_hash) && tuple.1 == Some(current_empty_node_hash) {
-                        return None;
-                    }
-                    // If any of the children are missing, return `None`.
-                    if tuple.0.is_none() || tuple.1.is_none() {
+                    // If both children are missing, return `None`.
+                    if tuple.0.is_none() && tuple.1.is_none() {
                         None
                     } else {
                         Some((tuple.0.unwrap(), tuple.1.unwrap()))
@@ -113,10 +110,17 @@ impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>
                 })
                 .collect::<Vec<_>>();
             // Compute and store the hashes for each node in the current level.
-            tree[start..end].copy_from_slice(&path_hasher.hash_all_children(&tuples, current_empty_node_hash)?);
+            let num_full_nodes = tuples.len();
+            tree[start..][..num_full_nodes].copy_from_slice(&path_hasher.hash_all_children(&tuples)?);
+            // Use the precomputed empty node hash for every empty node, if there are any.
+            if start + num_full_nodes < end {
+                let empty_node_hash = path_hasher.hash_children(&empty_hash, &empty_hash)?;
+                for node in tree.iter_mut().take(end).skip(start + num_full_nodes) {
+                    *node = empty_node_hash;
+                }
+            }
             // Update the start index for the next level.
             start_index = start;
-            current_empty_node_hash = path_hasher.hash_children(&current_empty_node_hash, &current_empty_node_hash)?;
         }
         lap!(timer, "Hashed {} levels", tree_depth);
 
