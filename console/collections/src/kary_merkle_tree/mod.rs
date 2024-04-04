@@ -108,7 +108,6 @@ impl<LH: LeafHash<Hash = PH::Hash>, PH: PathHash, const DEPTH: u8, const ARITY: 
 
         // Compute and store the hashes for each level, iterating from the penultimate level to the root level.
         let mut start_index = num_nodes;
-        let mut current_empty_node_hash = path_hasher.hash_children(&vec![empty_hash; arity])?;
         // Compute the start index of the current level.
         while let Some(start) = parent::<ARITY>(start_index) {
             // Compute the end index of the current level.
@@ -116,26 +115,26 @@ impl<LH: LeafHash<Hash = PH::Hash>, PH: PathHash, const DEPTH: u8, const ARITY: 
 
             // Construct the children for each node in the current level.
             let child_nodes = (start..end)
-                .map(|i| {
-                    // Prepare an iterator over then children, being mindful of possible missing leaves.
-                    let child_iter = || child_indexes::<ARITY>(i).map(|child_index| tree.get(child_index).copied());
-
-                    // Check if the children aren't all derived from empty hashes.
-                    if child_iter().all(|hash| hash == Some(current_empty_node_hash)) {
-                        return None;
-                    }
-
-                    // Collect the children.
-                    child_iter().collect::<Option<Vec<_>>>()
+                .filter_map(|i| {
+                    // Collect the children, being mindful of possible missing leaves.
+                    child_indexes::<ARITY>(i)
+                        .map(|child_index| tree.get(child_index).copied())
+                        .collect::<Option<Vec<_>>>()
                 })
                 .collect::<Vec<_>>();
 
             // Compute and store the hashes for each node in the current level.
-            tree[start..end].clone_from_slice(&path_hasher.hash_all_children(&child_nodes, current_empty_node_hash)?);
+            let num_full_nodes = child_nodes.len();
+            tree[start..][..num_full_nodes].clone_from_slice(&path_hasher.hash_all_children(&child_nodes)?);
+            // Use the precomputed empty node hash for every empty node, if there are any.
+            if start + num_full_nodes < end {
+                let empty_node_hash = path_hasher.hash_children(&vec![empty_hash; arity])?;
+                for idx in start + num_full_nodes..end {
+                    tree[idx] = empty_node_hash;
+                }
+            }
             // Update the start index for the next level.
             start_index = start;
-            // Update the empty node hash for the next level.
-            current_empty_node_hash = path_hasher.hash_children(&vec![current_empty_node_hash; arity])?;
         }
         lap!(timer, "Hashed {} levels", tree_depth);
 
