@@ -268,3 +268,15 @@ macro_rules! cfg_zip_fold {
         result
     }};
 }
+
+/// Performs an unstable sort
+#[macro_export]
+macro_rules! cfg_sort_unstable_by {
+    ($self: expr, $closure: expr) => {{
+        #[cfg(feature = "serial")]
+        $self.sort_unstable_by($closure);
+
+        #[cfg(not(feature = "serial"))]
+        $self.par_sort_unstable_by($closure);
+    }};
+}
