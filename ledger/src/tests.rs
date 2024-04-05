@@ -1748,7 +1748,7 @@ mod valid_solutions {
 
     #[test]
     fn test_duplicate_solution_ids() {
-        // Print the cfg to ensure that the test is running in the correct environment.
+        // Initialize an RNG.
         let rng = &mut TestRng::default();
 
         // Initialize the test environment.
@@ -1812,8 +1812,13 @@ mod valid_solutions {
 
     #[test]
     fn test_cumulative_proof_target_correctness() {
-        // Initialize the test environment.
+        // The number of blocks to test.
+        const NUM_BLOCKS: u32 = 25;
+
+        // Initialize an RNG.
         let rng = &mut TestRng::default();
+
+        // Initialize the test environment.
         let crate::test_helpers::TestEnv { ledger, private_key, address, .. } =
             crate::test_helpers::sample_test_env(rng);
 
@@ -1827,7 +1832,7 @@ mod valid_solutions {
         let mut combined_targets = 0;
 
         // Run through 25 blocks of target adjustment.
-        while block_height < 25 {
+        while block_height < NUM_BLOCKS {
             // Get coinbase puzzle data from the latest block.
             let block = ledger.latest_block();
             let coinbase_target = block.coinbase_target();
@@ -1835,8 +1840,11 @@ mod valid_solutions {
             let latest_epoch_hash = ledger.latest_epoch_hash().unwrap();
             let latest_proof_target = ledger.latest_proof_target();
 
+            // Sample the number of solutions to generate.
+            let num_solutions = rng.gen_range(1..=CurrentNetwork::MAX_SOLUTIONS);
+
             // Initialize a vector for valid solutions for this block.
-            let mut solutions = vec![];
+            let mut solutions = Vec::with_capacity(num_solutions);
 
             // Loop through proofs until two that meet the threshold are found.
             loop {
@@ -1849,14 +1857,14 @@ mod valid_solutions {
                     solutions.push(solution);
 
                     // If two have been found, exit the solver loop.
-                    if solutions.len() >= 2 {
+                    if solutions.len() >= num_solutions {
                         break;
                     }
                 }
             }
 
             // If the combined target exceeds the coinbase threshold reset it.
-            if combined_targets > coinbase_threshold {
+            if combined_targets >= coinbase_threshold {
                 combined_targets = 0;
             }
 
@@ -1898,6 +1906,7 @@ mod valid_solutions {
         const NUM_INVALID_SOLUTIONS: usize = CurrentNetwork::MAX_SOLUTIONS;
         const NUM_VALID_SOLUTIONS: usize = CurrentNetwork::MAX_SOLUTIONS;
 
+        // Initialize an RNG.
         let rng = &mut TestRng::default();
 
         // Initialize the test environment.
@@ -1983,6 +1992,7 @@ mod valid_solutions {
         // Note that this should be greater than the maximum number of solutions.
         const NUM_VALID_SOLUTIONS: usize = 2 * CurrentNetwork::MAX_SOLUTIONS;
 
+        // Initialize an RNG.
         let rng = &mut TestRng::default();
 
         // Initialize the test environment.
