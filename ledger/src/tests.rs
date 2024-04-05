@@ -1811,6 +1811,88 @@ mod valid_solutions {
     }
 
     #[test]
+    fn test_cumulative_proof_target_correctness() {
+        // Initialize the test environment.
+        let rng = &mut TestRng::default();
+        let crate::test_helpers::TestEnv { ledger, private_key, address, .. } =
+            crate::test_helpers::sample_test_env(rng);
+
+        // Retrieve the puzzle parameters.
+        let puzzle = ledger.puzzle();
+
+        // Initialize block height.
+        let mut block_height = ledger.latest_height();
+
+        // Start a local counter of proof targets.
+        let mut combined_targets = 0;
+
+        // Run through 25 blocks of target adjustment.
+        while block_height < 25 {
+            // Get coinbase puzzle data from the latest block.
+            let block = ledger.latest_block();
+            let coinbase_target = block.coinbase_target();
+            let coinbase_threshold = coinbase_target.saturating_div(2);
+            let latest_epoch_hash = ledger.latest_epoch_hash().unwrap();
+            let latest_proof_target = ledger.latest_proof_target();
+
+            // Initialize a vector for valid solutions for this block.
+            let mut solutions = vec![];
+
+            // Loop through proofs until two that meet the threshold are found.
+            loop {
+                if let Ok(solution) = puzzle.prove(latest_epoch_hash, address, rng.gen(), Some(latest_proof_target)) {
+                    // Get the proof target.
+                    let proof_target = puzzle.get_proof_target(&solution).unwrap();
+
+                    // Update the local combined target counter and store the solution.
+                    combined_targets += proof_target;
+                    solutions.push(solution);
+
+                    // If two have been found, exit the solver loop.
+                    if solutions.len() >= 2 {
+                        break;
+                    }
+                }
+            }
+
+            // If the combined target exceeds the coinbase threshold reset it.
+            if combined_targets > coinbase_threshold {
+                combined_targets = 0;
+            }
+
+            // Get a transfer transaction to ensure solutions can be included in the block.
+            let inputs = [Value::from_str(&format!("{address}")).unwrap(), Value::from_str("10u64").unwrap()];
+            let transfer_transaction = ledger
+                .vm
+                .execute(&private_key, ("credits.aleo", "transfer_public"), inputs.iter(), None, 0, None, rng)
+                .unwrap();
+
+            // Generate the next prospective block.
+            let next_block = ledger
+                .prepare_advance_to_next_beacon_block(
+                    &private_key,
+                    vec![],
+                    solutions,
+                    vec![transfer_transaction.clone()],
+                    rng,
+                )
+                .unwrap();
+
+            // Ensure the combined target matches the expected value.
+            assert_eq!(combined_targets as u128, next_block.cumulative_proof_target());
+
+            // Ensure the next block is correct.
+            ledger.check_next_block(&next_block, rng).unwrap();
+
+            // Advanced to the next block.
+            ledger.advance_to_next_block(&next_block).unwrap();
+
+            // Set the latest block height.
+            block_height = ledger.latest_height();
+        }
+    }
+
+    #[test]
     fn test_excess_invalid_solution_ids() {
         // Note that the sum of `NUM_INVALID_SOLUTIONS` and `NUM_VALID_SOLUTIONS` should exceed the maximum number of solutions.
         const NUM_INVALID_SOLUTIONS: usize = CurrentNetwork::MAX_SOLUTIONS;
