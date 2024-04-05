@@ -815,6 +815,15 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         let mut valid_transactions = Vec::with_capacity(transactions.len());
         let mut aborted_transactions = Vec::with_capacity(transactions.len());
 
+        // Initialize a list of created transition IDs.
+        let transition_ids: Arc<Mutex<IndexSet<N::TransitionID>>> = Default::default();
+        // Initialize a list of spent input IDs.
+        let input_ids: Arc<Mutex<IndexSet<Field<N>>>> = Default::default();
+        // Initialize a list of created output IDs.
+        let output_ids: Arc<Mutex<IndexSet<Field<N>>>> = Default::default();
+        // Initialize the list of created transition public keys.
+        let tpks: Arc<Mutex<IndexSet<Group<N>>>> = Default::default();
+
         // Separate the transactions into deploys and executions.
         let (deployments, executions): (Vec<&Transaction<N>>, Vec<&Transaction<N>>) =
             transactions.iter().partition(|tx| tx.is_deploy());
@@ -835,9 +844,35 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                             "Fee transactions are not allowed in speculate".to_string(),
                         ));
                     }
+
+                    // Determine if the transaction should be aborted. This will prevent the VM from performing
+                    // verification on transactions that would have been aborted in `VM::atomic_speculate`.
+                    if let Some(reason) = self.should_abort_transaction(
+                        transaction,
+                        &transition_ids.lock(),
+                        &input_ids.lock(),
+                        &output_ids.lock(),
+                        &tpks.lock(),
+                    ) {
+                        // Continue to the next transaction.
+                        return Either::Right((*transaction, reason.to_string()));
+                    }
+
                     // Verify the transaction.
                     match self.check_transaction(transaction, None, &mut rng) {
-                        Ok(_) => Either::Left(*transaction),
+                        // If the transaction is valid, add it to the list of valid transactions.
+                        Ok(_) => {
+                            // Add the transition IDs to the set of produced transition IDs.
+                            transition_ids.lock().extend(transaction.transition_ids());
+                            // Add the input IDs to the set of spent input IDs.
+                            input_ids.lock().extend(transaction.input_ids());
+                            // Add the output IDs to the set of produced output IDs.
+                            output_ids.lock().extend(transaction.output_ids());
+                            // Add the transition public keys to the set of produced transition public keys.
+                            tpks.lock().extend(transaction.transition_public_keys());
+                            Either::Left(*transaction)
+                        }
+                        // If the transaction is invalid, add it to the list of aborted transactions.
                         Err(e) => Either::Right((*transaction, e.to_string())),
                     }
                 });
