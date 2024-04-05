@@ -294,55 +294,14 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     continue 'outer;
                 }
 
-                // Ensure that the transaction is not producing a duplicate transition.
-                for transition_id in transaction.transition_ids() {
-                    // If the transition ID is already produced in this block or previous blocks, abort the transaction.
-                    if transition_ids.contains(transition_id)
-                        || self.transition_store().contains_transition_id(transition_id).unwrap_or(true)
-                    {
-                        // Store the aborted transaction.
-                        aborted.push((transaction.clone(), format!("Duplicate transition {transition_id}")));
-                        // Continue to the next transaction.
-                        continue 'outer;
-                    }
-                }
-
-                // Ensure that the transaction is not double-spending an input.
-                for input_id in transaction.input_ids() {
-                    // If the input ID is already spent in this block or previous blocks, abort the transaction.
-                    if input_ids.contains(input_id)
-                        || self.transition_store().contains_input_id(input_id).unwrap_or(true)
-                    {
-                        // Store the aborted transaction.
-                        aborted.push((transaction.clone(), format!("Double-spending input {input_id}")));
-                        // Continue to the next transaction.
-                        continue 'outer;
-                    }
-                }
-
-                // Ensure that the transaction is not producing a duplicate output.
-                for output_id in transaction.output_ids() {
-                    // If the output ID is already produced in this block or previous blocks, abort the transaction.
-                    if output_ids.contains(output_id)
-                        || self.transition_store().contains_output_id(output_id).unwrap_or(true)
-                    {
-                        // Store the aborted transaction.
-                        aborted.push((transaction.clone(), format!("Duplicate output {output_id}")));
-                        // Continue to the next transaction.
-                        continue 'outer;
-                    }
-                }
-
-                // // Ensure that the transaction is not producing a duplicate transition public key.
-                // // Note that the tpk and tcm are corresponding, so a uniqueness check for just the tpk is sufficient.
-                for tpk in transaction.transition_public_keys() {
-                    // If the transition public key is already produced in this block or previous blocks, abort the transaction.
-                    if tpks.contains(tpk) || self.transition_store().contains_tpk(tpk).unwrap_or(true) {
-                        // Store the aborted transaction.
-                        aborted.push((transaction.clone(), format!("Duplicate transition public key {tpk}")));
-                        // Continue to the next transaction.
-                        continue 'outer;
-                    }
+                // Determine if the transaction should be aborted.
+                if let Some(reason) =
+                    self.should_abort_transaction(transaction, &transition_ids, &input_ids, &output_ids, &tpks)
+                {
+                    // Store the aborted transaction.
+                    aborted.push((transaction.clone(), reason));
+                    // Continue to the next transaction.
+                    continue 'outer;
                 }
 
                 // Process the transaction in an isolated atomic batch.
@@ -786,6 +745,60 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
             Ok(ratified_finalize_operations)
         })
+    }
+
+    /// Returns `Some(reason)` if the transaction is aborted. Otherwise, returns `None`.
+    ///
+    /// The transaction will be aborted if any of the following conditions are met:
+    /// - The transaction is producing a duplicate transition
+    /// - The transaction is double-spending an input
+    /// - The transaction is producing a duplicate output
+    /// - The transaction is producing a duplicate transition public key
+    fn should_abort_transaction(
+        &self,
+        transaction: &Transaction<N>,
+        transition_ids: &IndexSet<N::TransitionID>,
+        input_ids: &IndexSet<Field<N>>,
+        output_ids: &IndexSet<Field<N>>,
+        tpks: &IndexSet<Group<N>>,
+    ) -> Option<String> {
+        // Ensure that the transaction is not producing a duplicate transition.
+        for transition_id in transaction.transition_ids() {
+            // If the transition ID is already produced in this block or previous blocks, abort the transaction.
+            if transition_ids.contains(transition_id)
+                || self.transition_store().contains_transition_id(transition_id).unwrap_or(true)
+            {
+                return Some(format!("Duplicate transition {transition_id}"));
+            }
+        }
+
+        // Ensure that the transaction is not double-spending an input.
+        for input_id in transaction.input_ids() {
+            // If the input ID is already spent in this block or previous blocks, abort the transaction.
+            if input_ids.contains(input_id) || self.transition_store().contains_input_id(input_id).unwrap_or(true) {
+                return Some(format!("Double-spending input {input_id}"));
+            }
+        }
+
+        // Ensure that the transaction is not producing a duplicate output.
+        for output_id in transaction.output_ids() {
+            // If the output ID is already produced in this block or previous blocks, abort the transaction.
+            if output_ids.contains(output_id) || self.transition_store().contains_output_id(output_id).unwrap_or(true) {
+                return Some(format!("Duplicate output {output_id}"));
+            }
+        }
+
+        // // Ensure that the transaction is not producing a duplicate transition public key.
+        // // Note that the tpk and tcm are corresponding, so a uniqueness check for just the tpk is sufficient.
+        for tpk in transaction.transition_public_keys() {
+            // If the transition public key is already produced in this block or previous blocks, abort the transaction.
+            if tpks.contains(tpk) || self.transition_store().contains_tpk(tpk).unwrap_or(true) {
+                return Some(format!("Duplicate transition public key {tpk}"));
+            }
+        }
+
+        // Return `None` because the transaction is well-formed.
+        None
     }
 
     /// Performs precondition checks on the transactions prior to speculation.
