@@ -1677,6 +1677,67 @@ fn test_deployment_exceeding_max_transaction_spend() {
     assert!(result.is_err());
 }
 
+#[test]
+fn test_transaction_ordering() {
+    let rng = &mut TestRng::default();
+
+    // Initialize the test environment.
+    let crate::test_helpers::TestEnv { ledger, private_key, address, .. } = crate::test_helpers::sample_test_env(rng);
+
+    // Create two programs with a duplicate program ID but different mappings
+    let program_1 = Program::<CurrentNetwork>::from_str(
+        r"
+program dummy_program.aleo;
+mapping abcd1:
+    key as address.public;
+    value as u64.public;
+function foo:
+    input r0 as u8.private;
+    async foo r0 into r1;
+    output r1 as dummy_program.aleo/foo.future;
+finalize foo:
+    input r0 as u8.public;
+    add r0 r0 into r1;",
+    )
+    .unwrap();
+
+    // Create a deployment transaction.
+    let deployment_transaction = ledger.vm.deploy(&private_key, &program_1, None, 0, None, rng).unwrap();
+    let deployment_id = deployment_transaction.id();
+    assert!(ledger.check_transaction_basic(&deployment_transaction, None, rng).is_ok());
+
+    // Create a transfer transaction.
+    let inputs = [Value::from_str(&format!("{address}")).unwrap(), Value::from_str("10u64").unwrap()];
+    let transfer_transaction = ledger
+        .vm
+        .execute(&private_key, ("credits.aleo", "transfer_public"), inputs.iter(), None, 0, None, rng)
+        .unwrap();
+    let transfer_id = transfer_transaction.id();
+
+    // Create a block.
+    let block = ledger
+        .prepare_advance_to_next_beacon_block(
+            &private_key,
+            vec![],
+            vec![],
+            vec![transfer_transaction, deployment_transaction],
+            rng,
+        )
+        .unwrap();
+
+    // Check that the next block is valid.
+    ledger.check_next_block(&block, rng).unwrap();
+
+    // Add the block to the ledger.
+    ledger.advance_to_next_block(&block).unwrap();
+
+    // Enforce that the block transactions were correct.
+    assert_eq!(block.transactions().num_accepted(), 2);
+
+    // Enforce that the ordering of the transactions is correct.
+    assert_eq!(block.transactions().transaction_ids().collect::<Vec<_>>(), vec![&transfer_id, &deployment_id]);
+}
+
 // These tests require the proof targets to be low enough to be able to generate **valid** solutions.
 // This requires the 'test' feature to be enabled for the `console` dependency.
 #[cfg(feature = "test")]
