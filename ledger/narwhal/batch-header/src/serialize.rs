@@ -19,11 +19,12 @@ impl<N: Network> Serialize for BatchHeader<N> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
             true => {
-                let mut header = serializer.serialize_struct("BatchHeader", 7)?;
+                let mut header = serializer.serialize_struct("BatchHeader", 8)?;
                 header.serialize_field("batch_id", &self.batch_id)?;
                 header.serialize_field("author", &self.author)?;
                 header.serialize_field("round", &self.round)?;
                 header.serialize_field("timestamp", &self.timestamp)?;
+                header.serialize_field("committee_id", &self.committee_id)?;
                 header.serialize_field("transmission_ids", &self.transmission_ids)?;
                 header.serialize_field("previous_certificate_ids", &self.previous_certificate_ids)?;
                 header.serialize_field("signature", &self.signature)?;
@@ -47,6 +48,7 @@ impl<'de, N: Network> Deserialize<'de> for BatchHeader<N> {
                     DeserializeExt::take_from_value::<D>(&mut header, "author")?,
                     DeserializeExt::take_from_value::<D>(&mut header, "round")?,
                     DeserializeExt::take_from_value::<D>(&mut header, "timestamp")?,
+                    DeserializeExt::take_from_value::<D>(&mut header, "committee_id")?,
                     DeserializeExt::take_from_value::<D>(&mut header, "transmission_ids")?,
                     DeserializeExt::take_from_value::<D>(&mut header, "previous_certificate_ids")?,
                     DeserializeExt::take_from_value::<D>(&mut header, "signature")?,
@@ -56,10 +58,10 @@ impl<'de, N: Network> Deserialize<'de> for BatchHeader<N> {
                 // Ensure that the batch ID matches the recovered header.
                 match batch_id == batch_header.batch_id() {
                     true => Ok(batch_header),
-                    false => {
-                        Err(error(format!("Batch ID mismatch: expected {batch_id}, got {}", batch_header.batch_id())))
-                            .map_err(de::Error::custom)
-                    }
+                    false => Err(de::Error::custom(error(format!(
+                        "Batch ID mismatch: expected {batch_id}, got {}",
+                        batch_header.batch_id()
+                    )))),
                 }
             }
             false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "batch header"),

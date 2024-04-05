@@ -18,6 +18,9 @@
 // TODO (howardwu): Update the return type on `execute` after stabilizing the interface.
 #![allow(clippy::type_complexity)]
 
+mod cost;
+pub use cost::*;
+
 mod stack;
 pub use stack::*;
 

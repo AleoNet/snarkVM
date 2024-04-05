@@ -91,6 +91,9 @@ impl_local!(TransferPrivateVerifier, "resources/", "transfer_private", "verifier
 // TransferPublic
 impl_remote!(TransferPublicProver, REMOTE_URL, "resources/", "transfer_public", "prover");
 impl_local!(TransferPublicVerifier, "resources/", "transfer_public", "verifier");
+// TransferPublicAsSigner
+impl_remote!(TransferPublicAsSignerProver, REMOTE_URL, "resources/", "transfer_public_as_signer", "prover");
+impl_local!(TransferPublicAsSignerVerifier, "resources/", "transfer_public_as_signer", "verifier");
 // TransferPrivateToPublic
 impl_remote!(TransferPrivateToPublicProver, REMOTE_URL, "resources/", "transfer_private_to_public", "prover");
 impl_local!(TransferPrivateToPublicVerifier, "resources/", "transfer_private_to_public", "verifier");
@@ -122,6 +125,7 @@ macro_rules! insert_credit_keys {
             $crate::insert_key!($map, string, $type<$network>, ("set_validator_state", $crate::mainnet::[<SetValidatorState $variant>]::load_bytes()));
             $crate::insert_key!($map, string, $type<$network>, ("transfer_private", $crate::mainnet::[<TransferPrivate $variant>]::load_bytes()));
             $crate::insert_key!($map, string, $type<$network>, ("transfer_public", $crate::mainnet::[<TransferPublic $variant>]::load_bytes()));
+            $crate::insert_key!($map, string, $type<$network>, ("transfer_public_as_signer", $crate::mainnet::[<TransferPublicAsSigner $variant>]::load_bytes()));
             $crate::insert_key!($map, string, $type<$network>, ("transfer_private_to_public", $crate::mainnet::[<TransferPrivateToPublic $variant>]::load_bytes()));
             $crate::insert_key!($map, string, $type<$network>, ("transfer_public_to_private", $crate::mainnet::[<TransferPublicToPrivate $variant>]::load_bytes()));
             $crate::insert_key!($map, string, $type<$network>, ("join", $crate::mainnet::[<Join $variant>]::load_bytes()));
@@ -179,6 +183,7 @@ mod tests {
         SetValidatorStateVerifier::load_bytes().expect("Failed to load set_validator_state verifier");
         TransferPrivateVerifier::load_bytes().expect("Failed to load transfer_private verifier");
         TransferPublicVerifier::load_bytes().expect("Failed to load transfer_public verifier");
+        TransferPublicAsSignerVerifier::load_bytes().expect("Failed to load transfer_public_as_signer verifier");
         TransferPrivateToPublicVerifier::load_bytes().expect("Failed to load transfer_private_to_public verifier");
         TransferPublicToPrivateVerifier::load_bytes().expect("Failed to load transfer_public_to_private verifier");
         FeePrivateProver::load_bytes().expect("Failed to load fee_private prover");

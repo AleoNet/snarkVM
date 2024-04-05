@@ -14,8 +14,6 @@
 
 use super::*;
 
-use rand::{rngs::StdRng, SeedableRng};
-
 impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
     /// Checks the given block is valid next block.
     pub fn check_next_block<R: CryptoRng + Rng>(&self, block: &Block<N>, rng: &mut R) -> Result<()> {
@@ -33,18 +31,10 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
 
         // Ensure the solutions do not already exist.
         for solution_id in block.solutions().solution_ids() {
-            if self.contains_puzzle_commitment(solution_id)? {
+            if self.contains_solution_id(solution_id)? {
                 bail!("Solution ID {solution_id} already exists in the ledger");
             }
         }
-
-        // Ensure each transaction is well-formed and unique.
-        let transactions = block.transactions();
-        let rngs = (0..transactions.len()).map(|_| StdRng::from_seed(rng.gen())).collect::<Vec<_>>();
-        cfg_iter!(transactions).zip(rngs).try_for_each(|(transaction, mut rng)| {
-            self.check_transaction_basic(transaction, transaction.to_rejected_id()?, &mut rng)
-                .map_err(|e| anyhow!("Invalid transaction found in the transactions list: {e}"))
-        })?;
 
         // TODO (howardwu): Remove this after moving the total supply into credits.aleo.
         {
@@ -78,37 +68,58 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             block.previous_hash(),
         )?;
 
-        // Ensure speculation over the unconfirmed transactions is correct.
+        // Ensure speculation over the unconfirmed transactions is correct and ensure each transaction is well-formed and unique.
         let ratified_finalize_operations =
-            self.vm.check_speculate(state, block.ratifications(), block.solutions(), block.transactions())?;
+            self.vm.check_speculate(state, block.ratifications(), block.solutions(), block.transactions(), rng)?;
 
-        // Get the round number for the previous committee. Note, we subtract 2 from odd rounds,
-        // because committees are updated in even rounds.
-        let previous_round = match block.round() % 2 == 0 {
-            true => block.round().saturating_sub(1),
-            false => block.round().saturating_sub(2),
-        };
-        // Get the committee lookback round.
-        let committee_lookback_round = previous_round.saturating_sub(Committee::<N>::COMMITTEE_LOOKBACK_RANGE);
         // Retrieve the committee lookback.
-        let committee_lookback = self
-            .get_committee_for_round(committee_lookback_round)?
-            .ok_or(anyhow!("Failed to fetch committee for round {committee_lookback_round}"))?;
+        let committee_lookback = {
+            // Determine the round number for the previous committee. Note, we subtract 2 from odd rounds,
+            // because committees are updated in even rounds.
+            let previous_round = match block.round() % 2 == 0 {
+                true => block.round().saturating_sub(1),
+                false => block.round().saturating_sub(2),
+            };
+            // Determine the committee lookback round.
+            let committee_lookback_round = previous_round.saturating_sub(Committee::<N>::COMMITTEE_LOOKBACK_RANGE);
+            // Output the committee lookback.
+            self.get_committee_for_round(committee_lookback_round)?
+                .ok_or(anyhow!("Failed to fetch committee for round {committee_lookback_round}"))?
+        };
+
+        // Retrieve the previous committee lookback.
+        let previous_committee_lookback = {
+            // Calculate the penultimate round, which is the round before the anchor round.
+            let penultimate_round = block.round().saturating_sub(1);
+            // Determine the round number for the previous committee. Note, we subtract 2 from odd rounds,
+            // because committees are updated in even rounds.
+            let previous_penultimate_round = match penultimate_round % 2 == 0 {
+                true => penultimate_round.saturating_sub(1),
+                false => penultimate_round.saturating_sub(2),
+            };
+            // Determine the previous committee lookback round.
+            let penultimate_committee_lookback_round =
+                previous_penultimate_round.saturating_sub(Committee::<N>::COMMITTEE_LOOKBACK_RANGE);
+            // Output the previous committee lookback.
+            self.get_committee_for_round(penultimate_committee_lookback_round)?
+                .ok_or(anyhow!("Failed to fetch committee for round {penultimate_committee_lookback_round}"))?
+        };
 
         // Ensure the block is correct.
         let (expected_existing_solution_ids, expected_existing_transaction_ids) = block.verify(
             &self.latest_block(),
             self.latest_state_root(),
+            &previous_committee_lookback,
             &committee_lookback,
-            self.coinbase_puzzle(),
-            &self.latest_epoch_challenge()?,
+            self.puzzle(),
+            self.latest_epoch_hash()?,
             OffsetDateTime::now_utc().unix_timestamp(),
             ratified_finalize_operations,
         )?;
 
         // Ensure that each existing solution ID from the block exists in the ledger.
         for existing_solution_id in expected_existing_solution_ids {
-            if !self.contains_puzzle_commitment(&existing_solution_id)? {
+            if !self.contains_solution_id(&existing_solution_id)? {
                 bail!("Solution ID '{existing_solution_id}' does not exist in the ledger");
             }
         }

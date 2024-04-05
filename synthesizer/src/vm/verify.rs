@@ -32,6 +32,38 @@ macro_rules! ensure_is_unique {
 }
 
 impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
+    /// The maximum number of deployments to verify in parallel.
+    pub(crate) const MAX_PARALLEL_DEPLOY_VERIFICATIONS: usize = 5;
+    /// The maximum number of executions to verify in parallel.
+    pub(crate) const MAX_PARALLEL_EXECUTE_VERIFICATIONS: usize = 1000;
+
+    /// Verifies the list of transactions in the VM. On failure, returns an error.
+    pub fn check_transactions<R: CryptoRng + Rng>(
+        &self,
+        transactions: &[(&Transaction<N>, Option<Field<N>>)],
+        rng: &mut R,
+    ) -> Result<()> {
+        // Separate the transactions into deploys and executions.
+        let (deployments, executions): (Vec<_>, Vec<_>) = transactions.iter().partition(|(tx, _)| tx.is_deploy());
+        // Chunk the deploys and executions into groups for parallel verification.
+        let deployments_for_verification = deployments.chunks(Self::MAX_PARALLEL_DEPLOY_VERIFICATIONS);
+        let executions_for_verification = executions.chunks(Self::MAX_PARALLEL_EXECUTE_VERIFICATIONS);
+
+        // Verify the transactions in batches.
+        for transactions in deployments_for_verification.chain(executions_for_verification) {
+            // Ensure each transaction is well-formed and unique.
+            let rngs = (0..transactions.len()).map(|_| StdRng::from_seed(rng.gen())).collect::<Vec<_>>();
+            cfg_iter!(transactions).zip(rngs).try_for_each(|((transaction, rejected_id), mut rng)| {
+                self.check_transaction(transaction, *rejected_id, &mut rng)
+                    .map_err(|e| anyhow!("Invalid transaction found in the transactions list: {e}"))
+            })?;
+        }
+
+        Ok(())
+    }
+}
+
+impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// Verifies the transaction in the VM. On failure, returns an error.
     #[inline]
     pub fn check_transaction<R: CryptoRng + Rng>(
@@ -95,6 +127,9 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         // First, verify the fee.
         self.check_fee(transaction, rejected_id)?;
 
+        // Check if the transaction exists in the partially-verified cache.
+        let is_partially_verified = self.partially_verified_transactions.read().peek(&transaction.id()).is_some();
+
         // Next, verify the deployment or execution.
         match transaction {
             Transaction::Deploy(id, owner, deployment, _) => {
@@ -108,12 +143,22 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 if deployment.edition() != N::EDITION {
                     bail!("Invalid deployment transaction '{id}' - expected edition {}", N::EDITION)
                 }
-                // Ensure the program ID does not already exist..
+                // Ensure the program ID does not already exist in the store.
                 if self.transaction_store().contains_program_id(deployment.program_id())? {
                     bail!("Program ID '{}' is already deployed", deployment.program_id())
                 }
-                // Verify the deployment.
-                self.check_deployment_internal(deployment, rng)?;
+                // Ensure the program does not already exist in the process.
+                if self.contains_program(deployment.program_id()) {
+                    bail!("Program ID '{}' already exists", deployment.program_id());
+                }
+                // Verify the deployment if it has not been verified before.
+                if !is_partially_verified {
+                    // Verify the deployment.
+                    match try_vm_runtime!(|| self.check_deployment_internal(deployment, rng)) {
+                        Ok(result) => result?,
+                        Err(_) => bail!("VM safely halted transaction '{id}' during verification"),
+                    }
+                }
             }
             Transaction::Execute(id, execution, _) => {
                 // Compute the execution ID.
@@ -125,9 +170,18 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     bail!("Transaction '{id}' contains a previously rejected execution")
                 }
                 // Verify the execution.
-                self.check_execution_internal(execution)?;
+                match try_vm_runtime!(|| self.check_execution_internal(execution, is_partially_verified)) {
+                    Ok(result) => result?,
+                    Err(_) => bail!("VM safely halted transaction '{id}' during verification"),
+                }
             }
             Transaction::Fee(..) => { /* no-op */ }
+        }
+
+        // If the above checks have passed and this is not a fee transaction,
+        // then add the transaction ID to the partially-verified transactions cache.
+        if !matches!(transaction, Transaction::Fee(..)) && !is_partially_verified {
+            self.partially_verified_transactions.write().push(transaction.id(), ());
         }
 
         finish!(timer, "Verify the transaction");
@@ -168,7 +222,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     // If the fee is required, then check that the base fee amount is satisfied.
                     if is_fee_required {
                         // Compute the execution cost.
-                        let (cost, _) = execution_cost(self, execution)?;
+                        let (cost, _) = execution_cost(&self.process().read(), execution)?;
                         // Ensure the fee is sufficient to cover the cost.
                         if *fee.base_amount()? < cost {
                             bail!(
@@ -229,11 +283,14 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// Note: This is an internal check only. To ensure all components of the execution are checked,
     /// use `VM::check_transaction` instead.
     #[inline]
-    fn check_execution_internal(&self, execution: &Execution<N>) -> Result<()> {
+    fn check_execution_internal(&self, execution: &Execution<N>, is_partially_verified: bool) -> Result<()> {
         let timer = timer!("VM::check_execution");
 
-        // Verify the execution.
-        let verification = self.process.read().verify_execution(execution);
+        // Verify the execution proof, if it has not been partially-verified before.
+        let verification = match is_partially_verified {
+            true => Ok(()),
+            false => self.process.read().verify_execution(execution),
+        };
         lap!(timer, "Verify the execution");
 
         // Ensure the global state root exists in the block store.
@@ -241,10 +298,10 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             // Ensure the global state root exists in the block store.
             Ok(()) => match self.block_store().contains_state_root(&execution.global_state_root()) {
                 Ok(true) => Ok(()),
-                Ok(false) => bail!("Execution verification failed: global state root not found"),
-                Err(error) => bail!("Execution verification failed: {error}"),
+                Ok(false) => bail!("Execution verification failed - global state root does not exist (yet)"),
+                Err(error) => bail!("Execution verification failed - {error}"),
             },
-            Err(error) => bail!("Execution verification failed: {error}"),
+            Err(error) => bail!("Execution verification failed - {error}"),
         };
         finish!(timer, "Check the global state root");
         result
@@ -373,13 +430,13 @@ mod tests {
                     // Ensure the proof exists.
                     assert!(execution.proof().is_some());
                     // Verify the execution.
-                    vm.check_execution_internal(&execution).unwrap();
+                    vm.check_execution_internal(&execution, false).unwrap();
 
                     // Ensure that deserialization doesn't break the transaction verification.
                     let serialized_execution = execution.to_string();
                     let recovered_execution: Execution<CurrentNetwork> =
                         serde_json::from_str(&serialized_execution).unwrap();
-                    vm.check_execution_internal(&recovered_execution).unwrap();
+                    vm.check_execution_internal(&recovered_execution, false).unwrap();
                 }
                 _ => panic!("Expected an execution transaction"),
             }
@@ -471,7 +528,7 @@ mod tests {
 
         // Construct the new block header.
         let (ratifications, transactions, aborted_transaction_ids, ratified_finalize_operations) = vm
-            .speculate(sample_finalize_state(1), Some(0u64), vec![], &None.into(), [deployment_transaction].iter())
+            .speculate(sample_finalize_state(1), Some(0u64), vec![], &None.into(), [deployment_transaction].iter(), rng)
             .unwrap();
         assert!(aborted_transaction_ids.is_empty());
 

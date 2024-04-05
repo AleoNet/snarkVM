@@ -18,14 +18,14 @@ mod serialize;
 mod string;
 
 use console::{network::prelude::*, types::Field};
-use ledger_coinbase::{CoinbaseSolution, PuzzleCommitment};
 use ledger_committee::Committee;
 use ledger_narwhal_batch_header::BatchHeader;
+use ledger_puzzle::{PuzzleSolutions, SolutionID};
 
 #[derive(Clone, Eq, PartialEq)]
 pub struct Solutions<N: Network> {
-    /// The prover solutions for the coinbase puzzle.
-    solutions: Option<CoinbaseSolution<N>>,
+    /// The prover solutions for the puzzle.
+    solutions: Option<PuzzleSolutions<N>>,
 }
 
 impl<N: Network> Solutions<N> {
@@ -35,9 +35,9 @@ impl<N: Network> Solutions<N> {
         * Committee::<N>::MAX_COMMITTEE_SIZE as usize;
 }
 
-impl<N: Network> From<Option<CoinbaseSolution<N>>> for Solutions<N> {
+impl<N: Network> From<Option<PuzzleSolutions<N>>> for Solutions<N> {
     /// Initializes a new instance of the solutions.
-    fn from(solutions: Option<CoinbaseSolution<N>>) -> Self {
+    fn from(solutions: Option<PuzzleSolutions<N>>) -> Self {
         // Return the solutions.
         Self { solutions }
     }
@@ -45,7 +45,7 @@ impl<N: Network> From<Option<CoinbaseSolution<N>>> for Solutions<N> {
 
 impl<N: Network> Solutions<N> {
     /// Initializes a new instance of the solutions.
-    pub fn new(solutions: CoinbaseSolution<N>) -> Result<Self> {
+    pub fn new(solutions: PuzzleSolutions<N>) -> Result<Self> {
         // Return the solutions.
         Ok(Self { solutions: Some(solutions) })
     }
@@ -66,26 +66,16 @@ impl<N: Network> Solutions<N> {
 
 impl<N: Network> Solutions<N> {
     /// Returns an iterator over the solution IDs.
-    pub fn solution_ids<'a>(&'a self) -> Box<dyn Iterator<Item = &'a PuzzleCommitment<N>> + 'a> {
+    pub fn solution_ids<'a>(&'a self) -> Box<dyn Iterator<Item = &'a SolutionID<N>> + 'a> {
         match &self.solutions {
             Some(solutions) => Box::new(solutions.keys()),
-            None => Box::new(std::iter::empty::<&PuzzleCommitment<N>>()),
-        }
-    }
-}
-
-impl<N: Network> Solutions<N> {
-    /// Returns the combined sum of the prover solutions.
-    pub fn to_combined_proof_target(&self) -> Result<u128> {
-        match &self.solutions {
-            Some(solutions) => solutions.to_combined_proof_target(),
-            None => Ok(0),
+            None => Box::new(std::iter::empty::<&SolutionID<N>>()),
         }
     }
 }
 
 impl<N: Network> Deref for Solutions<N> {
-    type Target = Option<CoinbaseSolution<N>>;
+    type Target = Option<PuzzleSolutions<N>>;
 
     /// Returns the solutions.
     fn deref(&self) -> &Self::Target {

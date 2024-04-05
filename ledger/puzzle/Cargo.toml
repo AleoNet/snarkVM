@@ -1,0 +1,105 @@
+[package]
+name = "snarkvm-ledger-puzzle"
+version = "0.16.19"
+authors = [ "The Aleo Team <hello@aleo.org>" ]
+description = "Puzzle for a decentralized virtual machine"
+homepage = "https://aleo.org"
+repository = "https://github.com/AleoHQ/snarkVM"
+keywords = [
+  "aleo",
+  "cryptography",
+  "blockchain",
+  "decentralized",
+  "zero-knowledge"
+]
+categories = [
+  "compilers",
+  "cryptography",
+  "mathematics",
+  "wasm",
+  "web-programming"
+]
+include = [ "Cargo.toml", "src", "README.md", "LICENSE.md" ]
+license = "Apache-2.0"
+edition = "2021"
+
+[[bench]]
+name = "puzzle"
+path = "benches/puzzle.rs"
+harness = false
+required-features = [ "setup" ]
+
+[features]
+default = [ "indexmap/rayon", "rayon" ]
+cuda = [ "snarkvm-algorithms/cuda" ]
+serial = [
+  "console/serial",
+  "snarkvm-algorithms/serial",
+]
+setup = [ ]
+timer = [ "aleo-std/timer" ]
+wasm = [
+  "console/wasm",
+  "snarkvm-algorithms/wasm",
+]
+
+[dependencies.console]
+package = "snarkvm-console"
+path = "../../console"
+version = "=0.16.19"
+
+[dependencies.snarkvm-algorithms]
+path = "../../algorithms"
+version = "=0.16.19"
+
+[dependencies.aleo-std]
+version = "0.1.24"
+default-features = false
+
+[dependencies.anyhow]
+version = "1.0.73"
+
+[dependencies.bincode]
+version = "1"
+
+[dependencies.indexmap]
+version = "2.0"
+features = [ "serde", "rayon" ]
+
+[dependencies.lru]
+version = "0.12"
+
+[dependencies.once_cell]
+version = "1.18"
+
+[dependencies.parking_lot]
+version = "0.12"
+
+[dependencies.rand]
+version = "0.8"
+
+[dependencies.rand_chacha]
+version = "0.3.1"
+
+[dependencies.rayon]
+version = "1"
+optional = true
+
+[dependencies.serde_json]
+version = "1.0"
+features = [ "preserve_order" ]
+
+[dev-dependencies.console]
+package = "snarkvm-console"
+path = "../../console"
+features = [ "test" ]
+
+[dev-dependencies.criterion]
+version = "0.5.1"
+
+[dev-dependencies.rand]
+version = "0.8"
+
+[dev-dependencies.snarkvm-ledger-puzzle-epoch]
+path = "epoch"
+version = "=0.16.19"

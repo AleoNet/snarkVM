@@ -31,6 +31,7 @@ snark = [ "synthesizer-snark" ]
 aleo-cli = [ ]
 async = [ "ledger-query/async", "synthesizer-process/async" ]
 cuda = [ "algorithms/cuda" ]
+rocks = [ "ledger-store/rocks" ]
 serial = [
   "console/serial",
   "ledger-block/serial",
@@ -89,6 +90,16 @@ package = "snarkvm-ledger-committee"
 path = "../ledger/committee"
 version = "=0.16.19"
 
+[dependencies.ledger-puzzle]
+package = "snarkvm-ledger-puzzle"
+path = "../ledger/puzzle"
+version = "=0.16.19"
+
+[dependencies.ledger-puzzle-epoch]
+package = "snarkvm-ledger-puzzle-epoch"
+path = "../ledger/puzzle/epoch"
+version = "=0.16.19"
+
 [dependencies.ledger-query]
 package = "snarkvm-ledger-query"
 path = "../ledger/query"
@@ -119,6 +130,11 @@ path = "./snark"
 version = "=0.16.19"
 optional = true
 
+[dependencies.utilities]
+package = "snarkvm-utilities"
+path = "../utilities"
+version = "=0.16.19"
+
 [dependencies.aleo-std]
 version = "0.1.24"
 default-features = false
@@ -129,6 +145,12 @@ version = "1.0"
 [dependencies.indexmap]
 version = "2.0"
 features = [ "serde", "rayon" ]
+
+[dependencies.itertools]
+version = "0.11.0"
+
+[dependencies.lru]
+version = "0.12"
 
 [dependencies.parking_lot]
 version = "0.12"
@@ -149,12 +171,14 @@ version = "1.0.73"
 [dev-dependencies.criterion]
 version = "0.5"
 
-[dev-dependencies.itertools]
-version = "0.11.0"
-
 [dev-dependencies.ledger-committee]
 package = "snarkvm-ledger-committee"
 path = "../ledger/committee"
+features = [ "test-helpers" ]
+
+[dev-dependencies.ledger-narwhal-batch-header]
+package = "snarkvm-ledger-narwhal-batch-header"
+path = "../ledger/narwhal/batch-header"
 features = [ "test-helpers" ]
 
 [dev-dependencies.ledger-test-helpers]

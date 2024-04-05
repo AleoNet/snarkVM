@@ -30,12 +30,11 @@ fn check_merkle_tree<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash
     path_hasher: &PH,
     leaves: &[LH::Leaf],
     additional_leaves: &[LH::Leaf],
+    rng: &mut TestRng,
 ) -> Result<()> {
     // Construct the Merkle tree for the given leaves.
     let mut merkle_tree = MerkleTree::<E, LH, PH, DEPTH>::new(leaf_hasher, path_hasher, leaves)?;
     assert_eq!(leaves.len(), merkle_tree.number_of_leaves);
-
-    let mut rng = TestRng::default();
 
     // Check each leaf in the Merkle tree.
     if !leaves.is_empty() {
@@ -47,7 +46,7 @@ fn check_merkle_tree<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash
             // Verify the Merkle proof **fails** on an invalid root.
             assert!(!proof.verify(leaf_hasher, path_hasher, &PH::Hash::zero(), leaf));
             assert!(!proof.verify(leaf_hasher, path_hasher, &PH::Hash::one(), leaf));
-            assert!(!proof.verify(leaf_hasher, path_hasher, &PH::Hash::rand(&mut rng), leaf));
+            assert!(!proof.verify(leaf_hasher, path_hasher, &PH::Hash::rand(rng), leaf));
         }
     }
     // If additional leaves are provided, check that the Merkle tree is consistent with them.
@@ -63,7 +62,7 @@ fn check_merkle_tree<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash
             // Verify the Merkle proof **fails** on an invalid root.
             assert!(!proof.verify(leaf_hasher, path_hasher, &PH::Hash::zero(), leaf));
             assert!(!proof.verify(leaf_hasher, path_hasher, &PH::Hash::one(), leaf));
-            assert!(!proof.verify(leaf_hasher, path_hasher, &PH::Hash::rand(&mut rng), leaf));
+            assert!(!proof.verify(leaf_hasher, path_hasher, &PH::Hash::rand(rng), leaf));
         }
     }
     Ok(())
@@ -388,6 +387,7 @@ fn test_merkle_tree_bhp() -> Result<()> {
                     &(0..num_additional_leaves)
                         .map(|_| Field::<CurrentEnvironment>::rand(rng).to_bits_le())
                         .collect::<Vec<Vec<bool>>>(),
+                    rng,
                 )?;
             }
         }
@@ -439,6 +439,7 @@ fn test_merkle_tree_poseidon() -> Result<()> {
                     &path_hasher,
                     &(0..num_leaves).map(|_| vec![Uniform::rand(rng)]).collect::<Vec<_>>(),
                     &(0..num_additional_leaves).map(|_| vec![Uniform::rand(rng)]).collect::<Vec<_>>(),
+                    rng,
                 )?;
             }
         }

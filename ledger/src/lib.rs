@@ -20,9 +20,9 @@ extern crate tracing;
 
 pub use ledger_authority as authority;
 pub use ledger_block as block;
-pub use ledger_coinbase as coinbase;
 pub use ledger_committee as committee;
 pub use ledger_narwhal as narwhal;
+pub use ledger_puzzle as puzzle;
 pub use ledger_query as query;
 pub use ledger_store as store;
 
@@ -52,9 +52,9 @@ use console::{
     types::{Field, Group},
 };
 use ledger_authority::Authority;
-use ledger_coinbase::{CoinbasePuzzle, CoinbaseSolution, EpochChallenge, ProverSolution, PuzzleCommitment};
 use ledger_committee::Committee;
 use ledger_narwhal::{BatchCertificate, Subdag, Transmission, TransmissionID};
+use ledger_puzzle::{Puzzle, PuzzleSolutions, Solution, SolutionID};
 use ledger_query::Query;
 use ledger_store::{ConsensusStorage, ConsensusStore};
 use synthesizer::{
@@ -99,10 +99,8 @@ pub struct Ledger<N: Network, C: ConsensusStorage<N>> {
     vm: VM<N, C>,
     /// The genesis block.
     genesis_block: Block<N>,
-    /// The coinbase puzzle.
-    coinbase_puzzle: CoinbasePuzzle<N>,
-    /// The current epoch challenge.
-    current_epoch_challenge: Arc<RwLock<Option<EpochChallenge<N>>>>,
+    /// The current epoch hash.
+    current_epoch_hash: Arc<RwLock<Option<N::BlockHash>>>,
     /// The current committee.
     current_committee: Arc<RwLock<Option<Committee<N>>>>,
     /// The current block.
@@ -165,8 +163,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         let mut ledger = Self {
             vm,
             genesis_block: genesis_block.clone(),
-            coinbase_puzzle: CoinbasePuzzle::<N>::load()?,
-            current_epoch_challenge: Default::default(),
+            current_epoch_hash: Default::default(),
             current_committee: Arc::new(RwLock::new(current_committee)),
             current_block: Arc::new(RwLock::new(genesis_block.clone())),
         };
@@ -190,8 +187,8 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         ledger.current_block = Arc::new(RwLock::new(block));
         // Set the current committee (and ensures the latest committee exists).
         ledger.current_committee = Arc::new(RwLock::new(Some(ledger.latest_committee()?)));
-        // Set the current epoch challenge.
-        ledger.current_epoch_challenge = Arc::new(RwLock::new(Some(ledger.get_epoch_challenge(latest_height)?)));
+        // Set the current epoch hash.
+        ledger.current_epoch_hash = Arc::new(RwLock::new(Some(ledger.get_epoch_hash(latest_height)?)));
 
         finish!(timer, "Initialize ledger");
         Ok(ledger)
@@ -202,9 +199,9 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         &self.vm
     }
 
-    /// Returns the coinbase puzzle.
-    pub const fn coinbase_puzzle(&self) -> &CoinbasePuzzle<N> {
-        &self.coinbase_puzzle
+    /// Returns the puzzle.
+    pub const fn puzzle(&self) -> &Puzzle<N> {
+        self.vm.puzzle()
     }
 
     /// Returns the latest committee.
@@ -225,11 +222,11 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         self.current_block.read().height() / N::NUM_BLOCKS_PER_EPOCH
     }
 
-    /// Returns the latest epoch challenge.
-    pub fn latest_epoch_challenge(&self) -> Result<EpochChallenge<N>> {
-        match self.current_epoch_challenge.read().as_ref() {
-            Some(challenge) => Ok(challenge.clone()),
-            None => self.get_epoch_challenge(self.latest_height()),
+    /// Returns the latest epoch hash.
+    pub fn latest_epoch_hash(&self) -> Result<N::BlockHash> {
+        match self.current_epoch_hash.read().as_ref() {
+            Some(epoch_hash) => Ok(*epoch_hash),
+            None => self.get_epoch_hash(self.latest_height()),
         }
     }
 

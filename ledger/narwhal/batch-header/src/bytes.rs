@@ -32,6 +32,8 @@ impl<N: Network> FromBytes for BatchHeader<N> {
         let round = u64::read_le(&mut reader)?;
         // Read the timestamp.
         let timestamp = i64::read_le(&mut reader)?;
+        // Read the committee ID.
+        let committee_id = Field::read_le(&mut reader)?;
 
         // Read the number of transmission IDs.
         let num_transmission_ids = u32::read_le(&mut reader)?;
@@ -58,19 +60,23 @@ impl<N: Network> FromBytes for BatchHeader<N> {
                 Self::MAX_CERTIFICATES
             )));
         }
+
+        // Read the previous certificate ID bytes.
+        let mut previous_certificate_id_bytes =
+            vec![0u8; num_previous_certificate_ids as usize * Field::<N>::size_in_bytes()];
+        reader.read_exact(&mut previous_certificate_id_bytes)?;
         // Read the previous certificate IDs.
-        let mut previous_certificate_ids = IndexSet::new();
-        for _ in 0..num_previous_certificate_ids {
-            // Read the certificate ID.
-            previous_certificate_ids.insert(Field::read_le(&mut reader)?);
-        }
+        let previous_certificate_ids = cfg_chunks!(previous_certificate_id_bytes, Field::<N>::size_in_bytes())
+            .map(Field::read_le)
+            .collect::<Result<IndexSet<_>, _>>()?;
 
         // Read the signature.
         let signature = Signature::read_le(&mut reader)?;
 
         // Construct the batch.
-        let batch = Self::from(author, round, timestamp, transmission_ids, previous_certificate_ids, signature)
-            .map_err(error)?;
+        let batch =
+            Self::from(author, round, timestamp, committee_id, transmission_ids, previous_certificate_ids, signature)
+                .map_err(error)?;
 
         // Return the batch.
         match batch.batch_id == batch_id {
@@ -93,6 +99,8 @@ impl<N: Network> ToBytes for BatchHeader<N> {
         self.round.write_le(&mut writer)?;
         // Write the timestamp.
         self.timestamp.write_le(&mut writer)?;
+        // Write the committee ID.
+        self.committee_id.write_le(&mut writer)?;
         // Write the number of transmission IDs.
         u32::try_from(self.transmission_ids.len()).map_err(|e| error(e.to_string()))?.write_le(&mut writer)?;
         // Write the transmission IDs.

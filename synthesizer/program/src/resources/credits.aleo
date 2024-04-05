@@ -25,11 +25,11 @@ mapping committee:
     // The value represents the committee state of the validator.
     value as committee_state.public;
 
-// The `committee_state` struct tracks the total stake of the validator, and whether they are open to stakers.
+// The `committee_state` struct tracks the total stake of the validator, and whether they are open to new stakers.
 struct committee_state:
     // The amount of microcredits bonded to the validator, by the validator and its delegators.
     microcredits as u64;
-    // The boolean flag indicating if the validator is open to stakers.
+    // The boolean flag indicating if the validator is open to new stakers.
     is_open as boolean;
 
 /**********************************************************************************************************************/
@@ -88,6 +88,15 @@ mapping account:
 
 /**********************************************************************************************************************/
 
+// The `withdraw` mapping contains the staking address and their corresponding withdrawal address.
+mapping withdraw:
+    // The key represents the staking address of the owner.
+    key as address.public;
+    // The value represents the withdrawal address of the owner.
+    value as address.public;
+
+/**********************************************************************************************************************/
+
 // The `credits` record is used to store credits privately.
 record credits:
     // The address of the owner.
@@ -97,38 +106,47 @@ record credits:
 
 /**********************************************************************************************************************/
 
-// This function allows any staker to bond their microcredits to a validator.
+// This function allows any staker to bond their microcredits to a validator and specify a withdrawal address.
 // The corresponding functions for 'bond_public' are 'unbond_public' and 'claim_unbond_public'.
 function bond_public:
     // Input the validator's address.
     input r0 as address.public;
+    // Input the withdrawal address.
+    input r1 as address.public;
     // Input the amount of microcredits to bond.
-    input r1 as u64.public;
+    input r2 as u64.public;
 
     // Determine if the amount is at least one credit.
-    gte r1 1_000_000u64 into r2;
+    gte r2 1_000_000u64 into r3;
     // Enforce the amount is at least one credit.
-    assert.eq r2 true;
+    assert.eq r3 true;
 
     // Bond the specified amount of microcredits to the specified validator.
-    async bond_public self.caller r0 r1 into r3;
+    async bond_public self.caller r0 r1 r2 into r4;
     // Output the finalize future.
-    output r3 as credits.aleo/bond_public.future;
+    output r4 as credits.aleo/bond_public.future;
 
 finalize bond_public:
     // Input the staker's address.
     input r0 as address.public;
     // Input the validator's address.
     input r1 as address.public;
+    // Input the withdrawal address.
+    input r2 as address.public;
     // Input the amount of microcredits to bond.
-    input r2 as u64.public;
+    input r3 as u64.public;
+
+    // Retrieve the withdrawal address for the staker.
+    get.or_use withdraw[r0] r2 into r4;
+    // Ensure that the withdrawal address is consistent.
+    assert.eq r2 r4;
 
     // Determine whether the caller is a validator.
-    is.eq r0 r1 into r3;
+    is.eq r0 r1 into r5;
     // If the caller is a validator, jump to the `bond_validator` logic.
-    branch.eq r3 true to bond_validator;
+    branch.eq r5 true to bond_validator;
     // If the caller is not a validator, jump to the `bond_delegator` logic.
-    branch.eq r3 false to bond_delegator;
+    branch.eq r5 false to bond_delegator;
 
     /******* Bond Validator *******/
 
@@ -138,72 +156,68 @@ finalize bond_public:
     /* Committee */
 
     // Check if the validator is already in the committee.
-    contains committee[r0] into r4;
+    contains committee[r0] into r6;
     // If the validator is already in the committee, jump to the `continue_bond_validator` logic.
-    branch.eq r4 true to continue_bond_validator;
+    branch.eq r6 true to continue_bond_validator;
 
     // Get the committee size.
-    get.or_use metadata[aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc] 0u32 into r5;
+    get.or_use metadata[aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc] 0u32 into r7;
     // Increment the committee size by one.
-    add r5 1u32 into r6;
-    // Determine if the committee size is less than or equal to 200.
-    lte r6 200u32 into r7;
-    // Enforce that the committee size is less than or equal to 200.
-    assert.eq r7 true;
+    add r7 1u32 into r8;
     // Set the new committee size.
-    set r6 into metadata[aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc];
+    set r8 into metadata[aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc];
+    // Set the withdrawal address.
+    set r2 into withdraw[r0];
 
     // Continues the rest of the `bond_validator` logic.
     position continue_bond_validator;
 
     // Construct the initial committee state.
     // Note: We set the initial 'is_open' state to 'true'.
-    cast 0u64 true into r8 as committee_state;
+    cast 0u64 true into r9 as committee_state;
     // Retrieve the committee state of the specified validator.
-    get.or_use committee[r0] r8 into r9;
-    // Ensure that the validator is open to stakers.
-    assert.eq r9.is_open true;
+    get.or_use committee[r0] r9 into r10;
 
     // Increment the stake for the specified validator.
-    add r9.microcredits r2 into r10;
+    add r10.microcredits r3 into r11;
     // Construct the updated committee state.
-    cast r10 r9.is_open into r11 as committee_state;
+    cast r11 r10.is_open into r12 as committee_state;
 
     /* Bonded */
 
     // Construct the initial bond state.
-    cast r0 0u64 into r12 as bond_state;
+    cast r0 0u64 into r13 as bond_state;
     // Get the bond state for the caller, or default to the initial bond state.
-    get.or_use bonded[r0] r12 into r13;
+    get.or_use bonded[r0] r13 into r14;
     // Enforce the validator matches in the bond state.
-    assert.eq r13.validator r0;
+    assert.eq r14.validator r0;
 
     // Increment the microcredits in the bond state.
-    add r9.microcredits r2 into r14;
-    // Determine if the amount is at least one million credits.
-    gte r14 1_000_000_000_000u64 into r15;
-    // Enforce the amount is at least one million credits.
-    assert.eq r15 true;
+    add r14.microcredits r3 into r15;
+    // Determine if the amount is at least 10 million credits.
+    gte r15 10_000_000_000_000u64 into r16;
+    // Enforce the amount is at least 10 million credits.
+    assert.eq r16 true;
 
     // Construct the updated bond state.
-    cast r0 r14 into r16 as bond_state;
+    cast r0 r15 into r17 as bond_state;
 
     /* Account */
 
     // Get the balance of the caller.
     // If the account does not exist, this finalize scope will fail.
-    get account[r0] into r17;
+    get account[r0] into r18;
     // Decrement the balance of the caller.
-    sub r17 r2 into r18;
+    sub r18 r3 into r19;
 
     /* Writes */
 
     // Update the committee state of the specified validator.
-    set r11 into committee[r0];
+    set r12 into committee[r0];
     // Update the bond state for the caller.
-    set r16 into bonded[r0];
+    set r17 into bonded[r0];
     // Update the balance of the caller.
-    set r18 into account[r0];
+    set r19 into account[r0];
 
     // Ends the `bond_validator` logic.
     branch.eq true true to end;
@@ -216,35 +230,38 @@ finalize bond_public:
     /* Committee */
 
     // Check if the caller is a validator.
-    contains committee[r0] into r19;
+    contains committee[r0] into r20;
     // Enforce the caller is *not* a validator.
-    assert.eq r19 false;
+    assert.eq r20 false;
 
     // Get the stake for the specified validator.
     // If the validator does not exist, this finalize scope will fail.
-    get committee[r1] into r20;
-    // Ensure that the validator is open to stakers.
-    assert.eq r20.is_open true;
+    get committee[r1] into r21;
 
     // Increment the stake for the specified validator.
-    add r20.microcredits r2 into r21;
+    add r21.microcredits r3 into r22;
     // Construct the updated committee state.
-    cast r21 r20.is_open into r22 as committee_state;
+    cast r22 r21.is_open into r23 as committee_state;
 
     // Check if the delegator is already bonded to the validator.
-    contains bonded[r0] into r23;
+    contains bonded[r0] into r24;
     // If the delegator is already bonded to the validator, jump to the `continue_bond_delegator` logic.
-    branch.eq r23 true to continue_bond_delegator;
+    branch.eq r24 true to continue_bond_delegator;
+
+    // Ensure that the validator is open to new stakers.
+    assert.eq r21.is_open true;
     // Get the number of delegators.
-    get.or_use metadata[aleo1qgqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqanmpl0] 0u32 into r24;
+    get.or_use metadata[aleo1qgqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqanmpl0] 0u32 into r25;
     // Increment the number of bonded delegators by one.
-    add r24 1u32 into r25;
+    add r25 1u32 into r26;
     // Determine if the number of delegators is less than or equal to 100_000.
-    lte r25 100_000u32 into r26;
+    lte r26 100_000u32 into r27;
     // Enforce that the number of delegators is less than or equal to 100_000.
-    assert.eq r26 true;
+    assert.eq r27 true;
     // Set the new number of delegators.
-    set r25 into metadata[aleo1qgqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqanmpl0];
+    set r26 into metadata[aleo1qgqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqanmpl0];
+    // Set the withdrawal address.
+    set r2 into withdraw[r0];
 
     // Continues the rest of the `bond_delegator` logic.
     position continue_bond_delegator;
@@ -252,38 +269,38 @@ finalize bond_public:
     /* Bonded */
 
     // Construct the initial bond state.
-    cast r1 0u64 into r27 as bond_state;
+    cast r1 0u64 into r28 as bond_state;
     // Get the bond state for the caller, or default to the initial bond state.
-    get.or_use bonded[r0] r27 into r28;
+    get.or_use bonded[r0] r28 into r29;
     // Enforce the validator matches in the bond state.
-    assert.eq r28.validator r1;
+    assert.eq r29.validator r1;
 
     // Increment the microcredits in the bond state.
-    add r28.microcredits r2 into r29;
-    // Determine if the amount is at least 10 credits.
-    gte r29 10_000_000u64 into r30;
-    // Enforce the amount is at least 10 credits.
-    assert.eq r30 true;
+    add r29.microcredits r3 into r30;
+    // Determine if the amount is at least 10 thousand credits.
+    gte r30 10_000_000_000u64 into r31;
+    // Enforce the amount is at least 10 thousand credits.
+    assert.eq r31 true;
 
     // Construct the updated bond state.
-    cast r1 r29 into r31 as bond_state;
+    cast r1 r30 into r32 as bond_state;
 
     /* Account */
 
     // Get the balance of the caller.
     // If the account does not exist, this finalize scope will fail.
-    get account[r0] into r32;
+    get account[r0] into r33;
     // Decrement the balance of the caller.
-    sub r32 r2 into r33;
+    sub r33 r3 into r34;
 
     /* Writes */
 
     // Update the committee state for the specified validator.
-    set r22 into committee[r1];
+    set r23 into committee[r1];
     // Update the bond state for the caller.
-    set r31 into bonded[r0];
+    set r32 into bonded[r0];
     // Update the balance of the caller.
-    set r33 into account[r0];
+    set r34 into account[r0];
 
     // The terminus.
     position end;
@@ -291,7 +308,7 @@ finalize bond_public:
 /**********************************************************************************************************************/
 
 // This function allows any staker to unbond their microcredits from a validator.
-// The corresponding functions for 'unbond_public' is 'claim_unbond_public'.
+// The corresponding function for 'unbond_public' is 'claim_unbond_public'.
 function unbond_public:
     // Input the amount of microcredits to unbond.
     input r0 as u64.public;
@@ -345,12 +362,12 @@ finalize unbond_public:
     // Decrement the microcredits in the bond state.
     sub r8.microcredits r1 into r9;
 
-    // Determine if the remaining bond is at least one million credits.
-    gte r9 1_000_000_000_000u64 into r10;
+    // Determine if the remaining bond is at least 10 million credits.
+    gte r9 10_000_000_000_000u64 into r10;
 
-    // If the remaining balance is at least 1 million credits, jump to the `decrement_validator` logic.
+    // If the remaining balance is at least 10 million credits, jump to the `decrement_validator` logic.
     branch.eq r10 true to decrement_validator;
-    // If the remaining balance is less than 1 million credits, jump to the `remove_validator` logic.
+    // If the remaining balance is less than 10 million credits, jump to the `remove_validator` logic.
     branch.eq r10 false to remove_validator;
 
     /*** Decrement Validator ***/
@@ -433,12 +450,12 @@ finalize unbond_public:
     // Decrement the microcredits in the bond state.
     sub r19.microcredits r1 into r20;
 
-    // Determine if the remaining bond is at least 10 credits.
-    gte r20 10_000_000u64 into r21;
+    // Determine if the remaining bond is at least 10 thousand credits.
+    gte r20 10_000_000_000u64 into r21;
 
-    // If the remaining balance is at least 10 credits, jump to the `decrement_delegator` logic.
+    // If the remaining balance is at least 10 thousand credits, jump to the `decrement_delegator` logic.
     branch.eq r21 true to decrement_delegator;
-    // If the remaining balance is less than 10 credits, jump to the `remove_delegator` logic.
+    // If the remaining balance is less than 10 thousand credits, jump to the `remove_delegator` logic.
     branch.eq r21 false to remove_delegator;
 
     /*** Decrement Delegator ***/
@@ -543,7 +560,7 @@ finalize unbond_delegator_as_validator:
     // Get the committee state for the specified validator.
     // If the validator does not exist, this finalize scope will fail.
     get committee[r0] into r2;
-    // Enforce that the validator is closed to stakers.
+    // Enforce that the validator is closed to new stakers.
     assert.eq r2.is_open false;
 
     // Check if the delegator is a validator.
@@ -609,7 +626,10 @@ finalize unbond_delegator_as_validator:
 
 /**********************************************************************************************************************/
 
-// This function allows any staker to claim their microcredits after the unbonding period.
+// The `claim_unbond_public` function allows any staker to claim their microcredits
+// to their withdrawal address after the unbonding period.
+//
+// This function also removes the staker's withdrawal address if the staker no longer has any bonded balance.
 function claim_unbond_public:
     // Claim the unbonded microcredits.
     async claim_unbond_public self.caller into r0;
@@ -627,22 +647,36 @@ finalize claim_unbond_public:
     // Enforce the unbonding is complete.
     assert.eq r2 true;
 
-    // Add the unbonded amount to the stakers's public balance.
-    // Increments `account[r0]` by `r1`.
-    // If `account[r0]` does not exist, 0u64 is used.
-    // If `account[r0] + r2` overflows, `claim_unbond_public` is reverted.
-    get.or_use account[r0] 0u64 into r3;
-    add r1.microcredits r3 into r4;
-    set r4 into account[r0];
+    // Get the withdrawal address for the caller.
+    get withdraw[r0] into r3;
+
+    // Add the unbonded amount to the withdrawal address public balance.
+    // Increments `account[r3]` by `r1`.
+    // If `account[r3]` does not exist, 0u64 is used.
+    // If `account[r3] + r1` overflows, `claim_unbond_public` is reverted.
+    get.or_use account[r3] 0u64 into r4;
+    add r1.microcredits r4 into r5;
+    set r5 into account[r3];
 
     // Remove the unbond state for the caller.
     remove unbonding[r0];
 
+    // Check if the caller is still bonded.
+    contains bonded[r0] into r6;
+    // Ends the `claim_unbond_public` logic.
+    branch.eq r6 true to end;
+
+    // If the caller is no longer bonded, remove the withdrawal address.
+    remove withdraw[r0];
+
+    // The terminus.
+    position end;
+
 /**********************************************************************************************************************/
 
-// This function allows a validator to set their state to be either opened or closed to stakers.
-// When the validator is open to stakers, any staker (including the validator) can bond or unbond from the validator.
-// When the validator is closed to stakers, all stakers can only unbond from the validator.
+// This function allows a validator to set their state to be either opened or closed to new stakers.
+// When the validator is open to new stakers, any staker (including the validator) can bond or unbond from the validator.
+// When the validator is closed to new stakers, existing stakers can still bond or unbond from the validator, but new stakers cannot bond.
 //
 // This function serves two primary purposes:
 // 1. Allow a validator to leave the committee, by closing themselves to stakers and then unbonding all of their stakers.
@@ -650,7 +684,7 @@ finalize claim_unbond_public:
 function set_validator_state:
     // Input the 'is_open' state.
     input r0 as boolean.public;
-    // Set the validator to be either open or closed to stakers.
+    // Set the validator to be either open or closed to new stakers.
     async set_validator_state self.caller r0 into r1;
     // Output the finalize future.
     output r1 as credits.aleo/set_validator_state.future;
@@ -673,7 +707,7 @@ finalize set_validator_state:
 /**********************************************************************************************************************/
 
 // The `transfer_public` function sends the specified amount
-// from the sender's `account` to the receiver's `account`.
+// from the caller's `account` to the receiver's `account`.
 function transfer_public:
     // Input the receiver.
     input r0 as address.public;
@@ -685,7 +719,7 @@ function transfer_public:
     output r2 as credits.aleo/transfer_public.future;
 
 finalize transfer_public:
-    // Input the sender.
+    // Input the caller.
     input r0 as address.public;
     // Input the receiver.
     input r1 as address.public;
@@ -699,6 +733,39 @@ finalize transfer_public:
     // Increments `account[r1]` by `r2`.
     // If `account[r1]` does not exist, 0u64 is used.
     // If `account[r1] + r2` overflows, `transfer_public` is reverted.
+    get.or_use account[r1] 0u64 into r5;
+    add r5 r2 into r6;
+    set r6 into account[r1];
+
+/**********************************************************************************************************************/
+
+// The `transfer_public_as_signer` function sends the specified amount
+// from the signer's `account` to the receiver's `account`.
+function transfer_public_as_signer:
+    // Input the receiver.
+    input r0 as address.public;
+    // Input the amount.
+    input r1 as u64.public;
+    // Transfer the credits publicly.
+    async transfer_public_as_signer self.signer r0 r1 into r2;
+    // Output the finalize future.
+    output r2 as credits.aleo/transfer_public_as_signer.future;
+
+finalize transfer_public_as_signer:
+    // Input the signer.
+    input r0 as address.public;
+    // Input the receiver.
+    input r1 as address.public;
+    // Input the amount.
+    input r2 as u64.public;
+    // Decrements `account[r0]` by `r2`.
+    // If `account[r0] - r2` underflows, `transfer_public_as_signer` is reverted.
+    get account[r0] into r3;
+    sub r3 r2 into r4;
+    set r4 into account[r0];
+    // Increments `account[r1]` by `r2`.
+    // If `account[r1]` does not exist, 0u64 is used.
+    // If `account[r1] + r2` overflows, `transfer_public_as_signer` is reverted.
     get.or_use account[r1] 0u64 into r5;
     add r5 r2 into r6;
     set r6 into account[r1];
@@ -895,7 +962,7 @@ function fee_public:
     // Add the fee and priority fee amounts.
     add r0 r1 into r3;
     // Decrement the balance of the sender publicly.
-    async fee_public self.caller r3 into r4;
+    async fee_public self.signer r3 into r4;
     // Output the finalize future.
     output r4 as credits.aleo/fee_public.future;
 

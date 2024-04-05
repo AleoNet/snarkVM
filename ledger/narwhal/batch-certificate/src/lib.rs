@@ -121,6 +121,16 @@ impl<N: Network> BatchCertificate<N> {
         self.batch_header().round()
     }
 
+    /// Returns the timestamp of the batch header.
+    pub fn timestamp(&self) -> i64 {
+        self.batch_header().timestamp()
+    }
+
+    /// Returns the committee ID.
+    pub const fn committee_id(&self) -> Field<N> {
+        self.batch_header().committee_id()
+    }
+
     /// Returns the transmission IDs.
     pub const fn transmission_ids(&self) -> &IndexSet<TransmissionID<N>> {
         self.batch_header().transmission_ids()
@@ -129,11 +139,6 @@ impl<N: Network> BatchCertificate<N> {
     /// Returns the batch certificate IDs for the previous round.
     pub const fn previous_certificate_ids(&self) -> &IndexSet<Field<N>> {
         self.batch_header().previous_certificate_ids()
-    }
-
-    /// Returns the timestamp of the batch header.
-    pub fn timestamp(&self) -> i64 {
-        self.batch_header().timestamp()
     }
 
     /// Returns the signatures of the batch ID from the committee.

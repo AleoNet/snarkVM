@@ -100,9 +100,7 @@ impl<'de, N: Network> Deserialize<'de> for Transaction<N> {
                 // Ensure the transaction ID matches.
                 match id == transaction.id() {
                     true => Ok(transaction),
-                    false => {
-                        Err(error("Mismatching transaction ID, possible data corruption")).map_err(de::Error::custom)
-                    }
+                    false => Err(de::Error::custom(error("Mismatching transaction ID, possible data corruption"))),
                 }
             }
             false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "transaction"),
