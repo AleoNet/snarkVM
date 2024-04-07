@@ -280,3 +280,15 @@ macro_rules! cfg_sort_unstable_by {
         $self.par_sort_unstable_by($closure);
     }};
 }
+
+/// Performs a sort that caches the extracted keys
+#[macro_export]
+macro_rules! cfg_sort_by_cached_key {
+    ($self: expr, $closure: expr) => {{
+        #[cfg(feature = "serial")]
+        $self.sort_by_cached_key($closure);
+
+        #[cfg(not(feature = "serial"))]
+        $self.par_sort_by_cached_key($closure);
+    }};
+}
