@@ -101,12 +101,8 @@ impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>
                 .filter_map(|i| {
                     // Procure the children of the node.
                     let tuple = (tree.get(left_child(i)).copied(), tree.get(right_child(i)).copied());
-                    // If both children are missing, return `None`.
-                    if tuple.0.is_none() && tuple.1.is_none() {
-                        None
-                    } else {
-                        Some((tuple.0.unwrap(), tuple.1.unwrap()))
-                    }
+                    // If the left child is missing (in which case the right one also is), return `None`.
+                    if tuple.0.is_none() { None } else { Some((tuple.0.unwrap(), tuple.1.unwrap())) }
                 })
                 .collect::<Vec<_>>();
             // Compute and store the hashes for each node in the current level.
