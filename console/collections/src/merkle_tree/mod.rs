@@ -96,14 +96,11 @@ impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>
         while let Some(start) = parent(start_index) {
             // Compute the end index of the current level.
             let end = left_child(start);
-            // Construct the children for each node in the current level.
+            // Construct the children for each node in the current level; the leaves are padded, which means
+            // that there either are 2 children, or there are none, at which point we may stop iterating.
             let tuples = (start..end)
-                .filter_map(|i| {
-                    // Procure the children of the node.
-                    let tuple = (tree.get(left_child(i)).copied(), tree.get(right_child(i)).copied());
-                    // If the left child is missing (in which case the right one also is), return `None`.
-                    if tuple.0.is_none() { None } else { Some((tuple.0.unwrap(), tuple.1.unwrap())) }
-                })
+                .take_while(|&i| tree.get(left_child(i)).is_some())
+                .map(|i| (tree[left_child(i)], tree[right_child(i)]))
                 .collect::<Vec<_>>();
             // Compute and store the hashes for each node in the current level.
             let num_full_nodes = tuples.len();
