@@ -1257,6 +1257,63 @@ function simple_output:
 }
 
 #[test]
+fn test_abort_multiple_deployments_with_same_payer() {
+    let rng = &mut TestRng::default();
+
+    // Initialize the test environment.
+    let crate::test_helpers::TestEnv { ledger, private_key, .. } = crate::test_helpers::sample_test_env(rng);
+
+    // Create two distinct programs
+    let program_1 = Program::<CurrentNetwork>::from_str(
+        "
+program dummy_program_1.aleo;
+
+function empty_function:
+    ",
+    )
+    .unwrap();
+
+    let program_2 = Program::<CurrentNetwork>::from_str(
+        "
+program dummy_program_2.aleo;
+
+function empty_function:
+    ",
+    )
+    .unwrap();
+
+    // Create a deployment transaction for the first program with the same public payer.
+    let deployment_1 = ledger.vm.deploy(&private_key, &program_1, None, 0, None, rng).unwrap();
+    let deployment_1_id = deployment_1.id();
+    assert!(ledger.check_transaction_basic(&deployment_1, None, rng).is_ok());
+
+    // Create a deployment transaction for the second program with the same public payer.
+    let deployment_2 = ledger.vm.deploy(&private_key, &program_2, None, 0, None, rng).unwrap();
+    let deployment_2_id = deployment_2.id();
+    assert!(ledger.check_transaction_basic(&deployment_2, None, rng).is_ok());
+
+    // Create a block.
+    let block = ledger
+        .prepare_advance_to_next_beacon_block(&private_key, vec![], vec![], vec![deployment_1, deployment_2], rng)
+        .unwrap();
+
+    // Check that the next block is valid.
+    ledger.check_next_block(&block, rng).unwrap();
+
+    // Add the block to the ledger.
+    ledger.advance_to_next_block(&block).unwrap();
+
+    // Enforce that the block transactions were correct.
+    assert_eq!(block.transactions().num_accepted(), 1);
+    assert_eq!(block.aborted_transaction_ids(), &vec![deployment_2_id]);
+
+    // Enforce that the first program was deployed and the second was aborted.
+    assert_eq!(ledger.get_program(*program_1.id()).unwrap(), program_1);
+    assert!(ledger.vm.transaction_store().contains_transaction_id(&deployment_1_id).unwrap());
+    assert!(ledger.vm.block_store().contains_rejected_or_aborted_transaction_id(&deployment_2_id).unwrap());
+}
+
+#[test]
 fn test_abort_fee_transaction() {
     let rng = &mut TestRng::default();
 
@@ -1360,7 +1417,25 @@ fn test_deployment_duplicate_program_id() {
     let rng = &mut TestRng::default();
 
     // Initialize the test environment.
-    let crate::test_helpers::TestEnv { ledger, private_key, .. } = crate::test_helpers::sample_test_env(rng);
+    let crate::test_helpers::TestEnv { ledger, private_key, view_key, .. } = crate::test_helpers::sample_test_env(rng);
+
+    // A helper function to find records.
+    let find_records = || {
+        let microcredits = Identifier::from_str("microcredits").unwrap();
+        ledger
+            .find_records(&view_key, RecordsFilter::SlowUnspent(private_key))
+            .unwrap()
+            .filter(|(_, record)| match record.data().get(&microcredits) {
+                Some(Entry::Private(Plaintext::Literal(Literal::U64(amount), _))) => !amount.is_zero(),
+                _ => false,
+            })
+            .collect::<indexmap::IndexMap<_, _>>()
+    };
+
+    // Fetch the unspent records.
+    let records = find_records();
+    let record_1 = records[0].clone();
+    let record_2 = records[1].clone();
 
     // Create two programs with a duplicate program ID but different mappings
     let program_1 = Program::<CurrentNetwork>::from_str(
@@ -1396,12 +1471,12 @@ finalize foo2:
     .unwrap();
 
     // Create a deployment transaction for the first program.
-    let deployment_1 = ledger.vm.deploy(&private_key, &program_1, None, 0, None, rng).unwrap();
+    let deployment_1 = ledger.vm.deploy(&private_key, &program_1, Some(record_1), 0, None, rng).unwrap();
     let deployment_1_id = deployment_1.id();
     assert!(ledger.check_transaction_basic(&deployment_1, None, rng).is_ok());
 
     // Create a deployment transaction for the second program.
-    let deployment_2 = ledger.vm.deploy(&private_key, &program_2, None, 0, None, rng).unwrap();
+    let deployment_2 = ledger.vm.deploy(&private_key, &program_2, Some(record_2), 0, None, rng).unwrap();
     let deployment_2_id = deployment_2.id();
     assert!(ledger.check_transaction_basic(&deployment_2, None, rng).is_ok());
 
