@@ -115,12 +115,8 @@ impl<LH: LeafHash<Hash = PH::Hash>, PH: PathHash, const DEPTH: u8, const ARITY: 
 
             // Construct the children for each node in the current level.
             let child_nodes = (start..end)
-                .filter_map(|i| {
-                    // Collect the children, being mindful of possible missing leaves.
-                    child_indexes::<ARITY>(i)
-                        .map(|child_index| tree.get(child_index).copied())
-                        .collect::<Option<Vec<_>>>()
-                })
+                .take_while(|&i| child_indexes::<ARITY>(i).next().and_then(|idx| tree.get(idx)).is_some())
+                .map(|i| child_indexes::<ARITY>(i).map(|child_index| tree[child_index]).collect::<Vec<_>>())
                 .collect::<Vec<_>>();
 
             // Compute and store the hashes for each node in the current level.
