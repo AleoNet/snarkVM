@@ -282,6 +282,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             let mut output_ids: IndexSet<Field<N>> = IndexSet::new();
             // Initialize the list of created transition public keys.
             let mut tpks: IndexSet<Group<N>> = IndexSet::new();
+            // Initialize the list of deployment payers.
+            let mut deployment_payers: IndexSet<Address<N>> = IndexSet::new();
 
             // Finalize the transactions.
             'outer: for transaction in transactions {
@@ -295,9 +297,14 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 }
 
                 // Determine if the transaction should be aborted.
-                if let Some(reason) =
-                    self.should_abort_transaction(transaction, &transition_ids, &input_ids, &output_ids, &tpks)
-                {
+                if let Some(reason) = self.should_abort_transaction(
+                    transaction,
+                    &transition_ids,
+                    &input_ids,
+                    &output_ids,
+                    &tpks,
+                    &deployment_payers,
+                ) {
                     // Store the aborted transaction.
                     aborted.push((transaction.clone(), reason));
                     // Continue to the next transaction.
@@ -428,6 +435,10 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                         output_ids.extend(confirmed_transaction.transaction().output_ids());
                         // Add the transition public keys to the set of produced transition public keys.
                         tpks.extend(confirmed_transaction.transaction().transition_public_keys());
+                        // Add the deployment payer to the set of deployment payers.
+                        if let Transaction::Deploy(_, _, _, fee) = confirmed_transaction.transaction() {
+                            fee.payer().map(|payer| deployment_payers.insert(payer));
+                        }
                         // Store the confirmed transaction.
                         confirmed.push(confirmed_transaction);
                         // Increment the transaction index counter.
@@ -754,6 +765,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// - The transaction is double-spending an input
     /// - The transaction is producing a duplicate output
     /// - The transaction is producing a duplicate transition public key
+    /// - The transaction is another deployment in the block from the same public fee payer.
     fn should_abort_transaction(
         &self,
         transaction: &Transaction<N>,
@@ -761,6 +773,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         input_ids: &IndexSet<Field<N>>,
         output_ids: &IndexSet<Field<N>>,
         tpks: &IndexSet<Group<N>>,
+        deployment_payers: &IndexSet<Address<N>>,
     ) -> Option<String> {
         // Ensure that the transaction is not producing a duplicate transition.
         for transition_id in transaction.transition_ids() {
@@ -788,12 +801,22 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             }
         }
 
-        // // Ensure that the transaction is not producing a duplicate transition public key.
-        // // Note that the tpk and tcm are corresponding, so a uniqueness check for just the tpk is sufficient.
+        // Ensure that the transaction is not producing a duplicate transition public key.
+        // Note that the tpk and tcm are corresponding, so a uniqueness check for just the tpk is sufficient.
         for tpk in transaction.transition_public_keys() {
             // If the transition public key is already produced in this block or previous blocks, abort the transaction.
             if tpks.contains(tpk) || self.transition_store().contains_tpk(tpk).unwrap_or(true) {
                 return Some(format!("Duplicate transition public key {tpk}"));
+            }
+        }
+
+        // If the transaction is a deployment, ensure that it is not another deployment in the block from the same public fee payer.
+        if let Transaction::Deploy(_, _, _, fee) = transaction {
+            // If the deployment spender has already deployed in this block, abort the transaction.
+            if let Some(payer) = fee.payer() {
+                if deployment_payers.contains(&payer) {
+                    return Some(format!("Another deployment in the block from the same public fee payer {payer}"));
+                }
             }
         }
 
@@ -823,6 +846,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         let output_ids: Arc<Mutex<IndexSet<Field<N>>>> = Default::default();
         // Initialize the list of created transition public keys.
         let tpks: Arc<Mutex<IndexSet<Group<N>>>> = Default::default();
+        // Initialize the list of deployment payers.
+        let deployment_payers: Arc<Mutex<IndexSet<Address<N>>>> = Default::default();
 
         // Separate the transactions into deploys and executions.
         let (deployments, executions): (Vec<&Transaction<N>>, Vec<&Transaction<N>>) =
@@ -853,6 +878,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                         &input_ids.lock(),
                         &output_ids.lock(),
                         &tpks.lock(),
+                        &deployment_payers.lock(),
                     ) {
                         // Continue to the next transaction.
                         return Either::Right((*transaction, reason.to_string()));
@@ -870,6 +896,10 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                             output_ids.lock().extend(transaction.output_ids());
                             // Add the transition public keys to the set of produced transition public keys.
                             tpks.lock().extend(transaction.transition_public_keys());
+                            // Add the deployment payer to the set of deployment payers.
+                            if let Transaction::Deploy(_, _, _, fee) = transaction {
+                                fee.payer().map(|payer| deployment_payers.lock().insert(payer));
+                            }
                             Either::Left(*transaction)
                         }
                         // If the transaction is invalid, add it to the list of aborted transactions.
