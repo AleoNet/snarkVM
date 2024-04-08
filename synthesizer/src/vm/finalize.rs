@@ -834,24 +834,61 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         transactions: &[&'a Transaction<N>],
         rng: &mut R,
     ) -> Result<(Vec<&'a Transaction<N>>, Vec<(&'a Transaction<N>, String)>)> {
+        // Construct the list of transactions that need to verified.
+        let mut transactions_to_verify = Vec::with_capacity(transactions.len());
         // Construct the list of valid and invalid transactions.
         let mut valid_transactions = Vec::with_capacity(transactions.len());
         let mut aborted_transactions = Vec::with_capacity(transactions.len());
 
         // Initialize a list of created transition IDs.
-        let transition_ids: Arc<Mutex<IndexSet<N::TransitionID>>> = Default::default();
+        let mut transition_ids: IndexSet<N::TransitionID> = Default::default();
         // Initialize a list of spent input IDs.
-        let input_ids: Arc<Mutex<IndexSet<Field<N>>>> = Default::default();
+        let mut input_ids: IndexSet<Field<N>> = Default::default();
         // Initialize a list of created output IDs.
-        let output_ids: Arc<Mutex<IndexSet<Field<N>>>> = Default::default();
+        let mut output_ids: IndexSet<Field<N>> = Default::default();
         // Initialize the list of created transition public keys.
-        let tpks: Arc<Mutex<IndexSet<Group<N>>>> = Default::default();
+        let mut tpks: IndexSet<Group<N>> = Default::default();
         // Initialize the list of deployment payers.
-        let deployment_payers: Arc<Mutex<IndexSet<Address<N>>>> = Default::default();
+        let mut deployment_payers: IndexSet<Address<N>> = Default::default();
+
+        // Abort the transactions that are have duplicates or are invalid. This will prevent the VM from performing
+        // verification on transactions that would have been aborted in `VM::atomic_speculate`.
+        for transaction in transactions.iter() {
+            // Determine if the transaction should be aborted.
+            match self.should_abort_transaction(
+                transaction,
+                &transition_ids,
+                &input_ids,
+                &output_ids,
+                &tpks,
+                &deployment_payers,
+            ) {
+                // Store the aborted transaction.
+                Some(reason) => aborted_transactions.push((*transaction, reason.to_string())),
+                // Track the transaction state.
+                None => {
+                    // Add the transition IDs to the set of produced transition IDs.
+                    transition_ids.extend(transaction.transition_ids());
+                    // Add the input IDs to the set of spent input IDs.
+                    input_ids.extend(transaction.input_ids());
+                    // Add the output IDs to the set of produced output IDs.
+                    output_ids.extend(transaction.output_ids());
+                    // Add the transition public keys to the set of produced transition public keys.
+                    tpks.extend(transaction.transition_public_keys());
+                    // Add the deployment payer to the set of deployment payers.
+                    if let Transaction::Deploy(_, _, _, fee) = transaction {
+                        fee.payer().map(|payer| deployment_payers.insert(payer));
+                    }
+
+                    // Add the transaction to the list of transactions to verify.
+                    transactions_to_verify.push(transaction);
+                }
+            };
+        }
 
         // Separate the transactions into deploys and executions.
         let (deployments, executions): (Vec<&Transaction<N>>, Vec<&Transaction<N>>) =
-            transactions.iter().partition(|tx| tx.is_deploy());
+            transactions_to_verify.into_iter().partition(|tx| tx.is_deploy());
         // Chunk the deploys and executions into groups for parallel verification.
         let deployments_for_verification = deployments.chunks(Self::MAX_PARALLEL_DEPLOY_VERIFICATIONS);
         let executions_for_verification = executions.chunks(Self::MAX_PARALLEL_EXECUTE_VERIFICATIONS);
@@ -870,38 +907,10 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                         ));
                     }
 
-                    // Determine if the transaction should be aborted. This will prevent the VM from performing
-                    // verification on transactions that would have been aborted in `VM::atomic_speculate`.
-                    if let Some(reason) = self.should_abort_transaction(
-                        transaction,
-                        &transition_ids.lock(),
-                        &input_ids.lock(),
-                        &output_ids.lock(),
-                        &tpks.lock(),
-                        &deployment_payers.lock(),
-                    ) {
-                        // Continue to the next transaction.
-                        return Either::Right((*transaction, reason.to_string()));
-                    }
-
                     // Verify the transaction.
                     match self.check_transaction(transaction, None, &mut rng) {
                         // If the transaction is valid, add it to the list of valid transactions.
-                        Ok(_) => {
-                            // Add the transition IDs to the set of produced transition IDs.
-                            transition_ids.lock().extend(transaction.transition_ids());
-                            // Add the input IDs to the set of spent input IDs.
-                            input_ids.lock().extend(transaction.input_ids());
-                            // Add the output IDs to the set of produced output IDs.
-                            output_ids.lock().extend(transaction.output_ids());
-                            // Add the transition public keys to the set of produced transition public keys.
-                            tpks.lock().extend(transaction.transition_public_keys());
-                            // Add the deployment payer to the set of deployment payers.
-                            if let Transaction::Deploy(_, _, _, fee) = transaction {
-                                fee.payer().map(|payer| deployment_payers.lock().insert(payer));
-                            }
-                            Either::Left(*transaction)
-                        }
+                        Ok(_) => Either::Left(*transaction),
                         // If the transaction is invalid, add it to the list of aborted transactions.
                         Err(e) => Either::Right((*transaction, e.to_string())),
                     }
