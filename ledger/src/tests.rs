@@ -30,10 +30,6 @@ use ledger_committee::{Committee, MIN_VALIDATOR_STAKE};
 use ledger_store::{helpers::memory::ConsensusMemory, ConsensusStore};
 use synthesizer::{program::Program, vm::VM, Stack};
 
-<<<<<<< HEAD
-=======
-use console::types::U16;
->>>>>>> 69b5b17a9 (clippy)
 use indexmap::IndexMap;
 
 #[test]
