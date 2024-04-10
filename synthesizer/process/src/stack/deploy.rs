@@ -132,6 +132,8 @@ impl<N: Network> Stack<N> {
             lap!(timer, "Compute the request for {}", function.name());
             // Initialize the assignments.
             let assignments = Assignments::<N>::default();
+            // Initialize the variable limit.
+            let variable_limit = N::MAX_DEPLOYMENT_VARIABLES / N::MAX_FUNCTIONS as u64;
             // Initialize the constraint limit. Account for the constraint added after synthesis that makes the Varuna zerocheck hiding.
             let Some(constraint_limit) = verifying_key.circuit_info.num_constraints.checked_sub(1) else {
                 // Since a deployment must always pay non-zero fee, it must always have at least one constraint.
@@ -143,7 +145,7 @@ impl<N: Network> Stack<N> {
                 burner_private_key,
                 assignments.clone(),
                 Some(constraint_limit as u64),
-                Some(N::MAX_DEPLOYMENT_VARIABLES),
+                Some(variable_limit),
             );
             // Append the function name, callstack, and assignments.
             call_stacks.push((function.name(), call_stack, assignments));

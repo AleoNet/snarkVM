@@ -120,7 +120,7 @@ pub trait Network:
     /// The maximum number of constraints in a deployment.
     const MAX_DEPLOYMENT_CONSTRAINTS: u64 = 1 << 20; // 1,048,576 constraints
     /// The maximum number of variables in a deployment.
-    const MAX_DEPLOYMENT_VARIABLES: u64 = 1 << 20; // 1,048,576 variables
+    const MAX_DEPLOYMENT_VARIABLES: u64 = 1 << 22; // 4,194,304 variables
     /// The maximum number of microcredits that can be spent as a fee.
     const MAX_FEE: u64 = 1_000_000_000_000_000;
     /// The maximum number of microcredits that can be spent on a finalize block.

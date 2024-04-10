@@ -425,6 +425,9 @@ impl<N: Network> StackExecute<N> for Stack<N> {
             );
         }
 
+        // Determine the number of variables allocated in the circuit.
+        let num_variables = A::num_variables();
+
         // Eject the circuit assignment and reset the circuit.
         let assignment = A::eject_assignment_and_reset();
 
@@ -453,6 +456,7 @@ impl<N: Network> StackExecute<N> for Stack<N> {
             let metrics = CallMetrics {
                 program_id: *self.program_id(),
                 function_name: *function.name(),
+                num_variables,
                 num_instructions: function.instructions().len(),
                 num_request_constraints,
                 num_function_constraints,
@@ -475,6 +479,7 @@ impl<N: Network> StackExecute<N> for Stack<N> {
             let metrics = CallMetrics {
                 program_id: *self.program_id(),
                 function_name: *function.name(),
+                num_variables,
                 num_instructions: function.instructions().len(),
                 num_request_constraints,
                 num_function_constraints,
@@ -495,6 +500,7 @@ impl<N: Network> StackExecute<N> for Stack<N> {
             let metrics = CallMetrics {
                 program_id: *self.program_id(),
                 function_name: *function.name(),
+                num_variables,
                 num_instructions: function.instructions().len(),
                 num_request_constraints,
                 num_function_constraints,

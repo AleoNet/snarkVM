@@ -22,6 +22,7 @@ pub struct CallMetrics<N: Network> {
     pub program_id: ProgramID<N>,
     pub function_name: Identifier<N>,
     pub num_instructions: usize,
+    pub num_variables: u64,
     pub num_request_constraints: u64,
     pub num_function_constraints: u64,
     pub num_response_constraints: u64,
