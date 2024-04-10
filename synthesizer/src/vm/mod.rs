@@ -1321,6 +1321,43 @@ function do:
     }
 
     #[test]
+    fn test_deployment_num_constant_overload() {
+        let rng = &mut TestRng::default();
+
+        // Initialize a private key.
+        let private_key = sample_genesis_private_key(rng);
+
+        // Initialize the genesis block.
+        let genesis = sample_genesis_block(rng);
+
+        // Initialize the VM.
+        let vm = sample_vm();
+        // Update the VM.
+        vm.add_next_block(&genesis).unwrap();
+
+        // Deploy the base program.
+        let program = Program::from_str(
+            r"
+program synthesis_num_constants.aleo;
+
+function do:
+    cast 0u32 0u32 0u32 0u32 0u32 0u32 0u32 0u32 0u32 0u32 0u32 0u32 0u32 0u32 0u32 0u32 0u32 0u32 0u32 0u32 0u32 0u32 0u32 0u32 0u32 0u32 0u32 0u32 0u32 0u32 0u32 0u32 into r0 as [u32; 32u32];
+    cast r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 into r1 as [[u32; 32u32]; 32u32];
+    cast r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 into r2 as [[[u32; 32u32]; 32u32]; 16u32];
+    hash.bhp1024 r2 into r3 as u32;
+    output r3 as u32.private;",
+        )
+        .unwrap();
+
+        // Create the deployment transaction.
+        let deployment = vm.deploy(&private_key, &program, None, 0, None, rng).unwrap();
+
+        // Verify the deployment transaction. It should fail because there are too many constants.
+        let check_tx_res = vm.check_transaction(&deployment, None, rng);
+        assert!(check_tx_res.is_err());
+    }
+
+    #[test]
     fn test_deployment_synthesis_overreport() {
         let rng = &mut TestRng::default();
 

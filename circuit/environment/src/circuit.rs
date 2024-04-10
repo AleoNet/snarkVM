@@ -23,6 +23,7 @@ type Field = <console::MainnetV0 as console::Environment>::Field;
 
 thread_local! {
     pub(super) static CONSTRAINT_LIMIT: Cell<Option<u64>> = Cell::new(None);
+    pub(super) static VARIABLE_LIMIT: Cell<Option<u64>> = Cell::new(None);
     pub(super) static CIRCUIT: RefCell<R1CS<Field>> = RefCell::new(R1CS::new());
     pub(super) static IN_WITNESS: Cell<bool> = Cell::new(false);
     pub(super) static ZERO: LinearCombination<Field> = LinearCombination::zero();
@@ -53,10 +54,20 @@ impl Environment for Circuit {
         IN_WITNESS.with(|in_witness| {
             // Ensure we are not in witness mode.
             if !in_witness.get() {
-                CIRCUIT.with(|circuit| match mode {
-                    Mode::Constant => circuit.borrow_mut().new_constant(value),
-                    Mode::Public => circuit.borrow_mut().new_public(value),
-                    Mode::Private => circuit.borrow_mut().new_private(value),
+                CIRCUIT.with(|circuit| {
+                    // Ensure that we do not surpass the variable limit for the circuit.
+                    VARIABLE_LIMIT.with(|variable_limit| {
+                        if let Some(limit) = variable_limit.get() {
+                            if Self::num_variables() > limit {
+                                Self::halt(format!("Surpassed the variable limit ({limit})"))
+                            }
+                        }
+                    });
+                    match mode {
+                        Mode::Constant => circuit.borrow_mut().new_constant(value),
+                        Mode::Public => circuit.borrow_mut().new_public(value),
+                        Mode::Private => circuit.borrow_mut().new_private(value),
+                    }
                 })
             } else {
                 Self::halt("Tried to initialize a new variable in witness mode")
@@ -201,6 +212,14 @@ impl Environment for Circuit {
         CIRCUIT.with(|circuit| circuit.borrow().is_satisfied_in_scope())
     }
 
+    /// Returns the number of variables in the entire circuit.
+    fn num_variables() -> u64 {
+        CIRCUIT.with(|circuit| {
+            let circuit = circuit.borrow();
+            circuit.num_constants().saturating_add(circuit.num_public()).saturating_add(circuit.num_private())
+        })
+    }
+
     /// Returns the number of constants in the entire circuit.
     fn num_constants() -> u64 {
         CIRCUIT.with(|circuit| circuit.borrow().num_constants())
@@ -268,6 +287,16 @@ impl Environment for Circuit {
         CONSTRAINT_LIMIT.with(|current_limit| current_limit.replace(limit));
     }
 
+    /// Returns the variable limit for the circuit, if one exists.
+    fn get_variable_limit() -> Option<u64> {
+        VARIABLE_LIMIT.with(|current_limit| current_limit.get())
+    }
+
+    /// Sets the variable limit for the circuit.
+    fn set_variable_limit(limit: Option<u64>) {
+        VARIABLE_LIMIT.with(|current_limit| current_limit.replace(limit));
+    }
+
     /// Returns the R1CS circuit, resetting the circuit.
     fn inject_r1cs(r1cs: R1CS<Self::BaseField>) {
         CIRCUIT.with(|circuit| {
@@ -293,6 +322,8 @@ impl Environment for Circuit {
             IN_WITNESS.with(|in_witness| in_witness.replace(false));
             // Reset the constraint limit.
             Self::set_constraint_limit(None);
+            // Reset the variable limit.
+            Self::set_variable_limit(None);
             // Eject the R1CS instance.
             let r1cs = circuit.replace(R1CS::<<Self as Environment>::BaseField>::new());
             // Ensure the circuit is now empty.
@@ -312,6 +343,8 @@ impl Environment for Circuit {
             IN_WITNESS.with(|in_witness| in_witness.replace(false));
             // Reset the constraint limit.
             Self::set_constraint_limit(None);
+            // Reset the variable limit.
+            Self::set_variable_limit(None);
             // Eject the R1CS instance.
             let r1cs = circuit.replace(R1CS::<<Self as Environment>::BaseField>::new());
             assert_eq!(0, circuit.borrow().num_constants());
@@ -330,6 +363,8 @@ impl Environment for Circuit {
             IN_WITNESS.with(|in_witness| in_witness.replace(false));
             // Reset the constraint limit.
             Self::set_constraint_limit(None);
+            // Reset the variable limit.
+            Self::set_variable_limit(None);
             // Reset the circuit.
             *circuit.borrow_mut() = R1CS::<<Self as Environment>::BaseField>::new();
             assert_eq!(0, circuit.borrow().num_constants());

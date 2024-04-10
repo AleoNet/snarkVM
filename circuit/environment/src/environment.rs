@@ -110,6 +110,9 @@ pub trait Environment: 'static + Copy + Clone + fmt::Debug + fmt::Display + Eq +
     /// Returns `true` if all constraints in the current scope are satisfied.
     fn is_satisfied_in_scope() -> bool;
 
+    /// Returns the number of variables in the entire environment.
+    fn num_variables() -> u64;
+
     /// Returns the number of constants in the entire environment.
     fn num_constants() -> u64;
 
@@ -166,6 +169,12 @@ pub trait Environment: 'static + Copy + Clone + fmt::Debug + fmt::Display + Eq +
 
     /// Sets the constraint limit for the circuit.
     fn set_constraint_limit(limit: Option<u64>);
+
+    /// Returns the variable limit for the circuit, if one exists.
+    fn get_variable_limit() -> Option<u64>;
+
+    /// Sets the variable limit for the circuit.
+    fn set_variable_limit(limit: Option<u64>);
 
     /// Returns the R1CS circuit, resetting the circuit.
     fn inject_r1cs(r1cs: R1CS<Self::BaseField>);

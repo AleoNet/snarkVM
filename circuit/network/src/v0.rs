@@ -411,6 +411,11 @@ impl Environment for AleoV0 {
         E::is_satisfied_in_scope()
     }
 
+    /// Returns the number of variables in the entire circuit.
+    fn num_variables() -> u64 {
+        E::num_variables()
+    }
+
     /// Returns the number of constants in the entire circuit.
     fn num_constants() -> u64 {
         E::num_constants()
@@ -474,6 +479,16 @@ impl Environment for AleoV0 {
     /// Sets the constraint limit for the circuit.
     fn set_constraint_limit(limit: Option<u64>) {
         E::set_constraint_limit(limit)
+    }
+
+    /// Returns the variable limit for the circuit, if one exists.
+    fn get_variable_limit() -> Option<u64> {
+        E::get_variable_limit()
+    }
+
+    /// Sets the constraint limit for the circuit.
+    fn set_variable_limit(limit: Option<u64>) {
+        E::set_variable_limit(limit)
     }
 
     /// Returns the R1CS circuit, resetting the circuit.

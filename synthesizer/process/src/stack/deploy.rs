@@ -74,7 +74,7 @@ impl<N: Network> Stack<N> {
         let program_id = self.program.id();
 
         // Check that the number of combined constraints does not exceed the deployment limit.
-        ensure!(deployment.num_combined_constraints()? <= N::MAX_DEPLOYMENT_LIMIT);
+        ensure!(deployment.num_combined_constraints()? <= N::MAX_DEPLOYMENT_CONSTRAINTS);
 
         // Construct the call stacks and assignments used to verify the certificates.
         let mut call_stacks = Vec::with_capacity(deployment.verifying_keys().len());
@@ -143,6 +143,7 @@ impl<N: Network> Stack<N> {
                 burner_private_key,
                 assignments.clone(),
                 Some(constraint_limit as u64),
+                Some(N::MAX_DEPLOYMENT_VARIABLES),
             );
             // Append the function name, callstack, and assignments.
             call_stacks.push((function.name(), call_stack, assignments));
