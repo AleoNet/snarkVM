@@ -144,14 +144,16 @@ impl<N: Network> StackExecute<N> for Stack<N> {
     ) -> Result<Response<N>> {
         let timer = timer!("Stack::execute_function");
 
+        // Ensure constant circuit gadgets are initialized.
+        A::init_constants();
         // Ensure the circuit environment is clean.
         A::reset();
 
         // If in 'CheckDeployment' mode, set the constraint limit.
         // We do not have to reset it after function calls because `CheckDeployment` mode does not execute those.
-        if let CallStack::CheckDeployment(_, _, _, constraint_limit, var_limit) = &call_stack {
+        if let CallStack::CheckDeployment(_, _, _, constraint_limit, variable_limit) = &call_stack {
             A::set_constraint_limit(*constraint_limit);
-            A::set_variable_limit(*var_limit);
+            A::set_variable_limit(*variable_limit);
         }
 
         // Retrieve the next request.
@@ -411,8 +413,6 @@ impl<N: Network> StackExecute<N> for Stack<N> {
             self.matches_value_type(output, output_type)
         })?;
 
-        println!("A::num_constants(): {}", A::num_constants());
-
         // If the circuit is in `Execute` or `PackageRun` mode, then ensure the circuit is satisfied.
         if matches!(registers.call_stack(), CallStack::Execute(..) | CallStack::PackageRun(..)) {
             // If the circuit is empty or not satisfied, then throw an error.
@@ -426,7 +426,8 @@ impl<N: Network> StackExecute<N> for Stack<N> {
         }
 
         // Determine the number of variables allocated in the circuit.
-        let num_variables = A::num_variables();
+        // NOTE: we can use this limit because our circuits only have a single scope.
+        let num_variables = A::num_variables_in_scope();
 
         // Eject the circuit assignment and reset the circuit.
         let assignment = A::eject_assignment_and_reset();
@@ -438,7 +439,7 @@ impl<N: Network> StackExecute<N> for Stack<N> {
             // If the proving key does not exist, then synthesize it.
             if !self.contains_proving_key(function.name()) {
                 // Add the circuit key to the mapping.
-                self.synthesize_from_assignment(function.name(), &assignment)?;
+                self.synthesize_from_assignment(function.name(), &assignment, num_variables)?;
                 lap!(timer, "Synthesize the {} circuit key", function.name());
             }
         }
@@ -456,7 +457,6 @@ impl<N: Network> StackExecute<N> for Stack<N> {
             let metrics = CallMetrics {
                 program_id: *self.program_id(),
                 function_name: *function.name(),
-                num_variables,
                 num_instructions: function.instructions().len(),
                 num_request_constraints,
                 num_function_constraints,
@@ -479,7 +479,6 @@ impl<N: Network> StackExecute<N> for Stack<N> {
             let metrics = CallMetrics {
                 program_id: *self.program_id(),
                 function_name: *function.name(),
-                num_variables,
                 num_instructions: function.instructions().len(),
                 num_request_constraints,
                 num_function_constraints,
@@ -500,7 +499,6 @@ impl<N: Network> StackExecute<N> for Stack<N> {
             let metrics = CallMetrics {
                 program_id: *self.program_id(),
                 function_name: *function.name(),
-                num_variables,
                 num_instructions: function.instructions().len(),
                 num_request_constraints,
                 num_function_constraints,

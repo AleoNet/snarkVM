@@ -110,6 +110,7 @@ pub enum DeploymentMap {
     Program = DataID::DeploymentProgramMap as u16,
     VerifyingKey = DataID::DeploymentVerifyingKeyMap as u16,
     Certificate = DataID::DeploymentCertificateMap as u16,
+    VariableCount = DataID::DeploymentVariableCountMap as u16,
 }
 
 /// The RocksDB map prefix for execution-related entries.
@@ -252,6 +253,7 @@ enum DataID {
     DeploymentProgramMap,
     DeploymentVerifyingKeyMap,
     DeploymentCertificateMap,
+    DeploymentVariableCountMap,
     // Execution
     ExecutionIDMap,
     ExecutionReverseIDMap,

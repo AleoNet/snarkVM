@@ -159,6 +159,11 @@ impl<F: PrimeField> R1CS<F> {
         self.nonzeros
     }
 
+    /// Returns the total number of variables for the current scope.
+    pub fn num_variables_in_scope(&self) -> u64 {
+        self.counter.num_variables_in_scope()
+    }
+
     /// Returns the number of constants for the current scope.
     pub(crate) fn num_constants_in_scope(&self) -> u64 {
         self.counter.num_constants_in_scope()

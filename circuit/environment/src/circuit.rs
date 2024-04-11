@@ -58,7 +58,9 @@ impl Environment for Circuit {
                     // Ensure that we do not surpass the variable limit for the circuit.
                     VARIABLE_LIMIT.with(|variable_limit| {
                         if let Some(limit) = variable_limit.get() {
-                            if Self::num_variables() > limit {
+                            // NOTE: we can use this function because circuits only have a single scope.
+                            // Once we have nested scopes, we will need to track the number of variables in each scope.
+                            if Self::num_variables_in_scope() > limit {
                                 Self::halt(format!("Surpassed the variable limit ({limit})"))
                             }
                         }
@@ -212,14 +214,6 @@ impl Environment for Circuit {
         CIRCUIT.with(|circuit| circuit.borrow().is_satisfied_in_scope())
     }
 
-    /// Returns the number of variables in the entire circuit.
-    fn num_variables() -> u64 {
-        CIRCUIT.with(|circuit| {
-            let circuit = circuit.borrow();
-            circuit.num_constants().saturating_add(circuit.num_public()).saturating_add(circuit.num_private())
-        })
-    }
-
     /// Returns the number of constants in the entire circuit.
     fn num_constants() -> u64 {
         CIRCUIT.with(|circuit| circuit.borrow().num_constants())
@@ -243,6 +237,11 @@ impl Environment for Circuit {
     /// Returns the number of nonzeros in the entire circuit.
     fn num_nonzeros() -> (u64, u64, u64) {
         CIRCUIT.with(|circuit| circuit.borrow().num_nonzeros())
+    }
+
+    /// Returns the number of variables in the entire circuit.
+    fn num_variables_in_scope() -> u64 {
+        CIRCUIT.with(|circuit| circuit.borrow().num_variables_in_scope())
     }
 
     /// Returns the number of constants for the current scope.
@@ -304,6 +303,7 @@ impl Environment for Circuit {
             assert_eq!(0, circuit.borrow().num_constants());
             assert_eq!(1, circuit.borrow().num_public());
             assert_eq!(0, circuit.borrow().num_private());
+            assert_eq!(0, circuit.borrow().num_variables_in_scope());
             assert_eq!(0, circuit.borrow().num_constraints());
             // Inject the R1CS instance.
             let r1cs = circuit.replace(r1cs);
@@ -311,6 +311,7 @@ impl Environment for Circuit {
             assert_eq!(0, r1cs.num_constants());
             assert_eq!(1, r1cs.num_public());
             assert_eq!(0, r1cs.num_private());
+            assert_eq!(0, r1cs.num_variables_in_scope());
             assert_eq!(0, r1cs.num_constraints());
         })
     }
@@ -330,6 +331,7 @@ impl Environment for Circuit {
             assert_eq!(0, circuit.borrow().num_constants());
             assert_eq!(1, circuit.borrow().num_public());
             assert_eq!(0, circuit.borrow().num_private());
+            assert_eq!(0, circuit.borrow().num_variables_in_scope());
             assert_eq!(0, circuit.borrow().num_constraints());
             // Return the R1CS instance.
             r1cs
@@ -350,6 +352,7 @@ impl Environment for Circuit {
             assert_eq!(0, circuit.borrow().num_constants());
             assert_eq!(1, circuit.borrow().num_public());
             assert_eq!(0, circuit.borrow().num_private());
+            assert_eq!(0, circuit.borrow().num_variables_in_scope());
             assert_eq!(0, circuit.borrow().num_constraints());
             // Convert the R1CS instance to an assignment.
             Assignment::from(r1cs)
@@ -370,6 +373,7 @@ impl Environment for Circuit {
             assert_eq!(0, circuit.borrow().num_constants());
             assert_eq!(1, circuit.borrow().num_public());
             assert_eq!(0, circuit.borrow().num_private());
+            assert_eq!(0, circuit.borrow().num_variables_in_scope());
             assert_eq!(0, circuit.borrow().num_constraints());
         });
     }

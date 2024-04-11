@@ -113,6 +113,8 @@ pub struct DeploymentDB<N: Network> {
     verifying_key_map: DataMap<(ProgramID<N>, Identifier<N>, u16), VerifyingKey<N>>,
     /// The certificate map.
     certificate_map: DataMap<(ProgramID<N>, Identifier<N>, u16), Certificate<N>>,
+    /// The variable count map.
+    variable_count_map: DataMap<(ProgramID<N>, Identifier<N>, u16), u64>,
     /// The fee store.
     fee_store: FeeStore<N, FeeDB<N>>,
 }
@@ -126,6 +128,7 @@ impl<N: Network> DeploymentStorage<N> for DeploymentDB<N> {
     type ProgramMap = DataMap<(ProgramID<N>, u16), Program<N>>;
     type VerifyingKeyMap = DataMap<(ProgramID<N>, Identifier<N>, u16), VerifyingKey<N>>;
     type CertificateMap = DataMap<(ProgramID<N>, Identifier<N>, u16), Certificate<N>>;
+    type VariableCountMap = DataMap<(ProgramID<N>, Identifier<N>, u16), u64>;
     type FeeStorage = FeeDB<N>;
 
     /// Initializes the deployment storage.
@@ -140,6 +143,7 @@ impl<N: Network> DeploymentStorage<N> for DeploymentDB<N> {
             program_map: rocksdb::RocksDB::open_map(N::ID, storage_mode.clone(), MapID::Deployment(DeploymentMap::Program))?,
             verifying_key_map: rocksdb::RocksDB::open_map(N::ID, storage_mode.clone(), MapID::Deployment(DeploymentMap::VerifyingKey))?,
             certificate_map: rocksdb::RocksDB::open_map(N::ID, storage_mode.clone(), MapID::Deployment(DeploymentMap::Certificate))?,
+            variable_count_map: rocksdb::RocksDB::open_map(N::ID, storage_mode.clone(), MapID::Deployment(DeploymentMap::VariableCount))?,
             fee_store,
         })
     }
@@ -177,6 +181,11 @@ impl<N: Network> DeploymentStorage<N> for DeploymentDB<N> {
     /// Returns the certificate map.
     fn certificate_map(&self) -> &Self::CertificateMap {
         &self.certificate_map
+    }
+
+    /// Returns the variable count map.
+    fn variable_count_map(&self) -> &Self::VariableCountMap {
+        &self.variable_count_map
     }
 
     /// Returns the fee store.

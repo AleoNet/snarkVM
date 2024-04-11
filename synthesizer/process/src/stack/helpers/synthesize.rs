@@ -80,6 +80,8 @@ impl<N: Network> Stack<N> {
         ensure!(self.contains_proving_key(function_name), "Function '{function_name}' is missing a proving key.");
         // Ensure the verifying key exists.
         ensure!(self.contains_verifying_key(function_name), "Function '{function_name}' is missing a verifying key.");
+        // Ensure the variable count exists.
+        ensure!(self.contains_variable_count(function_name), "Function '{function_name}' is missing variable count.");
         Ok(())
     }
 
@@ -89,6 +91,7 @@ impl<N: Network> Stack<N> {
         &self,
         function_name: &Identifier<N>,
         assignment: &circuit::Assignment<N::Field>,
+        variable_count: u64,
     ) -> Result<()> {
         // If the proving and verifying key already exist, skip the synthesis for this function.
         if self.contains_proving_key(function_name) && self.contains_verifying_key(function_name) {
@@ -100,6 +103,8 @@ impl<N: Network> Stack<N> {
         // Insert the proving key.
         self.insert_proving_key(function_name, proving_key)?;
         // Insert the verifying key.
-        self.insert_verifying_key(function_name, verifying_key)
+        self.insert_verifying_key(function_name, verifying_key)?;
+        // Insert the variable count.
+        self.insert_variable_count(function_name, variable_count)
     }
 }

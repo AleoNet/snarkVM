@@ -103,6 +103,8 @@ pub struct DeploymentMemory<N: Network> {
     verifying_key_map: MemoryMap<(ProgramID<N>, Identifier<N>, u16), VerifyingKey<N>>,
     /// The certificate map.
     certificate_map: MemoryMap<(ProgramID<N>, Identifier<N>, u16), Certificate<N>>,
+    /// The variable count map.
+    variable_count_map: MemoryMap<(ProgramID<N>, Identifier<N>, u16), u64>,
     /// The fee store.
     fee_store: FeeStore<N, FeeMemory<N>>,
 }
@@ -116,6 +118,7 @@ impl<N: Network> DeploymentStorage<N> for DeploymentMemory<N> {
     type ProgramMap = MemoryMap<(ProgramID<N>, u16), Program<N>>;
     type VerifyingKeyMap = MemoryMap<(ProgramID<N>, Identifier<N>, u16), VerifyingKey<N>>;
     type CertificateMap = MemoryMap<(ProgramID<N>, Identifier<N>, u16), Certificate<N>>;
+    type VariableCountMap = MemoryMap<(ProgramID<N>, Identifier<N>, u16), u64>;
     type FeeStorage = FeeMemory<N>;
 
     /// Initializes the deployment storage.
@@ -128,6 +131,7 @@ impl<N: Network> DeploymentStorage<N> for DeploymentMemory<N> {
             program_map: MemoryMap::default(),
             verifying_key_map: MemoryMap::default(),
             certificate_map: MemoryMap::default(),
+            variable_count_map: MemoryMap::default(),
             fee_store,
         })
     }
@@ -165,6 +169,11 @@ impl<N: Network> DeploymentStorage<N> for DeploymentMemory<N> {
     /// Returns the certificate map.
     fn certificate_map(&self) -> &Self::CertificateMap {
         &self.certificate_map
+    }
+
+    /// Returns the variable count map.
+    fn variable_count_map(&self) -> &Self::VariableCountMap {
+        &self.variable_count_map
     }
 
     /// Returns the fee store.

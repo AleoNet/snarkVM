@@ -37,6 +37,8 @@ impl<N: Network> Stack<N> {
             let proving_key = self.get_proving_key(function_name)?;
             // Retrieve the verifying key.
             let verifying_key = self.get_verifying_key(function_name)?;
+            // Retrieve the function variables.
+            let variable_count = self.get_variable_count(function_name)?;
             lap!(timer, "Retrieve the keys for {function_name}");
 
             // Certify the circuit.
@@ -44,7 +46,7 @@ impl<N: Network> Stack<N> {
             lap!(timer, "Certify the circuit");
 
             // Add the verifying key and certificate to the bundle.
-            verifying_keys.push((*function_name, (verifying_key, certificate)));
+            verifying_keys.push((*function_name, (verifying_key, certificate, variable_count)));
         }
 
         finish!(timer);
@@ -76,6 +78,9 @@ impl<N: Network> Stack<N> {
         // Check that the number of combined constraints does not exceed the deployment limit.
         ensure!(deployment.num_combined_constraints()? <= N::MAX_DEPLOYMENT_CONSTRAINTS);
 
+        // Check that the number of combined variables does not exceed the deployment limit.
+        ensure!(deployment.num_combined_variables()? <= N::MAX_DEPLOYMENT_VARIABLES);
+
         // Construct the call stacks and assignments used to verify the certificates.
         let mut call_stacks = Vec::with_capacity(deployment.verifying_keys().len());
 
@@ -92,7 +97,7 @@ impl<N: Network> Stack<N> {
         );
 
         // Iterate through the program functions and construct the callstacks and corresponding assignments.
-        for (function, (_, (verifying_key, _))) in
+        for (function, (_, (verifying_key, _, variable_limit))) in
             deployment.program().functions().values().zip_eq(deployment.verifying_keys())
         {
             // Initialize a burner private key.
@@ -132,20 +137,19 @@ impl<N: Network> Stack<N> {
             lap!(timer, "Compute the request for {}", function.name());
             // Initialize the assignments.
             let assignments = Assignments::<N>::default();
-            // Initialize the variable limit.
-            let variable_limit = N::MAX_DEPLOYMENT_VARIABLES / N::MAX_FUNCTIONS as u64;
             // Initialize the constraint limit. Account for the constraint added after synthesis that makes the Varuna zerocheck hiding.
             let Some(constraint_limit) = verifying_key.circuit_info.num_constraints.checked_sub(1) else {
                 // Since a deployment must always pay non-zero fee, it must always have at least one constraint.
                 bail!("The constraint limit of 0 for function '{}' is invalid", function.name());
             };
+
             // Initialize the call stack.
             let call_stack = CallStack::CheckDeployment(
                 vec![request],
                 burner_private_key,
                 assignments.clone(),
                 Some(constraint_limit as u64),
-                Some(variable_limit),
+                Some(*variable_limit),
             );
             // Append the function name, callstack, and assignments.
             call_stacks.push((function.name(), call_stack, assignments));
@@ -154,7 +158,7 @@ impl<N: Network> Stack<N> {
         // Verify the certificates.
         let rngs = (0..call_stacks.len()).map(|_| StdRng::from_seed(rng.gen())).collect::<Vec<_>>();
         cfg_into_iter!(call_stacks).zip_eq(deployment.verifying_keys()).zip_eq(rngs).try_for_each(
-            |(((function_name, call_stack, assignments), (_, (verifying_key, certificate))), mut rng)| {
+            |(((function_name, call_stack, assignments), (_, (verifying_key, certificate, _))), mut rng)| {
                 // Synthesize the circuit.
                 if let Err(err) = self.execute_function::<A, _>(call_stack, caller, root_tvk, &mut rng) {
                     bail!("Failed to synthesize the circuit for '{function_name}': {err}")

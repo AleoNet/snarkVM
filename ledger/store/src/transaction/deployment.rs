@@ -49,6 +49,8 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
     type VerifyingKeyMap: for<'a> Map<'a, (ProgramID<N>, Identifier<N>, u16), VerifyingKey<N>>;
     /// The mapping of `(program ID, function name, edition)` to `certificate`.
     type CertificateMap: for<'a> Map<'a, (ProgramID<N>, Identifier<N>, u16), Certificate<N>>;
+    /// The mapping of `(program ID, function name, edition)` to `variable count`.
+    type VariableCountMap: for<'a> Map<'a, (ProgramID<N>, Identifier<N>, u16), u64>;
     /// The fee storage.
     type FeeStorage: FeeStorage<N>;
 
@@ -69,6 +71,8 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
     fn verifying_key_map(&self) -> &Self::VerifyingKeyMap;
     /// Returns the certificate map.
     fn certificate_map(&self) -> &Self::CertificateMap;
+    /// Returns the variable count map.
+    fn variable_count_map(&self) -> &Self::VariableCountMap;
     /// Returns the fee storage.
     fn fee_store(&self) -> &FeeStore<N, Self::FeeStorage>;
 
@@ -196,11 +200,13 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
             self.program_map().insert((program_id, edition), program.clone())?;
 
             // Store the verifying keys and certificates.
-            for (function_name, (verifying_key, certificate)) in deployment.verifying_keys() {
+            for (function_name, (verifying_key, certificate, variable_count)) in deployment.verifying_keys() {
                 // Store the verifying key.
                 self.verifying_key_map().insert((program_id, *function_name, edition), verifying_key.clone())?;
                 // Store the certificate.
                 self.certificate_map().insert((program_id, *function_name, edition), certificate.clone())?;
+                // Store the variable count.
+                self.variable_count_map().insert((program_id, *function_name, edition), *variable_count)?;
             }
 
             // Store the fee transition.
@@ -400,27 +406,37 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
             None => bail!("Failed to get the deployed program '{program_id}' (edition {edition})"),
         };
 
-        // Initialize a vector for the verifying keys and certificates.
-        let mut verifying_keys = Vec::with_capacity(program.functions().len());
+        // Initialize a vector for the function_specs.
+        let mut function_specs = Vec::with_capacity(program.functions().len());
 
         // Retrieve the verifying keys and certificates.
         for function_name in program.functions().keys() {
             // Retrieve the verifying key.
             let verifying_key = match self.verifying_key_map().get_confirmed(&(program_id, *function_name, edition))? {
                 Some(verifying_key) => cow_to_cloned!(verifying_key),
-                None => bail!("Failed to get the verifying key for '{program_id}/{function_name}' (edition {edition})"),
+                None => {
+                    bail!("Failed to get the verifying key for '{program_id}/{function_name}' (edition {edition})")
+                }
             };
             // Retrieve the certificate.
             let certificate = match self.certificate_map().get_confirmed(&(program_id, *function_name, edition))? {
                 Some(certificate) => cow_to_cloned!(certificate),
                 None => bail!("Failed to get the certificate for '{program_id}/{function_name}' (edition {edition})"),
             };
-            // Add the verifying key and certificate to the deployment.
-            verifying_keys.push((*function_name, (verifying_key, certificate)));
+            // Retrieve the variable count.
+            let variable_count =
+                match self.variable_count_map().get_confirmed(&(program_id, *function_name, edition))? {
+                    Some(variable_count) => cow_to_cloned!(variable_count),
+                    None => {
+                        bail!("Failed to get the variable count for '{program_id}/{function_name}' (edition {edition})")
+                    }
+                };
+            // Add the verifying key, certificate and variable_count to the deployment.
+            function_specs.push((*function_name, (verifying_key, certificate, variable_count)));
         }
 
         // Return the deployment.
-        Ok(Some(Deployment::new(edition, program, verifying_keys)?))
+        Ok(Some(Deployment::new(edition, program, function_specs)?))
     }
 
     /// Returns the fee for the given `transaction ID`.

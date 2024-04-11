@@ -22,7 +22,7 @@ impl<N: Network> Serialize for Deployment<N> {
                 let mut deployment = serializer.serialize_struct("Deployment", 3)?;
                 deployment.serialize_field("edition", &self.edition)?;
                 deployment.serialize_field("program", &self.program)?;
-                deployment.serialize_field("verifying_keys", &self.verifying_keys)?;
+                deployment.serialize_field("function_specs", &self.function_specs)?;
                 deployment.end()
             }
             false => ToBytesSerializer::serialize_with_size_encoding(self, serializer),
@@ -45,7 +45,7 @@ impl<'de, N: Network> Deserialize<'de> for Deployment<N> {
                     // Retrieve the program.
                     DeserializeExt::take_from_value::<D>(&mut deployment, "program")?,
                     // Retrieve the verifying keys.
-                    DeserializeExt::take_from_value::<D>(&mut deployment, "verifying_keys")?,
+                    DeserializeExt::take_from_value::<D>(&mut deployment, "function_specs")?,
                 )
                 .map_err(de::Error::custom)?;
 

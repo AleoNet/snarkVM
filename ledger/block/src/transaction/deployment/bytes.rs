@@ -31,8 +31,8 @@ impl<N: Network> FromBytes for Deployment<N> {
 
         // Read the number of entries in the bundle.
         let num_entries = u16::read_le(&mut reader)?;
-        // Read the verifying keys.
-        let mut verifying_keys = Vec::with_capacity(num_entries as usize);
+        // Read the function specifications.
+        let mut function_specs = Vec::with_capacity(num_entries as usize);
         for _ in 0..num_entries {
             // Read the identifier.
             let identifier = Identifier::<N>::read_le(&mut reader)?;
@@ -40,12 +40,14 @@ impl<N: Network> FromBytes for Deployment<N> {
             let verifying_key = VerifyingKey::<N>::read_le(&mut reader)?;
             // Read the certificate.
             let certificate = Certificate::<N>::read_le(&mut reader)?;
+            // Read the variable count.
+            let variable_count = u64::read_le(&mut reader)?;
             // Add the entry.
-            verifying_keys.push((identifier, (verifying_key, certificate)));
+            function_specs.push((identifier, (verifying_key, certificate, variable_count)));
         }
 
         // Return the deployment.
-        Self::new(edition, program, verifying_keys).map_err(|err| error(format!("{err}")))
+        Self::new(edition, program, function_specs).map_err(|err| error(format!("{err}")))
     }
 }
 
@@ -59,15 +61,17 @@ impl<N: Network> ToBytes for Deployment<N> {
         // Write the program.
         self.program.write_le(&mut writer)?;
         // Write the number of entries in the bundle.
-        (u16::try_from(self.verifying_keys.len()).map_err(|e| error(e.to_string()))?).write_le(&mut writer)?;
+        (u16::try_from(self.function_specs.len()).map_err(|e| error(e.to_string()))?).write_le(&mut writer)?;
         // Write each entry.
-        for (function_name, (verifying_key, certificate)) in &self.verifying_keys {
+        for (function_name, (verifying_key, certificate, variable_count)) in &self.function_specs {
             // Write the function name.
             function_name.write_le(&mut writer)?;
             // Write the verifying key.
             verifying_key.write_le(&mut writer)?;
             // Write the certificate.
             certificate.write_le(&mut writer)?;
+            // Write the variable count.
+            variable_count.write_le(&mut writer)?;
         }
         Ok(())
     }

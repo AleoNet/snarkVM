@@ -48,7 +48,7 @@ impl<N: Network> Process<N> {
         lap!(timer, "Compute the stack");
 
         // Insert the verifying keys.
-        for (function_name, (verifying_key, _)) in deployment.verifying_keys() {
+        for (function_name, (verifying_key, _, _)) in deployment.verifying_keys() {
             stack.insert_verifying_key(function_name, verifying_key.clone())?;
         }
         lap!(timer, "Insert the verifying keys");

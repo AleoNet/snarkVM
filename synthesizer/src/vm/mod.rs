@@ -1031,7 +1031,7 @@ function a:
             // Note: `deployment_transaction_ids` is sorted lexicographically by transaction ID, so the order may change if we update internal methods.
             assert_eq!(
                 deployment_transaction_ids,
-                vec![deployment_1.id(), deployment_4.id(), deployment_3.id(), deployment_2.id()],
+                vec![deployment_4.id(), deployment_3.id(), deployment_1.id(), deployment_2.id()],
                 "Update me if serialization has changed"
             );
         }
@@ -1401,11 +1401,11 @@ function do:
 
         // Increase the number of constraints in the verifying keys.
         let mut vks_with_overreport = Vec::with_capacity(deployment.verifying_keys().len());
-        for (id, (vk, cert)) in deployment.verifying_keys() {
+        for (id, (vk, cert, vars)) in deployment.verifying_keys() {
             let mut vk = vk.deref().clone();
             vk.circuit_info.num_constraints += 1;
             let vk = VerifyingKey::new(Arc::new(vk));
-            vks_with_overreport.push((*id, (vk, cert.clone())));
+            vks_with_overreport.push((*id, (vk, cert.clone(), *vars)));
         }
 
         // Each additional constraint costs 25 microcredits, so we need to increase the fee by 25 microcredits.
@@ -1465,11 +1465,11 @@ function do:
 
         // Decrease the number of constraints in the verifying keys.
         let mut vks_with_underreport = Vec::with_capacity(deployment.verifying_keys().len());
-        for (id, (vk, cert)) in deployment.verifying_keys() {
+        for (id, (vk, cert, vars)) in deployment.verifying_keys() {
             let mut vk = vk.deref().clone();
             vk.circuit_info.num_constraints -= 2;
             let vk = VerifyingKey::new(Arc::new(vk));
-            vks_with_underreport.push((*id, (vk, cert.clone())));
+            vks_with_underreport.push((*id, (vk, cert.clone(), *vars)));
         }
 
         // Create a new deployment transaction with the underreported verifying keys.
@@ -1478,6 +1478,79 @@ function do:
         let adjusted_transaction = Transaction::Deploy(txid, program_owner, Box::new(adjusted_deployment), fee);
 
         // Verify the deployment transaction. It should error when enforcing the first constraint over the vk limit.
+        let result = vm.check_transaction(&adjusted_transaction, None, rng);
+        assert!(result.is_err());
+
+        // Create a standard transaction
+        // Prepare the inputs.
+        let inputs = [
+            Value::<CurrentNetwork>::from_str(&address.to_string()).unwrap(),
+            Value::<CurrentNetwork>::from_str("1u64").unwrap(),
+        ]
+        .into_iter();
+
+        // Execute.
+        let transaction =
+            vm.execute(&private_key, ("credits.aleo", "transfer_public"), inputs, None, 0, None, rng).unwrap();
+
+        // Check that the deployment transaction will be aborted if injected into a block.
+        let block = sample_next_block(&vm, &private_key, &[transaction, adjusted_transaction.clone()], rng).unwrap();
+
+        // Check that the block aborts the deployment transaction.
+        assert_eq!(block.aborted_transaction_ids(), &vec![adjusted_transaction.id()]);
+
+        // Update the VM.
+        vm.add_next_block(&block).unwrap();
+    }
+
+    #[test]
+    fn test_deployment_variable_underreport() {
+        let rng = &mut TestRng::default();
+
+        // Initialize a private key.
+        let private_key = sample_genesis_private_key(rng);
+        let address = Address::try_from(&private_key).unwrap();
+
+        // Initialize the genesis block.
+        let genesis = sample_genesis_block(rng);
+
+        // Initialize the VM.
+        let vm = sample_vm();
+        // Update the VM.
+        vm.add_next_block(&genesis).unwrap();
+
+        // Deploy the base program.
+        let program = Program::from_str(
+            r"
+program synthesis_underreport.aleo;
+
+function do:
+    input r0 as u32.private;
+    add r0 r0 into r1;
+    output r1 as u32.public;",
+        )
+        .unwrap();
+
+        // Create the deployment transaction.
+        let transaction = vm.deploy(&private_key, &program, None, 0, None, rng).unwrap();
+
+        // Destructure the deployment transaction.
+        let Transaction::Deploy(txid, program_owner, deployment, fee) = transaction else {
+            panic!("Expected a deployment transaction");
+        };
+
+        // Decrease the number of reported variables in the verifying keys.
+        let mut vks_with_underreport = Vec::with_capacity(deployment.verifying_keys().len());
+        for (id, (vk, cert, vars)) in deployment.verifying_keys() {
+            vks_with_underreport.push((*id, (vk.clone(), cert.clone(), vars - 2)));
+        }
+
+        // Create a new deployment transaction with the underreported verifying keys.
+        let adjusted_deployment =
+            Deployment::new(deployment.edition(), deployment.program().clone(), vks_with_underreport).unwrap();
+        let adjusted_transaction = Transaction::Deploy(txid, program_owner, Box::new(adjusted_deployment), fee);
+
+        // Verify the deployment transaction. It should error when synthesizing the first variable over the vk limit.
         let result = vm.check_transaction(&adjusted_transaction, None, rng);
         assert!(result.is_err());
 
@@ -1891,7 +1964,7 @@ finalize transfer_public:
             Some(Value::Plaintext(Plaintext::Literal(Literal::U64(balance), _))) => *balance,
             _ => panic!("Expected a valid balance"),
         };
-        assert_eq!(balance, 182_499_997_483_583, "Update me if the initial balance changes.");
+        assert_eq!(balance, 182_499_997_475_583, "Update me if the initial balance changes.");
 
         // Check the balance of the `credits_wrapper` program.
         let balance = match vm
@@ -1943,7 +2016,7 @@ finalize transfer_public:
             Some(Value::Plaintext(Plaintext::Literal(Literal::U64(balance), _))) => *balance,
             _ => panic!("Expected a valid balance"),
         };
-        assert_eq!(balance, 182_499_997_431_058, "Update me if the initial balance changes.");
+        assert_eq!(balance, 182_499_997_423_058, "Update me if the initial balance changes.");
 
         // Check the balance of the `credits_wrapper` program.
         let balance = match vm
@@ -2082,7 +2155,7 @@ finalize transfer_public_as_signer:
             Some(Value::Plaintext(Plaintext::Literal(Literal::U64(balance), _))) => *balance,
             _ => panic!("Expected a valid balance"),
         };
-        assert_eq!(balance, 182_499_997_412_068, "Update me if the initial balance changes.");
+        assert_eq!(balance, 182_499_997_404_068, "Update me if the initial balance changes.");
 
         // Check the `credits_wrapper` program does not have any balance.
         let balance = vm
@@ -2237,7 +2310,7 @@ finalize transfer_public_to_private:
             _ => panic!("Expected a valid balance"),
         };
 
-        assert_eq!(balance, 182_499_996_924_681, "Update me if the initial balance changes.");
+        assert_eq!(balance, 182_499_996_916_681, "Update me if the initial balance changes.");
 
         // Check that the `credits_wrapper` program has a balance of 0.
         let balance = match vm

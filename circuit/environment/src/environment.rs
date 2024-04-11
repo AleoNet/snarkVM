@@ -110,9 +110,6 @@ pub trait Environment: 'static + Copy + Clone + fmt::Debug + fmt::Display + Eq +
     /// Returns `true` if all constraints in the current scope are satisfied.
     fn is_satisfied_in_scope() -> bool;
 
-    /// Returns the number of variables in the entire environment.
-    fn num_variables() -> u64;
-
     /// Returns the number of constants in the entire environment.
     fn num_constants() -> u64;
 
@@ -132,6 +129,9 @@ pub trait Environment: 'static + Copy + Clone + fmt::Debug + fmt::Display + Eq +
     fn count() -> (u64, u64, u64, u64, (u64, u64, u64)) {
         (Self::num_constants(), Self::num_public(), Self::num_private(), Self::num_constraints(), Self::num_nonzeros())
     }
+
+    /// Returns the number of variables for the current scope.
+    fn num_variables_in_scope() -> u64;
 
     /// Returns the number of constants for the current scope.
     fn num_constants_in_scope() -> u64;

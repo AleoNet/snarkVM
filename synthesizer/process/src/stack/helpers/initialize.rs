@@ -27,6 +27,7 @@ impl<N: Network> Stack<N> {
             universal_srs: process.universal_srs().clone(),
             proving_keys: Default::default(),
             verifying_keys: Default::default(),
+            variable_counts: Default::default(),
             number_of_calls: Default::default(),
             finalize_costs: Default::default(),
             program_depth: 0,

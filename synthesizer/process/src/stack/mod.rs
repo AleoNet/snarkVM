@@ -186,6 +186,8 @@ pub struct Stack<N: Network> {
     proving_keys: Arc<RwLock<IndexMap<Identifier<N>, ProvingKey<N>>>>,
     /// The mapping of function name to verifying key.
     verifying_keys: Arc<RwLock<IndexMap<Identifier<N>, VerifyingKey<N>>>>,
+    /// The mapping of function name to number of variables.
+    variable_counts: Arc<RwLock<IndexMap<Identifier<N>, u64>>>,
     /// The mapping of function names to the number of calls.
     number_of_calls: IndexMap<Identifier<N>, usize>,
     /// The mapping of function names to finalize cost.
@@ -377,6 +379,12 @@ impl<N: Network> Stack<N> {
         self.verifying_keys.read().contains_key(function_name)
     }
 
+    /// Returns `true` if the function variables for the given function name exists.
+    #[inline]
+    pub fn contains_variable_count(&self, function_name: &Identifier<N>) -> bool {
+        self.variable_counts.read().contains_key(function_name)
+    }
+
     /// Returns the proving key for the given function name.
     #[inline]
     pub fn get_proving_key(&self, function_name: &Identifier<N>) -> Result<ProvingKey<N>> {
@@ -396,6 +404,16 @@ impl<N: Network> Stack<N> {
         match self.verifying_keys.read().get(function_name) {
             Some(verifying_key) => Ok(verifying_key.clone()),
             None => bail!("Verifying key not found for: {}/{function_name}", self.program.id()),
+        }
+    }
+
+    /// Returns the variable count for the given function name.
+    #[inline]
+    pub fn get_variable_count(&self, function_name: &Identifier<N>) -> Result<u64> {
+        // Return the number of function variables, if it exists.
+        match self.variable_counts.read().get(function_name) {
+            Some(variable_count) => Ok(*variable_count),
+            None => bail!("Variable count not found for: {}/{function_name}", self.program.id()),
         }
     }
 
@@ -424,6 +442,20 @@ impl<N: Network> Stack<N> {
         );
         // Insert the verifying key.
         self.verifying_keys.write().insert(*function_name, verifying_key);
+        Ok(())
+    }
+
+    /// Inserts the given variable count for the given function name.
+    #[inline]
+    pub fn insert_variable_count(&self, function_name: &Identifier<N>, variable_count: u64) -> Result<()> {
+        // Ensure the function name exists in the program.
+        ensure!(
+            self.program.contains_function(function_name),
+            "Function '{function_name}' does not exist in program '{}'.",
+            self.program.id()
+        );
+        // Insert the number of function variables.
+        self.variable_counts.write().insert(*function_name, variable_count);
         Ok(())
     }
 
