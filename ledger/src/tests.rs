@@ -24,12 +24,13 @@ use console::{
     network::prelude::*,
     program::{Entry, Identifier, Literal, Plaintext, ProgramID, Value},
 };
-use ledger_block::{ConfirmedTransaction, Rejected, Transaction};
+use ledger_block::{ConfirmedTransaction, Ratify, Rejected, Transaction};
 use ledger_committee::{Committee, MIN_VALIDATOR_STAKE};
 use ledger_store::{helpers::memory::ConsensusMemory, ConsensusStore};
 use synthesizer::{program::Program, vm::VM, Stack};
 
 use indexmap::IndexMap;
+use rand::seq::SliceRandom;
 
 #[test]
 fn test_load() {
@@ -1677,6 +1678,152 @@ fn test_deployment_exceeding_max_transaction_spend() {
     assert!(result.is_err());
 }
 
+#[test]
+fn test_transaction_ordering() {
+    let rng = &mut TestRng::default();
+
+    // Initialize the test environment.
+    let crate::test_helpers::TestEnv { ledger, private_key, address, .. } = crate::test_helpers::sample_test_env(rng);
+
+    // Get the public balance of the address.
+    let public_balance = match ledger.genesis_block.ratifications().iter().next().unwrap() {
+        Ratify::Genesis(_, public_balance, _) => *public_balance.get(&address).unwrap(),
+        _ => panic!("Expected a genesis ratification"),
+    };
+
+    // Create multiple dummy programs.
+    let program_1 = Program::<CurrentNetwork>::from_str(
+        r"
+program dummy_program.aleo;
+function foo:
+    input r0 as u8.private;
+    async foo r0 into r1;
+    output r1 as dummy_program.aleo/foo.future;
+finalize foo:
+    input r0 as u8.public;
+    add r0 r0 into r1;",
+    )
+    .unwrap();
+
+    let program_2 = Program::<CurrentNetwork>::from_str(
+        r"
+program dummy_program_2.aleo;
+function foo:
+    input r0 as u8.private;
+    async foo r0 into r1;
+    output r1 as dummy_program_2.aleo/foo.future;
+finalize foo:
+    input r0 as u8.public;
+    add r0 r0 into r1;",
+    )
+    .unwrap();
+
+    let program_3 = Program::<CurrentNetwork>::from_str(
+        r"
+program dummy_program_3.aleo;
+function foo:
+    input r0 as u8.private;
+    async foo r0 into r1;
+    output r1 as dummy_program_3.aleo/foo.future;
+finalize foo:
+    input r0 as u8.public;
+    add r0 r0 into r1;",
+    )
+    .unwrap();
+
+    // Create a transfer transaction.
+    let inputs = [Value::from_str(&format!("{address}")).unwrap(), Value::from_str("1000000u64").unwrap()];
+    let initial_transfer = ledger
+        .vm
+        .execute(&private_key, ("credits.aleo", "transfer_public"), inputs.iter(), None, 0, None, rng)
+        .unwrap();
+    let initial_transfer_id = initial_transfer.id();
+
+    // Create a deployment transaction.
+    let deployment_transaction = ledger.vm.deploy(&private_key, &program_1, None, 0, None, rng).unwrap();
+
+    // Create a deployment transaction.
+    let deployment_transaction_2 = ledger.vm.deploy(&private_key, &program_2, None, 0, None, rng).unwrap();
+
+    // Create a transfer transaction.
+    let inputs = [Value::from_str(&format!("{address}")).unwrap(), Value::from_str("1000000u64").unwrap()];
+    let transfer_transaction = ledger
+        .vm
+        .execute(&private_key, ("credits.aleo", "transfer_public"), inputs.iter(), None, 0, None, rng)
+        .unwrap();
+
+    // Create a rejected transfer transaction.
+    let inputs = [Value::from_str(&format!("{address}")).unwrap(), Value::from_str("1000000000000000u64").unwrap()];
+    let rejected_transfer = ledger
+        .vm
+        .execute(&private_key, ("credits.aleo", "transfer_public"), inputs.iter(), None, 0, None, rng)
+        .unwrap();
+
+    // Create an aborted transfer transaction.
+    let inputs = [Value::from_str(&format!("{address}")).unwrap(), Value::from_str("10u64").unwrap()];
+    let aborted_transfer = ledger
+        .vm
+        .execute(&private_key, ("credits.aleo", "transfer_public"), inputs.iter(), None, public_balance - 10, None, rng)
+        .unwrap();
+
+    // Create an aborted deployment transaction.
+    let aborted_deployment = ledger.vm.deploy(&private_key, &program_3, None, public_balance - 10, None, rng).unwrap();
+
+    const ITERATIONS: usize = 100;
+    for _ in 0..ITERATIONS {
+        // Create a random order for the transactions.
+        let mut transactions = vec![
+            deployment_transaction.clone(),
+            deployment_transaction_2.clone(),
+            transfer_transaction.clone(),
+            rejected_transfer.clone(),
+        ];
+        transactions.shuffle(rng);
+
+        // Get the confirmed transaction IDs.
+        let mut confirmed_transaction_ids = transactions.iter().map(Transaction::id).collect::<Vec<_>>();
+
+        // Randomly insert the aborted transactions.
+        let mut aborted_transactions = vec![aborted_transfer.clone(), aborted_deployment.clone()];
+        aborted_transactions.shuffle(rng);
+
+        // Randomly insert the aborted transactions.
+        let start_position = rng.gen_range(0..=transactions.len());
+        for (index, element) in aborted_transactions.iter().enumerate() {
+            transactions.insert(start_position + index, element.clone());
+        }
+
+        // Get the aborted transaction IDs.
+        let aborted_transaction_ids = aborted_transactions.iter().map(Transaction::id).collect::<Vec<_>>();
+
+        // Add the initial transfer to the list of transactions.
+        transactions.insert(0, initial_transfer.clone());
+        confirmed_transaction_ids.insert(0, initial_transfer_id);
+
+        // Create a block.
+        let block =
+            ledger.prepare_advance_to_next_beacon_block(&private_key, vec![], vec![], transactions, rng).unwrap();
+
+        // Check that the next block is valid.
+        ledger.check_next_block(&block, rng).unwrap();
+
+        // Enforce that the block transactions were correct.
+        assert_eq!(block.transactions().num_accepted(), 4);
+        assert_eq!(block.transactions().num_rejected(), 1);
+
+        // Enforce that the ordering of the transactions is correct.
+        let block_confirmed_transactions_ids: Vec<_> = block
+            .transactions()
+            .iter()
+            .map(|transaction| transaction.to_unconfirmed_transaction_id().unwrap())
+            .collect();
+        assert_eq!(block_confirmed_transactions_ids, confirmed_transaction_ids);
+
+        // Enforce that the aborted transactions is correct.
+        assert_eq!(block.aborted_transaction_ids(), &aborted_transaction_ids);
+    }
+}
+
 // These tests require the proof targets to be low enough to be able to generate **valid** solutions.
 // This requires the 'test' feature to be enabled for the `console` dependency.
 #[cfg(feature = "test")]
@@ -1687,7 +1834,7 @@ mod valid_solutions {
 
     #[test]
     fn test_duplicate_solution_ids() {
-        // Print the cfg to ensure that the test is running in the correct environment.
+        // Initialize an RNG.
         let rng = &mut TestRng::default();
 
         // Initialize the test environment.
@@ -1750,11 +1897,102 @@ mod valid_solutions {
     }
 
     #[test]
+    fn test_cumulative_proof_target_correctness() {
+        // The number of blocks to test.
+        const NUM_BLOCKS: u32 = 25;
+
+        // Initialize an RNG.
+        let rng = &mut TestRng::default();
+
+        // Initialize the test environment.
+        let crate::test_helpers::TestEnv { ledger, private_key, address, .. } =
+            crate::test_helpers::sample_test_env(rng);
+
+        // Retrieve the puzzle parameters.
+        let puzzle = ledger.puzzle();
+
+        // Initialize block height.
+        let mut block_height = ledger.latest_height();
+
+        // Start a local counter of proof targets.
+        let mut combined_targets = 0;
+
+        // Run through 25 blocks of target adjustment.
+        while block_height < NUM_BLOCKS {
+            // Get coinbase puzzle data from the latest block.
+            let block = ledger.latest_block();
+            let coinbase_target = block.coinbase_target();
+            let coinbase_threshold = coinbase_target.saturating_div(2);
+            let latest_epoch_hash = ledger.latest_epoch_hash().unwrap();
+            let latest_proof_target = ledger.latest_proof_target();
+
+            // Sample the number of solutions to generate.
+            let num_solutions = rng.gen_range(1..=CurrentNetwork::MAX_SOLUTIONS);
+
+            // Initialize a vector for valid solutions for this block.
+            let mut solutions = Vec::with_capacity(num_solutions);
+
+            // Loop through proofs until two that meet the threshold are found.
+            loop {
+                if let Ok(solution) = puzzle.prove(latest_epoch_hash, address, rng.gen(), Some(latest_proof_target)) {
+                    // Get the proof target.
+                    let proof_target = puzzle.get_proof_target(&solution).unwrap();
+
+                    // Update the local combined target counter and store the solution.
+                    combined_targets += proof_target;
+                    solutions.push(solution);
+
+                    // If two have been found, exit the solver loop.
+                    if solutions.len() >= num_solutions {
+                        break;
+                    }
+                }
+            }
+
+            // If the combined target exceeds the coinbase threshold reset it.
+            if combined_targets >= coinbase_threshold {
+                combined_targets = 0;
+            }
+
+            // Get a transfer transaction to ensure solutions can be included in the block.
+            let inputs = [Value::from_str(&format!("{address}")).unwrap(), Value::from_str("10u64").unwrap()];
+            let transfer_transaction = ledger
+                .vm
+                .execute(&private_key, ("credits.aleo", "transfer_public"), inputs.iter(), None, 0, None, rng)
+                .unwrap();
+
+            // Generate the next prospective block.
+            let next_block = ledger
+                .prepare_advance_to_next_beacon_block(
+                    &private_key,
+                    vec![],
+                    solutions,
+                    vec![transfer_transaction.clone()],
+                    rng,
+                )
+                .unwrap();
+
+            // Ensure the combined target matches the expected value.
+            assert_eq!(combined_targets as u128, next_block.cumulative_proof_target());
+
+            // Ensure the next block is correct.
+            ledger.check_next_block(&next_block, rng).unwrap();
+
+            // Advanced to the next block.
+            ledger.advance_to_next_block(&next_block).unwrap();
+
+            // Set the latest block height.
+            block_height = ledger.latest_height();
+        }
+    }
+
+    #[test]
     fn test_excess_invalid_solution_ids() {
         // Note that the sum of `NUM_INVALID_SOLUTIONS` and `NUM_VALID_SOLUTIONS` should exceed the maximum number of solutions.
         const NUM_INVALID_SOLUTIONS: usize = CurrentNetwork::MAX_SOLUTIONS;
         const NUM_VALID_SOLUTIONS: usize = CurrentNetwork::MAX_SOLUTIONS;
 
+        // Initialize an RNG.
         let rng = &mut TestRng::default();
 
         // Initialize the test environment.
@@ -1840,6 +2078,7 @@ mod valid_solutions {
         // Note that this should be greater than the maximum number of solutions.
         const NUM_VALID_SOLUTIONS: usize = 2 * CurrentNetwork::MAX_SOLUTIONS;
 
+        // Initialize an RNG.
         let rng = &mut TestRng::default();
 
         // Initialize the test environment.

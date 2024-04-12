@@ -834,6 +834,11 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             aborted_transactions.extend(invalid);
         }
 
+        // Sort the valid and aborted transactions based on their position in the original list.
+        let position: IndexMap<_, _> = cfg_iter!(transactions).enumerate().map(|(i, &tx)| (tx.id(), i)).collect();
+        valid_transactions.sort_by(|a, b| position.get(&a.id()).cmp(&position.get(&b.id())));
+        aborted_transactions.sort_by(|a, b| position.get(&a.0.id()).cmp(&position.get(&b.0.id())));
+
         // Return the valid and invalid transactions.
         Ok((valid_transactions, aborted_transactions))
     }
