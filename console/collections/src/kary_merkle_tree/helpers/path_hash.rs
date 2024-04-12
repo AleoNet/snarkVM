@@ -32,8 +32,8 @@ pub trait PathHash: Clone + Send + Sync {
         self.hash_children(&children)
     }
 
-    /// Returns the hash for each tuple of child nodes.
-    fn hash_all_children(&self, child_nodes: &[Vec<Self::Hash>]) -> Result<Vec<Self::Hash>> {
+    /// Returns the hash for each child node.
+    fn hash_all_children(&self, child_nodes: &[&[Self::Hash]]) -> Result<Vec<Self::Hash>> {
         match child_nodes.len() {
             0 => Ok(vec![]),
             1..=100 => child_nodes.iter().map(|children| self.hash_children(children)).collect(),

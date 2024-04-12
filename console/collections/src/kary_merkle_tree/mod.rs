@@ -24,6 +24,7 @@ mod tests;
 use snarkvm_console_types::prelude::*;
 
 use aleo_std::prelude::*;
+use std::ops::Range;
 
 #[derive(Clone)]
 pub struct KaryMerkleTree<LH: LeafHash<Hash = PH::Hash>, PH: PathHash, const DEPTH: u8, const ARITY: u8> {
@@ -89,8 +90,18 @@ impl<LH: LeafHash<Hash = PH::Hash>, PH: PathHash, const DEPTH: u8, const ARITY: 
         // Compute the empty hash.
         let empty_hash = path_hasher.hash_empty::<ARITY>()?;
 
+        // Calculate the size of the tree which excludes leafless nodes.
+        // The minimum tree size is either a single root node or the calculated number of nodes plus
+        // the supplied leaves, and empty hashes that pad up to the tree's arity (making every node full).
+        let arity = ARITY as usize;
+        let all_nodes_are_full = leaves.len() % arity == 0;
+        let minimum_tree_size = std::cmp::max(
+            1,
+            num_nodes + leaves.len() + if all_nodes_are_full { 0 } else { arity - leaves.len() % arity },
+        );
+
         // Initialize the Merkle tree.
-        let mut tree = vec![empty_hash; tree_size];
+        let mut tree = vec![empty_hash; minimum_tree_size];
 
         // Compute and store each leaf hash.
         tree[num_nodes..num_nodes + leaves.len()].clone_from_slice(&leaf_hasher.hash_leaves(leaves)?);
@@ -105,10 +116,21 @@ impl<LH: LeafHash<Hash = PH::Hash>, PH: PathHash, const DEPTH: u8, const ARITY: 
 
             // Construct the children for each node in the current level.
             let child_nodes = (start..end)
-                .map(|i| child_indexes::<ARITY>(i).map(|child_index| tree[child_index]).collect::<Vec<_>>())
+                .take_while(|&i| child_indexes::<ARITY>(i).next().and_then(|idx| tree.get(idx)).is_some())
+                .map(|i| &tree[child_indexes::<ARITY>(i)])
                 .collect::<Vec<_>>();
+
             // Compute and store the hashes for each node in the current level.
-            tree[start..end].clone_from_slice(&path_hasher.hash_all_children(&child_nodes)?);
+            let num_full_nodes = child_nodes.len();
+            let hashes = path_hasher.hash_all_children(&child_nodes)?;
+            tree[start..][..num_full_nodes].clone_from_slice(&hashes);
+            // Use the precomputed empty node hash for every empty node, if there are any.
+            if start + num_full_nodes < end {
+                let empty_node_hash = path_hasher.hash_children(&vec![empty_hash; arity])?;
+                for node in tree.iter_mut().take(end).skip(start + num_full_nodes) {
+                    *node = empty_node_hash;
+                }
+            }
             // Update the start index for the next level.
             start_index = start;
         }
@@ -241,7 +263,7 @@ fn tree_depth<const DEPTH: u8, const ARITY: u8>(tree_size: usize) -> Result<u8> 
 }
 
 /// Returns the indexes of the children, given an index.
-fn child_indexes<const ARITY: u8>(index: usize) -> impl Iterator<Item = usize> {
+fn child_indexes<const ARITY: u8>(index: usize) -> Range<usize> {
     let start = index * ARITY as usize + 1;
     start..start + ARITY as usize
 }
