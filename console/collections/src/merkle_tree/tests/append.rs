@@ -157,7 +157,7 @@ fn check_merkle_tree_depth_3_padded<E: Environment, LH: LeafHash<Hash = PH::Hash
 
     // Rebuild the Merkle tree with the additional leaf.
     merkle_tree.append(additional_leaves)?;
-    assert_eq!(15, merkle_tree.tree.len());
+    assert_eq!(13, merkle_tree.tree.len());
     // assert_eq!(0, merkle_tree.padding_tree.len());
     assert_eq!(5, merkle_tree.number_of_leaves);
 
@@ -173,8 +173,6 @@ fn check_merkle_tree_depth_3_padded<E: Environment, LH: LeafHash<Hash = PH::Hash
     assert_eq!(expected_leaf3, merkle_tree.tree[10]);
     assert_eq!(expected_leaf4, merkle_tree.tree[11]);
     assert_eq!(path_hasher.hash_empty()?, merkle_tree.tree[12]);
-    assert_eq!(path_hasher.hash_empty()?, merkle_tree.tree[13]);
-    assert_eq!(path_hasher.hash_empty()?, merkle_tree.tree[14]);
 
     // Depth 2.
     let expected_left0 = PathHash::hash_children(path_hasher, &expected_leaf0, &expected_leaf1)?;
@@ -258,7 +256,7 @@ fn check_merkle_tree_depth_4_padded<E: Environment, LH: LeafHash<Hash = PH::Hash
 
     // Rebuild the Merkle tree with the additional leaf.
     merkle_tree.append(&[additional_leaves[0].clone()])?;
-    assert_eq!(15, merkle_tree.tree.len());
+    assert_eq!(13, merkle_tree.tree.len());
     // assert_eq!(0, merkle_tree.padding_tree.len());
     assert_eq!(5, merkle_tree.number_of_leaves);
 
@@ -274,8 +272,6 @@ fn check_merkle_tree_depth_4_padded<E: Environment, LH: LeafHash<Hash = PH::Hash
     assert_eq!(expected_leaf3, merkle_tree.tree[10]);
     assert_eq!(expected_leaf4, merkle_tree.tree[11]);
     assert_eq!(path_hasher.hash_empty()?, merkle_tree.tree[12]);
-    assert_eq!(path_hasher.hash_empty()?, merkle_tree.tree[13]);
-    assert_eq!(path_hasher.hash_empty()?, merkle_tree.tree[14]);
 
     // Depth 3.
     let expected_left0 = PathHash::hash_children(path_hasher, &expected_leaf0, &expected_leaf1)?;
@@ -308,13 +304,13 @@ fn check_merkle_tree_depth_4_padded<E: Environment, LH: LeafHash<Hash = PH::Hash
     // ------------------------------------------------------------------------------------------ //
 
     // Ensure we're starting where we left off from the previous rebuild.
-    assert_eq!(15, merkle_tree.tree.len());
+    assert_eq!(13, merkle_tree.tree.len());
     // assert_eq!(0, merkle_tree.padding_tree.len());
     assert_eq!(5, merkle_tree.number_of_leaves);
 
     // Rebuild the Merkle tree with the additional leaf.
     merkle_tree.append(&[additional_leaves[1].clone()])?;
-    assert_eq!(15, merkle_tree.tree.len());
+    assert_eq!(13, merkle_tree.tree.len());
     // assert_eq!(0, merkle_tree.padding_tree.len());
     assert_eq!(6, merkle_tree.number_of_leaves);
 
@@ -331,8 +327,6 @@ fn check_merkle_tree_depth_4_padded<E: Environment, LH: LeafHash<Hash = PH::Hash
     assert_eq!(expected_leaf3, merkle_tree.tree[10]);
     assert_eq!(expected_leaf4, merkle_tree.tree[11]);
     assert_eq!(expected_leaf5, merkle_tree.tree[12]);
-    assert_eq!(path_hasher.hash_empty()?, merkle_tree.tree[13]);
-    assert_eq!(path_hasher.hash_empty()?, merkle_tree.tree[14]);
 
     // Depth 3.
     let expected_left0 = PathHash::hash_children(path_hasher, &expected_leaf0, &expected_leaf1)?;
