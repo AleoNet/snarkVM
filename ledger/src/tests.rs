@@ -1805,10 +1805,48 @@ fn test_transaction_ordering() {
     let crate::test_helpers::TestEnv { ledger, private_key, address, .. } = crate::test_helpers::sample_test_env(rng);
 
     // Get the public balance of the address.
-    let public_balance = match ledger.genesis_block.ratifications().iter().next().unwrap() {
+    let mut public_balance = match ledger.genesis_block.ratifications().iter().next().unwrap() {
         Ratify::Genesis(_, public_balance, _) => *public_balance.get(&address).unwrap(),
         _ => panic!("Expected a genesis ratification"),
     };
+
+    // Sample multiple private keys and addresses.
+    let private_key_2 = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+    let address_2 = Address::try_from(&private_key_2).unwrap();
+    let private_key_3 = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+    let address_3 = Address::try_from(&private_key_3).unwrap();
+
+    // Fund a new address.
+    let amount_1 = 100000000u64;
+    let inputs =
+        [Value::from_str(&format!("{address_2}")).unwrap(), Value::from_str(&format!("{amount_1}u64")).unwrap()];
+    let transfer_1 = ledger
+        .vm
+        .execute(&private_key, ("credits.aleo", "transfer_public"), inputs.iter(), None, 0, None, rng)
+        .unwrap();
+
+    let amount_2 = 100000000u64;
+    let inputs =
+        [Value::from_str(&format!("{address_3}")).unwrap(), Value::from_str(&format!("{amount_2}u64")).unwrap()];
+    let transfer_2 = ledger
+        .vm
+        .execute(&private_key, ("credits.aleo", "transfer_public"), inputs.iter(), None, 0, None, rng)
+        .unwrap();
+
+    // Update the public balance.
+    public_balance -= *transfer_1.fee_amount().unwrap();
+    public_balance -= *transfer_2.fee_amount().unwrap();
+
+    // Create a block.
+    let block = ledger
+        .prepare_advance_to_next_beacon_block(&private_key, vec![], vec![], vec![transfer_1, transfer_2], rng)
+        .unwrap();
+
+    // Check that the next block is valid.
+    ledger.check_next_block(&block, rng).unwrap();
+
+    // Add the block to the ledger.
+    ledger.advance_to_next_block(&block).unwrap();
 
     // Create multiple dummy programs.
     let program_1 = Program::<CurrentNetwork>::from_str(
@@ -1859,10 +1897,10 @@ finalize foo:
     let initial_transfer_id = initial_transfer.id();
 
     // Create a deployment transaction.
-    let deployment_transaction = ledger.vm.deploy(&private_key, &program_1, None, 0, None, rng).unwrap();
+    let deployment_transaction = ledger.vm.deploy(&private_key_2, &program_1, None, 0, None, rng).unwrap();
 
     // Create a deployment transaction.
-    let deployment_transaction_2 = ledger.vm.deploy(&private_key, &program_2, None, 0, None, rng).unwrap();
+    let deployment_transaction_2 = ledger.vm.deploy(&private_key_3, &program_2, None, 0, None, rng).unwrap();
 
     // Create a transfer transaction.
     let inputs = [Value::from_str(&format!("{address}")).unwrap(), Value::from_str("1000000u64").unwrap()];
