@@ -435,7 +435,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                         output_ids.extend(confirmed_transaction.transaction().output_ids());
                         // Add the transition public keys to the set of produced transition public keys.
                         tpks.extend(confirmed_transaction.transaction().transition_public_keys());
-                        // Add the deployment payer to the set of deployment payers.
+                        // Add any public deployment payer to the set of deployment payers.
                         if let Transaction::Deploy(_, _, _, fee) = confirmed_transaction.transaction() {
                             fee.payer().map(|payer| deployment_payers.insert(payer));
                         }
