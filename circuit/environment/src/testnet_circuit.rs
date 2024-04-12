@@ -352,23 +352,23 @@ mod tests {
 
     #[test]
     fn test_print_circuit() {
-        let _candidate = create_example_circuit::<Circuit>();
-        let output = format!("{Circuit}");
+        let _candidate = create_example_circuit::<TestnetCircuit>();
+        let output = format!("{TestnetCircuit}");
         println!("{output}");
     }
 
     #[test]
     fn test_circuit_scope() {
-        Circuit::scope("test_circuit_scope", || {
-            assert_eq!(0, Circuit::num_constants());
-            assert_eq!(1, Circuit::num_public());
-            assert_eq!(0, Circuit::num_private());
-            assert_eq!(0, Circuit::num_constraints());
+        TestnetCircuit::scope("test_circuit_scope", || {
+            assert_eq!(0, TestnetCircuit::num_constants());
+            assert_eq!(1, TestnetCircuit::num_public());
+            assert_eq!(0, TestnetCircuit::num_private());
+            assert_eq!(0, TestnetCircuit::num_constraints());
 
-            assert_eq!(0, Circuit::num_constants_in_scope());
-            assert_eq!(0, Circuit::num_public_in_scope());
-            assert_eq!(0, Circuit::num_private_in_scope());
-            assert_eq!(0, Circuit::num_constraints_in_scope());
+            assert_eq!(0, TestnetCircuit::num_constants_in_scope());
+            assert_eq!(0, TestnetCircuit::num_public_in_scope());
+            assert_eq!(0, TestnetCircuit::num_private_in_scope());
+            assert_eq!(0, TestnetCircuit::num_constraints_in_scope());
         })
     }
 }

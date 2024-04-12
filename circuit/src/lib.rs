@@ -27,7 +27,7 @@ pub mod modules {
     pub use snarkvm_circuit_collections::*;
 
     pub use snarkvm_circuit_environment as environment;
-    pub use snarkvm_circuit_environment::{Assignment, Circuit, Eject, Environment, Inject, Mode};
+    pub use snarkvm_circuit_environment::{Assignment, Circuit, Eject, Environment, Inject, Mode, TestnetCircuit};
 
     pub use snarkvm_circuit_network as network;
     pub use snarkvm_circuit_network::*;
