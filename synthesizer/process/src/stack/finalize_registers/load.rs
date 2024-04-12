@@ -41,6 +41,10 @@ impl<N: Network> RegistersLoad<N> for FinalizeRegisters<N> {
             Operand::BlockHeight => {
                 return Ok(Value::Plaintext(Plaintext::from(Literal::U32(U32::new(self.state.block_height())))));
             }
+            // If the operand is the network ID, load the network ID.
+            Operand::NetworkID => {
+                return Ok(Value::Plaintext(Plaintext::from(Literal::U16(U16::new(N::ID)))));
+            }
         };
 
         // Retrieve the value.

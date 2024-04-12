@@ -69,6 +69,9 @@ impl<N: Network, B: BlockStorage<N>> QueryTrait<N> for Query<N, B> {
                 console::network::MainnetV0::ID => {
                     Ok(Self::get_request(&format!("{url}/mainnet/latest/stateRoot"))?.into_json()?)
                 }
+                console::network::TestnetV0::ID => {
+                    Ok(Self::get_request(&format!("{url}/testnet/latest/stateRoot"))?.into_json()?)
+                }
                 _ => bail!("Unsupported network ID in inclusion query"),
             },
         }
@@ -83,6 +86,9 @@ impl<N: Network, B: BlockStorage<N>> QueryTrait<N> for Query<N, B> {
                 console::network::MainnetV0::ID => {
                     Ok(Self::get_request_async(&format!("{url}/mainnet/latest/stateRoot")).await?.json().await?)
                 }
+                console::network::TestnetV0::ID => {
+                    Ok(Self::get_request_async(&format!("{url}/testnet/latest/stateRoot")).await?.json().await?)
+                }
                 _ => bail!("Unsupported network ID in inclusion query"),
             },
         }
@@ -95,6 +101,9 @@ impl<N: Network, B: BlockStorage<N>> QueryTrait<N> for Query<N, B> {
             Self::REST(url) => match N::ID {
                 console::network::MainnetV0::ID => {
                     Ok(Self::get_request(&format!("{url}/mainnet/statePath/{commitment}"))?.into_json()?)
+                }
+                console::network::TestnetV0::ID => {
+                    Ok(Self::get_request(&format!("{url}/testnet/statePath/{commitment}"))?.into_json()?)
                 }
                 _ => bail!("Unsupported network ID in inclusion query"),
             },
@@ -109,6 +118,9 @@ impl<N: Network, B: BlockStorage<N>> QueryTrait<N> for Query<N, B> {
             Self::REST(url) => match N::ID {
                 console::network::MainnetV0::ID => {
                     Ok(Self::get_request_async(&format!("{url}/mainnet/statePath/{commitment}")).await?.json().await?)
+                }
+                console::network::TestnetV0::ID => {
+                    Ok(Self::get_request_async(&format!("{url}/testnet/statePath/{commitment}")).await?.json().await?)
                 }
                 _ => bail!("Unsupported network ID in inclusion query"),
             },
@@ -127,6 +139,9 @@ impl<N: Network, B: BlockStorage<N>> Query<N, B> {
                 console::network::MainnetV0::ID => {
                     Ok(Self::get_request(&format!("{url}/mainnet/program/{program_id}"))?.into_json()?)
                 }
+                console::network::TestnetV0::ID => {
+                    Ok(Self::get_request(&format!("{url}/testnet/program/{program_id}"))?.into_json()?)
+                }
                 _ => bail!("Unsupported network ID in inclusion query"),
             },
         }
@@ -142,6 +157,9 @@ impl<N: Network, B: BlockStorage<N>> Query<N, B> {
             Self::REST(url) => match N::ID {
                 console::network::MainnetV0::ID => {
                     Ok(Self::get_request_async(&format!("{url}/mainnet/program/{program_id}")).await?.json().await?)
+                }
+                console::network::TestnetV0::ID => {
+                    Ok(Self::get_request_async(&format!("{url}/testnet/program/{program_id}")).await?.json().await?)
                 }
                 _ => bail!("Unsupported network ID in inclusion query"),
             },

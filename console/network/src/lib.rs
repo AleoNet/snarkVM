@@ -28,6 +28,9 @@ pub use helpers::*;
 mod mainnet_v0;
 pub use mainnet_v0::*;
 
+mod testnet_v0;
+pub use testnet_v0::*;
+
 pub mod prelude {
     pub use crate::{environment::prelude::*, Network};
 }
@@ -185,6 +188,9 @@ pub trait Network:
     const MAX_PROGRAM_DEPTH: usize = 64;
     /// The maximum number of imports.
     const MAX_IMPORTS: usize = 64;
+
+    /// The maximum number of certificates in a batch.
+    const MAX_CERTIFICATES: u16;
 
     /// The state root type.
     type StateRoot: Bech32ID<Field<Self>>;

@@ -15,6 +15,7 @@
 use super::*;
 
 use ledger_committee::{MAX_DELEGATORS, MIN_DELEGATOR_STAKE, MIN_VALIDATOR_STAKE};
+use utilities::cfg_sort_by_cached_key;
 
 impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// Speculates on the given list of transactions in the VM.
@@ -922,9 +923,9 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         }
 
         // Sort the valid and aborted transactions based on their position in the original list.
-        let position: IndexMap<_, _> = cfg_iter!(transactions).enumerate().map(|(i, &tx)| (tx.id(), i)).collect();
-        valid_transactions.sort_by(|a, b| position.get(&a.id()).cmp(&position.get(&b.id())));
-        aborted_transactions.sort_by(|a, b| position.get(&a.0.id()).cmp(&position.get(&b.0.id())));
+        let position: IndexSet<_> = transactions.iter().map(|tx| tx.id()).collect();
+        cfg_sort_by_cached_key!(valid_transactions, |tx| position.get_index_of(&tx.id()));
+        cfg_sort_by_cached_key!(aborted_transactions, |tx| position.get_index_of(&tx.0.id()));
 
         // Return the valid and invalid transactions.
         Ok((valid_transactions, aborted_transactions))

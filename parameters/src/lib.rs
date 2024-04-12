@@ -32,6 +32,8 @@ pub use errors::*;
 
 pub mod mainnet;
 
+pub mod testnet;
+
 pub mod prelude {
     pub use crate::errors::*;
 }

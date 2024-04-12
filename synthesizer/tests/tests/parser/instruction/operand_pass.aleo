@@ -1,5 +1,6 @@
 assert.eq self.caller self.caller;
 assert.eq block.height block.height;
+assert.eq network.id network.id;
 assert.eq r88 r101;
 assert.eq hello.aleo goodbye.aleo;
 assert.eq aleo1dg722m22fzpz6xjdrvl9tzu5t68zmypj5p74khlqcac0gvednygqxaax0j aleo1dg722m22fzpz6xjdrvl9tzu5t68zmypj5p74khlqcac0gvednygqxaax0j;

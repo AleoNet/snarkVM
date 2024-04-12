@@ -88,6 +88,10 @@ impl<N: Network> RegisterTypes<N> {
                 Operand::BlockHeight => bail!(
                     "Struct member '{struct_name}.{member_name}' cannot be from a block height in a non-finalize scope"
                 ),
+                // If the operand is a network ID type, throw an error.
+                Operand::NetworkID => bail!(
+                    "Struct member '{struct_name}.{member_name}' cannot be from a network ID in a non-finalize scope"
+                ),
             }
         }
         Ok(())
@@ -162,6 +166,8 @@ impl<N: Network> RegisterTypes<N> {
                 }
                 // If the operand is a block height type, throw an error.
                 Operand::BlockHeight => bail!("Array element cannot be from a block height in a non-finalize scope"),
+                // If the operand is a network ID type, throw an error.
+                Operand::NetworkID => bail!("Array element cannot be from a network ID in a non-finalize scope"),
             }
         }
         Ok(())
@@ -224,6 +230,9 @@ impl<N: Network> RegisterTypes<N> {
             Operand::BlockHeight => {
                 bail!("Forbidden operation: Cannot cast a block height as a record owner")
             }
+            Operand::NetworkID => {
+                bail!("Forbidden operation: Cannot cast a network ID as a record owner")
+            }
         }
 
         // Ensure the operand types match the record entry types.
@@ -277,6 +286,12 @@ impl<N: Network> RegisterTypes<N> {
                         Operand::BlockHeight => {
                             bail!(
                                 "Record entry '{record_name}.{entry_name}' expects a '{plaintext_type}', but found a block height in the operand '{operand}'."
+                            )
+                        }
+                        // Fail if the operand is a network ID.
+                        Operand::NetworkID => {
+                            bail!(
+                                "Record entry '{record_name}.{entry_name}' expects a '{plaintext_type}', but found a network ID in the operand '{operand}'."
                             )
                         }
                     }
