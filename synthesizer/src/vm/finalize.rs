@@ -812,7 +812,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
         // If the transaction is a deployment, ensure that it is not another deployment in the block from the same public fee payer.
         if let Transaction::Deploy(_, _, _, fee) = transaction {
-            // If the deployment spender has already deployed in this block, abort the transaction.
+            // If any public deployment payer has already deployed in this block, abort the transaction.
             if let Some(payer) = fee.payer() {
                 if deployment_payers.contains(&payer) {
                     return Some(format!("Another deployment in the block from the same public fee payer {payer}"));
