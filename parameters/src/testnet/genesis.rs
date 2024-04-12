@@ -12,28 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#![allow(clippy::module_inception)]
-#![forbid(unsafe_code)]
+pub struct GenesisBytes;
 
-#[cfg(feature = "wasm")]
-#[macro_use]
-extern crate alloc;
+impl GenesisBytes {
+    pub const fn load_bytes() -> &'static [u8] {
+        include_bytes!("./resources/block.genesis")
+    }
+}
 
-#[macro_use]
-extern crate lazy_static;
-#[macro_use]
-extern crate thiserror;
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-#[macro_use]
-pub mod macros;
-
-pub mod errors;
-pub use errors::*;
-
-pub mod mainnet;
-
-pub mod testnet;
-
-pub mod prelude {
-    pub use crate::errors::*;
+    #[test]
+    fn test_genesis_block() {
+        let bytes = GenesisBytes::load_bytes();
+        assert_eq!(15485, bytes.len() as u64, "Update me if serialization has changed");
+    }
 }
