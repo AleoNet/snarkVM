@@ -115,6 +115,10 @@ impl<N: Network> StackExecute<N> for Stack<N> {
                     Operand::BlockHeight => {
                         bail!("Illegal operation: cannot retrieve the block height in a closure scope")
                     }
+                    // If the operand is the network id, throw an error.
+                    Operand::NetworkID => {
+                        bail!("Illegal operation: cannot retrieve the network id in a closure scope")
+                    }
                 }
             })
             .collect();
@@ -342,6 +346,10 @@ impl<N: Network> StackExecute<N> for Stack<N> {
                     // If the operand is the block height, throw an error.
                     Operand::BlockHeight => {
                         bail!("Illegal operation: cannot retrieve the block height in a function scope")
+                    }
+                    // If the operand is the network id, throw an error.
+                    Operand::NetworkID => {
+                        bail!("Illegal operation: cannot retrieve the network id in a function scope")
                     }
                 }
             })

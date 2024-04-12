@@ -7,6 +7,7 @@ and r0 r1 into r2;
 assert.eq r0 r1;
 assert.neq r0 r1;
 assert.eq block.height block.height;
+assert.eq network.id network.id;
 call foo;
 call foo r0;
 call foo r0 into r1;

@@ -26,6 +26,7 @@ impl<N: Network> Parser for Operand<N> {
             map(tag("self.signer"), |_| Self::Signer),
             map(tag("self.caller"), |_| Self::Caller),
             map(tag("block.height"), |_| Self::BlockHeight),
+            map(tag("network.id"), |_| Self::NetworkID),
             // Note that `Operand::ProgramID`s must be parsed before `Operand::Literal`s, since a program ID can be implicitly parsed as a literal address.
             // This ensures that the string representation of a program uses the `Operand::ProgramID` variant.
             map(ProgramID::parse, |program_id| Self::ProgramID(program_id)),
@@ -76,6 +77,8 @@ impl<N: Network> Display for Operand<N> {
             Self::Caller => write!(f, "self.caller"),
             // Prints the identifier for the block height, i.e. block.height
             Self::BlockHeight => write!(f, "block.height"),
+            // Prints the identifier for the network ID, i.e. network.id
+            Self::NetworkID => write!(f, "network.id"),
         }
     }
 }
@@ -109,6 +112,9 @@ mod tests {
 
         let operand = Operand::<CurrentNetwork>::parse("block.height").unwrap().1;
         assert_eq!(Operand::BlockHeight, operand);
+
+        let operand = Operand::<CurrentNetwork>::parse("network.id").unwrap().1;
+        assert_eq!(Operand::NetworkID, operand);
 
         let operand = Operand::<CurrentNetwork>::parse("group::GEN").unwrap().1;
         assert_eq!(Operand::Literal(Literal::Group(Group::generator())), operand);
