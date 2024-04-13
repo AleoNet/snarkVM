@@ -295,6 +295,24 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     continue 'outer;
                 }
 
+                // Ensure the size in bytes of the transaction is below the maximum allowed size.
+                match transaction.size_in_bytes() {
+                    Ok(size) => {
+                        if size > N::MAX_TRANSACTION_SIZE {
+                            // Store the aborted transaction.
+                            aborted.push((transaction.clone(), "Exceeds maximum transaction size".to_string()));
+                            // Continue to the next transaction.
+                            continue 'outer;
+                        }
+                    }
+                    Err(_) => {
+                        // If the size measurement fails, abort the transaction.
+                        aborted.push((transaction.clone(), "Failed to calculate the transaction size".to_string()));
+                        // Continue to the next transaction.
+                        continue 'outer;
+                    }
+                }
+
                 // Ensure that the transaction is not producing a duplicate transition.
                 for transition_id in transaction.transition_ids() {
                     // If the transition ID is already produced in this block or previous blocks, abort the transaction.

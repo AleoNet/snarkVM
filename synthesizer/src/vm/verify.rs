@@ -76,6 +76,13 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
         /* Transaction */
 
+        // Ensure the size in bytes of the transaction doesn't exceed the maximum allowed limit.
+        ensure!(
+            N::MAX_TRANSACTION_SIZE > transaction.size_in_bytes()?,
+            "Transaction size exceeds the maximum size limit of {} bytes",
+            N::MAX_TRANSACTION_SIZE
+        );
+
         // Ensure the transaction ID is unique.
         if self.block_store().contains_transaction_id(&transaction.id())? {
             bail!("Transaction '{}' already exists in the ledger", transaction.id())

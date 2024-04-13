@@ -404,6 +404,13 @@ impl<N: Network> Transaction<N> {
     }
 }
 
+impl<N: Network> Transaction<N> {
+    /// Returns the size in bytes of the transaction.
+    pub fn size_in_bytes(&self) -> Result<u64> {
+        Ok(u64::try_from(self.to_bytes_le()?.len())?)
+    }
+}
+
 #[cfg(test)]
 pub mod test_helpers {
     use super::*;

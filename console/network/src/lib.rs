@@ -147,6 +147,9 @@ pub trait Network:
     /// The maximum number of entries in a struct.
     const MAX_STRUCT_ENTRIES: usize = Self::MAX_DATA_ENTRIES;
 
+    /// The max number of bytes allowed in a transaction.
+    const MAX_TRANSACTION_SIZE: u64 = 128_100; // 128 KB
+
     /// The minimum number of elements in an array.
     const MIN_ARRAY_ELEMENTS: usize = 1; // This ensures the array is not empty.
     /// The maximum number of elements in an array.
