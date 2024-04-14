@@ -59,6 +59,7 @@ impl From<MapID> for u16 {
 #[repr(u16)]
 pub enum BFTMap {
     Transmissions = DataID::BFTTransmissionsMap as u16,
+    AbortedTransmissionIDs = DataID::BFTAbortedTransmissionIDsMap as u16,
 }
 
 /// The RocksDB map prefix for block-related entries.
@@ -290,6 +291,10 @@ enum DataID {
     // Program
     ProgramIDMap,
     KeyValueMap,
+
+    // TODO (raychu86): Move this up to the BFT section.
+    // BFT
+    BFTAbortedTransmissionIDsMap,
 
     // Testing
     #[cfg(test)]
