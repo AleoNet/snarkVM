@@ -426,8 +426,7 @@ impl<N: Network> StackExecute<N> for Stack<N> {
         }
 
         // Determine the number of variables allocated in the circuit.
-        // NOTE: we can use this limit because our circuits only have a single scope.
-        let num_variables = A::num_variables_in_scope();
+        let num_variables = A::num_variables();
 
         // Eject the circuit assignment and reset the circuit.
         let assignment = A::eject_assignment_and_reset();

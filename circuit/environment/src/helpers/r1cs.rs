@@ -29,6 +29,7 @@ pub struct R1CS<F: PrimeField> {
     private: Vec<Variable<F>>,
     constraints: Vec<Rc<Constraint<F>>>,
     counter: Counter<F>,
+    num_variables: u64,
     nonzeros: (u64, u64, u64),
 }
 
@@ -41,6 +42,7 @@ impl<F: PrimeField> R1CS<F> {
             private: Default::default(),
             constraints: Default::default(),
             counter: Default::default(),
+            num_variables: 1,
             nonzeros: (0, 0, 0),
         }
     }
@@ -60,6 +62,7 @@ impl<F: PrimeField> R1CS<F> {
         let variable = Variable::Constant(Rc::new(value));
         self.constants.push(variable.clone());
         self.counter.increment_constant();
+        self.num_variables += 1;
         variable
     }
 
@@ -68,6 +71,7 @@ impl<F: PrimeField> R1CS<F> {
         let variable = Variable::Public(Rc::new((self.public.len() as u64, value)));
         self.public.push(variable.clone());
         self.counter.increment_public();
+        self.num_variables += 1;
         variable
     }
 
@@ -76,6 +80,7 @@ impl<F: PrimeField> R1CS<F> {
         let variable = Variable::Private(Rc::new((self.private.len() as u64, value)));
         self.private.push(variable.clone());
         self.counter.increment_private();
+        self.num_variables += 1;
         variable
     }
 
@@ -134,6 +139,11 @@ impl<F: PrimeField> R1CS<F> {
         self.counter.scope()
     }
 
+    /// Returns the total number of variables in the constraint system.
+    pub fn num_variables(&self) -> u64 {
+        self.num_variables
+    }
+
     /// Returns the number of constants in the constraint system.
     pub fn num_constants(&self) -> u64 {
         self.constants.len() as u64
@@ -157,11 +167,6 @@ impl<F: PrimeField> R1CS<F> {
     /// Returns the number of nonzeros in the constraint system.
     pub fn num_nonzeros(&self) -> (u64, u64, u64) {
         self.nonzeros
-    }
-
-    /// Returns the total number of variables for the current scope.
-    pub fn num_variables_in_scope(&self) -> u64 {
-        self.counter.num_variables_in_scope()
     }
 
     /// Returns the number of constants for the current scope.

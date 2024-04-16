@@ -434,6 +434,11 @@ impl Environment for AleoTestnetV0 {
         E::is_satisfied_in_scope()
     }
 
+    /// Returns the total number of variables in the entire circuit.
+    fn num_variables() -> u64 {
+        E::num_variables()
+    }
+
     /// Returns the number of constants in the entire circuit.
     fn num_constants() -> u64 {
         E::num_constants()
@@ -457,11 +462,6 @@ impl Environment for AleoTestnetV0 {
     /// Returns the number of nonzeros in the entire circuit.
     fn num_nonzeros() -> (u64, u64, u64) {
         E::num_nonzeros()
-    }
-
-    /// Returns the number of variables for the current scope.
-    fn num_variables_in_scope() -> u64 {
-        E::num_variables_in_scope()
     }
 
     /// Returns the number of constants for the current scope.

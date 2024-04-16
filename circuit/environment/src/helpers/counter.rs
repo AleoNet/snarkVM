@@ -24,7 +24,6 @@ pub(crate) struct Counter<F: PrimeField> {
     constants: u64,
     public: u64,
     private: u64,
-    total_variables: u64,
     nonzeros: (u64, u64, u64),
     parents: Vec<(Scope, Vec<Rc<Constraint<F>>>, u64, u64, u64, (u64, u64, u64))>,
 }
@@ -115,24 +114,16 @@ impl<F: PrimeField> Counter<F> {
     /// Increments the number of constants by 1.
     pub(crate) fn increment_constant(&mut self) {
         self.constants += 1;
-        self.total_variables += 1;
     }
 
     /// Increments the number of public variables by 1.
     pub(crate) fn increment_public(&mut self) {
         self.public += 1;
-        self.total_variables += 1;
     }
 
     /// Increments the number of private variables by 1.
     pub(crate) fn increment_private(&mut self) {
         self.private += 1;
-        self.total_variables += 1;
-    }
-
-    /// Returns the number of variables in scope.
-    pub(crate) fn num_variables_in_scope(&self) -> u64 {
-        self.total_variables
     }
 
     /// Returns the number of constants in scope in scope.
