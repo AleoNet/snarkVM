@@ -77,6 +77,7 @@ pub mod prelude {
         FromBytes,
         FromBytesDeserializer,
         LimitedReader,
+        LimitedWriter,
         TestRng,
         ToBits as _,
         ToBytes,

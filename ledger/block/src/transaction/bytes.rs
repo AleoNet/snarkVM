@@ -92,7 +92,9 @@ impl<N: Network> FromBytes for Transaction<N> {
 impl<N: Network> ToBytes for Transaction<N> {
     /// Writes the transaction to the buffer.
     #[inline]
-    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+    fn write_le<W: Write>(&self, writer: W) -> IoResult<()> {
+        // Wrap the writer in a `LimitedWriter` with a `MAX_TRANSACTION_SIZE` as a limit.
+        let mut writer = LimitedWriter::new(writer, N::MAX_TRANSACTION_SIZE);
         // Write the version.
         1u8.write_le(&mut writer)?;
 
@@ -163,14 +165,70 @@ mod tests {
         Ok(())
     }
 
+    fn unchecked_writer<W: Write>(transaction: &Transaction<CurrentNetwork>, mut writer: W) -> IoResult<()> {
+        // Write the version.
+        1u8.write_le(&mut writer)?;
+
+        // Write the transaction.
+        match transaction {
+            Transaction::Deploy(id, owner, deployment, fee) => {
+                // Write the variant.
+                0u8.write_le(&mut writer)?;
+                // Write the ID.
+                id.write_le(&mut writer)?;
+                // Write the owner.
+                owner.write_le(&mut writer)?;
+                // Write the deployment.
+                deployment.write_le(&mut writer)?;
+                // Write the fee.
+                fee.write_le(&mut writer)
+            }
+            Transaction::Execute(id, execution, fee) => {
+                // Write the variant.
+                1u8.write_le(&mut writer)?;
+                // Write the ID.
+                id.write_le(&mut writer)?;
+                // Write the execution.
+                execution.write_le(&mut writer)?;
+                // Write the fee.
+                match fee {
+                    None => 0u8.write_le(&mut writer),
+                    Some(fee) => {
+                        1u8.write_le(&mut writer)?;
+                        fee.write_le(&mut writer)
+                    }
+                }
+            }
+            Transaction::Fee(id, fee) => {
+                // Write the variant.
+                2u8.write_le(&mut writer)?;
+                // Write the ID.
+                id.write_le(&mut writer)?;
+                // Write the fee.
+                fee.write_le(&mut writer)
+            }
+        }
+    }
+
     #[test]
     fn test_large_transaction_fails() -> Result<()> {
         let rng = &mut TestRng::default();
+        // Construct a large execution transaction.
+        let transaction = test_helpers::sample_large_execution_transaction(rng);
+        // Check that the execution is larger than the maximum transaction size.
+        if let Transaction::Execute(_, execution, _) = &transaction {
+            assert!(execution.to_bytes_le().unwrap().len() > CurrentNetwork::MAX_TRANSACTION_SIZE);
+        } else {
+            unreachable!();
+        }
+        // Check that `to_bytes_le` fails.
+        assert!(transaction.to_bytes_le().is_err());
 
-        let transaction = crate::transaction::test_helpers::sample_large_execution_transaction(rng);
-        let bytes = transaction.to_bytes_le()?;
-        assert!(bytes.len() > CurrentNetwork::MAX_TRANSACTION_SIZE);
-        assert!(Transaction::<CurrentNetwork>::read_le(&bytes[..]).is_err());
+        // Check that `from_bytes_le` fails.
+        let mut bytes_le = Vec::new();
+        unchecked_writer(&transaction, &mut bytes_le).unwrap();
+        assert!(bytes_le.len() > CurrentNetwork::MAX_TRANSACTION_SIZE);
+        assert!(Transaction::<CurrentNetwork>::read_le(&bytes_le[..]).is_err());
 
         Ok(())
     }
