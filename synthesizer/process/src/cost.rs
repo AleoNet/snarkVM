@@ -31,6 +31,8 @@ pub fn deployment_cost<N: Network>(deployment: &Deployment<N>) -> Result<(u64, (
     let num_characters = u32::try_from(program_id.name().to_string().len())?;
     // Compute the number of combined constraints in the program.
     let num_combined_constraints = deployment.num_combined_constraints()?;
+    // Compute the number of combined variables in the program.
+    let num_combined_variables = deployment.num_combined_variables()?;
 
     // Compute the storage cost in microcredits.
     let storage_cost = size_in_bytes
@@ -38,7 +40,7 @@ pub fn deployment_cost<N: Network>(deployment: &Deployment<N>) -> Result<(u64, (
         .ok_or(anyhow!("The storage cost computation overflowed for a deployment"))?;
 
     // Compute the synthesis cost in microcredits.
-    let synthesis_cost = num_combined_constraints * N::SYNTHESIS_FEE_MULTIPLIER;
+    let synthesis_cost = (num_combined_variables + num_combined_constraints) * N::SYNTHESIS_FEE_MULTIPLIER;
 
     // Compute the namespace cost in credits: 10^(10 - num_characters).
     let namespace_cost = 10u64
