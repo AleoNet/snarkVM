@@ -2254,6 +2254,107 @@ finalize transfer_public_to_private:
     }
 
     #[test]
+    fn test_large_transaction_is_aborted() {
+        let rng = &mut TestRng::default();
+
+        // Initialize a new caller.
+        let caller_private_key = crate::vm::test_helpers::sample_genesis_private_key(rng);
+
+        // Initialize the genesis block.
+        let genesis = crate::vm::test_helpers::sample_genesis_block(rng);
+
+        // Initialize the VM.
+        let vm = crate::vm::test_helpers::sample_vm();
+
+        // Update the VM.
+        vm.add_next_block(&genesis).unwrap();
+
+        // Deploy a program that produces large transactions.
+        let program = Program::from_str(
+            r"
+program testing.aleo;
+
+function small_transaction:
+    cast 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field into r0 as [field; 32u32];
+    cast r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 into r1 as [[field; 32u32]; 32u32];
+    cast r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 into r2 as [[field; 32u32]; 32u32];
+    cast r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 into r3 as [[field; 32u32]; 32u32];
+    output r1 as [[field; 32u32]; 32u32].public;
+    output r2 as [[field; 32u32]; 32u32].public;
+    output r3 as [[field; 32u32]; 32u32].public;
+
+function large_transaction:
+    cast 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field into r0 as [field; 32u32];
+    cast r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 into r1 as [[field; 32u32]; 32u32];
+    cast r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 into r2 as [[field; 32u32]; 32u32];
+    cast r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 into r3 as [[field; 32u32]; 32u32];
+    cast r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 into r4 as [[field; 32u32]; 32u32];
+    output r1 as [[field; 32u32]; 32u32].public;
+    output r2 as [[field; 32u32]; 32u32].public;
+    output r3 as [[field; 32u32]; 32u32].public;
+    output r4 as [[field; 32u32]; 32u32].public;").unwrap();
+
+        // Deploy the program.
+        let deployment = vm.deploy(&caller_private_key, &program, None, 0, None, rng).unwrap();
+
+        // Add the deployment to a block and update the VM.
+        let block = sample_next_block(&vm, &caller_private_key, &[deployment], rng).unwrap();
+
+        // Update the VM.
+        vm.add_next_block(&block).unwrap();
+
+        // Call the program to produce the small transaction.
+        let transaction = vm
+            .execute(
+                &caller_private_key,
+                ("testing.aleo", "small_transaction"),
+                Vec::<Value<CurrentNetwork>>::new().iter(),
+                None,
+                0,
+                None,
+                rng,
+            )
+            .unwrap();
+
+        // Verify the transaction.
+        vm.check_transaction(&transaction, None, rng).unwrap();
+
+        // Add the transaction to a block and update the VM.
+        let block = sample_next_block(&vm, &caller_private_key, &[transaction], rng).unwrap();
+
+        // Check that the transaction was accepted.
+        assert_eq!(block.transactions().num_accepted(), 1);
+
+        // Update the VM.
+        vm.add_next_block(&block).unwrap();
+
+        // Call the program to produce a large transaction.
+        let transaction = vm
+            .execute(
+                &caller_private_key,
+                ("testing.aleo", "large_transaction"),
+                Vec::<Value<CurrentNetwork>>::new().iter(),
+                None,
+                0,
+                None,
+                rng,
+            )
+            .unwrap();
+
+        // Verify that the transaction is invalid.
+        assert!(vm.check_transaction(&transaction, None, rng).is_err());
+
+        // Add the transaction to a block and update the VM.
+        let block = sample_next_block(&vm, &caller_private_key, &[transaction], rng).unwrap();
+
+        // Check that the transaction was aborted.
+        assert_eq!(block.aborted_transaction_ids().len(), 1);
+
+        // Update the VM.
+        vm.add_next_block(&block).unwrap();
+    }
+
+    #[test]
     fn test_vm_puzzle() {
         // Attention: This test is used to ensure that the VM has performed downcasting correctly for
         // the puzzle, and that the underlying traits in the puzzle are working correctly. Please

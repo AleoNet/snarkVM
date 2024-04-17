@@ -76,6 +76,11 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
         /* Transaction */
 
+        // Ensure that the transaction is well formed and does not exceed the maximum size.
+        if let Err(error) = transaction.to_bytes_le() {
+            bail!("Transaction '{}' is not well-formed: {error}", transaction.id())
+        }
+
         // Ensure the transaction ID is unique.
         if self.block_store().contains_transaction_id(&transaction.id())? {
             bail!("Transaction '{}' already exists in the ledger", transaction.id())
