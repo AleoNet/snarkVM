@@ -301,7 +301,7 @@ impl Environment for Circuit {
             assert_eq!(0, circuit.borrow().num_constants());
             assert_eq!(1, circuit.borrow().num_public());
             assert_eq!(0, circuit.borrow().num_private());
-            assert_eq!(0, circuit.borrow().num_variables());
+            assert_eq!(1, circuit.borrow().num_variables());
             assert_eq!(0, circuit.borrow().num_constraints());
             // Inject the R1CS instance.
             let r1cs = circuit.replace(r1cs);
@@ -309,7 +309,7 @@ impl Environment for Circuit {
             assert_eq!(0, r1cs.num_constants());
             assert_eq!(1, r1cs.num_public());
             assert_eq!(0, r1cs.num_private());
-            assert_eq!(0, r1cs.num_variables());
+            assert_eq!(1, r1cs.num_variables());
             assert_eq!(0, r1cs.num_constraints());
         })
     }
@@ -329,7 +329,7 @@ impl Environment for Circuit {
             assert_eq!(0, circuit.borrow().num_constants());
             assert_eq!(1, circuit.borrow().num_public());
             assert_eq!(0, circuit.borrow().num_private());
-            assert_eq!(0, circuit.borrow().num_variables());
+            assert_eq!(1, circuit.borrow().num_variables());
             assert_eq!(0, circuit.borrow().num_constraints());
             // Return the R1CS instance.
             r1cs
@@ -350,7 +350,7 @@ impl Environment for Circuit {
             assert_eq!(0, circuit.borrow().num_constants());
             assert_eq!(1, circuit.borrow().num_public());
             assert_eq!(0, circuit.borrow().num_private());
-            assert_eq!(0, circuit.borrow().num_variables());
+            assert_eq!(1, circuit.borrow().num_variables());
             assert_eq!(0, circuit.borrow().num_constraints());
             // Convert the R1CS instance to an assignment.
             Assignment::from(r1cs)
@@ -371,7 +371,7 @@ impl Environment for Circuit {
             assert_eq!(0, circuit.borrow().num_constants());
             assert_eq!(1, circuit.borrow().num_public());
             assert_eq!(0, circuit.borrow().num_private());
-            assert_eq!(0, circuit.borrow().num_variables());
+            assert_eq!(1, circuit.borrow().num_variables());
             assert_eq!(0, circuit.borrow().num_constraints());
         });
     }
