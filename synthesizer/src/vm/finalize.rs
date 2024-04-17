@@ -334,8 +334,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     }
                 }
 
-                // // Ensure that the transaction is not producing a duplicate transition public key.
-                // // Note that the tpk and tcm are corresponding, so a uniqueness check for just the tpk is sufficient.
+                // Ensure that the transaction is not producing a duplicate transition public key.
+                // Note that the tpk, tcm and scm are all derived from tsk, so a uniqueness check for just the tpk is sufficient.
                 for tpk in transaction.transition_public_keys() {
                     // If the transition public key is already produced in this block or previous blocks, abort the transaction.
                     if tpks.contains(tpk) || self.transition_store().contains_tpk(tpk).unwrap_or(true) {

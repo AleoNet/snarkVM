@@ -118,9 +118,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         /* Metadata */
 
         // Ensure the transition public keys are unique.
+        // Note that the tpk, tcm and scm are all derived from tsk, so a uniqueness check for just the tpk is sufficient.
         ensure_is_unique!("transition public key", self, contains_tpk, transaction.transition_public_keys());
-        // Ensure the transition commitments are unique.
-        ensure_is_unique!("transition commitment", self, contains_tcm, transaction.transition_commitments());
 
         lap!(timer, "Check for duplicate elements");
 
