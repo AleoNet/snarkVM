@@ -536,4 +536,90 @@ function compute:
         // Construct an execution transaction.
         Transaction::from_execution(execution, Some(fee)).unwrap()
     }
+
+    /// Writes the transaction without checking the size.
+    pub fn unchecked_write_le<W: Write>(transaction: &Transaction<CurrentNetwork>, mut writer: W) -> IoResult<()> {
+        // Write the version.
+        1u8.write_le(&mut writer)?;
+
+        // Write the transaction.
+        match transaction {
+            Transaction::Deploy(id, owner, deployment, fee) => {
+                // Write the variant.
+                0u8.write_le(&mut writer)?;
+                // Write the ID.
+                id.write_le(&mut writer)?;
+                // Write the owner.
+                owner.write_le(&mut writer)?;
+                // Write the deployment.
+                deployment.write_le(&mut writer)?;
+                // Write the fee.
+                fee.write_le(&mut writer)
+            }
+            Transaction::Execute(id, execution, fee) => {
+                // Write the variant.
+                1u8.write_le(&mut writer)?;
+                // Write the ID.
+                id.write_le(&mut writer)?;
+                // Write the execution.
+                execution.write_le(&mut writer)?;
+                // Write the fee.
+                match fee {
+                    None => 0u8.write_le(&mut writer),
+                    Some(fee) => {
+                        1u8.write_le(&mut writer)?;
+                        fee.write_le(&mut writer)
+                    }
+                }
+            }
+            Transaction::Fee(id, fee) => {
+                // Write the variant.
+                2u8.write_le(&mut writer)?;
+                // Write the ID.
+                id.write_le(&mut writer)?;
+                // Write the fee.
+                fee.write_le(&mut writer)
+            }
+        }
+    }
+
+    /// A wrapper around `Transaction` to allow for unchecked serialization.
+    pub struct Unchecked<N: Network>(pub Transaction<N>);
+
+    impl<N: Network> Serialize for Unchecked<N> {
+        /// Serializes the transaction to a JSON-string or buffer.
+        fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+            match serializer.is_human_readable() {
+                true => match &self.0 {
+                    Transaction::Deploy(id, owner, deployment, fee) => {
+                        let mut transaction = serializer.serialize_struct("Transaction", 5)?;
+                        transaction.serialize_field("type", "deploy")?;
+                        transaction.serialize_field("id", &id)?;
+                        transaction.serialize_field("owner", &owner)?;
+                        transaction.serialize_field("deployment", &deployment)?;
+                        transaction.serialize_field("fee", &fee)?;
+                        transaction.end()
+                    }
+                    Transaction::Execute(id, execution, fee) => {
+                        let mut transaction = serializer.serialize_struct("Transaction", 3 + fee.is_some() as usize)?;
+                        transaction.serialize_field("type", "execute")?;
+                        transaction.serialize_field("id", &id)?;
+                        transaction.serialize_field("execution", &execution)?;
+                        if let Some(fee) = fee {
+                            transaction.serialize_field("fee", &fee)?;
+                        }
+                        transaction.end()
+                    }
+                    Transaction::Fee(id, fee) => {
+                        let mut transaction = serializer.serialize_struct("Transaction", 3)?;
+                        transaction.serialize_field("type", "fee")?;
+                        transaction.serialize_field("id", &id)?;
+                        transaction.serialize_field("fee", &fee)?;
+                        transaction.end()
+                    }
+                },
+                false => ToBytesSerializer::serialize_with_size_encoding(&self.0, serializer),
+            }
+        }
+    }
 }

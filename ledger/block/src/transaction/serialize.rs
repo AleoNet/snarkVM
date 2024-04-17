@@ -125,6 +125,8 @@ impl<'de, N: Network> Deserialize<'de> for Transaction<N> {
 mod tests {
     use super::*;
 
+    type CurrentNetwork = console::network::MainnetV0;
+
     #[test]
     fn test_serde_json() -> Result<()> {
         let rng = &mut TestRng::default();
@@ -170,5 +172,32 @@ mod tests {
             assert_eq!(expected, bincode::deserialize(&expected_bytes_with_size_encoding[..])?);
         }
         Ok(())
+    }
+
+    #[test]
+    fn test_large_transaction_serde_json_fails() {
+        let rng = &mut TestRng::default();
+        let transaction = crate::transaction::test_helpers::sample_large_execution_transaction(rng);
+
+        // Serialize
+        assert!(serde_json::to_string(&transaction).is_err());
+
+        // Deserialize
+        let string = serde_json::to_string(&crate::transaction::test_helpers::Unchecked(transaction)).unwrap();
+        assert!(serde_json::from_str::<Transaction<CurrentNetwork>>(&string).is_err())
+    }
+
+    #[test]
+    fn test_large_transaction_bincode_fails() {
+        let rng = &mut TestRng::default();
+        let transaction = crate::transaction::test_helpers::sample_large_execution_transaction(rng);
+
+        // Serialize
+        assert!(bincode::serialize(&transaction).is_err());
+
+        // Deserialize
+        let mut bytes_le = Vec::new();
+        test_helpers::unchecked_write_le(&transaction, &mut bytes_le).unwrap();
+        assert!(bincode::deserialize::<Transaction<CurrentNetwork>>(&bytes_le).is_err())
     }
 }
