@@ -192,6 +192,9 @@ pub trait Network:
     /// The maximum number of certificates in a batch.
     const MAX_CERTIFICATES: u16;
 
+    /// The maximum number of bytes in a transaction.
+    const MAX_TRANSACTION_SIZE: usize = 128_000; // 128 kB
+
     /// The state root type.
     type StateRoot: Bech32ID<Field<Self>>;
     /// The block hash type.

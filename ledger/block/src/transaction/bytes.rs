@@ -17,7 +17,9 @@ use super::*;
 impl<N: Network> FromBytes for Transaction<N> {
     /// Reads the transaction from the buffer.
     #[inline]
-    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+    fn read_le<R: Read>(reader: R) -> IoResult<Self> {
+        // Wrap the reader in a `LimitedReader` with a `MAX_TRANSACTION_SIZE` as a limit.
+        let mut reader = LimitedReader::new(reader, N::MAX_TRANSACTION_SIZE);
         // Read the version.
         let version = u8::read_le(&mut reader)?;
         // Ensure the version is valid.
@@ -140,6 +142,8 @@ impl<N: Network> ToBytes for Transaction<N> {
 mod tests {
     use super::*;
 
+    type CurrentNetwork = console::network::MainnetV0;
+
     #[test]
     fn test_bytes() -> Result<()> {
         let rng = &mut TestRng::default();
@@ -156,6 +160,18 @@ mod tests {
             let expected_bytes = expected.to_bytes_le()?;
             assert_eq!(expected, Transaction::read_le(&expected_bytes[..])?);
         }
+        Ok(())
+    }
+
+    #[test]
+    fn test_large_transaction_fails() -> Result<()> {
+        let rng = &mut TestRng::default();
+
+        let transaction = crate::transaction::test_helpers::sample_large_execution_transaction(rng);
+        let bytes = transaction.to_bytes_le()?;
+        assert!(bytes.len() > CurrentNetwork::MAX_TRANSACTION_SIZE);
+        assert!(Transaction::<CurrentNetwork>::read_le(&bytes[..]).is_err());
+
         Ok(())
     }
 }
