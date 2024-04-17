@@ -478,7 +478,7 @@ pub fn bytes_from_bits_le(bits: &[bool]) -> Vec<u8> {
     bytes
 }
 
-/// A wrapped around a `Read` instance that limits the number of bytes that can be read.
+/// A wrapper around a `Read` instance that limits the number of bytes that can be read.
 pub struct LimitedReader<R: Read> {
     reader: R,
     limit: usize,
@@ -508,7 +508,7 @@ impl<R: Read> Read for LimitedReader<R> {
     }
 }
 
-/// A wrapped around a `Write` instance that limits the number of bytes that can be written.
+/// A wrapper around a `Write` instance that limits the number of bytes that can be written.
 pub struct LimitedWriter<W: Write> {
     writer: W,
     limit: usize,
