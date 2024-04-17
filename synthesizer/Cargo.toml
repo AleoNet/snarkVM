@@ -61,6 +61,11 @@ wasm = [
 ]
 
 [[bench]]
+name = "bond_mapping"
+path = "benches/bond_mapping.rs"
+harness = false
+
+[[bench]]
 name = "kary_merkle_tree"
 path = "benches/kary_merkle_tree.rs"
 harness = false
