@@ -478,36 +478,6 @@ pub fn bytes_from_bits_le(bits: &[bool]) -> Vec<u8> {
     bytes
 }
 
-/// A wrapper around a `Read` instance that limits the number of bytes that can be read.
-pub struct LimitedReader<R: Read> {
-    reader: R,
-    limit: usize,
-    remaining: usize,
-}
-
-impl<R: Read> LimitedReader<R> {
-    pub fn new(reader: R, limit: usize) -> Self {
-        Self { reader, limit, remaining: limit }
-    }
-}
-
-impl<R: Read> Read for LimitedReader<R> {
-    fn read(&mut self, buf: &mut [u8]) -> IoResult<usize> {
-        if self.remaining == 0 {
-            return Err(std::io::Error::new(std::io::ErrorKind::Other, format!("Byte limit exceeded: {}", self.limit)));
-        }
-
-        let max_read = std::cmp::min(buf.len(), self.remaining);
-        match self.reader.read(&mut buf[..max_read]) {
-            Ok(n) => {
-                self.remaining -= n;
-                Ok(n)
-            }
-            Err(e) => Err(e),
-        }
-    }
-}
-
 /// A wrapper around a `Write` instance that limits the number of bytes that can be written.
 pub struct LimitedWriter<W: Write> {
     writer: W,

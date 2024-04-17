@@ -18,8 +18,8 @@ impl<N: Network> FromBytes for Transaction<N> {
     /// Reads the transaction from the buffer.
     #[inline]
     fn read_le<R: Read>(reader: R) -> IoResult<Self> {
-        // Wrap the reader in a `LimitedReader` with a `MAX_TRANSACTION_SIZE` as a limit.
-        let mut reader = LimitedReader::new(reader, N::MAX_TRANSACTION_SIZE);
+        // Restrict the reader to `MAX_TRANSACTION_SIZE` bytes.
+        let mut reader = reader.take(N::MAX_TRANSACTION_SIZE as u64);
         // Read the version.
         let version = u8::read_le(&mut reader)?;
         // Ensure the version is valid.
