@@ -78,6 +78,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
         // Get the maximum transaction size for the current edition.
         // Note: On network upgrades, the maximum transaction size may change. Ensure that prior limits are explicitly handled.
+        // TODO (@d0cd) - This code is not correct and is just a placeholder. We need information about the transaction version from the transaction itself.
         let max_transaction_size = match N::EDITION {
             0 => N::MAX_TRANSACTION_SIZE,
             _ => bail!("Invalid network edition '{}'", N::EDITION),
