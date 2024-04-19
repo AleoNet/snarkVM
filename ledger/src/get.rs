@@ -241,6 +241,39 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
     pub fn get_batch_certificate(&self, certificate_id: &Field<N>) -> Result<Option<BatchCertificate<N>>> {
         self.vm.block_store().get_batch_certificate(certificate_id)
     }
+
+    /// Returns the delegators for the given validator.
+    pub fn get_delegators_for_validator(&self, validator: &Address<N>) -> Result<Vec<Address<N>>> {
+        // Construct the credits.aleo program ID.
+        let credits_program_id = ProgramID::from_str("credits.aleo")?;
+        // Construct the bonded mapping name.
+        let bonded_mapping = Identifier::from_str("bonded")?;
+        // Construct the bonded mapping key name.
+        let bonded_mapping_key = Identifier::from_str("validator")?;
+        // Get the credits.aleo bonded mapping.
+        let bonded = self.vm.finalize_store().get_mapping_confirmed(credits_program_id, bonded_mapping)?;
+        // Select the delegators for the given validator.
+        cfg_into_iter!(bonded)
+            .filter_map(|(bonded_address, bond_state)| {
+                let Plaintext::Literal(Literal::Address(bonded_address), _) = bonded_address else {
+                    return Some(Err(anyhow!("Invalid delegator in finalize storage.")));
+                };
+                let Value::Plaintext(Plaintext::Struct(bond_state, _)) = bond_state else {
+                    return Some(Err(anyhow!("Invalid bond_state in finalize storage.")));
+                };
+                let Some(mapping_validator) = bond_state.get(&bonded_mapping_key) else {
+                    return Some(Err(anyhow!("Invalid bond_state validator in finalize storage.")));
+                };
+                let Plaintext::Literal(Literal::Address(mapping_validator), _) = mapping_validator else {
+                    return Some(Err(anyhow!("Invalid validator in finalize storage.")));
+                };
+                // Select bonded addresses which:
+                // 1. are bonded to the right validator.
+                // 2. are not themselves the validator.
+                (mapping_validator == validator && bonded_address != *validator).then_some(Ok(bonded_address))
+            })
+            .collect::<Result<_>>()
+    }
 }
 
 #[cfg(test)]
