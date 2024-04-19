@@ -80,7 +80,7 @@ pub trait FromBytes {
     }
 }
 
-pub struct ToBytesSerializer<T: ToBytes>(String, Option<usize>, PhantomData<T>);
+pub struct ToBytesSerializer<T: ToBytes>(PhantomData<T>);
 
 impl<T: ToBytes> ToBytesSerializer<T> {
     /// Serializes a static-sized object as a byte array (without length encoding).
@@ -100,7 +100,7 @@ impl<T: ToBytes> ToBytesSerializer<T> {
     }
 }
 
-pub struct FromBytesDeserializer<T: FromBytes>(String, Option<usize>, PhantomData<T>);
+pub struct FromBytesDeserializer<T: FromBytes>(PhantomData<T>);
 
 impl<'de, T: FromBytes> FromBytesDeserializer<T> {
     /// Deserializes a static-sized byte array (without length encoding).
@@ -166,12 +166,12 @@ impl<'de, T: FromBytes> FromBytesDeserializer<T> {
     }
 }
 
-pub struct FromBytesVisitor<'a>(&'a mut Vec<u8>, SmolStr, Option<usize>);
+pub struct FromBytesVisitor<'a>(&'a mut Vec<u8>, SmolStr);
 
 impl<'a> FromBytesVisitor<'a> {
     /// Initializes a new `FromBytesVisitor` with the given `buffer` and `name`.
     pub fn new(buffer: &'a mut Vec<u8>, name: &str) -> Self {
-        Self(buffer, SmolStr::new(name), None)
+        Self(buffer, SmolStr::new(name))
     }
 }
 
