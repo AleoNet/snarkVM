@@ -18,41 +18,34 @@ impl<N: Network> Serialize for Transaction<N> {
     /// Serializes the transaction to a JSON-string or buffer.
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
-            true => {
-                // Check that the transaction is well-formed and does not exceed the maximum size.
-                if self.to_bytes_le().is_err() {
-                    return Err(ser::Error::custom("Invalid transaction"));
+            true => match self {
+                Self::Deploy(id, owner, deployment, fee) => {
+                    let mut transaction = serializer.serialize_struct("Transaction", 5)?;
+                    transaction.serialize_field("type", "deploy")?;
+                    transaction.serialize_field("id", &id)?;
+                    transaction.serialize_field("owner", &owner)?;
+                    transaction.serialize_field("deployment", &deployment)?;
+                    transaction.serialize_field("fee", &fee)?;
+                    transaction.end()
                 }
-
-                match self {
-                    Self::Deploy(id, owner, deployment, fee) => {
-                        let mut transaction = serializer.serialize_struct("Transaction", 5)?;
-                        transaction.serialize_field("type", "deploy")?;
-                        transaction.serialize_field("id", &id)?;
-                        transaction.serialize_field("owner", &owner)?;
-                        transaction.serialize_field("deployment", &deployment)?;
+                Self::Execute(id, execution, fee) => {
+                    let mut transaction = serializer.serialize_struct("Transaction", 3 + fee.is_some() as usize)?;
+                    transaction.serialize_field("type", "execute")?;
+                    transaction.serialize_field("id", &id)?;
+                    transaction.serialize_field("execution", &execution)?;
+                    if let Some(fee) = fee {
                         transaction.serialize_field("fee", &fee)?;
-                        transaction.end()
                     }
-                    Self::Execute(id, execution, fee) => {
-                        let mut transaction = serializer.serialize_struct("Transaction", 3 + fee.is_some() as usize)?;
-                        transaction.serialize_field("type", "execute")?;
-                        transaction.serialize_field("id", &id)?;
-                        transaction.serialize_field("execution", &execution)?;
-                        if let Some(fee) = fee {
-                            transaction.serialize_field("fee", &fee)?;
-                        }
-                        transaction.end()
-                    }
-                    Self::Fee(id, fee) => {
-                        let mut transaction = serializer.serialize_struct("Transaction", 3)?;
-                        transaction.serialize_field("type", "fee")?;
-                        transaction.serialize_field("id", &id)?;
-                        transaction.serialize_field("fee", &fee)?;
-                        transaction.end()
-                    }
+                    transaction.end()
                 }
-            }
+                Self::Fee(id, fee) => {
+                    let mut transaction = serializer.serialize_struct("Transaction", 3)?;
+                    transaction.serialize_field("type", "fee")?;
+                    transaction.serialize_field("id", &id)?;
+                    transaction.serialize_field("fee", &fee)?;
+                    transaction.end()
+                }
+            },
             false => ToBytesSerializer::serialize_with_size_encoding(self, serializer),
         }
     }
@@ -106,13 +99,7 @@ impl<'de, N: Network> Deserialize<'de> for Transaction<N> {
 
                 // Ensure the transaction ID matches.
                 match id == transaction.id() {
-                    true => {
-                        // Check that the transaction is well-formed and does not exceed the maximum size.
-                        match transaction.to_bytes_le().is_ok() {
-                            true => Ok(transaction),
-                            false => Err(de::Error::custom("Invalid transaction")),
-                        }
-                    }
+                    true => Ok(transaction),
                     false => Err(de::Error::custom(error("Mismatching transaction ID, possible data corruption"))),
                 }
             }
@@ -124,8 +111,6 @@ impl<'de, N: Network> Deserialize<'de> for Transaction<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    type CurrentNetwork = console::network::MainnetV0;
 
     #[test]
     fn test_serde_json() -> Result<()> {
@@ -172,32 +157,5 @@ mod tests {
             assert_eq!(expected, bincode::deserialize(&expected_bytes_with_size_encoding[..])?);
         }
         Ok(())
-    }
-
-    #[test]
-    fn test_large_transaction_serde_json_fails() {
-        let rng = &mut TestRng::default();
-        let transaction = crate::transaction::test_helpers::sample_large_execution_transaction(rng);
-
-        // Serialize
-        assert!(serde_json::to_string(&transaction).is_err());
-
-        // Deserialize
-        let string = serde_json::to_string(&crate::transaction::test_helpers::Unchecked(transaction)).unwrap();
-        assert!(serde_json::from_str::<Transaction<CurrentNetwork>>(&string).is_err())
-    }
-
-    #[test]
-    fn test_large_transaction_bincode_fails() {
-        let rng = &mut TestRng::default();
-        let transaction = crate::transaction::test_helpers::sample_large_execution_transaction(rng);
-
-        // Serialize
-        assert!(bincode::serialize(&transaction).is_err());
-
-        // Deserialize
-        let mut bytes_le = Vec::new();
-        test_helpers::unchecked_write_le(&transaction, &mut bytes_le).unwrap();
-        assert!(bincode::deserialize::<Transaction<CurrentNetwork>>(&bytes_le).is_err())
     }
 }

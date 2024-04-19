@@ -76,17 +76,10 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
         /* Transaction */
 
-        // Get the maximum transaction size for the current edition.
-        // Note: On network upgrades, the maximum transaction size may change. Ensure that prior limits are explicitly handled.
-        // TODO (@d0cd) - This code is not correct and is just a placeholder. We need information about the transaction version from the transaction itself.
-        let max_transaction_size = match N::EDITION {
-            0 => N::MAX_TRANSACTION_SIZE,
-            _ => bail!("Invalid network edition '{}'", N::EDITION),
-        };
         // Allocate a buffer to write the transaction.
-        let mut buffer = Vec::with_capacity(max_transaction_size);
+        let mut buffer = Vec::with_capacity(N::MAX_TRANSACTION_SIZE);
         // Ensure that the transaction is well formed and does not exceed the maximum size.
-        if let Err(error) = transaction.write_le(LimitedWriter::new(&mut buffer, max_transaction_size)) {
+        if let Err(error) = transaction.write_le(LimitedWriter::new(&mut buffer, N::MAX_TRANSACTION_SIZE)) {
             bail!("Transaction '{}' is not well-formed: {error}", transaction.id())
         }
 

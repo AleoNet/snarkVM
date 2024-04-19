@@ -17,9 +17,7 @@ use super::*;
 impl<N: Network> FromBytes for Transaction<N> {
     /// Reads the transaction from the buffer.
     #[inline]
-    fn read_le<R: Read>(reader: R) -> IoResult<Self> {
-        // Restrict the reader to `MAX_TRANSACTION_SIZE` bytes.
-        let mut reader = reader.take(N::MAX_TRANSACTION_SIZE as u64);
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         // Read the version.
         let version = u8::read_le(&mut reader)?;
         // Ensure the version is valid.
@@ -92,9 +90,7 @@ impl<N: Network> FromBytes for Transaction<N> {
 impl<N: Network> ToBytes for Transaction<N> {
     /// Writes the transaction to the buffer.
     #[inline]
-    fn write_le<W: Write>(&self, writer: W) -> IoResult<()> {
-        // Wrap the writer in a `LimitedWriter` with a `MAX_TRANSACTION_SIZE` as a limit.
-        let mut writer = LimitedWriter::new(writer, N::MAX_TRANSACTION_SIZE);
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Write the version.
         1u8.write_le(&mut writer)?;
 
@@ -144,8 +140,6 @@ impl<N: Network> ToBytes for Transaction<N> {
 mod tests {
     use super::*;
 
-    type CurrentNetwork = console::network::MainnetV0;
-
     #[test]
     fn test_bytes() -> Result<()> {
         let rng = &mut TestRng::default();
@@ -162,30 +156,6 @@ mod tests {
             let expected_bytes = expected.to_bytes_le()?;
             assert_eq!(expected, Transaction::read_le(&expected_bytes[..])?);
         }
-        Ok(())
-    }
-
-    #[test]
-    fn test_large_transaction_fails() -> Result<()> {
-        let rng = &mut TestRng::default();
-        // Construct a large execution transaction.
-        let transaction = crate::transaction::test_helpers::sample_large_execution_transaction(rng);
-        // Check that the execution is larger than the maximum transaction size.
-        if let Transaction::Execute(_, execution, _) = &transaction {
-            assert!(execution.to_bytes_le().unwrap().len() > CurrentNetwork::MAX_TRANSACTION_SIZE);
-        } else {
-            unreachable!();
-        }
-        // Check that `to_bytes_le` fails.
-        assert!(transaction.to_bytes_le().is_err());
-
-        // Check that `from_bytes_le` fails.
-        let mut bytes_le = Vec::new();
-        crate::transaction::test_helpers::unchecked_write_le(&transaction, &mut bytes_le).unwrap();
-        // Check that the raw bytes are larger than the maximum transaction size.
-        assert!(bytes_le.len() > CurrentNetwork::MAX_TRANSACTION_SIZE);
-        assert!(Transaction::<CurrentNetwork>::read_le(&bytes_le[..]).is_err());
-
         Ok(())
     }
 }
