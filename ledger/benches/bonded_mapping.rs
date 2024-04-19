@@ -27,13 +27,10 @@ use ledger_store::helpers::memory::ConsensusMemory;
 #[cfg(feature = "rocks")]
 use ledger_store::helpers::rocksdb::ConsensusDB;
 use ledger_store::ConsensusStore;
-use snarkvm_synthesizer::VM;
-use utilities::cfg_into_iter;
+use synthesizer::VM;
 
 use criterion::Criterion;
 use indexmap::indexmap;
-#[cfg(not(feature = "serial"))]
-use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use std::{str::FromStr, time::Duration};
 
 pub type CurrentNetwork = MainnetV0;
@@ -61,7 +58,7 @@ fn bench_bonded_mappings(c: &mut Criterion) {
         Address::from_str("aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px").unwrap();
 
     // Generate 100_000 bonded mapping entries.
-    let bonded_map = cfg_into_iter!((0..(MAX_DELEGATORS as u64)))
+    let bonded_map = (0..(MAX_DELEGATORS as u64))
         .map(|i| {
             // Generate a staker address.
             let private_key = PrivateKey::try_from(Field::from_u64(i)).unwrap();
