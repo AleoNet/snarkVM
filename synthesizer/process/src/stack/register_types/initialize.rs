@@ -186,7 +186,7 @@ impl<N: Network> RegisterTypes<N> {
                 for operand in async_.operands() {
                     if let Operand::Register(register) = operand {
                         if let Ok(RegisterType::Future(locator)) = register_types.get_type(stack, register) {
-                            assert!(future_registers.remove(&(register.clone(), locator)));
+                            assert!(future_registers.swap_remove(&(register.clone(), locator)));
                         }
                     }
                 }
