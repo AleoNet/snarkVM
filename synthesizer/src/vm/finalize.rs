@@ -283,6 +283,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             let mut output_ids: IndexSet<Field<N>> = IndexSet::new();
             // Initialize the list of created transition public keys.
             let mut tpks: IndexSet<Group<N>> = IndexSet::new();
+            // Initialize the list of deployment payers.
+            let mut deployment_payers: IndexSet<Address<N>> = IndexSet::new();
 
             // Finalize the transactions.
             'outer: for transaction in transactions {
@@ -295,55 +297,19 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     continue 'outer;
                 }
 
-                // Ensure that the transaction is not producing a duplicate transition.
-                for transition_id in transaction.transition_ids() {
-                    // If the transition ID is already produced in this block or previous blocks, abort the transaction.
-                    if transition_ids.contains(transition_id)
-                        || self.transition_store().contains_transition_id(transition_id).unwrap_or(true)
-                    {
-                        // Store the aborted transaction.
-                        aborted.push((transaction.clone(), format!("Duplicate transition {transition_id}")));
-                        // Continue to the next transaction.
-                        continue 'outer;
-                    }
-                }
-
-                // Ensure that the transaction is not double-spending an input.
-                for input_id in transaction.input_ids() {
-                    // If the input ID is already spent in this block or previous blocks, abort the transaction.
-                    if input_ids.contains(input_id)
-                        || self.transition_store().contains_input_id(input_id).unwrap_or(true)
-                    {
-                        // Store the aborted transaction.
-                        aborted.push((transaction.clone(), format!("Double-spending input {input_id}")));
-                        // Continue to the next transaction.
-                        continue 'outer;
-                    }
-                }
-
-                // Ensure that the transaction is not producing a duplicate output.
-                for output_id in transaction.output_ids() {
-                    // If the output ID is already produced in this block or previous blocks, abort the transaction.
-                    if output_ids.contains(output_id)
-                        || self.transition_store().contains_output_id(output_id).unwrap_or(true)
-                    {
-                        // Store the aborted transaction.
-                        aborted.push((transaction.clone(), format!("Duplicate output {output_id}")));
-                        // Continue to the next transaction.
-                        continue 'outer;
-                    }
-                }
-
-                // // Ensure that the transaction is not producing a duplicate transition public key.
-                // // Note that the tpk and tcm are corresponding, so a uniqueness check for just the tpk is sufficient.
-                for tpk in transaction.transition_public_keys() {
-                    // If the transition public key is already produced in this block or previous blocks, abort the transaction.
-                    if tpks.contains(tpk) || self.transition_store().contains_tpk(tpk).unwrap_or(true) {
-                        // Store the aborted transaction.
-                        aborted.push((transaction.clone(), format!("Duplicate transition public key {tpk}")));
-                        // Continue to the next transaction.
-                        continue 'outer;
-                    }
+                // Determine if the transaction should be aborted.
+                if let Some(reason) = self.should_abort_transaction(
+                    transaction,
+                    &transition_ids,
+                    &input_ids,
+                    &output_ids,
+                    &tpks,
+                    &deployment_payers,
+                ) {
+                    // Store the aborted transaction.
+                    aborted.push((transaction.clone(), reason));
+                    // Continue to the next transaction.
+                    continue 'outer;
                 }
 
                 // Process the transaction in an isolated atomic batch.
@@ -470,6 +436,10 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                         output_ids.extend(confirmed_transaction.transaction().output_ids());
                         // Add the transition public keys to the set of produced transition public keys.
                         tpks.extend(confirmed_transaction.transaction().transition_public_keys());
+                        // Add any public deployment payer to the set of deployment payers.
+                        if let Transaction::Deploy(_, _, _, fee) = confirmed_transaction.transaction() {
+                            fee.payer().map(|payer| deployment_payers.insert(payer));
+                        }
                         // Store the confirmed transaction.
                         confirmed.push(confirmed_transaction);
                         // Increment the transaction index counter.
@@ -789,6 +759,72 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         })
     }
 
+    /// Returns `Some(reason)` if the transaction is aborted. Otherwise, returns `None`.
+    ///
+    /// The transaction will be aborted if any of the following conditions are met:
+    /// - The transaction is producing a duplicate transition
+    /// - The transaction is double-spending an input
+    /// - The transaction is producing a duplicate output
+    /// - The transaction is producing a duplicate transition public key
+    /// - The transaction is another deployment in the block from the same public fee payer.
+    fn should_abort_transaction(
+        &self,
+        transaction: &Transaction<N>,
+        transition_ids: &IndexSet<N::TransitionID>,
+        input_ids: &IndexSet<Field<N>>,
+        output_ids: &IndexSet<Field<N>>,
+        tpks: &IndexSet<Group<N>>,
+        deployment_payers: &IndexSet<Address<N>>,
+    ) -> Option<String> {
+        // Ensure that the transaction is not producing a duplicate transition.
+        for transition_id in transaction.transition_ids() {
+            // If the transition ID is already produced in this block or previous blocks, abort the transaction.
+            if transition_ids.contains(transition_id)
+                || self.transition_store().contains_transition_id(transition_id).unwrap_or(true)
+            {
+                return Some(format!("Duplicate transition {transition_id}"));
+            }
+        }
+
+        // Ensure that the transaction is not double-spending an input.
+        for input_id in transaction.input_ids() {
+            // If the input ID is already spent in this block or previous blocks, abort the transaction.
+            if input_ids.contains(input_id) || self.transition_store().contains_input_id(input_id).unwrap_or(true) {
+                return Some(format!("Double-spending input {input_id}"));
+            }
+        }
+
+        // Ensure that the transaction is not producing a duplicate output.
+        for output_id in transaction.output_ids() {
+            // If the output ID is already produced in this block or previous blocks, abort the transaction.
+            if output_ids.contains(output_id) || self.transition_store().contains_output_id(output_id).unwrap_or(true) {
+                return Some(format!("Duplicate output {output_id}"));
+            }
+        }
+
+        // Ensure that the transaction is not producing a duplicate transition public key.
+        // Note that the tpk and tcm are corresponding, so a uniqueness check for just the tpk is sufficient.
+        for tpk in transaction.transition_public_keys() {
+            // If the transition public key is already produced in this block or previous blocks, abort the transaction.
+            if tpks.contains(tpk) || self.transition_store().contains_tpk(tpk).unwrap_or(true) {
+                return Some(format!("Duplicate transition public key {tpk}"));
+            }
+        }
+
+        // If the transaction is a deployment, ensure that it is not another deployment in the block from the same public fee payer.
+        if let Transaction::Deploy(_, _, _, fee) = transaction {
+            // If any public deployment payer has already deployed in this block, abort the transaction.
+            if let Some(payer) = fee.payer() {
+                if deployment_payers.contains(&payer) {
+                    return Some(format!("Another deployment in the block from the same public fee payer {payer}"));
+                }
+            }
+        }
+
+        // Return `None` because the transaction is well-formed.
+        None
+    }
+
     /// Performs precondition checks on the transactions prior to speculation.
     ///
     /// This method is used to check the following conditions:
@@ -799,13 +835,61 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         transactions: &[&'a Transaction<N>],
         rng: &mut R,
     ) -> Result<(Vec<&'a Transaction<N>>, Vec<(&'a Transaction<N>, String)>)> {
+        // Construct the list of transactions that need to verified.
+        let mut transactions_to_verify = Vec::with_capacity(transactions.len());
         // Construct the list of valid and invalid transactions.
         let mut valid_transactions = Vec::with_capacity(transactions.len());
         let mut aborted_transactions = Vec::with_capacity(transactions.len());
 
+        // Initialize a list of created transition IDs.
+        let mut transition_ids: IndexSet<N::TransitionID> = Default::default();
+        // Initialize a list of spent input IDs.
+        let mut input_ids: IndexSet<Field<N>> = Default::default();
+        // Initialize a list of created output IDs.
+        let mut output_ids: IndexSet<Field<N>> = Default::default();
+        // Initialize the list of created transition public keys.
+        let mut tpks: IndexSet<Group<N>> = Default::default();
+        // Initialize the list of deployment payers.
+        let mut deployment_payers: IndexSet<Address<N>> = Default::default();
+
+        // Abort the transactions that are have duplicates or are invalid. This will prevent the VM from performing
+        // verification on transactions that would have been aborted in `VM::atomic_speculate`.
+        for transaction in transactions.iter() {
+            // Determine if the transaction should be aborted.
+            match self.should_abort_transaction(
+                transaction,
+                &transition_ids,
+                &input_ids,
+                &output_ids,
+                &tpks,
+                &deployment_payers,
+            ) {
+                // Store the aborted transaction.
+                Some(reason) => aborted_transactions.push((*transaction, reason.to_string())),
+                // Track the transaction state.
+                None => {
+                    // Add the transition IDs to the set of produced transition IDs.
+                    transition_ids.extend(transaction.transition_ids());
+                    // Add the input IDs to the set of spent input IDs.
+                    input_ids.extend(transaction.input_ids());
+                    // Add the output IDs to the set of produced output IDs.
+                    output_ids.extend(transaction.output_ids());
+                    // Add the transition public keys to the set of produced transition public keys.
+                    tpks.extend(transaction.transition_public_keys());
+                    // Add any public deployment payer to the set of deployment payers.
+                    if let Transaction::Deploy(_, _, _, fee) = transaction {
+                        fee.payer().map(|payer| deployment_payers.insert(payer));
+                    }
+
+                    // Add the transaction to the list of transactions to verify.
+                    transactions_to_verify.push(transaction);
+                }
+            };
+        }
+
         // Separate the transactions into deploys and executions.
         let (deployments, executions): (Vec<&Transaction<N>>, Vec<&Transaction<N>>) =
-            transactions.iter().partition(|tx| tx.is_deploy());
+            transactions_to_verify.into_iter().partition(|tx| tx.is_deploy());
         // Chunk the deploys and executions into groups for parallel verification.
         let deployments_for_verification = deployments.chunks(Self::MAX_PARALLEL_DEPLOY_VERIFICATIONS);
         let executions_for_verification = executions.chunks(Self::MAX_PARALLEL_EXECUTE_VERIFICATIONS);
@@ -823,9 +907,12 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                             "Fee transactions are not allowed in speculate".to_string(),
                         ));
                     }
+
                     // Verify the transaction.
                     match self.check_transaction(transaction, None, &mut rng) {
+                        // If the transaction is valid, add it to the list of valid transactions.
                         Ok(_) => Either::Left(*transaction),
+                        // If the transaction is invalid, add it to the list of aborted transactions.
                         Err(e) => Either::Right((*transaction, e.to_string())),
                     }
                 });
