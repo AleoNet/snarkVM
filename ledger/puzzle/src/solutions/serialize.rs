@@ -19,7 +19,7 @@ impl<N: Network> Serialize for PuzzleSolutions<N> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
             true => {
-                let mut solutions = serializer.serialize_struct("CoinbaseSolution", 1)?;
+                let mut solutions = serializer.serialize_struct("PuzzleSolutions", 1)?;
                 solutions.serialize_field("solutions", &self.solutions.values().collect::<Vec<_>>())?;
                 solutions.end()
             }
