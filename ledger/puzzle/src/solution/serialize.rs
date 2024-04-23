@@ -19,8 +19,7 @@ impl<N: Network> Serialize for Solution<N> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
             true => {
-                let mut partial_solution = serializer.serialize_struct("Solution", 4)?;
-                partial_solution.serialize_field("solution_id", &self.solution_id)?;
+                let mut partial_solution = serializer.serialize_struct("Solution", 3)?;
                 partial_solution.serialize_field("epoch_hash", &self.epoch_hash)?;
                 partial_solution.serialize_field("address", &self.address)?;
                 partial_solution.serialize_field("counter", &self.counter)?;
@@ -37,22 +36,13 @@ impl<'de, N: Network> Deserialize<'de> for Solution<N> {
         match deserializer.is_human_readable() {
             true => {
                 let mut partial_solution = serde_json::Value::deserialize(deserializer)?;
-                let solution_id: SolutionID<N> =
-                    DeserializeExt::take_from_value::<D>(&mut partial_solution, "solution_id")?;
-
                 // Recover the partial solution.
-                let solution = Self::new(
+                Self::new(
                     DeserializeExt::take_from_value::<D>(&mut partial_solution, "epoch_hash")?,
                     DeserializeExt::take_from_value::<D>(&mut partial_solution, "address")?,
                     DeserializeExt::take_from_value::<D>(&mut partial_solution, "counter")?,
                 )
-                .map_err(de::Error::custom)?;
-
-                // Ensure the solution ID matches.
-                match solution_id == solution.id() {
-                    true => Ok(solution),
-                    false => Err(de::Error::custom(error("Mismatching solution ID, possible data corruption"))),
-                }
+                .map_err(de::Error::custom)
             }
             false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "solution"),
         }
