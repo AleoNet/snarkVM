@@ -184,7 +184,7 @@ impl<N: Network> Puzzle<N> {
                 .collect::<Result<IndexMap<_, _>>>()?;
 
             // Recombine the proof targets.
-            for (i, id, _) in to_compute.iter() {
+            for (i, id, _) in &to_compute {
                 targets[*i] = targets_subset[id];
             }
         }
