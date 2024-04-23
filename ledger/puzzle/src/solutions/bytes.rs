@@ -18,6 +18,7 @@ impl<N: Network> FromBytes for PuzzleSolutions<N> {
     /// Reads the solutions from the buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         // Read the number of solutions.
+        // Note: If `num_solutions` is changed to a `u32` or `u64`, it must be sanitized (bounded) to prevent DoS attacks.
         let num_solutions: u8 = FromBytes::read_le(&mut reader)?;
         // Read the solutions.
         let mut solutions = Vec::with_capacity(num_solutions as usize);
