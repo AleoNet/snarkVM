@@ -59,6 +59,8 @@ use rayon::prelude::*;
 
 /// The arity of the Merkle tree.
 const ARITY: u8 = 8;
+/// The size of the cache.
+const CACHE_SIZE: usize = 1 << 10;
 
 /// The Merkle tree for the puzzle.
 type MerkleTree = KaryMerkleTree<Sha3_256, Sha3_256, 8, { ARITY }>;
@@ -90,7 +92,7 @@ impl<N: Network> Puzzle<N> {
     pub fn new<P: PuzzleTrait<N> + 'static>() -> Self {
         Self {
             inner: Arc::new(P::new()),
-            proof_target_cache: Arc::new(RwLock::new(LruCache::new(NonZeroUsize::new(1 << 10).unwrap()))),
+            proof_target_cache: Arc::new(RwLock::new(LruCache::new(NonZeroUsize::new(CACHE_SIZE).unwrap()))),
         }
     }
 
