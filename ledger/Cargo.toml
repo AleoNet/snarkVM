@@ -22,6 +22,11 @@ path = "benches/block.rs"
 harness = false
 
 [[bench]]
+name = "bonded_mapping"
+path = "benches/bonded_mapping.rs"
+harness = false
+
+[[bench]]
 name = "transaction"
 path = "benches/transaction.rs"
 harness = false
