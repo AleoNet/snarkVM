@@ -493,7 +493,7 @@ impl<W: Write> LimitedWriter<W> {
 
 impl<W: Write> Write for LimitedWriter<W> {
     fn write(&mut self, buf: &[u8]) -> IoResult<usize> {
-        if self.remaining == 0 {
+        if self.remaining == 0 && !buf.is_empty() {
             return Err(std::io::Error::new(std::io::ErrorKind::Other, format!("Byte limit exceeded: {}", self.limit)));
         }
 
