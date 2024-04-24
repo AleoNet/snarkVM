@@ -76,6 +76,13 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
         /* Transaction */
 
+        // Allocate a buffer to write the transaction.
+        let mut buffer = Vec::with_capacity(N::MAX_TRANSACTION_SIZE);
+        // Ensure that the transaction is well formed and does not exceed the maximum size.
+        if let Err(error) = transaction.write_le(LimitedWriter::new(&mut buffer, N::MAX_TRANSACTION_SIZE)) {
+            bail!("Transaction '{}' is not well-formed: {error}", transaction.id())
+        }
+
         // Ensure the transaction ID is unique.
         if self.block_store().contains_transaction_id(&transaction.id())? {
             bail!("Transaction '{}' already exists in the ledger", transaction.id())

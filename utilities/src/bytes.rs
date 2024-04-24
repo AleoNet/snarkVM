@@ -478,6 +478,40 @@ pub fn bytes_from_bits_le(bits: &[bool]) -> Vec<u8> {
     bytes
 }
 
+/// A wrapper around a `Write` instance that limits the number of bytes that can be written.
+pub struct LimitedWriter<W: Write> {
+    writer: W,
+    limit: usize,
+    remaining: usize,
+}
+
+impl<W: Write> LimitedWriter<W> {
+    pub fn new(writer: W, limit: usize) -> Self {
+        Self { writer, limit, remaining: limit }
+    }
+}
+
+impl<W: Write> Write for LimitedWriter<W> {
+    fn write(&mut self, buf: &[u8]) -> IoResult<usize> {
+        if self.remaining == 0 && !buf.is_empty() {
+            return Err(std::io::Error::new(std::io::ErrorKind::Other, format!("Byte limit exceeded: {}", self.limit)));
+        }
+
+        let max_write = std::cmp::min(buf.len(), self.remaining);
+        match self.writer.write(&buf[..max_write]) {
+            Ok(n) => {
+                self.remaining -= n;
+                Ok(n)
+            }
+            Err(e) => Err(e),
+        }
+    }
+
+    fn flush(&mut self) -> IoResult<()> {
+        self.writer.flush()
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
