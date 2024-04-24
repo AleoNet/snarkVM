@@ -1726,6 +1726,71 @@ fn test_max_committee_limit_with_bonds() {
     // Check that the second validator was not added to the committee.
     let committee = ledger.latest_committee().unwrap();
     assert!(!committee.is_committee_member(second_address));
+
+    // Check that unbonding a validator first allows the second validator to bond in.
+
+    let unbond_first_validator = ledger
+        .vm()
+        .execute(
+            &first_private_key,
+            ("credits.aleo", "unbond_public"),
+            vec![Value::<CurrentNetwork>::from_str(&format!("{MIN_VALIDATOR_STAKE}u64")).unwrap()].iter(),
+            None,
+            0,
+            None,
+            rng,
+        )
+        .unwrap();
+
+    // Attempt to bond the second validator.
+    let bond_second_validator = ledger
+        .vm()
+        .execute(
+            &second_private_key,
+            ("credits.aleo", "bond_public"),
+            vec![
+                Value::<CurrentNetwork>::from_str(&second_address.to_string()).unwrap(),
+                Value::<CurrentNetwork>::from_str(&second_address.to_string()).unwrap(),
+                Value::<CurrentNetwork>::from_str(&format!("{MIN_VALIDATOR_STAKE}u64")).unwrap(),
+            ]
+            .iter(),
+            None,
+            0,
+            None,
+            rng,
+        )
+        .unwrap();
+
+    // Create a block.
+    let block = ledger
+        .prepare_advance_to_next_beacon_block(
+            validators.keys().next().unwrap(),
+            vec![],
+            vec![],
+            vec![unbond_first_validator, bond_second_validator],
+            rng,
+        )
+        .unwrap();
+
+    // Ensure that no transactions are rejected.
+    assert_eq!(block.transactions().num_rejected(), 0);
+    assert_eq!(block.transactions().num_accepted(), 2);
+
+    // Check that the next block is valid.
+    ledger.check_next_block(&block, rng).unwrap();
+
+    // Check that the first validator is in the committee and the second validator is not.
+    let committee = ledger.latest_committee().unwrap();
+    assert!(!committee.is_committee_member(second_address));
+    assert!(committee.is_committee_member(first_address));
+
+    // Add the block to the ledger.
+    ledger.advance_to_next_block(&block).unwrap();
+
+    // Check that the first validator was removed and the second validator was added to the committee.
+    let committee = ledger.latest_committee().unwrap();
+    assert!(committee.is_committee_member(second_address));
+    assert!(!committee.is_committee_member(first_address));
 }
 
 #[test]
