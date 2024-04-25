@@ -121,10 +121,18 @@ function bond_public:
     // Enforce the amount is at least one credit.
     assert.eq r3 true;
 
+    // Determine if the caller is attempting to bond as a validator.
+    is.eq self.caller r0 into r4;
+    // Determine if the caller is a user account.
+    is.eq self.caller self.signer into r5;
+    // If the caller is attempting to bond as a validator, enforce the caller is a user account.
+    ternary r4 r5 true into r6;
+    assert.eq r6 true;
+
     // Bond the specified amount of microcredits to the specified validator.
-    async bond_public self.caller r0 r1 r2 into r4;
+    async bond_public self.caller r0 r1 r2 into r7;
     // Output the finalize future.
-    output r4 as credits.aleo/bond_public.future;
+    output r7 as credits.aleo/bond_public.future;
 
 finalize bond_public:
     // Input the staker's address.
