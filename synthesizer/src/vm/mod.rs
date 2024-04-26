@@ -450,6 +450,7 @@ pub(crate) mod test_helpers {
     };
     use ledger_block::{Block, Header, Metadata, Transition};
     use ledger_store::helpers::memory::ConsensusMemory;
+    use ledger_test_helpers::small_and_large_transaction_program;
     use synthesizer_program::Program;
 
     use indexmap::IndexMap;
@@ -2270,29 +2271,7 @@ finalize transfer_public_to_private:
         vm.add_next_block(&genesis).unwrap();
 
         // Deploy a program that produces large transactions.
-        let program = Program::from_str(
-            r"
-program testing.aleo;
-
-function small_transaction:
-    cast 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field into r0 as [field; 32u32];
-    cast r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 into r1 as [[field; 32u32]; 32u32];
-    cast r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 into r2 as [[field; 32u32]; 32u32];
-    cast r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 into r3 as [[field; 32u32]; 32u32];
-    output r1 as [[field; 32u32]; 32u32].public;
-    output r2 as [[field; 32u32]; 32u32].public;
-    output r3 as [[field; 32u32]; 32u32].public;
-
-function large_transaction:
-    cast 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field into r0 as [field; 32u32];
-    cast r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 into r1 as [[field; 32u32]; 32u32];
-    cast r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 into r2 as [[field; 32u32]; 32u32];
-    cast r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 into r3 as [[field; 32u32]; 32u32];
-    cast r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 into r4 as [[field; 32u32]; 32u32];
-    output r1 as [[field; 32u32]; 32u32].public;
-    output r2 as [[field; 32u32]; 32u32].public;
-    output r3 as [[field; 32u32]; 32u32].public;
-    output r4 as [[field; 32u32]; 32u32].public;").unwrap();
+        let program = small_and_large_transaction_program();
 
         // Deploy the program.
         let deployment = vm.deploy(&caller_private_key, &program, None, 0, None, rng).unwrap();
