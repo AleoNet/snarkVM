@@ -158,7 +158,12 @@ impl<N: Network> Process<N> {
         for function_name in program.functions().keys() {
             // Load the verifying key.
             let verifying_key = N::get_credits_verifying_key(function_name.to_string())?;
-            stack.insert_verifying_key(function_name, VerifyingKey::new(verifying_key.clone()))?;
+            // Retrieve the number of public and private variables.
+            // Note: This number does *NOT* include the number of constants. This is safe because
+            // this program is never deployed, as it is a first-class citizen of the protocol.
+            let num_variables = verifying_key.circuit_info.num_public_and_private_variables as u64;
+            // Insert the verifying key.
+            stack.insert_verifying_key(function_name, VerifyingKey::new(verifying_key.clone(), num_variables))?;
             lap!(timer, "Load verifying key for {function_name}");
         }
         lap!(timer, "Load circuit keys");

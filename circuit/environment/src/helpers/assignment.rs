@@ -85,9 +85,14 @@ impl<F: PrimeField> AssignmentLC<F> {
 /// and constraint assignments.
 #[derive(Clone, Debug)]
 pub struct Assignment<F: PrimeField> {
+    /// The public variables.
     public: Arc<[(Index, F)]>,
+    /// The private variables.
     private: Arc<[(Index, F)]>,
+    /// The constraints.
     constraints: Arc<[(AssignmentLC<F>, AssignmentLC<F>, AssignmentLC<F>)]>,
+    /// The number of constants, public, and private variables in the assignment.
+    num_variables: u64,
 }
 
 impl<F: PrimeField> From<crate::R1CS<F>> for Assignment<F> {
@@ -104,6 +109,7 @@ impl<F: PrimeField> From<crate::R1CS<F>> for Assignment<F> {
                 let (a, b, c) = constraint.to_terms();
                 (a.into(), b.into(), c.into())
             })),
+            num_variables: r1cs.num_variables(),
         }
     }
 }
@@ -132,6 +138,11 @@ impl<F: PrimeField> Assignment<F> {
     /// Returns the number of private variables in the assignment.
     pub fn num_private(&self) -> u64 {
         self.private.len() as u64
+    }
+
+    /// Returns the number of constants, public, and private variables in the assignment.
+    pub fn num_variables(&self) -> u64 {
+        self.num_variables
     }
 
     /// Returns the number of constraints in the assignment.

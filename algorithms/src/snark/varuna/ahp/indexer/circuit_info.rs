@@ -24,8 +24,9 @@ use snarkvm_utilities::{serialize::*, ToBytes};
 pub struct CircuitInfo {
     /// The number of public inputs after padding.
     pub num_public_inputs: usize,
-    /// The total number of variables in the constraint system.
-    pub num_variables: usize,
+    /// The number of public and private variables in the constraint system.
+    /// Note: This does *NOT* include the number of constants in the constraint system.
+    pub num_public_and_private_variables: usize,
     /// The number of constraints.
     pub num_constraints: usize,
     /// The number of non-zero entries in the A matrix.
@@ -40,14 +41,14 @@ impl CircuitInfo {
     /// The maximum degree of polynomial required to represent this index in the AHP.
     pub fn max_degree<F: PrimeField, SM: SNARKMode>(&self) -> Result<usize> {
         let max_non_zero = self.num_non_zero_a.max(self.num_non_zero_b).max(self.num_non_zero_c);
-        AHPForR1CS::<F, SM>::max_degree(self.num_constraints, self.num_variables, max_non_zero)
+        AHPForR1CS::<F, SM>::max_degree(self.num_constraints, self.num_public_and_private_variables, max_non_zero)
     }
 }
 
 impl ToBytes for CircuitInfo {
     fn write_le<W: Write>(&self, mut w: W) -> Result<(), io::Error> {
         (self.num_public_inputs as u64).write_le(&mut w)?;
-        (self.num_variables as u64).write_le(&mut w)?;
+        (self.num_public_and_private_variables as u64).write_le(&mut w)?;
         (self.num_constraints as u64).write_le(&mut w)?;
         (self.num_non_zero_a as u64).write_le(&mut w)?;
         (self.num_non_zero_b as u64).write_le(&mut w)?;

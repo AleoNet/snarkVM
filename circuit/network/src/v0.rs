@@ -101,6 +101,29 @@ thread_local! {
 pub struct AleoV0;
 
 impl Aleo for AleoV0 {
+    /// Initializes the global constants for the Aleo environment.
+    fn initialize_global_constants() {
+        GENERATOR_G.with(|_| ());
+        ENCRYPTION_DOMAIN.with(|_| ());
+        GRAPH_KEY_DOMAIN.with(|_| ());
+        SERIAL_NUMBER_DOMAIN.with(|_| ());
+        BHP_256.with(|_| ());
+        BHP_512.with(|_| ());
+        BHP_768.with(|_| ());
+        BHP_1024.with(|_| ());
+        KECCAK_256.with(|_| ());
+        KECCAK_384.with(|_| ());
+        KECCAK_512.with(|_| ());
+        PEDERSEN_64.with(|_| ());
+        PEDERSEN_128.with(|_| ());
+        POSEIDON_2.with(|_| ());
+        POSEIDON_4.with(|_| ());
+        POSEIDON_8.with(|_| ());
+        SHA3_256.with(|_| ());
+        SHA3_384.with(|_| ());
+        SHA3_512.with(|_| ());
+    }
+
     /// Returns the encryption domain as a constant field element.
     fn encryption_domain() -> Field<Self> {
         ENCRYPTION_DOMAIN.with(|domain| domain.clone())
@@ -426,6 +449,11 @@ impl Environment for AleoV0 {
         E::num_private()
     }
 
+    /// Returns the number of constant, public, and private variables in the entire circuit.
+    fn num_variables() -> u64 {
+        E::num_variables()
+    }
+
     /// Returns the number of constraints in the entire circuit.
     fn num_constraints() -> u64 {
         E::num_constraints()
@@ -461,9 +489,14 @@ impl Environment for AleoV0 {
         E::num_nonzeros_in_scope()
     }
 
-    /// Halts the program from further synthesis, evaluation, and execution in the current environment.
-    fn halt<S: Into<String>, T>(message: S) -> T {
-        E::halt(message)
+    /// Returns the variable limit for the circuit, if one exists.
+    fn get_variable_limit() -> Option<u64> {
+        E::get_variable_limit()
+    }
+
+    /// Sets the variable limit for the circuit.
+    fn set_variable_limit(limit: Option<u64>) {
+        E::set_variable_limit(limit)
     }
 
     /// Returns the constraint limit for the circuit, if one exists.
@@ -474,6 +507,11 @@ impl Environment for AleoV0 {
     /// Sets the constraint limit for the circuit.
     fn set_constraint_limit(limit: Option<u64>) {
         E::set_constraint_limit(limit)
+    }
+
+    /// Halts the program from further synthesis, evaluation, and execution in the current environment.
+    fn halt<S: Into<String>, T>(message: S) -> T {
+        E::halt(message)
     }
 
     /// Returns the R1CS circuit, resetting the circuit.

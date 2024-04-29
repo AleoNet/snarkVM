@@ -119,6 +119,9 @@ pub trait Environment: 'static + Copy + Clone + fmt::Debug + fmt::Display + Eq +
     /// Returns the number of private variables in the entire environment.
     fn num_private() -> u64;
 
+    /// Returns the number of constant, public, and private variables in the entire environment.
+    fn num_variables() -> u64;
+
     /// Returns the number of constraints in the entire environment.
     fn num_constraints() -> u64;
 
@@ -156,16 +159,22 @@ pub trait Environment: 'static + Copy + Clone + fmt::Debug + fmt::Display + Eq +
         )
     }
 
-    /// Halts the program from further synthesis, evaluation, and execution in the current environment.
-    fn halt<S: Into<String>, T>(message: S) -> T {
-        <Self::Network as console::Environment>::halt(message)
-    }
+    /// Returns the variable limit for the circuit, if one exists.
+    fn get_variable_limit() -> Option<u64>;
+
+    /// Sets the variable limit for the circuit.
+    fn set_variable_limit(limit: Option<u64>);
 
     /// Returns the constraint limit for the circuit, if one exists.
     fn get_constraint_limit() -> Option<u64>;
 
     /// Sets the constraint limit for the circuit.
     fn set_constraint_limit(limit: Option<u64>);
+
+    /// Halts the program from further synthesis, evaluation, and execution in the current environment.
+    fn halt<S: Into<String>, T>(message: S) -> T {
+        <Self::Network as console::Environment>::halt(message)
+    }
 
     /// Returns the R1CS circuit, resetting the circuit.
     fn inject_r1cs(r1cs: R1CS<Self::BaseField>);

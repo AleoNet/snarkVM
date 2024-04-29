@@ -315,11 +315,11 @@ pub fn sample_fee_public(deployment_or_execution_id: Field<CurrentNetwork>, rng:
 
 /******************************************** Program *********************************************/
 
-/// Deploy a program that produces large transitions.
-pub fn small_and_large_transaction_program() -> Program<CurrentNetwork> {
+/// Deploy a program that produces large transactions under the maximum transaction size.
+pub fn small_transaction_program() -> Program<CurrentNetwork> {
     Program::from_str(
-            r"
-program testing.aleo;
+        r"
+program testing_small.aleo;
 function small_transaction:
     cast 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field into r0 as [field; 32u32];
     cast r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 into r1 as [[field; 32u32]; 32u32];
@@ -327,18 +327,24 @@ function small_transaction:
     cast r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 into r3 as [[field; 32u32]; 32u32];
     output r1 as [[field; 32u32]; 32u32].public;
     output r2 as [[field; 32u32]; 32u32].public;
-    output r3 as [[field; 32u32]; 32u32].public;
+    output r3 as [[field; 32u32]; 32u32].public;").unwrap()
+}
 
+/// Deploy a program that produces large transactions above the maximum transaction size.
+pub fn large_transaction_program() -> Program<CurrentNetwork> {
+    Program::from_str(
+        r"
+program testing_large.aleo;
 function large_transaction:
     cast 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field into r0 as [field; 32u32];
-    cast r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 into r1 as [[field; 32u32]; 32u32];
-    cast r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 into r2 as [[field; 32u32]; 32u32];
-    cast r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 into r3 as [[field; 32u32]; 32u32];
-    cast r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 into r4 as [[field; 32u32]; 32u32];
-    output r1 as [[field; 32u32]; 32u32].public;
-    output r2 as [[field; 32u32]; 32u32].public;
-    output r3 as [[field; 32u32]; 32u32].public;
-    output r4 as [[field; 32u32]; 32u32].public;").unwrap()
+    cast r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 into r1 as [[field; 32u32]; 27u32];
+    cast r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 into r2 as [[field; 32u32]; 27u32];
+    cast r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 into r3 as [[field; 32u32]; 27u32];
+    cast r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 into r4 as [[field; 32u32]; 27u32];
+    output r1 as [[field; 32u32]; 27u32].public;
+    output r2 as [[field; 32u32]; 27u32].public;
+    output r3 as [[field; 32u32]; 27u32].public;
+    output r4 as [[field; 32u32]; 27u32].public;").unwrap()
 }
 
 /****************************************** Transaction *******************************************/
@@ -389,7 +395,7 @@ pub fn sample_large_execution_transaction(rng: &mut TestRng) -> Transaction<Curr
     let execution = INSTANCE
         .get_or_init(|| {
             // Initialize a program that produces large transactions.
-            let program = small_and_large_transaction_program();
+            let program = large_transaction_program();
 
             // Construct the process.
             let mut process = synthesizer_process::Process::load().unwrap();
@@ -403,7 +409,7 @@ pub fn sample_large_execution_transaction(rng: &mut TestRng) -> Transaction<Curr
             let authorization = process
                 .authorize::<CurrentAleo, _>(
                     &private_key,
-                    "testing.aleo",
+                    "testing_large.aleo",
                     "large_transaction",
                     Vec::<Value<CurrentNetwork>>::new().iter(),
                     rng,

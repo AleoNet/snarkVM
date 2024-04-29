@@ -133,7 +133,7 @@ impl<F: PrimeField, SM: SNARKMode> Circuit<F, SM> {
 
     /// The size of the variable domain in this R1CS instance.
     pub fn variable_domain_size(&self) -> Result<usize> {
-        Ok(crate::fft::EvaluationDomain::<F>::new(self.index_info.num_variables)
+        Ok(crate::fft::EvaluationDomain::<F>::new(self.index_info.num_public_and_private_variables)
             .ok_or(anyhow!("Cannot create EvaluationDomain"))?
             .size())
     }
@@ -197,8 +197,9 @@ impl<F: PrimeField, SM: SNARKMode> CanonicalDeserialize for Circuit<F, SM> {
         let index_info: CircuitInfo = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
         let constraint_domain_size = EvaluationDomain::<F>::compute_size_of_domain(index_info.num_constraints)
             .ok_or(SerializationError::InvalidData)?;
-        let variable_domain_size = EvaluationDomain::<F>::compute_size_of_domain(index_info.num_variables)
-            .ok_or(SerializationError::InvalidData)?;
+        let variable_domain_size =
+            EvaluationDomain::<F>::compute_size_of_domain(index_info.num_public_and_private_variables)
+                .ok_or(SerializationError::InvalidData)?;
         let non_zero_a_domain_size = EvaluationDomain::<F>::compute_size_of_domain(index_info.num_non_zero_a)
             .ok_or(SerializationError::InvalidData)?;
         let non_zero_b_domain_size = EvaluationDomain::<F>::compute_size_of_domain(index_info.num_non_zero_b)

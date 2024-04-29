@@ -168,7 +168,7 @@ impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
 
         let index_info = CircuitInfo {
             num_public_inputs: num_padded_public_variables,
-            num_variables,
+            num_public_and_private_variables: num_variables,
             num_constraints,
             num_non_zero_a,
             num_non_zero_b,
