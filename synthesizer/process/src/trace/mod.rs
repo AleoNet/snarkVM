@@ -313,7 +313,7 @@ impl<N: Network> Trace<N> {
             // Retrieve the number of public and private variables.
             // Note: This number does *NOT* include the number of constants. This is safe because
             // this program is never deployed, as it is a first-class citizen of the protocol.
-            let num_variables = verifying_key.circuit_info.num_variables as u64;
+            let num_variables = verifying_key.circuit_info.num_public_and_private_variables as u64;
             // Insert the inclusion verifier inputs.
             verifier_inputs.push((VerifyingKey::<N>::new(verifying_key, num_variables), batch_inclusion_inputs));
         }

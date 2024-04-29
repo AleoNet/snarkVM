@@ -107,7 +107,7 @@ impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
 
     /// Get all the strict degree bounds enforced in the AHP.
     pub fn get_degree_bounds(info: &CircuitInfo) -> Result<[usize; 4]> {
-        let num_variables = info.num_variables;
+        let num_variables = info.num_public_and_private_variables;
         let num_non_zero_a = info.num_non_zero_a;
         let num_non_zero_b = info.num_non_zero_b;
         let num_non_zero_c = info.num_non_zero_c;

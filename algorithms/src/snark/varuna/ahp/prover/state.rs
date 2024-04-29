@@ -122,9 +122,9 @@ impl<'a, F: PrimeField, SM: SNARKMode> State<'a, F, SM> {
                     EvaluationDomain::new(index_info.num_constraints).ok_or(SynthesisError::PolyTooLarge)?;
                 max_num_constraints = max_num_constraints.max(index_info.num_constraints);
 
-                let variable_domain =
-                    EvaluationDomain::new(index_info.num_variables).ok_or(SynthesisError::PolyTooLarge)?;
-                max_num_variables = max_num_variables.max(index_info.num_variables);
+                let variable_domain = EvaluationDomain::new(index_info.num_public_and_private_variables)
+                    .ok_or(SynthesisError::PolyTooLarge)?;
+                max_num_variables = max_num_variables.max(index_info.num_public_and_private_variables);
 
                 let non_zero_domains = AHPForR1CS::<_, SM>::cmp_non_zero_domains(index_info, max_non_zero_domain)?;
                 max_non_zero_domain = non_zero_domains.max_non_zero_domain;

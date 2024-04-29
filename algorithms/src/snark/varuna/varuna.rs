@@ -659,7 +659,7 @@ where
         let mut circuit_ids = Vec::with_capacity(keys_to_inputs.len());
         for (&vk, &public_inputs_i) in keys_to_inputs.iter() {
             max_num_constraints = max_num_constraints.max(vk.circuit_info.num_constraints);
-            max_num_variables = max_num_variables.max(vk.circuit_info.num_variables);
+            max_num_variables = max_num_variables.max(vk.circuit_info.num_public_and_private_variables);
 
             let non_zero_domains = AHPForR1CS::<_, SM>::cmp_non_zero_domains(&vk.circuit_info, max_non_zero_domain)?;
             max_non_zero_domain = non_zero_domains.max_non_zero_domain;

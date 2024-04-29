@@ -121,7 +121,8 @@ impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
                         }
 
                         if circuit.index_info.num_constraints != num_constraints
-                            || circuit.index_info.num_variables != (num_public_variables + num_private_variables)
+                            || circuit.index_info.num_public_and_private_variables
+                                != (num_public_variables + num_private_variables)
                         {
                             return Err(AHPError::InstanceDoesNotMatchIndex);
                         }

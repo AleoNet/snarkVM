@@ -71,7 +71,8 @@ impl<TargetField: PrimeField, SM: SNARKMode> AHPForR1CS<TargetField, SM> {
             end_timer!(constraint_domain_time);
 
             let variable_domain_time = start_timer!(|| format!("Constructing constraint domain for {circuit_id}"));
-            let variable_domain = EvaluationDomain::new(circuit_info.num_variables).ok_or(AHPError::PolyTooLarge)?;
+            let variable_domain =
+                EvaluationDomain::new(circuit_info.num_public_and_private_variables).ok_or(AHPError::PolyTooLarge)?;
             end_timer!(variable_domain_time);
 
             let non_zero_a_time = start_timer!(|| format!("Constructing non-zero-a domain for {circuit_id}"));

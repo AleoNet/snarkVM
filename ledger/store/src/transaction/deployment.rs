@@ -345,7 +345,7 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
             // Retrieve the number of public and private variables.
             // Note: This number does *NOT* include the number of constants. This is safe because
             // this program is never deployed, as it is a first-class citizen of the protocol.
-            let num_variables = verifying_key.circuit_info.num_variables as u64;
+            let num_variables = verifying_key.circuit_info.num_public_and_private_variables as u64;
             // Return the verifying key.
             return Ok(Some(VerifyingKey::new(verifying_key.clone(), num_variables)));
         }
