@@ -59,6 +59,8 @@ use rayon::prelude::*;
 
 /// The arity of the Merkle tree.
 const ARITY: u8 = 8;
+/// The size of the cache.
+const CACHE_SIZE: usize = 1 << 10;
 
 /// The Merkle tree for the puzzle.
 type MerkleTree = KaryMerkleTree<Sha3_256, Sha3_256, 8, { ARITY }>;
@@ -90,7 +92,7 @@ impl<N: Network> Puzzle<N> {
     pub fn new<P: PuzzleTrait<N> + 'static>() -> Self {
         Self {
             inner: Arc::new(P::new()),
-            proof_target_cache: Arc::new(RwLock::new(LruCache::new(NonZeroUsize::new(1 << 10).unwrap()))),
+            proof_target_cache: Arc::new(RwLock::new(LruCache::new(NonZeroUsize::new(CACHE_SIZE).unwrap()))),
         }
     }
 
@@ -124,15 +126,8 @@ impl<N: Network> Puzzle<N> {
 
         // Construct the leaves of the Merkle tree.
         let leaves = self.get_leaves(solution)?;
-        // Construct the Merkle tree.
-        let merkle_tree = MerkleTree::new(&Sha3_256::default(), &Sha3_256::default(), &leaves)?;
-        // Retrieve the Merkle tree root.
-        let root = merkle_tree.root();
-        // Truncate to a u64.
-        let proof_target = match *U64::<N>::from_bits_be(&root[0..64])? {
-            0 => u64::MAX,
-            value => u64::MAX / value,
-        };
+        // Get the proof target.
+        let proof_target = Self::leaves_to_proof_target(&leaves)?;
 
         // Insert the proof target into the cache.
         self.proof_target_cache.write().put(solution.id(), proof_target);
@@ -167,15 +162,8 @@ impl<N: Network> Puzzle<N> {
             let targets_subset = cfg_iter!(leaves)
                 .zip(cfg_keys!(solutions_subset))
                 .map(|(leaves, solution_id)| {
-                    // Construct the Merkle tree.
-                    let merkle_tree = MerkleTree::new(&Sha3_256::default(), &Sha3_256::default(), leaves)?;
-                    // Retrieve the Merkle tree root.
-                    let root = merkle_tree.root();
-                    // Truncate to a u64.
-                    let proof_target = match *U64::<N>::from_bits_be(&root[0..64])? {
-                        0 => u64::MAX,
-                        value => u64::MAX / value,
-                    };
+                    // Get the proof target.
+                    let proof_target = Self::leaves_to_proof_target(leaves)?;
                     // Insert the proof target into the cache.
                     self.proof_target_cache.write().put(*solution_id, proof_target);
                     // Return the proof target.
@@ -184,7 +172,7 @@ impl<N: Network> Puzzle<N> {
                 .collect::<Result<IndexMap<_, _>>>()?;
 
             // Recombine the proof targets.
-            for (i, id, _) in to_compute.iter() {
+            for (i, id, _) in &to_compute {
                 targets[*i] = targets_subset[id];
             }
         }
@@ -286,6 +274,19 @@ impl<N: Network> Puzzle<N> {
         })?;
         finish!(timer, "Verify each solution");
         Ok(())
+    }
+
+    /// A helper function that takes leaves of a Merkle tree and returns the proof target.
+    fn leaves_to_proof_target(leaves: &[Vec<bool>]) -> Result<u64> {
+        // Construct the Merkle tree.
+        let merkle_tree = MerkleTree::new(&Sha3_256::default(), &Sha3_256::default(), leaves)?;
+        // Retrieve the Merkle tree root.
+        let root = merkle_tree.root();
+        // Truncate to a u64.
+        match *U64::<N>::from_bits_be(&root[0..64])? {
+            0 => Ok(u64::MAX),
+            value => Ok(u64::MAX / value),
+        }
     }
 }
 

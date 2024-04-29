@@ -15,7 +15,7 @@
 use console::{
     account::{Address, PrivateKey},
     prelude::*,
-    program::{Ciphertext, Literal, Plaintext, ProgramOwner, Record},
+    program::{Ciphertext, Literal, Plaintext, ProgramOwner, Record, Value},
     types::Field,
 };
 use ledger_block::{
@@ -313,6 +313,34 @@ pub fn sample_fee_public(deployment_or_execution_id: Field<CurrentNetwork>, rng:
     Fee::from_str(&fee.to_string()).unwrap()
 }
 
+/******************************************** Program *********************************************/
+
+/// Deploy a program that produces large transitions.
+pub fn small_and_large_transaction_program() -> Program<CurrentNetwork> {
+    Program::from_str(
+            r"
+program testing.aleo;
+function small_transaction:
+    cast 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field into r0 as [field; 32u32];
+    cast r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 into r1 as [[field; 32u32]; 32u32];
+    cast r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 into r2 as [[field; 32u32]; 32u32];
+    cast r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 into r3 as [[field; 32u32]; 32u32];
+    output r1 as [[field; 32u32]; 32u32].public;
+    output r2 as [[field; 32u32]; 32u32].public;
+    output r3 as [[field; 32u32]; 32u32].public;
+
+function large_transaction:
+    cast 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field into r0 as [field; 32u32];
+    cast r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 into r1 as [[field; 32u32]; 32u32];
+    cast r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 into r2 as [[field; 32u32]; 32u32];
+    cast r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 into r3 as [[field; 32u32]; 32u32];
+    cast r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 into r4 as [[field; 32u32]; 32u32];
+    output r1 as [[field; 32u32]; 32u32].public;
+    output r2 as [[field; 32u32]; 32u32].public;
+    output r3 as [[field; 32u32]; 32u32].public;
+    output r4 as [[field; 32u32]; 32u32].public;").unwrap()
+}
+
 /****************************************** Transaction *******************************************/
 
 /// Samples a random deployment transaction with a private or public fee.
@@ -349,6 +377,61 @@ pub fn sample_execution_transaction_with_fee(is_fee_private: bool, rng: &mut Tes
         true => crate::sample_fee_private(execution_id, rng),
         false => crate::sample_fee_public(execution_id, rng),
     };
+
+    // Construct an execution transaction.
+    Transaction::from_execution(execution, Some(fee)).unwrap()
+}
+
+/// Samples a large transaction.
+pub fn sample_large_execution_transaction(rng: &mut TestRng) -> Transaction<CurrentNetwork> {
+    static INSTANCE: once_cell::sync::OnceCell<Execution<CurrentNetwork>> = once_cell::sync::OnceCell::new();
+
+    let execution = INSTANCE
+        .get_or_init(|| {
+            // Initialize a program that produces large transactions.
+            let program = small_and_large_transaction_program();
+
+            // Construct the process.
+            let mut process = synthesizer_process::Process::load().unwrap();
+            // Add the program.
+            process.add_program(&program).unwrap();
+
+            // Initialize a private key.
+            let private_key = PrivateKey::new(rng).unwrap();
+
+            // Authorize the function.
+            let authorization = process
+                .authorize::<CurrentAleo, _>(
+                    &private_key,
+                    "testing.aleo",
+                    "large_transaction",
+                    Vec::<Value<CurrentNetwork>>::new().iter(),
+                    rng,
+                )
+                .unwrap();
+            // Execute the function.
+            let (_, mut trace) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
+
+            // Initialize a new block store.
+            let block_store =
+                ledger_store::BlockStore::<CurrentNetwork, ledger_store::helpers::memory::BlockMemory<_>>::open(None)
+                    .unwrap();
+
+            // Prepare the assignments.
+            trace.prepare(ledger_query::Query::from(block_store)).unwrap();
+            // Compute the proof and construct the execution.
+            let execution = trace.prove_execution::<CurrentAleo, _>("testing.aleo", rng).unwrap();
+            // Reconstruct the execution from bytes.
+            // This is a hack to get around Rust dependency resolution.
+            Execution::from_bytes_le(&execution.to_bytes_le().unwrap()).unwrap()
+        })
+        .clone();
+
+    // Compute the execution ID.
+    let execution_id = execution.to_execution_id().unwrap();
+
+    // Sample the fee.
+    let fee = crate::sample_fee_public(execution_id, rng);
 
     // Construct an execution transaction.
     Transaction::from_execution(execution, Some(fee)).unwrap()
