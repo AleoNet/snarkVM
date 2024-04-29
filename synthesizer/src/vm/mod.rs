@@ -1032,7 +1032,7 @@ function a:
             // Note: `deployment_transaction_ids` is sorted lexicographically by transaction ID, so the order may change if we update internal methods.
             assert_eq!(
                 deployment_transaction_ids,
-                vec![deployment_1.id(), deployment_4.id(), deployment_3.id(), deployment_2.id()],
+                vec![deployment_4.id(), deployment_3.id(), deployment_2.id(), deployment_1.id()],
                 "Update me if serialization has changed"
             );
         }
@@ -1963,7 +1963,7 @@ finalize transfer_public:
             Some(Value::Plaintext(Plaintext::Literal(Literal::U64(balance), _))) => *balance,
             _ => panic!("Expected a valid balance"),
         };
-        assert_eq!(balance, 182_499_997_483_583, "Update me if the initial balance changes.");
+        assert_eq!(balance, 182_499_996_914_808, "Update me if the initial balance changes.");
 
         // Check the balance of the `credits_wrapper` program.
         let balance = match vm
@@ -2015,7 +2015,7 @@ finalize transfer_public:
             Some(Value::Plaintext(Plaintext::Literal(Literal::U64(balance), _))) => *balance,
             _ => panic!("Expected a valid balance"),
         };
-        assert_eq!(balance, 182_499_997_431_058, "Update me if the initial balance changes.");
+        assert_eq!(balance, 182_499_996_862_283, "Update me if the initial balance changes.");
 
         // Check the balance of the `credits_wrapper` program.
         let balance = match vm
@@ -2154,7 +2154,7 @@ finalize transfer_public_as_signer:
             Some(Value::Plaintext(Plaintext::Literal(Literal::U64(balance), _))) => *balance,
             _ => panic!("Expected a valid balance"),
         };
-        assert_eq!(balance, 182_499_997_412_068, "Update me if the initial balance changes.");
+        assert_eq!(balance, 182_499_996_821_793, "Update me if the initial balance changes.");
 
         // Check the `credits_wrapper` program does not have any balance.
         let balance = vm
@@ -2309,7 +2309,7 @@ finalize transfer_public_to_private:
             _ => panic!("Expected a valid balance"),
         };
 
-        assert_eq!(balance, 182_499_996_924_681, "Update me if the initial balance changes.");
+        assert_eq!(balance, 182_499_996_071_881, "Update me if the initial balance changes.");
 
         // Check that the `credits_wrapper` program has a balance of 0.
         let balance = match vm
@@ -2393,6 +2393,13 @@ finalize transfer_public_to_private:
 
         // Add the deployment to a block and update the VM.
         let block = sample_next_block(&vm, &caller_private_key, &[deployment], rng).unwrap();
+
+        println!(
+            "@@@@@@@block num accepted {}, num rejected {}, num aborted {}",
+            block.transactions().num_accepted(),
+            block.transactions().num_rejected(),
+            block.aborted_transaction_ids().len()
+        );
 
         // Update the VM.
         vm.add_next_block(&block).unwrap();
