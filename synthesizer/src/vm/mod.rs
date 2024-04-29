@@ -450,7 +450,7 @@ pub(crate) mod test_helpers {
     };
     use ledger_block::{Block, Header, Metadata, Transition};
     use ledger_store::helpers::memory::ConsensusMemory;
-    use ledger_test_helpers::small_and_large_transaction_program;
+    use ledger_test_helpers::{large_transaction_program, small_transaction_program};
     use synthesizer_program::Program;
 
     use indexmap::IndexMap;
@@ -2385,8 +2385,8 @@ finalize transfer_public_to_private:
         // Update the VM.
         vm.add_next_block(&genesis).unwrap();
 
-        // Deploy a program that produces large transactions.
-        let program = small_and_large_transaction_program();
+        // Deploy a program that produces small transactions.
+        let program = small_transaction_program();
 
         // Deploy the program.
         let deployment = vm.deploy(&caller_private_key, &program, None, 0, None, rng).unwrap();
@@ -2394,12 +2394,17 @@ finalize transfer_public_to_private:
         // Add the deployment to a block and update the VM.
         let block = sample_next_block(&vm, &caller_private_key, &[deployment], rng).unwrap();
 
-        println!(
-            "@@@@@@@block num accepted {}, num rejected {}, num aborted {}",
-            block.transactions().num_accepted(),
-            block.transactions().num_rejected(),
-            block.aborted_transaction_ids().len()
-        );
+        // Update the VM.
+        vm.add_next_block(&block).unwrap();
+
+        // Deploy a program that produces large transactions.
+        let program = large_transaction_program();
+
+        // Deploy the program.
+        let deployment = vm.deploy(&caller_private_key, &program, None, 0, None, rng).unwrap();
+
+        // Add the deployment to a block and update the VM.
+        let block = sample_next_block(&vm, &caller_private_key, &[deployment], rng).unwrap();
 
         // Update the VM.
         vm.add_next_block(&block).unwrap();
@@ -2408,7 +2413,7 @@ finalize transfer_public_to_private:
         let transaction = vm
             .execute(
                 &caller_private_key,
-                ("testing.aleo", "small_transaction"),
+                ("testing_small.aleo", "small_transaction"),
                 Vec::<Value<CurrentNetwork>>::new().iter(),
                 None,
                 0,
@@ -2433,7 +2438,7 @@ finalize transfer_public_to_private:
         let transaction = vm
             .execute(
                 &caller_private_key,
-                ("testing.aleo", "large_transaction"),
+                ("testing_large.aleo", "large_transaction"),
                 Vec::<Value<CurrentNetwork>>::new().iter(),
                 None,
                 0,
