@@ -426,6 +426,11 @@ impl Environment for AleoV0 {
         E::num_private()
     }
 
+    /// Returns the number of constant, public, and private variables in the entire circuit.
+    fn num_variables() -> u64 {
+        E::num_variables()
+    }
+
     /// Returns the number of constraints in the entire circuit.
     fn num_constraints() -> u64 {
         E::num_constraints()
@@ -461,9 +466,14 @@ impl Environment for AleoV0 {
         E::num_nonzeros_in_scope()
     }
 
-    /// Halts the program from further synthesis, evaluation, and execution in the current environment.
-    fn halt<S: Into<String>, T>(message: S) -> T {
-        E::halt(message)
+    /// Returns the variable limit for the circuit, if one exists.
+    fn get_variable_limit() -> Option<u64> {
+        E::get_variable_limit()
+    }
+
+    /// Sets the variable limit for the circuit.
+    fn set_variable_limit(limit: Option<u64>) {
+        E::set_variable_limit(limit)
     }
 
     /// Returns the constraint limit for the circuit, if one exists.
@@ -474,6 +484,11 @@ impl Environment for AleoV0 {
     /// Sets the constraint limit for the circuit.
     fn set_constraint_limit(limit: Option<u64>) {
         E::set_constraint_limit(limit)
+    }
+
+    /// Halts the program from further synthesis, evaluation, and execution in the current environment.
+    fn halt<S: Into<String>, T>(message: S) -> T {
+        E::halt(message)
     }
 
     /// Returns the R1CS circuit, resetting the circuit.

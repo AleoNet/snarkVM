@@ -1322,6 +1322,48 @@ function do:
     }
 
     #[test]
+    fn test_deployment_num_constant_overload() {
+        let rng = &mut TestRng::default();
+
+        // Initialize a private key.
+        let private_key = sample_genesis_private_key(rng);
+
+        // Initialize the genesis block.
+        let genesis = sample_genesis_block(rng);
+
+        // Initialize the VM.
+        let vm = sample_vm();
+        // Update the VM.
+        vm.add_next_block(&genesis).unwrap();
+
+        // Deploy the base program.
+        let program = Program::from_str(
+            r"
+program synthesis_num_constants.aleo;
+function do:
+    cast 0u32 0u32 0u32 0u32 0u32 0u32 0u32 0u32 0u32 0u32 0u32 0u32 0u32 0u32 0u32 0u32 0u32 0u32 0u32 0u32 0u32 0u32 0u32 0u32 0u32 0u32 0u32 0u32 0u32 0u32 0u32 0u32 into r0 as [u32; 32u32];
+    cast r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 into r1 as [[u32; 32u32]; 32u32];
+    cast r1 r1 r1 r1 r1 into r2 as [[[u32; 32u32]; 32u32]; 5u32];
+    hash.bhp1024 r2 into r3 as u32;
+    output r3 as u32.private;
+function do2:
+    cast 0u32 0u32 0u32 0u32 0u32 0u32 0u32 0u32 0u32 0u32 0u32 0u32 0u32 0u32 0u32 0u32 0u32 0u32 0u32 0u32 0u32 0u32 0u32 0u32 0u32 0u32 0u32 0u32 0u32 0u32 0u32 0u32 into r0 as [u32; 32u32];
+    cast r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 r0 into r1 as [[u32; 32u32]; 32u32];
+    cast r1 r1 r1 r1 r1 into r2 as [[[u32; 32u32]; 32u32]; 5u32];
+    hash.bhp1024 r2 into r3 as u32;
+    output r3 as u32.private;",
+        )
+            .unwrap();
+
+        // Create the deployment transaction.
+        let deployment = vm.deploy(&private_key, &program, None, 0, None, rng).unwrap();
+
+        // Verify the deployment transaction. It should fail because there are too many constants.
+        let check_tx_res = vm.check_transaction(&deployment, None, rng);
+        assert!(check_tx_res.is_err());
+    }
+
+    #[test]
     fn test_deployment_synthesis_overreport() {
         let rng = &mut TestRng::default();
 
@@ -1359,9 +1401,9 @@ function do:
         // Increase the number of constraints in the verifying keys.
         let mut vks_with_overreport = Vec::with_capacity(deployment.verifying_keys().len());
         for (id, (vk, cert)) in deployment.verifying_keys() {
-            let mut vk = vk.deref().clone();
-            vk.circuit_info.num_constraints += 1;
-            let vk = VerifyingKey::new(Arc::new(vk));
+            let mut vk_deref = vk.deref().clone();
+            vk_deref.circuit_info.num_constraints += 1;
+            let vk = VerifyingKey::new(Arc::new(vk_deref), vk.num_variables());
             vks_with_overreport.push((*id, (vk, cert.clone())));
         }
 
@@ -1423,9 +1465,9 @@ function do:
         // Decrease the number of constraints in the verifying keys.
         let mut vks_with_underreport = Vec::with_capacity(deployment.verifying_keys().len());
         for (id, (vk, cert)) in deployment.verifying_keys() {
-            let mut vk = vk.deref().clone();
-            vk.circuit_info.num_constraints -= 2;
-            let vk = VerifyingKey::new(Arc::new(vk));
+            let mut vk_deref = vk.deref().clone();
+            vk_deref.circuit_info.num_constraints -= 2;
+            let vk = VerifyingKey::new(Arc::new(vk_deref), vk.num_variables());
             vks_with_underreport.push((*id, (vk, cert.clone())));
         }
 
@@ -1435,6 +1477,79 @@ function do:
         let adjusted_transaction = Transaction::Deploy(txid, program_owner, Box::new(adjusted_deployment), fee);
 
         // Verify the deployment transaction. It should error when enforcing the first constraint over the vk limit.
+        let result = vm.check_transaction(&adjusted_transaction, None, rng);
+        assert!(result.is_err());
+
+        // Create a standard transaction
+        // Prepare the inputs.
+        let inputs = [
+            Value::<CurrentNetwork>::from_str(&address.to_string()).unwrap(),
+            Value::<CurrentNetwork>::from_str("1u64").unwrap(),
+        ]
+        .into_iter();
+
+        // Execute.
+        let transaction =
+            vm.execute(&private_key, ("credits.aleo", "transfer_public"), inputs, None, 0, None, rng).unwrap();
+
+        // Check that the deployment transaction will be aborted if injected into a block.
+        let block = sample_next_block(&vm, &private_key, &[transaction, adjusted_transaction.clone()], rng).unwrap();
+
+        // Check that the block aborts the deployment transaction.
+        assert_eq!(block.aborted_transaction_ids(), &vec![adjusted_transaction.id()]);
+
+        // Update the VM.
+        vm.add_next_block(&block).unwrap();
+    }
+
+    #[test]
+    fn test_deployment_variable_underreport() {
+        let rng = &mut TestRng::default();
+
+        // Initialize a private key.
+        let private_key = sample_genesis_private_key(rng);
+        let address = Address::try_from(&private_key).unwrap();
+
+        // Initialize the genesis block.
+        let genesis = sample_genesis_block(rng);
+
+        // Initialize the VM.
+        let vm = sample_vm();
+        // Update the VM.
+        vm.add_next_block(&genesis).unwrap();
+
+        // Deploy the base program.
+        let program = Program::from_str(
+            r"
+program synthesis_underreport.aleo;
+function do:
+    input r0 as u32.private;
+    add r0 r0 into r1;
+    output r1 as u32.public;",
+        )
+        .unwrap();
+
+        // Create the deployment transaction.
+        let transaction = vm.deploy(&private_key, &program, None, 0, None, rng).unwrap();
+
+        // Destructure the deployment transaction.
+        let Transaction::Deploy(txid, program_owner, deployment, fee) = transaction else {
+            panic!("Expected a deployment transaction");
+        };
+
+        // Decrease the number of reported variables in the verifying keys.
+        let mut vks_with_underreport = Vec::with_capacity(deployment.verifying_keys().len());
+        for (id, (vk, cert)) in deployment.verifying_keys() {
+            let vk = VerifyingKey::new(Arc::new(vk.deref().clone()), vk.num_variables() - 2);
+            vks_with_underreport.push((*id, (vk.clone(), cert.clone())));
+        }
+
+        // Create a new deployment transaction with the underreported verifying keys.
+        let adjusted_deployment =
+            Deployment::new(deployment.edition(), deployment.program().clone(), vks_with_underreport).unwrap();
+        let adjusted_transaction = Transaction::Deploy(txid, program_owner, Box::new(adjusted_deployment), fee);
+
+        // Verify the deployment transaction. It should error when synthesizing the first variable over the vk limit.
         let result = vm.check_transaction(&adjusted_transaction, None, rng);
         assert!(result.is_err());
 

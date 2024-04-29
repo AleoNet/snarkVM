@@ -24,7 +24,8 @@ use snarkvm_utilities::{serialize::*, ToBytes};
 pub struct CircuitInfo {
     /// The number of public inputs after padding.
     pub num_public_inputs: usize,
-    /// The total number of variables in the constraint system.
+    /// The number of public and private variables in the constraint system.
+    /// Note: This does *NOT* include the number of constants in the constraint system.
     pub num_variables: usize,
     /// The number of constraints.
     pub num_constraints: usize,

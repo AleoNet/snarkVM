@@ -40,7 +40,10 @@ impl<N: Network> UniversalSRS<N> {
         #[cfg(feature = "aleo-cli")]
         println!("{}", format!(" • Built '{function_name}' (in {} ms)", timer.elapsed().as_millis()).dimmed());
 
-        Ok((ProvingKey::new(Arc::new(proving_key)), VerifyingKey::new(Arc::new(verifying_key))))
+        Ok((
+            ProvingKey::new(Arc::new(proving_key)),
+            VerifyingKey::new(Arc::new(verifying_key), assignment.num_variables()),
+        ))
     }
 }
 

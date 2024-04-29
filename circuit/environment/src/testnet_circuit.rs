@@ -22,6 +22,7 @@ use core::{
 type Field = <console::TestnetV0 as console::Environment>::Field;
 
 thread_local! {
+    static VARIABLE_LIMIT: Cell<Option<u64>> = Cell::new(None);
     static CONSTRAINT_LIMIT: Cell<Option<u64>> = Cell::new(None);
     pub(super) static TESTNET_CIRCUIT: RefCell<R1CS<Field>> = RefCell::new(R1CS::new());
     static IN_WITNESS: Cell<bool> = Cell::new(false);
@@ -53,6 +54,14 @@ impl Environment for TestnetCircuit {
         IN_WITNESS.with(|in_witness| {
             // Ensure we are not in witness mode.
             if !in_witness.get() {
+                // Ensure that we do not surpass the variable limit for the circuit.
+                VARIABLE_LIMIT.with(|variable_limit| {
+                    if let Some(limit) = variable_limit.get() {
+                        if Self::num_variables() > limit {
+                            Self::halt(format!("Surpassed the variable limit ({limit})"))
+                        }
+                    }
+                });
                 TESTNET_CIRCUIT.with(|circuit| match mode {
                     Mode::Constant => circuit.borrow_mut().new_constant(value),
                     Mode::Public => circuit.borrow_mut().new_public(value),
@@ -192,6 +201,11 @@ impl Environment for TestnetCircuit {
         TESTNET_CIRCUIT.with(|circuit| circuit.borrow().num_private())
     }
 
+    /// Returns the number of constant, public, and private variables in the entire circuit.
+    fn num_variables() -> u64 {
+        TESTNET_CIRCUIT.with(|circuit| circuit.borrow().num_variables())
+    }
+
     /// Returns the number of constraints in the entire circuit.
     fn num_constraints() -> u64 {
         TESTNET_CIRCUIT.with(|circuit| circuit.borrow().num_constraints())
@@ -227,11 +241,14 @@ impl Environment for TestnetCircuit {
         TESTNET_CIRCUIT.with(|circuit| circuit.borrow().num_nonzeros_in_scope())
     }
 
-    /// Halts the program from further synthesis, evaluation, and execution in the current environment.
-    fn halt<S: Into<String>, T>(message: S) -> T {
-        let error = message.into();
-        // eprintln!("{}", &error);
-        panic!("{}", &error)
+    /// Returns the variable limit for the circuit, if one exists.
+    fn get_variable_limit() -> Option<u64> {
+        VARIABLE_LIMIT.with(|current_limit| current_limit.get())
+    }
+
+    /// Sets the variable limit for the circuit.
+    fn set_variable_limit(limit: Option<u64>) {
+        VARIABLE_LIMIT.with(|current_limit| current_limit.replace(limit));
     }
 
     /// Returns the constraint limit for the circuit, if one exists.
@@ -244,6 +261,13 @@ impl Environment for TestnetCircuit {
         CONSTRAINT_LIMIT.with(|current_limit| current_limit.replace(limit));
     }
 
+    /// Halts the program from further synthesis, evaluation, and execution in the current environment.
+    fn halt<S: Into<String>, T>(message: S) -> T {
+        let error = message.into();
+        // eprintln!("{}", &error);
+        panic!("{}", &error)
+    }
+
     /// Returns the R1CS circuit, resetting the circuit.
     fn inject_r1cs(r1cs: R1CS<Self::BaseField>) {
         TESTNET_CIRCUIT.with(|circuit| {
@@ -251,6 +275,7 @@ impl Environment for TestnetCircuit {
             assert_eq!(0, circuit.borrow().num_constants());
             assert_eq!(1, circuit.borrow().num_public());
             assert_eq!(0, circuit.borrow().num_private());
+            assert_eq!(1, circuit.borrow().num_variables());
             assert_eq!(0, circuit.borrow().num_constraints());
             // Inject the R1CS instance.
             let r1cs = circuit.replace(r1cs);
@@ -258,6 +283,7 @@ impl Environment for TestnetCircuit {
             assert_eq!(0, r1cs.num_constants());
             assert_eq!(1, r1cs.num_public());
             assert_eq!(0, r1cs.num_private());
+            assert_eq!(1, r1cs.num_variables());
             assert_eq!(0, r1cs.num_constraints());
         })
     }
@@ -275,6 +301,7 @@ impl Environment for TestnetCircuit {
             assert_eq!(0, circuit.borrow().num_constants());
             assert_eq!(1, circuit.borrow().num_public());
             assert_eq!(0, circuit.borrow().num_private());
+            assert_eq!(1, circuit.borrow().num_variables());
             assert_eq!(0, circuit.borrow().num_constraints());
             // Return the R1CS instance.
             r1cs
@@ -293,6 +320,7 @@ impl Environment for TestnetCircuit {
             assert_eq!(0, circuit.borrow().num_constants());
             assert_eq!(1, circuit.borrow().num_public());
             assert_eq!(0, circuit.borrow().num_private());
+            assert_eq!(1, circuit.borrow().num_variables());
             assert_eq!(0, circuit.borrow().num_constraints());
             // Convert the R1CS instance to an assignment.
             Assignment::from(r1cs)
@@ -311,6 +339,7 @@ impl Environment for TestnetCircuit {
             assert_eq!(0, circuit.borrow().num_constants());
             assert_eq!(1, circuit.borrow().num_public());
             assert_eq!(0, circuit.borrow().num_private());
+            assert_eq!(1, circuit.borrow().num_variables());
             assert_eq!(0, circuit.borrow().num_constraints());
         });
     }

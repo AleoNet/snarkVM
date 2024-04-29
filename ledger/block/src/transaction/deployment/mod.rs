@@ -124,6 +124,23 @@ impl<N: Network> Deployment<N> {
         &self.verifying_keys
     }
 
+    /// Returns the sum of the variable counts for all functions in this deployment.
+    pub fn num_combined_variables(&self) -> Result<u64> {
+        // Initialize the accumulator.
+        let mut num_combined_variables = 0u64;
+        // Iterate over the functions.
+        for (_, (vk, _)) in &self.verifying_keys {
+            // Add the number of variables.
+            // Note: This method must be *checked* because the claimed variable count
+            // is from the user, not the synthesizer.
+            num_combined_variables = num_combined_variables
+                .checked_add(vk.num_variables())
+                .ok_or_else(|| anyhow!("Overflow when counting variables for '{}'", self.program_id()))?;
+        }
+        // Return the number of combined variables.
+        Ok(num_combined_variables)
+    }
+
     /// Returns the sum of the constraint counts for all functions in this deployment.
     pub fn num_combined_constraints(&self) -> Result<u64> {
         // Initialize the accumulator.

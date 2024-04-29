@@ -73,8 +73,10 @@ impl<N: Network> Stack<N> {
 
         let program_id = self.program.id();
 
+        // Check that the number of combined variables does not exceed the deployment limit.
+        ensure!(deployment.num_combined_variables()? <= N::MAX_DEPLOYMENT_VARIABLES);
         // Check that the number of combined constraints does not exceed the deployment limit.
-        ensure!(deployment.num_combined_constraints()? <= N::MAX_DEPLOYMENT_LIMIT);
+        ensure!(deployment.num_combined_constraints()? <= N::MAX_DEPLOYMENT_CONSTRAINTS);
 
         // Construct the call stacks and assignments used to verify the certificates.
         let mut call_stacks = Vec::with_capacity(deployment.verifying_keys().len());
@@ -137,12 +139,15 @@ impl<N: Network> Stack<N> {
                 // Since a deployment must always pay non-zero fee, it must always have at least one constraint.
                 bail!("The constraint limit of 0 for function '{}' is invalid", function.name());
             };
+            // Retrieve the variable limit.
+            let variable_limit = verifying_key.num_variables();
             // Initialize the call stack.
             let call_stack = CallStack::CheckDeployment(
                 vec![request],
                 burner_private_key,
                 assignments.clone(),
                 Some(constraint_limit as u64),
+                Some(variable_limit),
             );
             // Append the function name, callstack, and assignments.
             call_stacks.push((function.name(), call_stack, assignments));
