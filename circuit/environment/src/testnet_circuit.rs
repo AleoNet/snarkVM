@@ -293,6 +293,8 @@ impl Environment for TestnetCircuit {
         TESTNET_CIRCUIT.with(|circuit| {
             // Reset the witness mode.
             IN_WITNESS.with(|in_witness| in_witness.replace(false));
+            // Reset the variable limit.
+            Self::set_variable_limit(None);
             // Reset the constraint limit.
             Self::set_constraint_limit(None);
             // Eject the R1CS instance.
@@ -313,6 +315,8 @@ impl Environment for TestnetCircuit {
         TESTNET_CIRCUIT.with(|circuit| {
             // Reset the witness mode.
             IN_WITNESS.with(|in_witness| in_witness.replace(false));
+            // Reset the variable limit.
+            Self::set_variable_limit(None);
             // Reset the constraint limit.
             Self::set_constraint_limit(None);
             // Eject the R1CS instance.
@@ -332,6 +336,8 @@ impl Environment for TestnetCircuit {
         TESTNET_CIRCUIT.with(|circuit| {
             // Reset the witness mode.
             IN_WITNESS.with(|in_witness| in_witness.replace(false));
+            // Reset the variable limit.
+            Self::set_variable_limit(None);
             // Reset the constraint limit.
             Self::set_constraint_limit(None);
             // Reset the circuit.
