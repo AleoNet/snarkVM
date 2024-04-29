@@ -223,6 +223,7 @@ pub enum TestMap {
 enum DataID {
     // BFT
     BFTTransmissionsMap,
+    BFTAbortedTransmissionIDsMap,
     // Block
     BlockStateRootMap,
     BlockReverseStateRootMap,
@@ -291,10 +292,6 @@ enum DataID {
     // Program
     ProgramIDMap,
     KeyValueMap,
-
-    // TODO (raychu86): Move this up to the BFT section.
-    // BFT
-    BFTAbortedTransmissionIDsMap,
 
     // Testing
     #[cfg(test)]
