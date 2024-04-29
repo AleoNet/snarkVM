@@ -135,8 +135,17 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             bail!("The ratifications after speculation do not match the ratifications in the block");
         }
         // Ensure the transactions after speculation match.
-        if transactions != &confirmed_transactions.into_iter().collect() {
-            bail!("The transactions after speculation do not match the transactions in the block");
+        let confirmed_transactions = confirmed_transactions.into_iter().collect::<Transactions<N>>();
+        if transactions != &confirmed_transactions {
+            bail!(
+                "The transactions after speculation do not match the transactions in the block. \
+            check num transactions: {} != {}, \
+            transactions: {transactions:?} \
+            confirmed_transactions: {confirmed_transactions:?} 
+            ",
+                transactions.len(),
+                confirmed_transactions.len()
+            );
         }
         // Ensure there are no aborted transaction IDs from this speculation.
         // Note: There should be no aborted transactions, because we are checking a block,
