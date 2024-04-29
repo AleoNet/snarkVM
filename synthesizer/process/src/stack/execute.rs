@@ -144,6 +144,8 @@ impl<N: Network> StackExecute<N> for Stack<N> {
     ) -> Result<Response<N>> {
         let timer = timer!("Stack::execute_function");
 
+        // Ensure the global constants for the Aleo environment are initialized.
+        A::initialize_global_constants();
         // Ensure the circuit environment is clean.
         A::reset();
 
