@@ -75,7 +75,6 @@ pub trait Database {
 }
 
 /// An instance of a RocksDB database.
-#[derive(Clone)]
 pub struct RocksDB {
     /// The RocksDB instance.
     rocksdb: Arc<rocksdb::DB>,
@@ -91,6 +90,22 @@ pub struct RocksDB {
     pub(super) atomic_depth: Arc<AtomicUsize>,
     /// A flag indicating whether the atomic writes are currently paused.
     pub(super) atomic_writes_paused: Arc<AtomicBool>,
+    /// This is an optimization that avoids some allocations when querying the database.
+    pub(super) default_readopts: rocksdb::ReadOptions,
+}
+
+impl Clone for RocksDB {
+    fn clone(&self) -> Self {
+        Self {
+            rocksdb: self.rocksdb.clone(),
+            network_id: self.network_id,
+            storage_mode: self.storage_mode.clone(),
+            atomic_batch: self.atomic_batch.clone(),
+            atomic_depth: self.atomic_depth.clone(),
+            atomic_writes_paused: self.atomic_writes_paused.clone(),
+            default_readopts: Default::default(),
+        }
+    }
 }
 
 impl Deref for RocksDB {
@@ -136,6 +151,7 @@ impl Database for RocksDB {
                     atomic_batch: Default::default(),
                     atomic_depth: Default::default(),
                     atomic_writes_paused: Default::default(),
+                    default_readopts: Default::default(),
                 })
             })?
             .clone();
@@ -309,6 +325,7 @@ impl RocksDB {
                 atomic_batch: Default::default(),
                 atomic_depth: Default::default(),
                 atomic_writes_paused: Default::default(),
+                default_readopts: Default::default(),
             })
         }?;
 

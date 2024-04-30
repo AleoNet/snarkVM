@@ -535,7 +535,7 @@ impl<K: Serialize + DeserializeOwned, V: Serialize + DeserializeOwned> DataMap<K
         Q: Serialize + ?Sized,
     {
         let raw_key = self.create_prefixed_key(key)?;
-        match self.database.get_pinned(&raw_key)? {
+        match self.database.get_pinned_opt(&raw_key, &self.database.default_readopts)? {
             Some(data) => Ok(Some(data)),
             None => Ok(None),
         }
