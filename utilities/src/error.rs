@@ -40,7 +40,7 @@ impl Error for crate::io::Error {}
 
 /// This macro provides a VM runtime environment which will safely halt
 /// without producing logs that look like unexpected behavior.
-/// It prints to stderr using the format: "VM safely halted at <location>: <halt message>".
+/// In debug mode, it prints to stderr using the format: "VM safely halted at <location>: <halt message>".
 #[macro_export]
 macro_rules! try_vm_runtime {
     ($e:expr) => {{
@@ -53,6 +53,7 @@ macro_rules! try_vm_runtime {
             let msg = msg.split_ascii_whitespace().skip_while(|&word| word != "panicked").collect::<Vec<&str>>();
             let mut msg = msg.join(" ");
             msg = msg.replacen("panicked", "VM safely halted", 1);
+            #[cfg(debug_assertions)]
             eprintln!("{msg}");
         }));
 
