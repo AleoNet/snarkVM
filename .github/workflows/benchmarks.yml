@@ -81,9 +81,9 @@ jobs:
           cargo bench --bench transaction -- --output-format bencher | tee -a ../output.txt
           cd ..
 
-      - name: Benchmark ledger/coinbase
+      - name: Benchmark ledger/puzzle
         run: |
-          cd ledger/coinbase
+          cd ledger/puzzle
           cargo bench --bench puzzle --features "setup" -- --output-format bencher | tee -a ../../output.txt
           cd ../..
 
