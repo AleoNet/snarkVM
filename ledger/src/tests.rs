@@ -225,8 +225,6 @@ fn test_insufficient_public_fees() {
         ledger.advance_to_next_block(&block).unwrap();
     }
 
-    println!("-----------");
-
     // Attempt to bond the node with insufficient public fees.
     {
         let inputs = [
