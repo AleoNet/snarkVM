@@ -19,7 +19,7 @@ extern crate criterion;
 
 use console::{
     account::*,
-    network::MainnetV0,
+    network::{MainnetV0, Network},
     program::{Plaintext, Record, Value},
 };
 use ledger_block::Transition;
@@ -125,6 +125,13 @@ fn execute(c: &mut Criterion) {
             .execute_authorization(execute_authorization.replicate(), Some(fee_authorization.replicate()), None, rng)
             .unwrap();
 
+        // Bench the Transaction.write_le method using the LimitedWriter.
+        c.bench_function("LimitedWriter::new - transfer_public", |b| {
+            let mut buffer = Vec::with_capacity(3000);
+            b.iter(|| transaction.write_le(LimitedWriter::new(&mut buffer, MainnetV0::MAX_TRANSACTION_SIZE)))
+        });
+
+        // Bench the execution of transfer_public.
         c.bench_function("Transaction::Execute(transfer_public) - verify", |b| {
             b.iter(|| vm.check_transaction(&transaction, None, rng).unwrap())
         });
@@ -147,6 +154,7 @@ fn execute(c: &mut Criterion) {
         // Authorize the fee.
         let fee_authorization = vm.authorize_fee_public(&private_key, 300000, 1000, execution_id, rng).unwrap();
 
+        // Bench the execution of transfer_private.
         c.bench_function("Transaction::Execute(transfer_private)", |b| {
             b.iter(|| {
                 vm.execute_authorization(
@@ -163,8 +171,104 @@ fn execute(c: &mut Criterion) {
             .execute_authorization(execute_authorization.replicate(), Some(fee_authorization.replicate()), None, rng)
             .unwrap();
 
+        // Bench the Transaction.write_le method using the LimitedWriter.
+        c.bench_function("LimitedWriter::new - transfer_private", |b| {
+            let mut buffer = Vec::with_capacity(3000);
+            b.iter(|| transaction.write_le(LimitedWriter::new(&mut buffer, MainnetV0::MAX_TRANSACTION_SIZE)))
+        });
+
+        // Bench the check_transaction method.
         c.bench_function("Transaction::Execute(transfer_private) - verify", |b| {
             b.iter(|| vm.check_transaction(&transaction, None, rng).unwrap())
+        });
+    }
+
+    // Bench Transaction.write_le + VM.check_transaction methods for transactions above the maximum transaction size.
+    {
+        // Define a program that will create an execution transaction larger than the maximum transaction size.
+        let program = Program::<MainnetV0>::from_str(
+            r"
+program too_big.aleo;
+
+struct all_groups:
+    g1 as [[[group; 4u32]; 4u32]; 4u32];
+    g2 as [[[group; 4u32]; 4u32]; 4u32];
+
+struct nested_groups:
+    g1 as all_groups;
+    g2 as all_groups;
+
+function main:
+    // Input the amount of microcredits to unbond.
+    input r0 as group.public;
+    cast r0 r0 r0 r0 into r1 as [group; 4u32];
+    cast r1 r1 r1 r1 into r2 as [[group; 4u32]; 4u32];
+    cast r2 r2 r2 r2 into r3 as [[[group; 4u32]; 4u32]; 4u32];
+    cast r3 r3 into r4 as all_groups;
+    cast r4 r4 into r5 as nested_groups;
+    cast r4 r4 into r6 as nested_groups;
+    cast r4 r4 into r7 as nested_groups;
+    cast r4 r4 into r8 as nested_groups;
+    cast r4 r4 into r9 as nested_groups;
+    cast r4 r4 into r10 as nested_groups;
+    cast r4 r4 into r11 as nested_groups;
+    cast r4 r4 into r12 as nested_groups;
+    cast r4 r4 into r13 as nested_groups;
+    cast r4 r4 into r14 as nested_groups;
+    cast r4 r4 into r15 as nested_groups;
+    cast r4 r4 into r16 as nested_groups;
+    cast r4 r4 into r17 as nested_groups;
+    cast r4 r4 into r18 as nested_groups;
+    cast r4 r4 into r19 as nested_groups;
+    cast r4 r4 into r20 as nested_groups;
+    cast r4 r4 into r21 as nested_groups;
+    cast r4 r4 into r22 as nested_groups;
+    cast r4 r4 into r23 as nested_groups;
+    cast r4 r4 into r24 as nested_groups;
+    cast r4 r4 into r25 as nested_groups;
+    cast r4 r4 into r26 as nested_groups;
+    cast r4 r4 into r27 as nested_groups;
+    cast r4 r4 into r28 as nested_groups;
+    cast r4 r4 into r29 as nested_groups;
+    cast r4 r4 into r30 as nested_groups;
+    cast r4 r4 into r31 as nested_groups;
+    output r7 as nested_groups.public;
+    output r8 as nested_groups.public;
+    output r9 as nested_groups.public;
+    output r10 as nested_groups.public;
+    output r11 as nested_groups.public;
+    output r12 as nested_groups.public;
+    output r13 as nested_groups.public;
+    output r14 as nested_groups.public;
+    output r15 as nested_groups.public;
+    output r16 as nested_groups.public;
+    output r17 as nested_groups.public;
+    output r18 as nested_groups.public;
+    output r19 as nested_groups.public;
+    output r20 as nested_groups.public;
+    output r21 as nested_groups.public;
+    output r22 as nested_groups.public;
+    ",
+        )
+        .unwrap();
+        // Prepare the inputs.
+        let inputs = [Value::from_str("2group").unwrap()].into_iter();
+
+        // Add the program to the VM.
+        vm.process().write().add_program(&program).unwrap();
+
+        // Create an execution transaction that is 164613 bytes in size.
+        let transaction = vm.execute(&private_key, ("too_big.aleo", "main"), inputs, None, 0, None, rng).unwrap();
+
+        // Bench the Transaction.write_le method using the LimitedWriter.
+        c.bench_function("LimitedWriter::new - too_big.aleo", |b| {
+            let mut buffer = Vec::with_capacity(MainnetV0::MAX_TRANSACTION_SIZE);
+            b.iter(|| transaction.write_le(LimitedWriter::new(&mut buffer, MainnetV0::MAX_TRANSACTION_SIZE)))
+        });
+
+        // Bench the check_transaction method.
+        c.bench_function("Transaction::Execute(too_big.aleo) - verify", |b| {
+            b.iter(|| vm.check_transaction(&transaction, None, rng))
         });
     }
 }
