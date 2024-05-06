@@ -125,11 +125,13 @@ fn execute(c: &mut Criterion) {
             .execute_authorization(execute_authorization.replicate(), Some(fee_authorization.replicate()), None, rng)
             .unwrap();
 
+        // Bench Transaction.write_le method using the LimitedWriter.
         c.bench_function("LimitedWriter::new - transfer_public", |b| {
             let mut buffer = Vec::with_capacity(3000);
             b.iter(|| transaction.write_le(LimitedWriter::new(&mut buffer, MainnetV0::MAX_TRANSACTION_SIZE)))
         });
 
+        // Bench the execution of transfer_public.
         c.bench_function("Transaction::Execute(transfer_public) - verify", |b| {
             b.iter(|| vm.check_transaction(&transaction, None, rng).unwrap())
         });
@@ -152,6 +154,7 @@ fn execute(c: &mut Criterion) {
         // Authorize the fee.
         let fee_authorization = vm.authorize_fee_public(&private_key, 300000, 1000, execution_id, rng).unwrap();
 
+        // Bench the execution of transfer_private.
         c.bench_function("Transaction::Execute(transfer_private)", |b| {
             b.iter(|| {
                 vm.execute_authorization(
@@ -168,7 +171,7 @@ fn execute(c: &mut Criterion) {
             .execute_authorization(execute_authorization.replicate(), Some(fee_authorization.replicate()), None, rng)
             .unwrap();
 
-        // Bench the LimitedWriter.
+        // Bench Transaction.write_le method using the LimitedWriter.
         c.bench_function("LimitedWriter::new - transfer_private", |b| {
             let mut buffer = Vec::with_capacity(3000);
             b.iter(|| transaction.write_le(LimitedWriter::new(&mut buffer, MainnetV0::MAX_TRANSACTION_SIZE)))
@@ -180,7 +183,7 @@ fn execute(c: &mut Criterion) {
         });
     }
 
-    // Bench LimitedWriter.write_le + VM.check_transaction method for transactions above 128kb.
+    // Bench Transaction.write_le + VM.check_transaction methods for transactions above the maximum transaction size.
     {
         // Define a program that will create an execution transaction larger than the maximum transaction size.
         let program = Program::<MainnetV0>::from_str(
@@ -254,10 +257,10 @@ function main:
         // Add the program to the VM.
         vm.process().write().add_program(&program).unwrap();
 
-        // Create an execution transaction over 128kb bytes (164613 bytes total).
+        // Create an execution transaction that is 164613 bytes in size.
         let transaction = vm.execute(&private_key, ("too_big.aleo", "main"), inputs, None, 0, None, rng).unwrap();
 
-        // Bench the LimitedWriter.
+        // Bench Transaction.write_le method using the LimitedWriter.
         c.bench_function("LimitedWriter::new - too_big.aleo", |b| {
             let mut buffer = Vec::with_capacity(MainnetV0::MAX_TRANSACTION_SIZE);
             b.iter(|| transaction.write_le(LimitedWriter::new(&mut buffer, MainnetV0::MAX_TRANSACTION_SIZE)))
