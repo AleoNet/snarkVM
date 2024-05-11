@@ -146,7 +146,7 @@ function bond_validator:
 
 finalize bond_validator:
     // Input the validator's address.
-    input r0 as address.public;
+    input r0 as address.public; // self.signer in the case of a bonding a validator
     // Input the withdrawal address.
     input r1 as address.public;
     // Input the amount of microcredits to bond.

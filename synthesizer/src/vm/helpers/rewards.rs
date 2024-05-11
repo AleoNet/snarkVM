@@ -46,6 +46,11 @@ pub fn staking_rewards<N: Network>(
     // Compute the updated stakers.
     cfg_iter!(stakers)
         .map(|(staker, (validator, stake))| {
+            // If the validator is not in the committee, skip the staker.
+            if !committee.members().contains_key(validator) {
+                trace!("Validator {validator} is not in the committee - skipping {staker}");
+                return (*staker, (*validator, *stake));
+            }
             // If the validator has more than 25% of the total stake, skip the staker.
             if committee.get_stake(*validator) > committee.total_stake().saturating_div(4) {
                 trace!("Validator {validator} has more than 25% of the total stake - skipping {staker}");
@@ -157,6 +162,42 @@ mod tests {
             assert_eq!(candidate_validator, address);
             let reward = block_reward as u128 * stake as u128 / committee.total_stake() as u128;
             assert_eq!(candidate_stake, stake + u64::try_from(reward).unwrap(), "stake: {stake}, reward: {reward}");
+        }
+    }
+
+    #[test]
+    fn test_staking_rewards_to_validator_not_in_committee() {
+        let rng = &mut TestRng::default();
+        // Sample a random committee.
+        let committee = ledger_committee::test_helpers::sample_committee(rng);
+        let fake_committee = ledger_committee::test_helpers::sample_committee(rng);
+        // Sample a random block reward.
+        let block_reward = rng.gen_range(0..MAX_COINBASE_REWARD);
+
+        // Generate the stakers
+        let stakers = crate::committee::test_helpers::to_stakers(committee.members(), rng);
+        // Generate stakers for a non-existent committee, to ensure they are not rewarded.
+        let stakers_fake = crate::committee::test_helpers::to_stakers(fake_committee.members(), rng);
+        let all_stakers: IndexMap<Address<CurrentNetwork>, (Address<CurrentNetwork>, u64)> = stakers.clone().into_iter().chain(stakers_fake.clone().into_iter()).collect();
+
+        // Start a timer.
+        let timer = std::time::Instant::now();
+
+        let next_stakers = staking_rewards::<CurrentNetwork>(&all_stakers, &committee, block_reward);
+        println!("staking_rewards: {}ms", timer.elapsed().as_millis());
+        assert_eq!(next_stakers.len(), all_stakers.len());
+        for ((staker, (validator, stake)), (next_staker, (next_validator, next_stake))) in
+            all_stakers.into_iter().zip(next_stakers.into_iter())
+        {
+            assert_eq!(staker, next_staker);
+            assert_eq!(validator, next_validator);
+            // If the validator is not in the committee, the stake should not change.
+            if !committee.members().contains_key(&validator) {
+                assert_eq!(stake, next_stake, "stake: {stake}, reward should be 0");
+            } else { // Otherwise, the stake should increase.
+                let reward = block_reward as u128 * stake as u128 / committee.total_stake() as u128;
+                assert_eq!(stake + u64::try_from(reward).unwrap(), next_stake, "stake: {stake}, reward: {reward}");
+            }
         }
     }
 

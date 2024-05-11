@@ -19,7 +19,7 @@ use console::{
     network::Network,
     prelude::{cfg_into_iter, cfg_iter, cfg_reduce},
     program::{Identifier, Literal, Plaintext, Value},
-    types::{Boolean, U64},
+    types::{Boolean, U64, U8},
 };
 use ledger_committee::Committee;
 
@@ -61,8 +61,13 @@ pub fn committee_map_into_committee<N: Network>(
                         Some(Plaintext::Literal(Literal::Boolean(is_open), _)) => **is_open,
                         _ => bail!("Invalid committee state (missing boolean) - {value}"),
                     };
+                    // Extract the commission from the value.
+                    let commission = match state.get(&Identifier::from_str("commission")?) {
+                        Some(Plaintext::Literal(Literal::U8(commission), _)) => **commission,
+                        _ => bail!("Invalid committee state (missing commission) - {value}"),
+                    };
                     // Return the committee state.
-                    Ok((*address, (microcredits, is_open)))
+                    Ok((*address, (microcredits, is_open, commission)))
                 }
                 _ => bail!("Invalid committee value (missing struct) - {value}"),
             }
@@ -143,7 +148,7 @@ pub fn ensure_stakers_matches<N: Network>(
     ensure!(committee.total_stake() == total_microcredits, "Committee and validator map total stake do not match");
 
     // Iterate over the committee and ensure the committee and validators match.
-    for (validator, (microcredits, _)) in committee.members() {
+    for (validator, (microcredits, _, _)) in committee.members() {
         let candidate_microcredits = validator_map.get(validator);
         ensure!(candidate_microcredits.is_some(), "A validator is missing in finalize storage");
         ensure!(
@@ -178,7 +183,7 @@ pub fn to_next_committee<N: Network>(
     let mut members = IndexMap::with_capacity(validator_map.len());
     // Iterate over the validators.
     for (validator, microcredits) in validator_map {
-        members.insert(validator, (microcredits, current_committee.is_committee_member_open(validator)));
+        members.insert(validator, (microcredits, current_committee.is_committee_member_open(validator), 0));
     }
     // Return the next committee.
     Committee::new(next_round, members)
@@ -193,14 +198,16 @@ pub fn to_next_commitee_map_and_bonded_map<N: Network>(
     let validator_identifier = Identifier::from_str("validator").expect("Failed to parse 'validator'");
     let microcredits_identifier = Identifier::from_str("microcredits").expect("Failed to parse 'microcredits'");
     let is_open_identifier = Identifier::from_str("is_open").expect("Failed to parse 'is_open'");
+    let commission_identifier = Identifier::from_str("commission").expect("Failed to parse 'commission'");
 
     // Construct the committee map.
     let committee_map = cfg_iter!(next_committee.members())
-        .map(|(validator, (microcredits, is_open))| {
+        .map(|(validator, (microcredits, is_open, commission))| {
             // Construct the committee state.
             let committee_state = indexmap! {
                 microcredits_identifier => Plaintext::from(Literal::U64(U64::new(*microcredits))),
                 is_open_identifier => Plaintext::from(Literal::Boolean(Boolean::new(*is_open))),
+                commission_identifier => Plaintext::from(Literal::U8(U8::new(*commission))),
             };
             // Return the committee state.
             (
@@ -254,12 +261,12 @@ pub(crate) mod test_helpers {
     /// Returns the stakers, given the map of `(validator, (microcredits, is_open))` entries.
     /// This method simulates the existence of delegators for the members.
     pub(crate) fn to_stakers<N: Network, R: Rng + CryptoRng>(
-        members: &IndexMap<Address<N>, (u64, bool)>,
+        members: &IndexMap<Address<N>, (u64, bool, u8)>,
         rng: &mut R,
     ) -> IndexMap<Address<N>, (Address<N>, u64)> {
         members
             .into_iter()
-            .flat_map(|(validator, (microcredits, _))| {
+            .flat_map(|(validator, (microcredits, _, _))| {
                 // Keep a tally of the remaining microcredits.
                 let remaining_microcredits = microcredits.saturating_sub(MIN_VALIDATOR_STAKE);
                 // Set the staker amount to `MIN_DELEGATOR_STAKE` microcredits.
@@ -321,10 +328,10 @@ mod tests {
     use std::str::FromStr;
 
     /// Returns the committee map, given the map of `(validator, (microcredits, is_open))` entries.
-    fn to_committee_map<N: Network>(members: &IndexMap<Address<N>, (u64, bool)>) -> Vec<(Plaintext<N>, Value<N>)> {
+    fn to_committee_map<N: Network>(members: &IndexMap<Address<N>, (u64, bool, u8)>) -> Vec<(Plaintext<N>, Value<N>)> {
         members
             .par_iter()
-            .map(|(validator, (microcredits, is_open))| {
+            .map(|(validator, (microcredits, is_open, u8))| {
                 let microcredits = U64::<N>::new(*microcredits);
                 let is_open = Boolean::<N>::new(*is_open);
                 (

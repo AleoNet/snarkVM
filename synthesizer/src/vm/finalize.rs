@@ -1081,7 +1081,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     // Check that `committee` is consistent with `stake_per_validator`.
                     for (validator_address, amount) in &stake_per_validator {
                         // Retrieve the expected validator stake from the committee.
-                        let Some((expected_amount, _)) = committee.members().get(*validator_address) else {
+                        let Some((expected_amount, _, _)) = committee.members().get(*validator_address) else {
                             bail!(
                                 "Ratify::Genesis(..) found a validator in the bonded balances that is not in the committee"
                             )
@@ -2198,7 +2198,7 @@ finalize compute:
         let mut committee_map = IndexMap::new();
         for (private_key, (amount, _)) in &validators {
             let address = Address::try_from(private_key).unwrap();
-            committee_map.insert(address, (*amount, true));
+            committee_map.insert(address, (*amount, true, 0));
         }
 
         // Attempt to construct a `Committee` with more than the maximum committee size.
