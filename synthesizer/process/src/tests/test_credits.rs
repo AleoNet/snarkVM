@@ -377,6 +377,14 @@ fn claim_unbond_public<F: FinalizeStorage<CurrentNetwork>>(
 }
 
 #[test]
+fn test_credits_program_id_simple() {
+    let program = Program::<CurrentNetwork>::credits().unwrap();
+
+    // Ensure that the program is correct.
+    assert_eq!(program.id().to_string(), "credits.aleo");
+}
+
+#[test]
 fn test_bond_validator_simple() {
     let rng = &mut TestRng::default();
 
