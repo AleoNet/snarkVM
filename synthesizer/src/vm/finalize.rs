@@ -835,9 +835,11 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         transactions: &[&'a Transaction<N>],
         rng: &mut R,
     ) -> Result<(Vec<&'a Transaction<N>>, Vec<(&'a Transaction<N>, String)>)> {
-        // Construct the list of transactions that need to verified.
-        let mut transactions_to_verify = Vec::with_capacity(transactions.len());
-        // Construct the list of valid and invalid transactions.
+        // Construct the list of executions that need to verified.
+        let mut executions = Vec::with_capacity(transactions.len());
+        // Construct the list of deployments that need to verified.
+        let mut deployments = Vec::with_capacity(transactions.len());
+        // Construct the list of valid and aborted transactions.
         let mut valid_transactions = Vec::with_capacity(transactions.len());
         let mut aborted_transactions = Vec::with_capacity(transactions.len());
 
@@ -852,10 +854,24 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         // Initialize the list of deployment payers.
         let mut deployment_payers: IndexSet<Address<N>> = Default::default();
 
-        // Abort the transactions that are have duplicates or are invalid. This will prevent the VM from performing
-        // verification on transactions that would have been aborted in `VM::atomic_speculate`.
+        // Abort fee transactions and invalid deployments. This will prevent the
+        // VM from performing expensive verification on invalid fees or
+        // deployments that would have been aborted in `VM::atomic_speculate`.
         for transaction in transactions.iter() {
-            // Determine if the transaction should be aborted.
+            // If the transaction is an Execution, we will fully verify it.
+            // Executions require full verification to avoid malleability attacks.
+            if transaction.is_execute() {
+                executions.push(*transaction);
+                continue;
+            }
+
+            // Abort the transaction if it is a fee transaction.
+            if transaction.is_fee() {
+                aborted_transactions.push((*transaction, "Fee transactions are not allowed in speculate".to_string()));
+                continue;
+            }
+
+            // If the transaction is a deployment, determine if it should be aborted.
             match self.should_abort_transaction(
                 transaction,
                 &transition_ids,
@@ -881,15 +897,12 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                         fee.payer().map(|payer| deployment_payers.insert(payer));
                     }
 
-                    // Add the transaction to the list of transactions to verify.
-                    transactions_to_verify.push(transaction);
+                    // Add the transaction to the list of deployments to verify.
+                    deployments.push(*transaction);
                 }
             };
         }
 
-        // Separate the transactions into deploys and executions.
-        let (deployments, executions): (Vec<&Transaction<N>>, Vec<&Transaction<N>>) =
-            transactions_to_verify.into_iter().partition(|tx| tx.is_deploy());
         // Chunk the deploys and executions into groups for parallel verification.
         let deployments_for_verification = deployments.chunks(Self::MAX_PARALLEL_DEPLOY_VERIFICATIONS);
         let executions_for_verification = executions.chunks(Self::MAX_PARALLEL_EXECUTE_VERIFICATIONS);
@@ -898,16 +911,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         for transactions in deployments_for_verification.chain(executions_for_verification) {
             let rngs = (0..transactions.len()).map(|_| StdRng::from_seed(rng.gen())).collect::<Vec<_>>();
             // Verify the transactions and collect the error message if there is one.
-            let (valid, invalid): (Vec<_>, Vec<_>) =
+            let (valid, aborted): (Vec<_>, Vec<_>) =
                 cfg_into_iter!(transactions).zip(rngs).partition_map(|(transaction, mut rng)| {
-                    // Abort the transaction if it is a fee transaction.
-                    if transaction.is_fee() {
-                        return Either::Right((
-                            *transaction,
-                            "Fee transactions are not allowed in speculate".to_string(),
-                        ));
-                    }
-
                     // Verify the transaction.
                     match self.check_transaction(transaction, None, &mut rng) {
                         // If the transaction is valid, add it to the list of valid transactions.
@@ -919,7 +924,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
             // Collect the valid and aborted transactions.
             valid_transactions.extend(valid);
-            aborted_transactions.extend(invalid);
+            aborted_transactions.extend(aborted);
         }
 
         // Sort the valid and aborted transactions based on their position in the original list.
