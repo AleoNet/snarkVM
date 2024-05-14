@@ -18,6 +18,7 @@ pub use helpers::*;
 use console::{
     network::prelude::*,
     program::{Identifier, Literal, Plaintext, ProgramID},
+    types::Field,
 };
 use ledger_block::{Execution, Input, Output, Transition};
 
@@ -178,6 +179,61 @@ impl<N: Network> Restrictions<N> {
             // Otherwise, the transition is not restricted.
             false
         })
+    }
+}
+
+impl<N: Network> Restrictions<N> {
+    /// Returns the restriction ID.
+    pub fn compute_restriction_id(
+        programs: IndexMap<ProgramID<N>, BlockRange>,
+        functions: IndexMap<(ProgramID<N>, Identifier<N>), BlockRange>,
+        arguments: IndexMap<(ProgramID<N>, Identifier<N>), IndexMap<(bool, u16), IndexMap<Literal<N>, BlockRange>>>,
+    ) -> Result<Field<N>> {
+        // Prepare the preimage data.
+        let mut preimage = Vec::new();
+
+        // Append the number of programs.
+        preimage.push(Field::from_u64(programs.len() as u64));
+        // Encode the programs.
+        for (program_id, range) in programs {
+            preimage.extend_from_slice(&program_id.to_fields()?);
+            preimage.extend_from_slice(&range.to_fields()?);
+        }
+
+        // Append the number of functions.
+        preimage.push(Field::from_u64(functions.len() as u64));
+        // Encode the functions.
+        for ((program_id, function_name), range) in functions {
+            preimage.extend_from_slice(&program_id.to_fields()?);
+            preimage.push(function_name.to_field()?);
+            preimage.extend_from_slice(&range.to_fields()?);
+        }
+
+        // Append the number of arguments.
+        preimage.push(Field::from_u64(arguments.len() as u64));
+        // Encode the arguments.
+        for ((program_id, function_name), entries) in arguments {
+            preimage.extend_from_slice(&program_id.to_fields()?);
+            preimage.push(function_name.to_field()?);
+            // Append the number of argument entries.
+            preimage.push(Field::from_u64(entries.len() as u64));
+            // Encode the argument entries.
+            for ((is_input, index), arguments) in entries {
+                preimage.push(if is_input { Field::one() } else { Field::zero() });
+                preimage.push(Field::from_u16(index));
+                // Append the number of arguments.
+                preimage.push(Field::from_u64(arguments.len() as u64));
+                // Encode the arguments.
+                for (literal, range) in arguments {
+                    // TODO (howardwu): Encode the literal.
+                    preimage.extend_from_slice(&range.to_fields()?);
+                }
+            }
+        }
+
+        // Hash the preimage data.
+        // Note: This call must be collision-resistant, and so we use BHP-1024.
+        N::hash_bhp1024(&preimage.to_bits_le())
     }
 }
 

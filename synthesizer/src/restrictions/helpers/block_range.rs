@@ -12,7 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use console::prelude::{de, Deserialize, Deserializer, EnumAccess, Serialize, Serializer, VariantAccess, Visitor};
+use console::{
+    network::Network,
+    prelude::{de, Deserialize, Deserializer, EnumAccess, One, Result, Serialize, Serializer, VariantAccess, Visitor},
+    types::Field,
+};
 
 use core::{
     fmt,
@@ -37,6 +41,23 @@ impl BlockRange {
             BlockRange::RangeTo(range) => range.contains(&height),
             BlockRange::RangeInclusive(range) => range.contains(&height),
             BlockRange::FullRange => true,
+        }
+    }
+}
+
+impl BlockRange {
+    /// Returns a unique field element encoding of the block range.
+    pub fn to_fields<N: Network>(&self) -> Result<Vec<Field<N>>> {
+        match self {
+            BlockRange::Range(range) => {
+                Ok(vec![Field::from_u8(0), Field::from_u32(range.start), Field::from_u32(range.end)])
+            }
+            BlockRange::RangeFrom(range) => Ok(vec![Field::from_u8(1), Field::from_u32(range.start), -Field::one()]),
+            BlockRange::RangeTo(range) => Ok(vec![Field::from_u8(2), -Field::one(), Field::from_u32(range.end)]),
+            BlockRange::RangeInclusive(range) => {
+                Ok(vec![Field::from_u8(3), Field::from_u32(*range.start()), Field::from_u32(*range.end())])
+            }
+            BlockRange::FullRange => Ok(vec![Field::from_u8(4), -Field::one(), -Field::one()]),
         }
     }
 }
@@ -156,6 +177,8 @@ impl<'de> Deserialize<'de> for BlockRange {
 mod tests {
     use super::*;
 
+    type CurrentNetwork = console::network::MainnetV0;
+
     #[test]
     fn test_serialize_range() {
         let range = BlockRange::Range(1..10);
@@ -268,5 +291,28 @@ mod tests {
         assert!(range.contains(0));
         assert!(range.contains(1));
         assert!(range.contains(1000));
+    }
+
+    #[test]
+    fn test_to_fields() {
+        let range = BlockRange::Range(1..10);
+        let fields = range.to_fields::<CurrentNetwork>().unwrap();
+        assert_eq!(fields, vec![Field::from_u8(0), Field::from_u32(1), Field::from_u32(10)]);
+
+        let range = BlockRange::RangeFrom(RangeFrom { start: 5 });
+        let fields = range.to_fields::<CurrentNetwork>().unwrap();
+        assert_eq!(fields, vec![Field::from_u8(1), Field::from_u32(5), -Field::one()]);
+
+        let range = BlockRange::RangeTo(RangeTo { end: 8 });
+        let fields = range.to_fields::<CurrentNetwork>().unwrap();
+        assert_eq!(fields, vec![Field::from_u8(2), -Field::one(), Field::from_u32(8)]);
+
+        let range = BlockRange::RangeInclusive(RangeInclusive::new(2, 9));
+        let fields = range.to_fields::<CurrentNetwork>().unwrap();
+        assert_eq!(fields, vec![Field::from_u8(3), Field::from_u32(2), Field::from_u32(9)]);
+
+        let range = BlockRange::FullRange;
+        let fields = range.to_fields::<CurrentNetwork>().unwrap();
+        assert_eq!(fields, vec![Field::from_u8(4), -Field::one(), -Field::one()]);
     }
 }
