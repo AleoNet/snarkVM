@@ -1050,7 +1050,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     //     }
                     // }
 
-                    // Calculate the stake per validator using `bonded_balances`.
+                    // Calculate the stake per validator using `bonded_balances`. No need to check delegated mapping as this is the genesis block.
                     let mut stake_per_validator = IndexMap::with_capacity(committee.members().len());
                     for (address, (validator_address, _, amount)) in bonded_balances.iter() {
                         // Check that the amount meets the minimum requirement, depending on whether the address is a validator.
