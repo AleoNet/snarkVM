@@ -105,11 +105,11 @@ fn account_balance<N: Network, F: FinalizeStorage<N>>(
 }
 
 /// Get the current committee state from the `committee` mapping for the given validator address.
-/// Returns the `committee_state` as a tuple of `(microcredits, is_open)`.
+/// Returns the `committee_state` as a tuple of `(is_open, commission)`.
 fn committee_state<N: Network, F: FinalizeStorage<N>>(
     store: &FinalizeStore<N, F>,
     address: &Address<N>,
-) -> Result<Option<(u64, bool)>> {
+) -> Result<Option<(bool, u8)>> {
     // Retrieve the committee state from the finalize store.
     let state = match get_mapping_value(store, "credits.aleo", "committee", Literal::Address(*address))? {
         Some(Value::Plaintext(Plaintext::Struct(state, _))) => state,
@@ -117,10 +117,10 @@ fn committee_state<N: Network, F: FinalizeStorage<N>>(
         _ => bail!("Malformed committee state for {address}"),
     };
 
-    // Retrieve `microcredits` from the committee state.
-    let microcredits = match state.get(&Identifier::from_str("microcredits")?) {
-        Some(Plaintext::Literal(Literal::U64(microcredits), _)) => **microcredits,
-        _ => bail!("`microcredits` not found for: {address}"),
+    // Retrieve `commission` from the committee state.
+    let commission = match state.get(&Identifier::from_str("commission")?) {
+        Some(Plaintext::Literal(Literal::U8(commission), _)) => **commission,
+        _ => bail!("`commission` not found for: {address}"),
     };
 
     // Retrieve `is_open` from the committee state.
@@ -129,7 +129,7 @@ fn committee_state<N: Network, F: FinalizeStorage<N>>(
         _ => bail!("`is_open` not found for: {address}"),
     };
 
-    Ok(Some((microcredits, is_open)))
+    Ok(Some((is_open, commission)))
 }
 
 /// Get the current bond state from the `bonding` mapping for the given staker address.
@@ -417,7 +417,8 @@ fn test_bond_validator_simple() {
             .unwrap();
 
         // Check that the committee, bond, unbond, and withdraw states are correct.
-        assert_eq!(committee_state(&store, validator_address).unwrap(), Some((amount, true)));
+        assert_eq!(committee_state(&store, validator_address).unwrap(), Some((true, commission)));
+        // TODO assert delegated
         assert_eq!(bond_state(&store, validator_address).unwrap(), Some((*validator_address, amount)));
         assert_eq!(unbond_state(&store, validator_address).unwrap(), None);
         assert_eq!(withdraw_state(&store, validator_address).unwrap(), Some(*validator_address));

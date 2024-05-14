@@ -997,6 +997,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         let program_id = ProgramID::from_str("credits.aleo")?;
         // Construct the committee mapping name.
         let committee_mapping = Identifier::from_str("committee")?;
+        // Construct the delegated mapping name.
+        let delegated_mapping: Identifier<N> = Identifier::from_str("delegated")?;
         // Construct the bonded mapping name.
         let bonded_mapping = Identifier::from_str("bonded")?;
         // Construct the account mapping name.
@@ -1111,9 +1113,11 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                         },
                     );
 
+                    let next_delegated = to_next_delegated(&next_stakers);
+
                     // Construct the next committee map and next bonded map.
-                    let (next_committee_map, next_bonded_map) =
-                        to_next_commitee_map_and_bonded_map(committee, &next_stakers);
+                    let (next_committee_map, next_bonded_map, next_delegated_map) =
+                        to_next_credits_maps(committee, &next_stakers, &next_delegated);
 
                     // Construct the next withdraw map.
                     let next_withdraw_map = to_next_withdraw_map(&withdrawal_addresses);
@@ -1195,6 +1199,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         let committee_mapping = Identifier::from_str("committee")?;
         // Construct the bonded mapping name.
         let bonded_mapping = Identifier::from_str("bonded")?;
+        // Construct the delegated mapping name.
+        let delegated_mapping = Identifier::from_str("delegated")?;
         // Construct the account mapping name.
         let account_mapping = Identifier::from_str("account")?;
 
@@ -1216,8 +1222,10 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
                     // Retrieve the committee mapping from storage.
                     let current_committee_map = store.get_mapping_speculative(program_id, committee_mapping)?;
+                    // Retrieve the delegator mapping from storage.
+                    let current_delegator_map = store.get_mapping_speculative(program_id, delegated_mapping)?;
                     // Convert the committee mapping into a committee.
-                    let current_committee = committee_map_into_committee(state.block_round(), current_committee_map)?;
+                    let current_committee = credits_maps_into_committee(state.block_round(), current_committee_map, current_delegator_map)?;
                     // Retrieve the bonded mapping from storage.
                     let current_bonded_map = store.get_mapping_speculative(program_id, bonded_mapping)?;
                     // Convert the bonded map into stakers.
@@ -1228,12 +1236,16 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
                     // Compute the updated stakers, using the committee and block reward.
                     let next_stakers = staking_rewards(&current_stakers, &current_committee, *block_reward);
-                    // Compute the updated committee, using the stakers.
-                    let next_committee = to_next_committee(&current_committee, state.block_round(), &next_stakers)?;
 
-                    // Construct the next committee map and next bonded map.
-                    let (next_committee_map, next_bonded_map) =
-                        to_next_commitee_map_and_bonded_map(&next_committee, &next_stakers);
+                    // Compute the updated delegated amounts, using the next_stakers updated amounts.
+                    let next_delegated = to_next_delegated(&next_stakers);
+
+                    // Compute the updated committee, using the delegatees.
+                    let next_committee = to_next_committee(&current_committee, state.block_round(), &next_delegated)?;
+
+                    // Construct the next committee map, the next bonded map, and the next delegated map.
+                    let (next_committee_map, next_bonded_map, next_delegated_map) =
+                        to_next_credits_maps(&next_committee, &next_stakers, &next_delegated);
 
                     // Insert the next committee into storage.
                     store.committee_store().insert(state.block_height(), next_committee)?;
@@ -1243,6 +1255,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                         store.replace_mapping(program_id, committee_mapping, next_committee_map)?,
                         // Replace the bonded mapping in storage.
                         store.replace_mapping(program_id, bonded_mapping, next_bonded_map)?,
+                        // Replace the delegated mapping in storage.
+                        store.replace_mapping(program_id, delegated_mapping, next_delegated_map)?,
                     ]);
 
                     // Set the block reward ratification flag.
@@ -2719,7 +2733,7 @@ finalize compute:
                 .map(|(private_key, (amount, _))| {
                     let address = Address::try_from(private_key).unwrap();
                     allocated_amount += *amount;
-                    (address, (*amount, true))
+                    (address, (*amount, true, 0u8))
                 })
                 .collect(),
         )
@@ -2774,7 +2788,7 @@ finalize compute:
             } else {
                 *amount
             };
-            committee_map.insert(address, (amount, true));
+            committee_map.insert(address, (amount, true, 0u8));
             allocated_amount += amount;
         }
         let committee = Committee::new_genesis(committee_map).unwrap();
@@ -2814,7 +2828,7 @@ finalize compute:
             } else {
                 *amount
             };
-            committee_map.insert(address, (amount, true));
+            committee_map.insert(address, (amount, true, 0u8));
             allocated_amount += amount;
         }
         let committee = Committee::new_genesis(committee_map).unwrap();

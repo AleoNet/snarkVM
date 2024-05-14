@@ -307,6 +307,7 @@ impl<N: Network> Transition<N> {
     }
 }
 
+// TODO double check these functions against credits.aleo changes
 impl<N: Network> Transition<N> {
     /// Returns `true` if this is a `bond_public` transition.
     #[inline]

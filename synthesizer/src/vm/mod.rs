@@ -268,10 +268,10 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
         // Construct the committee members.
         let members = indexmap::indexmap! {
-            Address::try_from(private_keys[0])? => (ledger_committee::MIN_VALIDATOR_STAKE, true),
-            Address::try_from(private_keys[1])? => (ledger_committee::MIN_VALIDATOR_STAKE, true),
-            Address::try_from(private_keys[2])? => (ledger_committee::MIN_VALIDATOR_STAKE, true),
-            Address::try_from(private_keys[3])? => (ledger_committee::MIN_VALIDATOR_STAKE, true),
+            Address::try_from(private_keys[0])? => (ledger_committee::MIN_VALIDATOR_STAKE, true, 0u8),
+            Address::try_from(private_keys[1])? => (ledger_committee::MIN_VALIDATOR_STAKE, true, 0u8),
+            Address::try_from(private_keys[2])? => (ledger_committee::MIN_VALIDATOR_STAKE, true, 0u8),
+            Address::try_from(private_keys[3])? => (ledger_committee::MIN_VALIDATOR_STAKE, true, 0u8),
         };
         // Construct the committee.
         let committee = Committee::<N>::new_genesis(members)?;
@@ -2460,6 +2460,7 @@ finalize transfer_public_to_private:
         vm.add_next_block(&block).unwrap();
     }
 
+    // TODO: double check this test against credits.aleo changes
     #[test]
     fn test_bond_public_as_validator_from_program_fails() {
         let rng = &mut TestRng::default();

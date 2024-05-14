@@ -489,6 +489,7 @@ finalize foo:
     assert_eq!(program, ledger.get_program(program_id).unwrap())
 }
 
+// TODO update this test for the new bonding/commission
 #[test]
 fn test_bond_and_unbond_validator() {
     let rng = &mut TestRng::default();

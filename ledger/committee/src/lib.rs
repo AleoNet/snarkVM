@@ -49,7 +49,7 @@ pub struct Committee<N: Network> {
     id: Field<N>,
     /// The starting round number for this committee.
     starting_round: u64,
-    /// A map of `address` to `(stake, is_open)` state.
+    /// A map of `address` to `(stake, is_open, commission)` state.
     members: IndexMap<Address<N>, (u64, bool, u8)>,
     /// The total stake of all `members`.
     total_stake: u64,
