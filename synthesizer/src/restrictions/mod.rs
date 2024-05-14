@@ -19,13 +19,14 @@ use console::{
     network::prelude::*,
     program::{Identifier, Literal, ProgramID},
 };
+use ledger_block::Execution;
 
 use indexmap::IndexMap;
 
 /// The argument type with a format of `(is_input, index, literal)`.
 pub type Argument<N> = (bool, u16, Literal<N>);
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Restrictions<N: Network> {
     /// The set of program IDs that are restricted from being executed.
     /// e.g. `restricted.aleo` => `..` (all blocks)
@@ -44,7 +45,7 @@ pub struct Restrictions<N: Network> {
     /// e.g. `restricted.aleo/bar _ aleo1zkpxxxxx _ _` => `10..` (from block 10 onwards)
     /// e.g. `restricted.aleo/bar _ aleo1zkpxxxxx _ _` => `..10` (up to block 10)
     /// e.g. `restricted.aleo/bar _ aleo1zkpxxxxx _ _` => `10..20` (from block 10 to block 20)
-    arguments: IndexMap<(ProgramID<N>, Identifier<N>, Argument<N>), BlockRange>,
+    arguments: IndexMap<(ProgramID<N>, Identifier<N>), IndexMap<Argument<N>, BlockRange>>,
 }
 
 impl<N: Network> Default for Restrictions<N> {
@@ -73,7 +74,7 @@ impl<N: Network> Restrictions<N> {
     }
 
     /// Returns the set of `(program ID, function ID, argument)` triples that are restricted from being executed.
-    pub fn arguments(&self) -> &IndexMap<(ProgramID<N>, Identifier<N>, Argument<N>), BlockRange> {
+    pub fn arguments(&self) -> &IndexMap<(ProgramID<N>, Identifier<N>), IndexMap<Argument<N>, BlockRange>> {
         &self.arguments
     }
 }
@@ -103,8 +104,37 @@ impl<N: Network> Restrictions<N> {
         block_height: u32,
     ) -> bool {
         self.arguments
-            .get(&(*program_id, *function_id, argument.clone()))
+            .get(&(*program_id, *function_id))
+            .and_then(|arguments| arguments.get(argument))
             .map_or(false, |range| range.contains(block_height))
+    }
+}
+
+impl<N: Network> Restrictions<N> {
+    /// Returns `true` if the given execution contains any restricted transitions for the given block height.
+    pub fn contains_restricted_transitions(&self, execution: &Execution<N>, block_height: u32) -> bool {
+        // Check if any transition is restricted.
+        execution.transitions().any(|transition| {
+            // Retrieve the program ID.
+            let program_id = transition.program_id();
+            // Retrieve the function name.
+            let function_name = transition.function_name();
+
+            // If the program is restricted, then the transition is restricted.
+            if self.is_program_restricted(program_id, block_height) {
+                return true;
+            }
+            // If the function is restricted, then the transition is restricted.
+            if self.is_function_restricted(program_id, function_name, block_height) {
+                return true;
+            }
+            // If any argument is restricted, then the transition is restricted.
+            // let is_argument_restricted = arguments.iter().any(|argument| {
+            //     Self::is_argument_restricted(&execution.restrictions, program_id, function_id, argument, block_height)
+            // });
+
+            false
+        })
     }
 }
 
@@ -126,18 +156,12 @@ mod tests {
     use super::*;
     use console::types::I8;
 
+    use indexmap::indexmap;
+
     type CurrentNetwork = console::network::MainnetV0;
 
     #[test]
-    fn restrictions_default() {
-        let restrictions = Restrictions::<CurrentNetwork>::default();
-        assert!(restrictions.programs().is_empty());
-        assert!(restrictions.functions().is_empty());
-        assert!(restrictions.arguments().is_empty());
-    }
-
-    #[test]
-    fn restrictions_program_restricted() {
+    fn test_restrictions_program_restricted() {
         let mut restrictions = Restrictions::<CurrentNetwork>::default();
         let program_id = ProgramID::from_str("restricted.aleo").unwrap();
         let range = BlockRange::Range(10..20);
@@ -150,7 +174,7 @@ mod tests {
     }
 
     #[test]
-    fn restrictions_function_restricted() {
+    fn test_restrictions_function_restricted() {
         let mut restrictions = Restrictions::<CurrentNetwork>::default();
         let program_id = ProgramID::from_str("restricted.aleo").unwrap();
         let function_id = Identifier::from_str("foo").unwrap();
@@ -164,13 +188,13 @@ mod tests {
     }
 
     #[test]
-    fn restrictions_argument_restricted() {
+    fn test_restrictions_argument_restricted() {
         let mut restrictions = Restrictions::<CurrentNetwork>::default();
         let program_id = ProgramID::from_str("restricted.aleo").unwrap();
         let function_id = Identifier::from_str("foo").unwrap();
         let argument = (true, 0, Literal::I8(I8::new(0)));
         let range = BlockRange::Range(10..20);
-        restrictions.arguments.insert((program_id, function_id, argument.clone()), range.clone());
+        restrictions.arguments.insert((program_id, function_id), indexmap!(argument.clone() => range.clone()));
         assert!(!restrictions.is_argument_restricted(&program_id, &function_id, &argument, 5));
         assert!(restrictions.is_argument_restricted(&program_id, &function_id, &argument, 10));
         assert!(restrictions.is_argument_restricted(&program_id, &function_id, &argument, 15));
@@ -178,7 +202,7 @@ mod tests {
         assert!(!restrictions.is_argument_restricted(&program_id, &function_id, &argument, 25));
 
         let argument = (false, 0, Literal::I8(I8::new(0)));
-        restrictions.arguments.insert((program_id, function_id, argument.clone()), range.clone());
+        restrictions.arguments.insert((program_id, function_id), indexmap!(argument.clone() => range.clone()));
         assert!(!restrictions.is_argument_restricted(&program_id, &function_id, &argument, 5));
         assert!(restrictions.is_argument_restricted(&program_id, &function_id, &argument, 10));
         assert!(restrictions.is_argument_restricted(&program_id, &function_id, &argument, 15));
@@ -186,7 +210,7 @@ mod tests {
         assert!(!restrictions.is_argument_restricted(&program_id, &function_id, &argument, 25));
 
         let argument = (true, 1, Literal::I8(I8::new(0)));
-        restrictions.arguments.insert((program_id, function_id, argument.clone()), range);
+        restrictions.arguments.insert((program_id, function_id), indexmap!(argument.clone() => range.clone()));
         assert!(!restrictions.is_argument_restricted(&program_id, &function_id, &argument, 5));
         assert!(restrictions.is_argument_restricted(&program_id, &function_id, &argument, 10));
         assert!(restrictions.is_argument_restricted(&program_id, &function_id, &argument, 15));

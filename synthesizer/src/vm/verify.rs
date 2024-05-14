@@ -293,6 +293,14 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     fn check_execution_internal(&self, execution: &Execution<N>, is_partially_verified: bool) -> Result<()> {
         let timer = timer!("VM::check_execution");
 
+        // Retrieve the block height.
+        let block_height = self.block_store().current_block_height();
+
+        // Ensure the execution does not contain any restricted transitions.
+        if self.restrictions.contains_restricted_transitions(execution, block_height) {
+            bail!("Execution verification failed - restricted transition found");
+        }
+
         // Verify the execution proof, if it has not been partially-verified before.
         let verification = match is_partially_verified {
             true => Ok(()),
