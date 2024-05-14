@@ -12,6 +12,37 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+/********************************************** INVARIANTS ************************************************************/
+
+// 1. contains committee[r0] =>
+//   a. contains delegated[r0]
+//     - The set of delegated addresses is superset of active validators.
+// 2. committee[*].microcredits >= 10,000,000
+//   - All active validators have at least 10,000,000 credits bonded.
+// 3. delegated[r0] < 10,000,000 =>
+//   a. !contain committee[r0]
+//
+// 4. bond[r0].validator == r0 =>
+//   a. contains committee[r0]
+//     - Self bonded addresses are always active validators.
+// 5. committee[r0] =>
+//   a. bond[r0].validator == r0
+//     - Every active validator has some self bond.
+//
+// 6. delegated[r0] == sum bond[*].microcredits by bond[].validator == r0
+//
+// 7. bond[r0].microcredits < 10,000 =>
+//   a. bond[r0].validator == r0
+//   b. contains committee[r0]
+//   - A bond value < 10,000 implies self-bonded active validator.
+// 8. bond[r0].validator != r0 =>
+//   a. bond[r0].microcredits >= 10,000
+// 9. count bonded[] - count committee[] == metadata[aleo1qgqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqanmpl0]
+// 10. count committee[] == metadata[aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc]
+// 11. 100,000 >= count bonded[] >= count delegated[] >= count committee[]
+// 12. bond[*].microcredits > 100
+// 13. delegated[*] > 10,000
+
 /**********************************************************************************************************************/
 
 program credits.aleo;
@@ -203,6 +234,11 @@ finalize bond_validator:
         set r18 into metadata[aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc];
         // Set the withdrawal address.
         set r1 into withdraw[r0];
+
+        // Get current unbonding state
+        contains unbonding[r0] into r19;
+        // Fail if current unbonding state
+        assert.eq r19 false;
     // }
 
     position validator_in_committee;
@@ -234,7 +270,12 @@ finalize unbond_public:
     input r1 as u64.public;      // Amount of microcredits to unbond.
 
     // Get the bond state of the delegator or validator, or fail if no bond state
-    get delegated[r0] into r100;
+    get bonded[r0] into r100;
+
+    // Check if bonded to self (validator) or bonded to a different address (delegator)
+    is.eq r100 r0 into r110;
+
+    // Get bonded 
 
     // Get the committee state, or fail if it doesn't exist
     get committee[r0] into r2;
@@ -489,240 +530,6 @@ finalize bond_public:
     add r3 r22 into r23;
     // Update delegated amount.
     set r23 into delegated[r1];
-
-/**********************************************************************************************************************/
-
-// This function allows any staker to unbond their microcredits from a validator.
-// The corresponding function for 'unbond_public' is 'claim_unbond_public'.
-function unbond_public:
-    // Input the amount of microcredits to unbond.
-    input r0 as u64.public;
-
-    // Unbond the specified amount of microcredits to the caller.
-    async unbond_public self.caller r0 into r1;
-    // Output the finalize future.
-    output r1 as credits.aleo/unbond_public.future;
-
-// TODO update unbond_public to correctly decrement delegated[] amount.
-finalize unbond_public:
-    // Input the staker's address.
-    input r0 as address.public;
-    // Input the amount of microcredits to unbond.
-    input r1 as u64.public;
-
-    // Construct the initial unbond state.
-    cast 0u64 0u32 into r2 as unbond_state;
-    // Get the unbond state for the caller, or default to the initial unbond state.
-    get.or_use unbonding[r0] r2 into r3;
-
-    // Compute the height at which the unbonding will be complete, starting from the current block.
-    // Note: Calling unbond across multiple blocks before the unbonding is complete will reset the height each time.
-    add block.height 360u32 into r4;
-
-    // Determine if the caller is a validator or delegator.
-    contains committee[r0] into r5;
-
-    // If the caller is a validator, jump to the `unbond_validator` logic.
-    branch.eq r5 true to unbond_validator;
-    // If the caller is not a validator, jump to the `unbond_delegator` logic.
-    branch.eq r5 false to unbond_delegator;
-
-    /******* Unbond Validator *******/
-
-    // Starts the `unbond_validator` logic.
-    position unbond_validator;
-
-    /* Committee */
-
-    // Get the committee state for the specified validator.
-    get committee[r0] into r6;
-    // Decrement the stake for the specified validator.
-    sub r6.microcredits r1 into r7;
-
-    /* Bonded */
-
-    // Get the bond state for the validator, or fail if it does not exist.
-    get bonded[r0] into r8;
-    // Ensure that the validator matches in the bond state.
-    assert.eq r8.validator r0;
-    // Decrement the microcredits in the bond state.
-    sub r8.microcredits r1 into r9;
-
-    // Determine if the remaining bond is at least 10 million credits.
-    gte r9 10_000_000_000_000u64 into r10;
-
-    // If the remaining balance is at least 10 million credits, jump to the `decrement_validator` logic.
-    branch.eq r10 true to decrement_validator;
-    // If the remaining balance is less than 10 million credits, jump to the `remove_validator` logic.
-    branch.eq r10 false to remove_validator;
-
-    /*** Decrement Validator ***/
-
-    // Starts the `decrement_validator` logic.
-    position decrement_validator;
-
-    /* Committee */
-
-    // Construct the updated committee state.
-    cast r6.is_open r6.commission into r11 as committee_state;
-    // Update the committee state for the validator.
-    set r11 into committee[r0];
-
-    /* Bonded */
-
-    // Construct the updated bond state.
-    cast r0 r9 into r12 as bond_state;
-    // Update the bond state for the validator.
-    set r12 into bonded[r0];
-
-    /* Unbonding */
-
-    // Increment the microcredits in the unbond state.
-    add r3.microcredits r1 into r13;
-
-    // Construct the updated unbond state.
-    cast r13 r4 into r14 as unbond_state;
-    // Update the unbond state for the caller.
-    set r14 into unbonding[r0];
-
-    // Ends the `decrement_validator` logic.
-    branch.eq true true to end;
-
-    /*** Remove Validator ***/
-
-    // Starts the `remove_validator` logic.
-    position remove_validator;
-
-    // TODO We could relax this constraint.
-    // Ensure that the validator has no delegators.
-    assert.eq r6.microcredits r8.microcredits;
-
-    /* Committee */
-
-    // Remove the validator from the committee.
-    remove committee[r0];
-
-    // Get the committee size.
-    get metadata[aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc] into r15;
-    // Decrement the committee size by one.
-    sub r15 1u32 into r16;
-    // Set the new committee size.
-    set r16 into metadata[aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc];
-
-    /* Bonded */
-
-    // Remove the bond state for the validator.
-    remove bonded[r0];
-
-    /* Unbonding */
-
-    // Increment the microcredits in the unbond state.
-    add r3.microcredits r8.microcredits into r17;
-
-    // Construct the updated unbond state.
-    cast r17 r4 into r18 as unbond_state;
-    // Update the unbond state for the caller.
-    set r18 into unbonding[r0];
-
-    // Ends the `remove_validator` logic.
-    branch.eq true true to end;
-
-    /******* Unbond Delegator *******/
-
-    // Starts the `unbond_delegator` logic.
-    position unbond_delegator;
-
-    // Get the bond state for the caller, or fail if it does not exist.
-    get bonded[r0] into r19;
-    // Decrement the microcredits in the bond state.
-    sub r19.microcredits r1 into r20;
-
-    // Determine if the remaining bond is at least 10 thousand credits.
-    gte r20 10_000_000_000u64 into r21;
-
-    // If the remaining balance is at least 10 thousand credits, jump to the `decrement_delegator` logic.
-    branch.eq r21 true to decrement_delegator;
-    // If the remaining balance is less than 10 thousand credits, jump to the `remove_delegator` logic.
-    branch.eq r21 false to remove_delegator;
-
-    /*** Decrement Delegator ***/
-
-    // Starts the `decrement_delegator` logic.
-    position decrement_delegator;
-
-    /* Committee */
-
-    // Get the stake for the specified validator.
-    // If the validator does not exist, this finalize scope will fail.
-    get committee[r19.validator] into r22;
-    // Decrement the stake for the specified validator.
-    sub r22.microcredits r1 into r23;
-    // Construct the updated committee state.
-    cast r23 r22.is_open r22.commission into r24 as committee_state;
-    // Update the stake for the specified validator.
-    set r24 into committee[r19.validator];
-
-    /* Bonded */
-
-    // Construct the updated bond state.
-    cast r19.validator r20 into r25 as bond_state;
-    // Update the bond state for the caller.
-    set r25 into bonded[r0];
-
-    /* Unbonding */
-
-    // Increment the microcredits in the unbond state.
-    add r3.microcredits r1 into r26;
-
-    // Construct the updated unbond state.
-    cast r26 r4 into r27 as unbond_state;
-    // Update the unbond state for the caller.
-    set r27 into unbonding[r0];
-
-    // Ends the `decrement_delegator` logic.
-    branch.eq true true to end;
-
-    /*** Remove Delegator ***/
-
-    // Starts the `remove_delegator` logic.
-    position remove_delegator;
-
-    /* Committee */
-
-    // Get the stake for the specified validator.
-    // If the validator does not exist, this finalize scope will fail.
-    get committee[r19.validator] into r28;
-    // Decrement the stake for the specified validator.
-    sub r28.microcredits r19.microcredits into r29;
-    // Construct the updated committee state.
-    cast r29 r28.is_open r28.commission into r30 as committee_state;
-    // Update the stake for the specified validator.
-    set r30 into committee[r19.validator];
-
-    // Get the number of delegators.
-    get metadata[aleo1qgqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqanmpl0] into r31;
-    // Decrement the number of bonded delegators by one.
-    sub r31 1u32 into r32;
-    // Set the new number of delegators.
-    set r32 into metadata[aleo1qgqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqanmpl0];
-
-    /* Bonded */
-
-    // Remove the caller from the bonded mapping.
-    remove bonded[r0];
-
-    /* Unbonding */
-
-    // Increment the microcredits in the unbond state.
-    add r3.microcredits r19.microcredits into r33;
-
-    // Construct the updated unbond state.
-    cast r33 r4 into r34 as unbond_state;
-    // Update the unbond state for the caller.
-    set r34 into unbonding[r0];
-
-    // The terminus.
-    position end;
 
 /**********************************************************************************************************************/
 
