@@ -832,7 +832,7 @@ jobs:
   verify-windows:
     executor:
       name: windows/default
-      size: anf/2xlarge
+      size: 2xlarge
     environment:
       CARGO_NET_GIT_FETCH_WITH_CLI: "true"
     parameters:
