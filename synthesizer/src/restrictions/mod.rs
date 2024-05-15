@@ -15,6 +15,9 @@
 mod helpers;
 pub use helpers::*;
 
+mod serialize;
+mod string;
+
 use console::{
     network::prelude::*,
     program::{Identifier, Literal, Locator, Plaintext, ProgramID},
@@ -24,7 +27,7 @@ use ledger_block::{Execution, Input, Output, Transition};
 
 use indexmap::IndexMap;
 
-#[derive(Debug, Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct Restrictions<N: Network> {
     /// The set of program IDs that are restricted from being executed.
     /// e.g. `restricted.aleo` => `..` (all blocks)
@@ -237,19 +240,6 @@ impl<N: Network> Restrictions<N> {
         // Hash the preimage data.
         // Note: This call must be collision-resistant, and so we use BHP-1024.
         N::hash_bhp1024(&preimage.to_bits_le())
-    }
-}
-
-impl<N: Network + Serialize> Serialize for Restrictions<N> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let mut state = serializer.serialize_struct("Restrictions", 3)?;
-        state.serialize_field("programs", &self.programs)?;
-        state.serialize_field("functions", &self.functions)?;
-        state.serialize_field("arguments", &self.arguments)?;
-        state.end()
     }
 }
 

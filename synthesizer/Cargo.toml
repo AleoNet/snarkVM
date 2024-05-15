@@ -162,6 +162,10 @@ version = "0.8"
 version = "1"
 optional = true
 
+[dependencies.serde_json]
+version = "1.0"
+features = [ "preserve_order" ]
+
 [dependencies.tracing]
 version = "0.1"
 
@@ -193,10 +197,6 @@ version = "1.18"
 
 [dev-dependencies.rayon]
 version = "1"
-
-[dev-dependencies.serde_json]
-version = "1.0"
-features = [ "preserve_order" ]
 
 [dev-dependencies.serde_yaml]
 version = "0.9"

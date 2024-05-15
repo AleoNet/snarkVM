@@ -131,7 +131,7 @@ mod tests {
     const ITERATIONS: usize = 1000;
 
     pub(crate) fn sample_argument_locator<R: Rng + CryptoRng>(rng: &mut R) -> ArgumentLocator {
-        ArgumentLocator::new(rng.gen(), rng.gen())
+        ArgumentLocator::new(rng.gen(), rng.gen_range(0..16))
     }
 
     fn check_serde_json<
