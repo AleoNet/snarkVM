@@ -12,5 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+mod argument_locator;
+pub use argument_locator::*;
+
 mod block_range;
 pub use block_range::*;

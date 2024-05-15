@@ -3371,6 +3371,7 @@ version = "0.16.19"
 dependencies = [
  "aleo-std",
  "anyhow",
+ "bincode",
  "criterion",
  "indexmap 2.1.0",
  "itertools 0.11.0",

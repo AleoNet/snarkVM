@@ -17,7 +17,7 @@ pub use helpers::*;
 
 use console::{
     network::prelude::*,
-    program::{Identifier, Literal, Plaintext, ProgramID},
+    program::{Identifier, Literal, Locator, Plaintext, ProgramID},
     types::Field,
 };
 use ledger_block::{Execution, Input, Output, Transition};
@@ -37,7 +37,7 @@ pub struct Restrictions<N: Network> {
     /// e.g. `restricted.aleo/foo` => `10..` (from block 10 onwards)
     /// e.g. `restricted.aleo/foo` => `..10` (up to block 10)
     /// e.g. `restricted.aleo/foo` => `10..20` (from block 10 to block 20)
-    functions: IndexMap<(ProgramID<N>, Identifier<N>), BlockRange>,
+    functions: IndexMap<Locator<N>, BlockRange>,
     /// The set of `(program ID, function name, argument)` triples that are restricted from being executed.
     /// e.g. `restricted.aleo/bar _ aleo1zkpxxxxx _ _` => `..` (all blocks)
     /// e.g. `restricted.aleo/bar _ aleo1zkpxxxxx _ _` => `10..` (from block 10 onwards)
@@ -50,7 +50,7 @@ pub struct Restrictions<N: Network> {
     /// - When a transition matches the program ID & function name, the initial lookup cost is `O(num_inputs + num_outputs)`.
     ///    - If an input or output index does not match, the additional lookup cost is `0`.
     ///    - If an input or output index matches, the additional lookup cost is `O(n)` for `n` arguments with the same index.
-    arguments: IndexMap<(ProgramID<N>, Identifier<N>), IndexMap<(bool, u16), IndexMap<Literal<N>, BlockRange>>>,
+    arguments: IndexMap<Locator<N>, IndexMap<ArgumentLocator, IndexMap<Literal<N>, BlockRange>>>,
 }
 
 impl<N: Network> Default for Restrictions<N> {
@@ -74,14 +74,12 @@ impl<N: Network> Restrictions<N> {
     }
 
     /// Returns the set of `(program ID, function ID)` pairs that are restricted from being executed.
-    pub fn functions(&self) -> &IndexMap<(ProgramID<N>, Identifier<N>), BlockRange> {
+    pub fn functions(&self) -> &IndexMap<Locator<N>, BlockRange> {
         &self.functions
     }
 
     /// Returns the set of `(program ID, function ID, argument)` triples that are restricted from being executed.
-    pub fn arguments(
-        &self,
-    ) -> &IndexMap<(ProgramID<N>, Identifier<N>), IndexMap<(bool, u16), IndexMap<Literal<N>, BlockRange>>> {
+    pub fn arguments(&self) -> &IndexMap<Locator<N>, IndexMap<ArgumentLocator, IndexMap<Literal<N>, BlockRange>>> {
         &self.arguments
     }
 }
@@ -99,58 +97,63 @@ impl<N: Network> Restrictions<N> {
         function_name: &Identifier<N>,
         block_height: u32,
     ) -> bool {
-        self.functions.get(&(*program_id, *function_name)).map_or(false, |range| range.contains(block_height))
+        self.functions
+            .get(&Locator::new(*program_id, *function_name))
+            .map_or(false, |range| range.contains(block_height))
     }
 
     /// Returns `true` if the given `(program ID, function ID, argument)` triple is restricted from being executed.
     pub fn is_argument_restricted(&self, transition: &Transition<N>, block_height: u32) -> bool {
-        self.arguments.get(&(*transition.program_id(), *transition.function_name())).map_or(false, |entries| {
-            // Check if any argument is restricted and return `true` if one is found.
-            for ((is_input, index), arguments) in entries {
-                match is_input {
-                    true => {
-                        if let Some(argument) = transition.inputs().get(*index as usize) {
-                            match argument {
-                                Input::Constant(_, Some(plaintext)) | Input::Public(_, Some(plaintext)) => {
-                                    match plaintext {
-                                        Plaintext::Literal(literal, _) => {
-                                            if let Some(range) = arguments.get(literal) {
-                                                if range.contains(block_height) {
-                                                    return true;
+        self.arguments.get(&Locator::new(*transition.program_id(), *transition.function_name())).map_or(
+            false,
+            |entries| {
+                // Check if any argument is restricted and return `true` if one is found.
+                for (argument_locator, arguments) in entries {
+                    match argument_locator.is_input() {
+                        true => {
+                            if let Some(argument) = transition.inputs().get(argument_locator.index() as usize) {
+                                match argument {
+                                    Input::Constant(_, Some(plaintext)) | Input::Public(_, Some(plaintext)) => {
+                                        match plaintext {
+                                            Plaintext::Literal(literal, _) => {
+                                                if let Some(range) = arguments.get(literal) {
+                                                    if range.contains(block_height) {
+                                                        return true;
+                                                    }
                                                 }
                                             }
+                                            Plaintext::Struct(..) | Plaintext::Array(..) => continue,
                                         }
-                                        Plaintext::Struct(..) | Plaintext::Array(..) => continue,
                                     }
+                                    _ => continue,
                                 }
-                                _ => continue,
                             }
                         }
-                    }
-                    false => {
-                        if let Some(argument) = transition.outputs().get(*index as usize) {
-                            match argument {
-                                Output::Constant(_, Some(plaintext)) | Output::Public(_, Some(plaintext)) => {
-                                    match plaintext {
-                                        Plaintext::Literal(literal, _) => {
-                                            if let Some(range) = arguments.get(literal) {
-                                                if range.contains(block_height) {
-                                                    return true;
+                        false => {
+                            if let Some(argument) = transition.outputs().get(argument_locator.index() as usize) {
+                                match argument {
+                                    Output::Constant(_, Some(plaintext)) | Output::Public(_, Some(plaintext)) => {
+                                        match plaintext {
+                                            Plaintext::Literal(literal, _) => {
+                                                if let Some(range) = arguments.get(literal) {
+                                                    if range.contains(block_height) {
+                                                        return true;
+                                                    }
                                                 }
                                             }
+                                            Plaintext::Struct(..) | Plaintext::Array(..) => continue,
                                         }
-                                        Plaintext::Struct(..) | Plaintext::Array(..) => continue,
                                     }
+                                    _ => continue,
                                 }
-                                _ => continue,
                             }
                         }
                     }
                 }
-            }
-            // Otherwise, return `false`.
-            false
-        })
+                // Otherwise, return `false`.
+                false
+            },
+        )
     }
 }
 
@@ -186,8 +189,8 @@ impl<N: Network> Restrictions<N> {
     /// Returns the restriction ID.
     pub fn compute_restriction_id(
         programs: IndexMap<ProgramID<N>, BlockRange>,
-        functions: IndexMap<(ProgramID<N>, Identifier<N>), BlockRange>,
-        arguments: IndexMap<(ProgramID<N>, Identifier<N>), IndexMap<(bool, u16), IndexMap<Literal<N>, BlockRange>>>,
+        functions: IndexMap<Locator<N>, BlockRange>,
+        arguments: IndexMap<Locator<N>, IndexMap<ArgumentLocator, IndexMap<Literal<N>, BlockRange>>>,
     ) -> Result<Field<N>> {
         // Prepare the preimage data.
         let mut preimage = Vec::new();
@@ -203,24 +206,24 @@ impl<N: Network> Restrictions<N> {
         // Append the number of functions.
         preimage.push(Field::from_u64(functions.len() as u64));
         // Encode the functions.
-        for ((program_id, function_name), range) in functions {
-            preimage.extend_from_slice(&program_id.to_fields()?);
-            preimage.push(function_name.to_field()?);
+        for (locator, range) in functions {
+            preimage.extend_from_slice(&locator.program_id().to_fields()?);
+            preimage.push(locator.resource().to_field()?);
             preimage.extend_from_slice(&range.to_fields()?);
         }
 
         // Append the number of arguments.
         preimage.push(Field::from_u64(arguments.len() as u64));
         // Encode the arguments.
-        for ((program_id, function_name), entries) in arguments {
-            preimage.extend_from_slice(&program_id.to_fields()?);
-            preimage.push(function_name.to_field()?);
+        for (locator, entries) in arguments {
+            preimage.extend_from_slice(&locator.program_id().to_fields()?);
+            preimage.push(locator.resource().to_field()?);
             // Append the number of argument entries.
             preimage.push(Field::from_u64(entries.len() as u64));
             // Encode the argument entries.
-            for ((is_input, index), arguments) in entries {
-                preimage.push(if is_input { Field::one() } else { Field::zero() });
-                preimage.push(Field::from_u16(index));
+            for (argument_locator, arguments) in entries {
+                preimage.push(if argument_locator.is_input() { Field::one() } else { Field::zero() });
+                preimage.push(Field::from_u16(argument_locator.index()));
                 // Append the number of arguments.
                 preimage.push(Field::from_u64(arguments.len() as u64));
                 // Encode the arguments.
@@ -279,7 +282,7 @@ mod tests {
         let program_id = ProgramID::from_str("restricted.aleo").unwrap();
         let function_id = Identifier::from_str("foo").unwrap();
         let range = BlockRange::Range(10..20);
-        restrictions.functions.insert((program_id, function_id), range);
+        restrictions.functions.insert(Locator::new(program_id, function_id), range);
         assert!(!restrictions.is_function_restricted(&program_id, &function_id, 5));
         assert!(restrictions.is_function_restricted(&program_id, &function_id, 10));
         assert!(restrictions.is_function_restricted(&program_id, &function_id, 15));
@@ -298,9 +301,10 @@ mod tests {
 
         let literal = Literal::I8(I8::new(42));
         let index = 0;
-        restrictions
-            .arguments
-            .insert((program_id, function_id), indexmap!( (true, index) => indexmap!( literal.clone() => range )));
+        restrictions.arguments.insert(
+            Locator::new(program_id, function_id),
+            indexmap!( ArgumentLocator::new(true, index) => indexmap!( literal.clone() => range )),
+        );
 
         let input = Input::Public(rng.gen(), Some(literal.into()));
         let transition =
