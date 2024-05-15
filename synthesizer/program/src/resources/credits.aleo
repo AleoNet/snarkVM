@@ -404,7 +404,6 @@ finalize unbond_public:
     branch.eq r11 false to unbond_validator;
 
     /* Unbond Delegator */
-    position unbond_delegator;
     // {
         /* Setup Unbond Delegator */
         // Retrieve or initialize the unbonding state.
