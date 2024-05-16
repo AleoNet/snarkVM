@@ -60,7 +60,12 @@ pub fn deployment_cost<N: Network>(deployment: &Deployment<N>) -> Result<(u64, (
 /// Returns the *minimum* cost in microcredits to publish the given execution (total cost, (storage cost, finalize cost)).
 pub fn execution_cost<N: Network>(process: &Process<N>, execution: &Execution<N>) -> Result<(u64, (u64, u64))> {
     // Compute the storage cost in microcredits.
-    let storage_cost = execution.size_in_bytes()?;
+    let mut storage_cost = execution.size_in_bytes()?;
+
+    // Compute a storage cost penalty if above the size penalty threshold.
+    if storage_cost > EXECUTION_SIZE_PENALTY_THRESHOLD {
+        storage_cost = storage_cost.saturating_mul(100)
+    }
 
     // Get the root transition.
     let transition = execution.peek()?;
@@ -96,6 +101,10 @@ const MAPPING_PER_BYTE_COST: u64 = 10;
 
 const SET_BASE_COST: u64 = 10_000;
 const SET_PER_BYTE_COST: u64 = 100;
+
+/// Storage cost constants
+// Number of bytes above which extra storage cost penalties are applied to execution transactions.
+const EXECUTION_SIZE_PENALTY_THRESHOLD: u64 = 15_000;
 
 /// A helper function to determine the plaintext type in bytes.
 fn plaintext_size_in_bytes<N: Network>(stack: &Stack<N>, plaintext_type: &PlaintextType<N>) -> Result<u64> {
