@@ -136,7 +136,7 @@ commands:
 jobs:
   snarkvm:
     docker:
-      - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
+      - image: cimg/rust:1.78.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
     resource_class: anf/2xlarge
     steps:
       - checkout
@@ -146,7 +146,7 @@ jobs:
 
   algorithms:
     docker:
-      - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
+      - image: cimg/rust:1.78.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
     resource_class: anf/2xlarge
     steps:
       - run_serial:
@@ -155,7 +155,7 @@ jobs:
 
   algorithms-profiler:
     docker:
-      - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
+      - image: cimg/rust:1.78.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
     resource_class: anf/xlarge
     steps:
       - run_serial: # This runs a single test with profiler enabled
@@ -165,7 +165,7 @@ jobs:
 
   circuit:
     docker:
-      - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
+      - image: cimg/rust:1.78.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
     resource_class: anf/xlarge
     steps:
       - run_serial:
@@ -174,7 +174,7 @@ jobs:
 
   circuit-account:
     docker:
-      - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
+      - image: cimg/rust:1.78.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
     resource_class: anf/xlarge
     steps:
       - run_serial:
@@ -184,7 +184,7 @@ jobs:
   # This checks that no `console` structs are used in core circuit logic.
   circuit-account-noconsole:
     docker:
-      - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
+      - image: cimg/rust:1.78.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
     resource_class: anf/xlarge
     steps:
       - run_serial:
@@ -194,7 +194,7 @@ jobs:
 
   circuit-algorithms:
     docker:
-      - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
+      - image: cimg/rust:1.78.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
     resource_class: anf/xlarge
     steps:
       - run_serial:
@@ -203,7 +203,7 @@ jobs:
 
   circuit-collections:
     docker:
-      - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
+      - image: cimg/rust:1.78.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
     resource_class: anf/xlarge
     steps:
       - run_serial:
@@ -213,7 +213,7 @@ jobs:
   # This checks that no `console` structs are used in core circuit logic.
   circuit-collections-noconsole:
     docker:
-      - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
+      - image: cimg/rust:1.78.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
     resource_class: anf/xlarge
     steps:
       - run_serial:
@@ -223,7 +223,7 @@ jobs:
 
   circuit-environment:
     docker:
-      - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
+      - image: cimg/rust:1.78.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
     resource_class: anf/xlarge
     steps:
       - run_serial:
@@ -232,7 +232,7 @@ jobs:
 
   circuit-network:
     docker:
-      - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
+      - image: cimg/rust:1.78.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
     resource_class: anf/xlarge
     steps:
       - run_serial:
@@ -241,7 +241,7 @@ jobs:
 
   circuit-program:
     docker:
-      - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
+      - image: cimg/rust:1.78.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
     resource_class: anf/xlarge
     steps:
       - run_serial:
@@ -250,7 +250,7 @@ jobs:
 
   circuit-types:
     docker:
-      - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
+      - image: cimg/rust:1.78.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
     resource_class: anf/xlarge
     steps:
       - run_serial:
@@ -259,7 +259,7 @@ jobs:
 
   circuit-types-address:
     docker:
-      - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
+      - image: cimg/rust:1.78.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
     resource_class: anf/xlarge
     steps:
       - run_serial:
@@ -268,7 +268,7 @@ jobs:
 
   circuit-types-boolean:
     docker:
-      - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
+      - image: cimg/rust:1.78.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
     resource_class: anf/xlarge
     steps:
       - run_serial:
@@ -277,7 +277,7 @@ jobs:
 
   circuit-types-field:
     docker:
-      - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
+      - image: cimg/rust:1.78.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
     resource_class: anf/xlarge
     steps:
       - run_serial:
@@ -286,7 +286,7 @@ jobs:
 
   circuit-types-group:
     docker:
-      - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
+      - image: cimg/rust:1.78.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
     resource_class: anf/xlarge
     steps:
       - run_serial:
@@ -295,7 +295,7 @@ jobs:
 
   circuit-types-integers:
     docker:
-      - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
+      - image: cimg/rust:1.78.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
     resource_class: anf/2xlarge
     steps:
       - run_serial:
@@ -305,7 +305,7 @@ jobs:
 
   circuit-types-scalar:
     docker:
-      - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
+      - image: cimg/rust:1.78.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
     resource_class: anf/xlarge
     steps:
       - run_serial:
@@ -314,7 +314,7 @@ jobs:
 
   circuit-types-string:
     docker:
-      - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
+      - image: cimg/rust:1.78.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
     resource_class: anf/xlarge
     steps:
       - run_serial:
@@ -322,7 +322,7 @@ jobs:
           cache_key: snarkvm-circuit-types-string-cache
   console:
     docker:
-      - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
+      - image: cimg/rust:1.78.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
     resource_class: anf/xlarge
     steps:
       - run_serial:
@@ -331,7 +331,7 @@ jobs:
 
   console-account:
     docker:
-      - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
+      - image: cimg/rust:1.78.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
     resource_class: anf/xlarge
     steps:
       - run_serial:
@@ -340,7 +340,7 @@ jobs:
 
   console-algorithms:
     docker:
-      - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
+      - image: cimg/rust:1.78.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
     resource_class: anf/xlarge
     steps:
       - run_serial:
@@ -349,7 +349,7 @@ jobs:
 
   console-collections:
     docker:
-      - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
+      - image: cimg/rust:1.78.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
     resource_class: anf/xlarge
     steps:
       - run_serial:
@@ -358,7 +358,7 @@ jobs:
 
   console-network:
     docker:
-      - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
+      - image: cimg/rust:1.78.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
     resource_class: anf/xlarge
     steps:
       - run_serial:
@@ -367,7 +367,7 @@ jobs:
 
   console-network-environment:
     docker:
-      - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
+      - image: cimg/rust:1.78.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
     resource_class: anf/xlarge
     steps:
       - run_serial:
@@ -376,7 +376,7 @@ jobs:
 
   console-program:
     docker:
-      - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
+      - image: cimg/rust:1.78.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
     resource_class: anf/xlarge
     steps:
       - run_serial:
@@ -385,7 +385,7 @@ jobs:
 
   console-types:
     docker:
-      - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
+      - image: cimg/rust:1.78.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
     resource_class: anf/xlarge
     steps:
       - run_serial:
@@ -394,7 +394,7 @@ jobs:
 
   console-types-address:
     docker:
-      - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
+      - image: cimg/rust:1.78.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
     resource_class: anf/xlarge
     steps:
       - run_serial:
@@ -403,7 +403,7 @@ jobs:
 
   console-types-boolean:
     docker:
-      - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
+      - image: cimg/rust:1.78.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
     resource_class: anf/xlarge
     steps:
       - run_serial:
@@ -412,7 +412,7 @@ jobs:
 
   console-types-field:
     docker:
-      - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
+      - image: cimg/rust:1.78.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
     resource_class: anf/xlarge
     steps:
       - run_serial:
@@ -421,7 +421,7 @@ jobs:
 
   console-types-group:
     docker:
-      - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
+      - image: cimg/rust:1.78.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
     resource_class: anf/xlarge
     steps:
       - run_serial:
@@ -430,7 +430,7 @@ jobs:
 
   console-types-integers:
     docker:
-      - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
+      - image: cimg/rust:1.78.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
     resource_class: anf/xlarge
     steps:
       - run_serial:
@@ -439,7 +439,7 @@ jobs:
 
   console-types-scalar:
     docker:
-      - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
+      - image: cimg/rust:1.78.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
     resource_class: anf/xlarge
     steps:
       - run_serial:
@@ -448,7 +448,7 @@ jobs:
 
   console-types-string:
     docker:
-      - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
+      - image: cimg/rust:1.78.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
     resource_class: anf/xlarge
     steps:
       - run_serial:
@@ -457,7 +457,7 @@ jobs:
 
   curves:
     docker:
-      - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
+      - image: cimg/rust:1.78.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
     resource_class: anf/xlarge
     steps:
       - run_serial:
@@ -466,7 +466,7 @@ jobs:
 
   fields:
     docker:
-      - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
+      - image: cimg/rust:1.78.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
     resource_class: anf/xlarge
     steps:
       - run_serial:
@@ -475,7 +475,7 @@ jobs:
 
   ledger:
     docker:
-      - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
+      - image: cimg/rust:1.78.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
     resource_class: anf/2xlarge
     steps:
       - run_serial:
@@ -484,7 +484,7 @@ jobs:
 
   ledger-with-rocksdb:
     docker:
-      - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
+      - image: cimg/rust:1.78.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
     resource_class: anf/2xlarge
     steps:
       - run_serial:
@@ -494,7 +494,7 @@ jobs:
 
   ledger-with-valid-solutions:
     docker:
-      - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
+      - image: cimg/rust:1.78.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
     resource_class: anf/2xlarge
     steps:
       - run_serial:
@@ -504,7 +504,7 @@ jobs:
 
   ledger-authority:
     docker:
-      - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
+      - image: cimg/rust:1.78.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
     resource_class: anf/2xlarge
     steps:
       - run_serial:
@@ -513,7 +513,7 @@ jobs:
 
   ledger-block:
     docker:
-      - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
+      - image: cimg/rust:1.78.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
     resource_class: anf/2xlarge
     steps:
       - run_serial:
@@ -522,7 +522,7 @@ jobs:
 
   ledger-committee:
     docker:
-      - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
+      - image: cimg/rust:1.78.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
     resource_class: anf/xlarge
     steps:
       - run_serial:
@@ -531,7 +531,7 @@ jobs:
 
   ledger-narwhal:
     docker:
-      - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
+      - image: cimg/rust:1.78.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
     resource_class: anf/2xlarge
     steps:
       - run_serial:
@@ -540,7 +540,7 @@ jobs:
 
   ledger-narwhal-batch-certificate:
     docker:
-      - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
+      - image: cimg/rust:1.78.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
     resource_class: anf/2xlarge
     steps:
       - run_serial:
@@ -549,7 +549,7 @@ jobs:
 
   ledger-narwhal-batch-header:
     docker:
-      - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
+      - image: cimg/rust:1.78.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
     resource_class: anf/2xlarge
     steps:
       - run_serial:
@@ -558,7 +558,7 @@ jobs:
 
   ledger-narwhal-data:
     docker:
-      - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
+      - image: cimg/rust:1.78.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
     resource_class: anf/2xlarge
     steps:
       - run_serial:
@@ -567,7 +567,7 @@ jobs:
 
   ledger-narwhal-subdag:
     docker:
-      - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
+      - image: cimg/rust:1.78.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
     resource_class: anf/2xlarge
     steps:
       - run_serial:
@@ -576,7 +576,7 @@ jobs:
 
   ledger-narwhal-transmission:
     docker:
-      - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
+      - image: cimg/rust:1.78.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
     resource_class: anf/2xlarge
     steps:
       - run_serial:
@@ -585,7 +585,7 @@ jobs:
 
   ledger-narwhal-transmission-id:
     docker:
-      - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
+      - image: cimg/rust:1.78.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
     resource_class: anf/2xlarge
     steps:
       - run_serial:
@@ -594,7 +594,7 @@ jobs:
 
   ledger-puzzle:
     docker:
-      - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
+      - image: cimg/rust:1.78.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
     resource_class: anf/2xlarge
     steps:
       - run_serial:
@@ -603,7 +603,7 @@ jobs:
 
   ledger-puzzle-epoch:
     docker:
-      - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
+      - image: cimg/rust:1.78.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
     resource_class: anf/2xlarge
     steps:
       - run_serial:
@@ -612,7 +612,7 @@ jobs:
 
   ledger-query:
     docker:
-      - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
+      - image: cimg/rust:1.78.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
     resource_class: anf/2xlarge
     steps:
       - run_serial:
@@ -621,7 +621,7 @@ jobs:
 
   ledger-store:
     docker:
-      - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
+      - image: cimg/rust:1.78.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
     resource_class: anf/2xlarge
     steps:
       - run_serial:
@@ -631,7 +631,7 @@ jobs:
 
   ledger-test-helpers:
     docker:
-      - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
+      - image: cimg/rust:1.78.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
     resource_class: anf/2xlarge
     steps:
       - run_serial:
@@ -640,7 +640,7 @@ jobs:
 
   parameters:
     docker:
-      - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
+      - image: cimg/rust:1.78.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
     resource_class: anf/xlarge
     steps:
       - run_serial:
@@ -649,7 +649,7 @@ jobs:
 
   synthesizer:
     docker:
-      - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
+      - image: cimg/rust:1.78.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
     resource_class: anf/2xlarge
     steps:
       - run_serial:
@@ -659,7 +659,7 @@ jobs:
 
   synthesizer-integration:
     docker:
-      - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
+      - image: cimg/rust:1.78.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
     resource_class: anf/2xlarge
     steps:
       - run_serial:
@@ -669,7 +669,7 @@ jobs:
 
   synthesizer-process:
     docker:
-      - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
+      - image: cimg/rust:1.78.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
     resource_class: anf/2xlarge
     steps:
       - run_serial:
@@ -678,7 +678,7 @@ jobs:
 
   synthesizer-process-with-rocksdb:
     docker:
-      - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
+      - image: cimg/rust:1.78.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
     resource_class: anf/2xlarge
     steps:
       - run_serial:
@@ -688,7 +688,7 @@ jobs:
 
   synthesizer-program:
     docker:
-      - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
+      - image: cimg/rust:1.78.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
     resource_class: anf/2xlarge
     steps:
       - run_serial:
@@ -698,7 +698,7 @@ jobs:
 
   synthesizer-program-integration:
     docker:
-      - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
+      - image: cimg/rust:1.78.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
     resource_class: anf/2xlarge
     steps:
       - run_serial:
@@ -708,7 +708,7 @@ jobs:
 
   synthesizer-program-integration-keccak:
     docker:
-      - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
+      - image: cimg/rust:1.78.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
     resource_class: anf/2xlarge
     steps:
       - run_serial:
@@ -718,7 +718,7 @@ jobs:
 
   synthesizer-program-integration-psd:
     docker:
-      - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
+      - image: cimg/rust:1.78.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
     resource_class: anf/2xlarge
     steps:
       - run_serial:
@@ -728,7 +728,7 @@ jobs:
 
   synthesizer-program-integration-sha:
     docker:
-      - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
+      - image: cimg/rust:1.78.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
     resource_class: anf/2xlarge
     steps:
       - run_serial:
@@ -738,7 +738,7 @@ jobs:
 
   synthesizer-snark:
     docker:
-      - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
+      - image: cimg/rust:1.78.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
     resource_class: anf/2xlarge
     steps:
       - run_serial:
@@ -747,7 +747,7 @@ jobs:
 
   utilities:
     docker:
-      - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
+      - image: cimg/rust:1.78.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
     resource_class: anf/xlarge
     steps:
       - run_serial:
@@ -756,7 +756,7 @@ jobs:
 
   utilities-derives:
     docker:
-      - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
+      - image: cimg/rust:1.78.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
     resource_class: anf/xlarge
     steps:
       - run_serial:
@@ -765,7 +765,7 @@ jobs:
 
   wasm:
     docker:
-      - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
+      - image: cimg/rust:1.78.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
     resource_class: anf/2xlarge
     steps:
       - checkout
@@ -783,7 +783,7 @@ jobs:
 
   check-fmt:
     docker:
-      - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
+      - image: cimg/rust:1.78.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
     resource_class: anf/xlarge
     steps:
       - checkout
@@ -799,7 +799,7 @@ jobs:
 
   check-clippy:
     docker:
-      - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
+      - image: cimg/rust:1.78.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
     resource_class: anf/2xlarge
     steps:
       - checkout
@@ -816,7 +816,7 @@ jobs:
 
   check-all-targets:
     docker:
-      - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
+      - image: cimg/rust:1.78.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
     resource_class: anf/xlarge
     steps:
       - checkout
