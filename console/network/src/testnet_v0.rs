@@ -132,13 +132,12 @@ impl Network for TestnetV0 {
 
     /// The network edition.
     const EDITION: u16 = 0;
-    // 2024-05-15 12:34:56 UTC
     /// The genesis block coinbase target.
     const GENESIS_COINBASE_TARGET: u64 = (1u64 << 5).saturating_sub(1);
     /// The genesis block proof target.
     const GENESIS_PROOF_TARGET: u64 = 1u64 << 3;
     /// The fixed timestamp of the genesis block.
-    const GENESIS_TIMESTAMP: i64 = 1715776496;
+    const GENESIS_TIMESTAMP: i64 = 1715776496 /* 2024-05-15 12:34:56 UTC */;
     /// The network ID.
     const ID: u16 = 1;
     /// The function name for the inclusion circuit.
