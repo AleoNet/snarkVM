@@ -244,7 +244,7 @@ finalize bond_validator:
         // Get current unbonding state
         contains unbonding[r0] into r20;
         // Fail if current unbonding state
-        assert.eq r21 false;
+        assert.eq r20 false;
     // }
 
     position validator_in_committee;
@@ -352,11 +352,11 @@ finalize bond_public:
     set r17 into account[r0];
     // Update total delegated amount.
     // Get current total delegated amount.
-    get.or_use delegated[r1] 0u64 into r22;
+    get.or_use delegated[r1] 0u64 into r18;
     // Add new bond amount to current delegation.
-    add r3 r22 into r23;
+    add r3 r18 into r19;
     // Update delegated amount.
-    set r23 into delegated[r1];
+    set r19 into delegated[r1];
 
 /**********************************************************************************************************************/
 
