@@ -156,9 +156,9 @@ function bond_validator:
     input r1 as u64.public;      // Amount of microcredits to bond.
     input r2 as u8.public;       // Commission rate.
 
-    // Determine if the amount is at least 100 credits.
-    gte r1 100_000_000u64 into r3;
-    // Enforce the amount is at least 100 credits.
+    // Determine if the amount is at least 1 credits.
+    gte r1 1_000_000u64 into r3;
+    // Enforce the amount is at least 1 credits.
     assert.eq r3 true;
 
     // Commission must be a percentage in the range 0-100 inclusive.
@@ -227,19 +227,24 @@ finalize bond_validator:
     contains committee[r0] into r16;
     branch.eq r16 true to validator_in_committee;
     // {
+        // Check if initial bond amount is at least 100 credits
+        gte r2 100_000_000u64 into r17;
+        // Assert that initial self bond is at least 100 credits
+        assert.eq r17 true;
+
         // Get the committee size.
-        get.or_use metadata[aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc] 0u32 into r17;
+        get.or_use metadata[aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc] 0u32 into r18;
         // Increment the committee size by one.
-        add r17 1u32 into r18;
+        add r18 1u32 into r19;
         // Set the new committee size.
-        set r18 into metadata[aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc];
+        set r19 into metadata[aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc];
         // Set the withdrawal address.
         set r1 into withdraw[r0];
 
         // Get current unbonding state
-        contains unbonding[r0] into r19;
+        contains unbonding[r0] into r20;
         // Fail if current unbonding state
-        assert.eq r19 false;
+        assert.eq r21 false;
     // }
 
     position validator_in_committee;
@@ -364,14 +369,13 @@ finalize bond_public:
 // Validators can also forcibly unbond a delegator
 
 function unbond_public:
-    input r0 as address.public; // The address of the caller.
-    input r1 as address.public; // The address of the validator or delegator to unbond.
-    input r2 as u64.public;     // Amount of microcredits to unbond.
+    input r0 as address.public; // The address of the validator or delegator to unbond.
+    input r1 as u64.public;     // Amount of microcredits to unbond.
 
     // Unbond the specified amount of microcredits for the specified validator.
-    async unbond_public self.caller r1 r2 into r3;
+    async unbond_public self.caller r0 r1 into r2;
     // Output the finalize future.
-    output r3 as credits.aleo/unbond_public.future;
+    output r2 as credits.aleo/unbond_public.future;
 
 finalize unbond_public:
     input r0 as address.public; // Address of the caller.
@@ -401,7 +405,7 @@ finalize unbond_public:
 
     // Check if bonded to self (validator) or to a different address (delegator).
     is.eq r5.validator r1 into r11;
-    branch.eq r11 false to unbond_validator;
+    branch.eq r11 true to unbond_validator;
 
     /* Unbond Delegator */
     // {
@@ -441,7 +445,7 @@ finalize unbond_public:
         /* End Update Delegated state */
 
         // Check if the new bonded state is below 10,000 credits or validator is forcing unbond.
-        branch.eq r16 false to remove_delegator;
+        branch.eq r16 true to remove_delegator;
 
         /* Decrement Delegator */
         // {
@@ -485,53 +489,60 @@ finalize unbond_public:
     position unbond_validator;
     // {
         /* Setup Unbond Validator */
+        // Check if the committee contains the validator
+        contains committee[r5.validator] into r25;
+        // Delegator unbonding from a validator not in the committee
+        nor r11 r25 into r26;
+        // Jump to end if delegator unbonding from a validator not in the committee
+        branch.eq r26 true to end;
+
         // Retrieve the committee state or fail if it doesn't exist.
-        get committee[r5.validator] into r25;
+        get committee[r5.validator] into r27;
 
         // Retrieve the bond state of the validator.
-        get bonded[r5.validator] into r26;
+        get bonded[r5.validator] into r28;
 
         // Retrieve the total delegated balance for the validator.
-        get delegated[r5.validator] into r27;
+        get delegated[r5.validator] into r29;
         /* End Setup Unbond Validator */
 
         // Check if the current delegated amount is below 10M credits.
-        lte r27 10_000_000_000_000u64 into r28;
-        branch.eq r28 true to remove_validator;
+        lte r29 10_000_000_000_000u64 into r30;
+        branch.eq r30 true to remove_validator;
 
         // Calculate the new delegated total after unbonding.
-        sub r27 r2 into r29;
+        sub r29 r2 into r31;
 
         // Calculate the new bond state after unbonding.
-        sub r26.microcredits r2 into r30;
+        sub r28.microcredits r2 into r32;
 
         // Check if the new bond state is below the required minimums.
-        gte r30 100u64 into r31; // Minimum self bond requirement: 100 credits.
-        gte r29 10_000_000_000_000u64 into r32; // Minimum total delegated requirement: 10M credits.
+        gte r32 100u64 into r33; // Minimum self bond requirement: 100 credits.
+        gte r31 10_000_000_000_000u64 into r34; // Minimum total delegated requirement: 10M credits.
 
         // If either bond state is below the thresholds, remove the validator from the committee.
-        and r31 r32 into r33;
-        branch.eq r33 false to remove_validator;
+        and r33 r34 into r35;
+        branch.eq r35 false to remove_validator;
 
         /* Update Validator State */
         // Retrieve or initialize the unbonding state.
-        get.or_use unbonding[r5.validator] r4 into r34;
+        get.or_use unbonding[r5.validator] r4 into r36;
         // Increment the unbond amount.
-        add r34.microcredits r2 into r35;
+        add r36.microcredits r2 into r37;
         // Set the updated unbond state.
-        cast r35 r3 into r36 as unbond_state;
+        cast r37 r3 into r38 as unbond_state;
         // Store the new unbonding state.
-        set r36 into unbonding[r1];
+        set r38 into unbonding[r1];
 
         /* Update Delegated Total */
         // Store the new delegated total.
-        set r29 into delegated[r1];
+        set r31 into delegated[r1];
         /* End Update Delegated Total */
 
         /* Update Validator Bonded State */
         // Construct and store the new bond state.
-        cast r5.validator r30 into r37 as bond_state;
-        set r37 into bonded[r1];
+        cast r5.validator r32 into r39 as bond_state;
+        set r39 into bonded[r1];
         /* End Update Validator Bonded State */
 
         // Jump to end.
@@ -546,17 +557,17 @@ finalize unbond_public:
 
         /* Update Metadata */
         // Retrieve the current committee size.
-        get metadata[aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc] into r38;
+        get metadata[aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc] into r40;
         // Decrement the committee size by one.
-        sub r38 1u32 into r39;
+        sub r40 1u32 into r41;
         // Store the new committee size.
-        set r39 into metadata[aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc];
+        set r41 into metadata[aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc];
         /* End Update Metadata */
 
         /* Update Delegated Total */
         // Decrease the delegated total by the bonded amount.
-        sub r27 r26.microcredits into r40;
-        set r40 into delegated[r5.validator];
+        sub r29 r28.microcredits into r42;
+        set r42 into delegated[r5.validator];
         /* End Update Delegated Total */
 
         /* Clear Bonded State */
@@ -566,13 +577,13 @@ finalize unbond_public:
 
         /* Update Unbonding State */
         // Retrieve or initialize the unbonding state.
-        get.or_use unbonding[r5.validator] r4 into r41;
+        get.or_use unbonding[r5.validator] r4 into r43;
         // Increment the unbond amount by the full bonded amount.
-        add r26.microcredits r41.microcredits into r42;
+        add r28.microcredits r43.microcredits into r44;
         // Set the updated unbond state.
-        cast r42 r3 into r43 as unbond_state;
+        cast r44 r3 into r45 as unbond_state;
         // Store the new unbonding state.
-        set r43 into unbonding[r1];
+        set r45 into unbonding[r1];
         /* End Update Unbonding State */
     //}
 
@@ -587,41 +598,47 @@ finalize unbond_public:
 function claim_unbond_public:
     // The address of the staker
     input r0 as address.public;
+    // The number of microcredits to claim
+    input r1 as u64.public;
 
     // Claim the unbonded microcredits.
-    async claim_unbond_public r0 into r0;
+    async claim_unbond_public r0 r1 into r2;
     // Output the finalize future.
-    output r0 as credits.aleo/claim_unbond_public.future;
+    output r2 as credits.aleo/claim_unbond_public.future;
 
 finalize claim_unbond_public:
     // Input the staker's address.
     input r0 as address.public;
+    // Input the number of microcredits to claim
+    input r1 as u64.public;
 
     // Get the unbond state for the address, or fail if it does not exist.
-    get unbonding[r0] into r1;
+    get unbonding[r0] into r2;
+    // Assert that the claim amount is the full unbond state
+    assert.eq r1 r2.microcredits;
     // Determine if unbonding is complete.
-    gte block.height r1.height into r2;
+    gte block.height r2.height into r3;
     // Enforce the unbonding is complete.
-    assert.eq r2 true;
+    assert.eq r3 true;
 
     // Get the withdrawal address for the address.
-    get withdraw[r0] into r3;
+    get withdraw[r0] into r4;
 
     // Add the unbonded amount to the withdrawal address public balance.
-    // Increments `account[r3]` by `r1`.
-    // If `account[r3]` does not exist, 0u64 is used.
-    // If `account[r3] + r1` overflows, `claim_unbond_public` is reverted.
-    get.or_use account[r3] 0u64 into r4;
-    add r1.microcredits r4 into r5;
-    set r5 into account[r3];
+    // Increments `account[r4]` by `r1`.
+    // If `account[r4]` does not exist, 0u64 is used.
+    // If `account[r4] + r1` overflows, `claim_unbond_public` is reverted.
+    get.or_use account[r4] 0u64 into r5;
+    add r2.microcredits r5 into r6;
+    set r6 into account[r4];
 
     // Remove the unbond state for the staker.
     remove unbonding[r0];
 
     // Check if the staker is still bonded.
-    contains bonded[r0] into r6;
+    contains bonded[r0] into r7;
     // Ends the `claim_unbond_public` logic.
-    branch.eq r6 true to end;
+    branch.eq r7 true to end;
 
     // If the caller is no longer bonded, remove the withdrawal address.
     remove withdraw[r0];

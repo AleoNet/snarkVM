@@ -39,7 +39,6 @@ pub fn credits_maps_into_committee<N: Network>(
     // Prepare the identifiers.
     let is_open_identifier: Identifier<N> = Identifier::from_str("is_open")?;
     let commission_identifier: Identifier<N> = Identifier::from_str("comission")?;
-    let microcredits_identifier: Identifier<N> = Identifier::from_str("microcredits")?;
 
     // Extract the committee members.
     let committee_members: IndexMap<Address<N>, (u64, bool, u8)> = committee_map
@@ -313,7 +312,7 @@ pub(crate) mod test_helpers {
 
     use rand::{CryptoRng, Rng};
 
-    /// Returns the stakers, given the map of `(validator, (microcredits, is_open))` entries.
+    /// Returns the stakers, given the map of `(validator, (microcredits, is_open, commission))` entries.
     /// This method simulates the existence of delegators for the members.
     pub(crate) fn to_stakers<N: Network, R: Rng + CryptoRng>(
         members: &IndexMap<Address<N>, (u64, bool, u8)>,
@@ -355,6 +354,17 @@ pub(crate) mod test_helpers {
             .collect()
     }
 
+    /// Returns the validator delegation totals, given the map of `(validator, (microcredits, is_open, commission))` entries.
+    /// This method simulates the existence of delegators for the members.
+    pub(crate) fn to_delegations<N: Network>(
+        members: &IndexMap<Address<N>, (u64, bool, u8)>,
+    ) -> IndexMap<Address<N>, u64> {
+        members
+            .into_iter()
+            .map(|(validator, (microcredits, _, _))| (*validator, *microcredits))
+            .collect()
+    }
+
     /// Returns the withdrawal addresses, given the stakers.
     /// This method simulates the existence of unique withdrawal addresses for the stakers.
     pub(crate) fn to_withdraw_addresses<N: Network, R: Rng + CryptoRng>(
@@ -382,16 +392,29 @@ mod tests {
     use rayon::prelude::*;
     use std::str::FromStr;
 
-    /// Returns the committee map, given the map of `(validator, (microcredits, is_open))` entries.
+    /// Returns the committee map, given the map of `(validator, (microcredits, is_open, commission))` entries.
     fn to_committee_map<N: Network>(members: &IndexMap<Address<N>, (u64, bool, u8)>) -> Vec<(Plaintext<N>, Value<N>)> {
         members
             .par_iter()
-            .map(|(validator, (microcredits, is_open, u8))| {
-                let microcredits = U64::<N>::new(*microcredits);
+            .map(|(validator, (_, is_open, commission))| {
                 let is_open = Boolean::<N>::new(*is_open);
+                let commission = U8::<N>::new(*commission);
                 (
                     Plaintext::from(Literal::Address(*validator)),
-                    Value::from_str(&format!("{{ microcredits: {microcredits}, is_open: {is_open} }}")).unwrap(),
+                    Value::from_str(&format!("{{ is_open: {is_open}, commission: {commission} }}")).unwrap(),
+                )
+            })
+            .collect()
+    }
+
+    /// Returns the delegated map, given the map of `(validator, (microcredits, is_open, commission))` entries.
+    fn to_delegated_map<N: Network>(members: &IndexMap<Address<N>, (u64, bool, u8)>) -> Vec<(Plaintext<N>, Value<N>)> {
+        members
+            .par_iter()
+            .map(|(validator, (microcredits, _, _))| {
+                (
+                    Plaintext::from(Literal::Address(*validator)),
+                    Value::Plaintext(Plaintext::Literal(Literal::U64(U64::new(*microcredits)), Default::default())),
                 )
             })
             .collect()
@@ -455,10 +478,13 @@ mod tests {
         // Initialize the committee map.
         let committee_map = to_committee_map(committee.members());
 
+        // Initialize the delegated map.
+        let delegated_map = to_delegated_map(committee.members());
+
         // Start a timer.
         let timer = std::time::Instant::now();
         // Convert the committee map into a committee.
-        let candidate_committee = committee_map_into_committee(committee.starting_round(), committee_map).unwrap();
+        let candidate_committee = credits_maps_into_committee(committee.starting_round(), committee_map, delegated_map).unwrap();
         println!("committee_map_into_committee: {}ms", timer.elapsed().as_millis());
         assert_eq!(candidate_committee, committee);
     }
@@ -508,12 +534,14 @@ mod tests {
         let committee = ledger_committee::test_helpers::sample_committee_for_round_and_size(1, 100, rng);
         // Convert the committee into stakers.
         let stakers = crate::committee::test_helpers::to_stakers(committee.members(), rng);
+        // Convert the committee into delegations.
+        let delegations = crate::committee::test_helpers::to_delegations(committee.members());
 
         // Start a timer.
         let timer = std::time::Instant::now();
         // Ensure the next committee matches the current committee.
         // Note: We can perform this check, in this specific case only, because we did not apply staking rewards.
-        let next_committee = to_next_committee(&committee, committee.starting_round() + 1, &stakers).unwrap();
+        let next_committee = to_next_committee(&committee, committee.starting_round() + 1, &delegations).unwrap();
         println!("to_next_committee: {}ms", timer.elapsed().as_millis());
         assert_eq!(committee.starting_round() + 1, next_committee.starting_round());
         assert_eq!(committee.members(), next_committee.members());
@@ -527,12 +555,14 @@ mod tests {
         let committee = ledger_committee::test_helpers::sample_committee(rng);
         // Convert the committee into stakers.
         let stakers: IndexMap<Address<console::network::MainnetV0>, (Address<console::network::MainnetV0>, u64)> = crate::committee::test_helpers::to_stakers(committee.members(), rng);
+        // Convert the committee into delegations.
+        let delegations = crate::committee::test_helpers::to_delegations(committee.members());
 
         // Start a timer.
         let timer = std::time::Instant::now();
         // Ensure the next committee matches the current committee.
         // Note: We can perform this check, in this specific case only, because we did not apply staking rewards.
-        let (committee_map, bonded_map, _) = to_next_credits_maps(&committee, &stakers);
+        let (committee_map, bonded_map, _) = to_next_credits_maps(&committee, &stakers, &delegations);
         println!("to_next_credits_maps: {}ms", timer.elapsed().as_millis());
         assert_eq!(committee_map, to_committee_map(committee.members()));
         assert_eq!(bonded_map, to_bonded_map(&stakers));

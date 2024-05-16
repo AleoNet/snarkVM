@@ -369,7 +369,7 @@ mod tests {
         });
         let leaders = leaders.read();
         // Ensure the leader distribution is uniform.
-        for (i, (address, (stake, _))) in committee.members.iter().enumerate() {
+        for (i, (address, (stake, _, _))) in committee.members.iter().enumerate() {
             // Get the leader count for the validator.
             let Some(leader_count) = leaders.get(address) else {
                 println!("{i}: 0 rounds");
@@ -432,8 +432,8 @@ mod tests {
         println!("sorted_members: {}ms", timer.elapsed().as_millis());
         // Check that the members are sorted based on our sorting criteria.
         for i in 0..sorted_members.len() - 1 {
-            let (address1, (_, _)) = sorted_members[i];
-            let (address2, (_, _)) = sorted_members[i + 1];
+            let (address1, (_, _, _)) = sorted_members[i];
+            let (address2, (_, _, _)) = sorted_members[i + 1];
             assert!(address1.to_x_coordinate() > address2.to_x_coordinate());
         }
     }
