@@ -398,7 +398,34 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         self.block_store().pause_atomic_writes()?;
 
         // First, insert the block.
-        self.block_store().insert(block)?;
+        if let Err(insert_error) = self.block_store().insert(block) {
+            if cfg!(feature = "rocks") {
+                // Clear all pending atomic operations so that unpausing the atomic writes
+                // doesn't execute any of the queued storage operations.
+                self.block_store().abort_atomic();
+                // Disable the atomic batch override.
+                // Note: This call is guaranteed to succeed (without error), because `DISCARD_BATCH == true`.
+                self.block_store().unpause_atomic_writes::<true>()?;
+                // Rollback the Merkle tree.
+                self.block_store().remove_last_n_from_tree_only(1).map_err(|removal_error| {
+                    // Log the insert error.
+                    error!("Failed to insert block {} - {insert_error}", block.height());
+                    // Return the removal error.
+                    removal_error
+                })?;
+            } else {
+                // Rollback the block.
+                self.block_store().remove_last_n(1).map_err(|removal_error| {
+                    // Log the insert error.
+                    error!("Failed to insert block {} - {insert_error}", block.height());
+                    // Return the removal error.
+                    removal_error
+                })?;
+            }
+
+            return Err(insert_error);
+        };
+
         // Next, finalize the transactions.
         match self.finalize(state, block.ratifications(), block.solutions(), block.transactions()) {
             Ok(_ratified_finalize_operations) => {
