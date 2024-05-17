@@ -206,6 +206,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use circuit::environment::Private;
     use console::{
         account::{Address, ViewKey},
         network::MainnetV0,
@@ -281,6 +282,34 @@ mod tests {
             let execution_size_in_bytes = execution.to_bytes_le().unwrap().len();
             assert_eq!(1519, execution_size_in_bytes, "Update me if serialization has changed");
         }
+    }
+
+    #[test]
+    fn test_credits_bond_public_cost() {
+      let rng = &mut TestRng::default();
+      let credits_program = "credits.aleo";
+      let function_name = "bond_public";
+
+      // Initialize a new caller.
+      let caller_private_key: PrivateKey<MainnetV0> = PrivateKey::new(rng).unwrap();
+      let validator_private_key: PrivateKey<MainnetV0> = PrivateKey::new(rng).unwrap();
+      println!("Validator private key: {:?}", validator_private_key);
+      println!("Caller private key: {:?}", caller_private_key);
+      let validator_address = Address::try_from(&validator_private_key).unwrap();
+      let withdrawal_address = Address::try_from(&caller_private_key).unwrap();
+      let bond_public_amount = 1_000_000u64;
+      let inputs = &[validator_address.to_string(), withdrawal_address.to_string(), format!("{bond_public_amount}_u64")];
+
+      // Prepare the VM and records.
+      let (vm, _) = prepare_vm(rng).unwrap();
+
+      // Prepare the inputs.
+
+      let authorization = vm.authorize(&caller_private_key, credits_program, function_name, inputs, rng).unwrap();
+
+      let execution = vm.execute_authorization_raw(authorization, None, rng).unwrap();
+      let (cost, _) = execution_cost(&vm.process().read(), &execution).unwrap();
+      println!("Cost: {}", cost);
     }
 
     #[test]

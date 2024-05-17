@@ -18,8 +18,11 @@ pub use genesis::*;
 const REMOTE_URL: &str = "https://s3-us-west-1.amazonaws.com/testnet.parameters";
 
 // BondPublic
-impl_remote!(BondPublicProver, REMOTE_URL, "resources/", "bond_public", "prover");
+impl_local!(BondPublicProver, "resources/", "bond_public", "prover");
 impl_local!(BondPublicVerifier, "resources/", "bond_public", "verifier");
+// BondValidator
+impl_local!(BondValidatorProver, "resources/", "bond_validator", "prover");
+impl_local!(BondValidatorVerifier, "resources/", "bond_validator", "verifier");
 // UnbondPublic
 impl_remote!(UnbondPublicProver, REMOTE_URL, "resources/", "unbond_public", "prover");
 impl_local!(UnbondPublicVerifier, "resources/", "unbond_public", "verifier");
@@ -57,7 +60,7 @@ impl_local!(SplitVerifier, "resources/", "split", "verifier");
 impl_remote!(FeePrivateProver, REMOTE_URL, "resources/", "fee_private", "prover");
 impl_local!(FeePrivateVerifier, "resources/", "fee_private", "verifier");
 // FeePublic
-impl_remote!(FeePublicProver, REMOTE_URL, "resources/", "fee_public", "prover");
+impl_local!(FeePublicProver, "resources/", "fee_public", "prover");
 impl_local!(FeePublicVerifier, "resources/", "fee_public", "verifier");
 
 #[macro_export]
@@ -66,6 +69,7 @@ macro_rules! insert_testnet_credit_keys {
         paste::paste! {
             let string = stringify!([<$variant:lower>]);
             $crate::insert_testnet_key!($map, string, $type<$network>, ("bond_public", $crate::testnet::[<BondPublic $variant>]::load_bytes()));
+            $crate::insert_testnet_key!($map, string, $type<$network>, ("bond_validator", $crate::testnet::[<BondValidator $variant>]::load_bytes()));
             $crate::insert_testnet_key!($map, string, $type<$network>, ("unbond_public", $crate::testnet::[<UnbondPublic $variant>]::load_bytes()));
             $crate::insert_testnet_key!($map, string, $type<$network>, ("unbond_delegator_as_validator", $crate::testnet::[<UnbondDelegatorAsValidator $variant>]::load_bytes()));
             $crate::insert_testnet_key!($map, string, $type<$network>, ("claim_unbond_public", $crate::testnet::[<ClaimUnbondPublic $variant>]::load_bytes()));
