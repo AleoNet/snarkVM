@@ -18,7 +18,7 @@ pub use genesis::*;
 const REMOTE_URL: &str = "https://s3-us-west-1.amazonaws.com/testnet.parameters";
 
 // BondPublic
-impl_local!(BondPublicProver, "resources/", "bond_public", "prover");
+impl_remote!(BondPublicProver, REMOTE_URL, "resources/", "bond_public", "prover");
 impl_local!(BondPublicVerifier, "resources/", "bond_public", "verifier");
 // BondValidator
 impl_local!(BondValidatorProver, "resources/", "bond_validator", "prover");
@@ -60,7 +60,7 @@ impl_local!(SplitVerifier, "resources/", "split", "verifier");
 impl_remote!(FeePrivateProver, REMOTE_URL, "resources/", "fee_private", "prover");
 impl_local!(FeePrivateVerifier, "resources/", "fee_private", "verifier");
 // FeePublic
-impl_local!(FeePublicProver, "resources/", "fee_public", "prover");
+impl_remote!(FeePublicProver, REMOTE_URL, "resources/", "fee_public", "prover");
 impl_local!(FeePublicVerifier, "resources/", "fee_public", "verifier");
 
 #[macro_export]
