@@ -406,21 +406,6 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 // Disable the atomic batch override.
                 // Note: This call is guaranteed to succeed (without error), because `DISCARD_BATCH == true`.
                 self.block_store().unpause_atomic_writes::<true>()?;
-                // Rollback the Merkle tree.
-                self.block_store().remove_last_n_from_tree_only(1).map_err(|removal_error| {
-                    // Log the insert error.
-                    error!("Failed to insert block {} - {insert_error}", block.height());
-                    // Return the removal error.
-                    removal_error
-                })?;
-            } else {
-                // Rollback the block.
-                self.block_store().remove_last_n(1).map_err(|removal_error| {
-                    // Log the insert error.
-                    error!("Failed to insert block {} - {insert_error}", block.height());
-                    // Return the removal error.
-                    removal_error
-                })?;
             }
 
             return Err(insert_error);
