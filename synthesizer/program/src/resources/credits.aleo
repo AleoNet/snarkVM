@@ -430,12 +430,12 @@ finalize unbond_public:
         sub r5.microcredits r2 into r14;
 
         // Check if the delegator will have < 10,000 credits bonded.
-        lte r14 10_000_000_000u64 into r15;
+        lt r14 10_000_000_000u64 into r15;
 
         // If validator is forcing delegator to unbond or delegator will have < 10,000 credits bonded.
         or r15 r9 into r16;
 
-        // Determine the amount to unbond: requested amount if above 10,000 credits, otherwise the full bonded amount.
+        // Determine the amount to unbond: requested amount if >= 10,000 credits, otherwise the full bonded amount.
         ternary r16 r5.microcredits r2 into r17;
 
         /* Update Unbonding state */

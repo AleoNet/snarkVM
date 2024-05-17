@@ -36,6 +36,8 @@ use std::collections::HashSet;
 #[cfg(not(feature = "serial"))]
 use rayon::prelude::*;
 
+/// The minimum self bond for a validator to join the committee
+pub const MIN_VALIDATOR_SELF_STAKE: u64 = 100_000_000u64; // microcredits
 /// The minimum amount of stake required for a validator to bond.
 pub const MIN_VALIDATOR_STAKE: u64 = 10_000_000_000_000u64; // microcredits
 /// The minimum amount of stake required for a delegator to bond.

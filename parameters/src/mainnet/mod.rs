@@ -70,15 +70,15 @@ impl_local!(NegBeta, "resources/", "neg-powers-of-beta", "usrs");
 // Negative Powers of Beta in G2
 impl_local!(BetaH, "resources/", "beta-h", "usrs");
 
+// BondValidator
+impl_remote!(BondValidatorProver, REMOTE_URL, "resources/", "bond_validator", "prover");
+impl_local!(BondValidatorVerifier, "resources/", "bond_validator", "verifier");
 // BondPublic
 impl_remote!(BondPublicProver, REMOTE_URL, "resources/", "bond_public", "prover");
 impl_local!(BondPublicVerifier, "resources/", "bond_public", "verifier");
 // UnbondPublic
 impl_remote!(UnbondPublicProver, REMOTE_URL, "resources/", "unbond_public", "prover");
 impl_local!(UnbondPublicVerifier, "resources/", "unbond_public", "verifier");
-// UnbondDelegatorAsValidator
-impl_remote!(UnbondDelegatorAsValidatorProver, REMOTE_URL, "resources/", "unbond_delegator_as_validator", "prover");
-impl_local!(UnbondDelegatorAsValidatorVerifier, "resources/", "unbond_delegator_as_validator", "verifier");
 // ClaimUnbondPublic
 impl_remote!(ClaimUnbondPublicProver, REMOTE_URL, "resources/", "claim_unbond_public", "prover");
 impl_local!(ClaimUnbondPublicVerifier, "resources/", "claim_unbond_public", "verifier");
@@ -118,9 +118,9 @@ macro_rules! insert_credit_keys {
     ($map:ident, $type:ident<$network:ident>, $variant:ident) => {{
         paste::paste! {
             let string = stringify!([<$variant:lower>]);
+            $crate::insert_key!($map, string, $type<$network>, ("bond_validator", $crate::mainnet::[<BondValidator $variant>]::load_bytes()));
             $crate::insert_key!($map, string, $type<$network>, ("bond_public", $crate::mainnet::[<BondPublic $variant>]::load_bytes()));
             $crate::insert_key!($map, string, $type<$network>, ("unbond_public", $crate::mainnet::[<UnbondPublic $variant>]::load_bytes()));
-            $crate::insert_key!($map, string, $type<$network>, ("unbond_delegator_as_validator", $crate::mainnet::[<UnbondDelegatorAsValidator $variant>]::load_bytes()));
             $crate::insert_key!($map, string, $type<$network>, ("claim_unbond_public", $crate::mainnet::[<ClaimUnbondPublic $variant>]::load_bytes()));
             $crate::insert_key!($map, string, $type<$network>, ("set_validator_state", $crate::mainnet::[<SetValidatorState $variant>]::load_bytes()));
             $crate::insert_key!($map, string, $type<$network>, ("transfer_private", $crate::mainnet::[<TransferPrivate $variant>]::load_bytes()));
@@ -175,10 +175,9 @@ mod tests {
         Degree18::load_bytes().expect("Failed to load degree 18");
         Degree19::load_bytes().expect("Failed to load degree 19");
         Degree20::load_bytes().expect("Failed to load degree 20");
+        BondValidatorVerifier::load_bytes().expect("Failed to load bond_validator verifier");
         BondPublicVerifier::load_bytes().expect("Failed to load bond_public verifier");
         UnbondPublicVerifier::load_bytes().expect("Failed to load unbond_public verifier");
-        UnbondDelegatorAsValidatorVerifier::load_bytes()
-            .expect("Failed to load unbond_delegator_as_validator verifier");
         ClaimUnbondPublicVerifier::load_bytes().expect("Failed to load claim_unbond_public verifier");
         SetValidatorStateVerifier::load_bytes().expect("Failed to load set_validator_state verifier");
         TransferPrivateVerifier::load_bytes().expect("Failed to load transfer_private verifier");
