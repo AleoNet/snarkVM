@@ -63,8 +63,8 @@ pub fn execution_cost<N: Network>(process: &Process<N>, execution: &Execution<N>
     let mut storage_cost = execution.size_in_bytes()?;
 
     // Compute a storage cost penalty if above the size penalty threshold.
-    if storage_cost > EXECUTION_SIZE_PENALTY_THRESHOLD {
-        storage_cost = storage_cost.saturating_mul(100)
+    if storage_cost > N::EXECUTION_STORAGE_PENALTY_THRESHOLD {
+        storage_cost = storage_cost.saturating_mul(N::EXECUTION_STORAGE_FEE_MULTIPLIER)
     }
 
     // Get the root transition.
@@ -101,10 +101,6 @@ const MAPPING_PER_BYTE_COST: u64 = 10;
 
 const SET_BASE_COST: u64 = 10_000;
 const SET_PER_BYTE_COST: u64 = 100;
-
-/// Storage cost constants
-// Number of bytes above which extra storage cost penalties are applied to execution transactions.
-const EXECUTION_SIZE_PENALTY_THRESHOLD: u64 = 15_000;
 
 /// A helper function to determine the plaintext type in bytes.
 fn plaintext_size_in_bytes<N: Network>(stack: &Stack<N>, plaintext_type: &PlaintextType<N>) -> Result<u64> {
