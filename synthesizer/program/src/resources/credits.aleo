@@ -204,7 +204,7 @@ finalize bond_validator:
 
     // Construct the initial bond state.
     cast r0 0u64 into r8 as bond_state;
-    // Get the bond state for the caller, or default to the initial bond state.
+    // Get the bond state for the signer, or default to the initial bond state.
     get.or_use bonded[r0] r8 into r9;
     // Enforce the validator matches in the bond state.
     assert.eq r9.validator r0;
@@ -227,10 +227,10 @@ finalize bond_validator:
 
     /* Account */
 
-    // Get the balance of the caller.
+    // Get the balance of the signer.
     // If the account does not exist, this finalize scope will fail.
     get account[r0] into r15;
-    // Decrement the balance of the caller.
+    // Decrement the balance of the signer.
     sub r15 r2 into r16;
 
     /* Writes */
@@ -261,9 +261,9 @@ finalize bond_validator:
 
     // Update the committee state of the specified validator.
     set r7 into committee[r0];
-    // Update the bond state for the caller.
+    // Update the bond state for the signer.
     set r14 into bonded[r0];
-    // Update the balance of the caller.
+    // Update the balance of the signer.
     set r16 into account[r0];
     // Update the delegated amount.
     set r12 into delegated[r0];
@@ -485,7 +485,7 @@ finalize unbond_public:
 
             /* Update Metadata */
             // Retrieve the current number of delegators.
-            get.or_use metadata[aleo1qgqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqanmpl0] 0u32 into r24;
+            get metadata[aleo1qgqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqanmpl0] into r24;
             // Decrement the number of delegators by one.
             sub r24 1u32 into r25;
             // Store the new number of delegators.
@@ -523,9 +523,10 @@ finalize unbond_public:
         // Retrieve the total delegated balance for the validator.
         get delegated[r5.validator] into r31;
         /* End Setup Unbond Validator */
-
+`
         // Check if the current delegated amount is below 10M credits.
-        lte r31 10_000_000_000_000u64 into r32;
+        // This will only be true if a delegator unbond caused the validator to fall below 10M credits.
+        lt r31 10_000_000_000_000u64 into r32;
         branch.eq r32 true to remove_validator;
 
         // Calculate the new delegated total after unbonding.
@@ -535,7 +536,7 @@ finalize unbond_public:
         sub r30.microcredits r2 into r34;
 
         // Check if the new bond state is below the required minimums.
-        gte r34 100u64 into r35; // Minimum self bond requirement: 100 credits.
+        gte r34 100_000_000u64 into r35; // Minimum self bond requirement: 100 credits.
         gte r33 10_000_000_000_000u64 into r36; // Minimum total delegated requirement: 10M credits.
 
         // If either bond state is below the thresholds, remove the validator from the committee.
@@ -550,17 +551,17 @@ finalize unbond_public:
         // Set the updated unbond state.
         cast r39 r3 into r40 as unbond_state;
         // Store the new unbonding state.
-        set r40 into unbonding[r1];
+        set r40 into unbonding[r5.validator];
 
         /* Update Delegated Total */
         // Store the new delegated total.
-        set r33 into delegated[r1];
+        set r33 into delegated[r5.validator];
         /* End Update Delegated Total */
 
         /* Update Validator Bonded State */
         // Construct and store the new bond state.
         cast r5.validator r34 into r41 as bond_state;
-        set r41 into bonded[r1];
+        set r41 into bonded[r5.validator];
         /* End Update Validator Bonded State */
 
         // Jump to end.
