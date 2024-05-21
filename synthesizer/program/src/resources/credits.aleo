@@ -523,7 +523,7 @@ finalize unbond_public:
         // Retrieve the total delegated balance for the validator.
         get delegated[r5.validator] into r31;
         /* End Setup Unbond Validator */
-`
+
         // Check if the current delegated amount is below 10M credits.
         // This will only be true if a delegator unbond caused the validator to fall below 10M credits.
         lt r31 10_000_000_000_000u64 into r32;

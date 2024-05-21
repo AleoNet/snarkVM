@@ -222,7 +222,7 @@ pub fn to_next_committee<N: Network>(
     for (delegatee, microcredits) in next_delegated {
       match current_committee.members().contains_key(delegatee) {
         true => {
-          let (stake, is_open, commission) = current_committee.members().get(delegatee).unwrap();
+          let (_, is_open, commission) = current_committee.members().get(delegatee).unwrap();
           members.insert(*delegatee, (*microcredits, *is_open, *commission));
         },
         false => (), // do nothing, delegatee is not part of the committee
@@ -246,10 +246,9 @@ pub fn to_next_credits_maps<N: Network>(
 
     // Construct the committee and delegated maps.
     let committee_map = cfg_iter!(next_committee.members())
-        .map(|(validator, (microcredits, is_open, commission))| {
+        .map(|(validator, (_, is_open, commission))| {
             // Construct the committee state.
             let committee_state = indexmap! {
-                // microcredits_identifier => Plaintext::from(Literal::U64(U64::new(*microcredits))),
                 is_open_identifier => Plaintext::from(Literal::Boolean(Boolean::new(*is_open))),
                 commission_identifier => Plaintext::from(Literal::U8(U8::new(*commission))),
             };
@@ -533,7 +532,7 @@ mod tests {
         // Sample a committee.
         let committee = ledger_committee::test_helpers::sample_committee_for_round_and_size(1, 100, rng);
         // Convert the committee into stakers.
-        let stakers = crate::committee::test_helpers::to_stakers(committee.members(), rng);
+        let _stakers = crate::committee::test_helpers::to_stakers(committee.members(), rng);
         // Convert the committee into delegations.
         let delegations = crate::committee::test_helpers::to_delegations(committee.members());
 

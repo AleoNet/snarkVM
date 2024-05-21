@@ -62,7 +62,7 @@ pub(crate) mod test_helpers {
         let bonded_balances = committee
             .members()
             .iter()
-            .map(|(address, (amount, _))| (*address, (*address, *address, *amount)))
+            .map(|(address, (amount, _, _))| (*address, (*address, *address, *amount)))
             .collect();
 
         vec![

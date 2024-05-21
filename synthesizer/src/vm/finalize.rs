@@ -14,7 +14,7 @@
 
 use super::*;
 
-use ledger_committee::{MAX_DELEGATORS, MIN_DELEGATOR_STAKE, MIN_VALIDATOR_STAKE};
+use ledger_committee::{MAX_DELEGATORS, MIN_DELEGATOR_STAKE, MIN_VALIDATOR_SELF_STAKE, MIN_VALIDATOR_STAKE};
 use utilities::cfg_sort_by_cached_key;
 
 impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
@@ -1056,8 +1056,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                         // Check that the amount meets the minimum requirement, depending on whether the address is a validator.
                         if *address == *validator_address {
                             ensure!(
-                                *amount >= MIN_VALIDATOR_STAKE,
-                                "Ratify::Genesis(..) the validator {address} must stake at least {MIN_VALIDATOR_STAKE}",
+                                *amount >= MIN_VALIDATOR_SELF_STAKE,
+                                "Ratify::Genesis(..) the validator {address} must stake at least {MIN_VALIDATOR_SELF_STAKE}",
                             );
                         } else {
                             ensure!(
@@ -1128,6 +1128,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     finalize_operations.extend(&[
                         // Replace the committee mapping in storage.
                         store.replace_mapping(program_id, committee_mapping, next_committee_map)?,
+                        // Replace the delegated mapping in storage.
+                        store.replace_mapping(program_id, delegated_mapping, next_delegated_map)?,
                         // Replace the bonded mapping in storage.
                         store.replace_mapping(program_id, bonded_mapping, next_bonded_map)?,
                         // Replace the withdraw mapping in storage.
@@ -1197,10 +1199,10 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         let program_id = ProgramID::from_str("credits.aleo")?;
         // Construct the committee mapping name.
         let committee_mapping = Identifier::from_str("committee")?;
-        // Construct the bonded mapping name.
-        let bonded_mapping = Identifier::from_str("bonded")?;
         // Construct the delegated mapping name.
         let delegated_mapping = Identifier::from_str("delegated")?;
+        // Construct the bonded mapping name.
+        let bonded_mapping = Identifier::from_str("bonded")?;
         // Construct the account mapping name.
         let account_mapping = Identifier::from_str("account")?;
 
@@ -1253,10 +1255,10 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     finalize_operations.extend(&[
                         // Replace the committee mapping in storage.
                         store.replace_mapping(program_id, committee_mapping, next_committee_map)?,
-                        // Replace the bonded mapping in storage.
-                        store.replace_mapping(program_id, bonded_mapping, next_bonded_map)?,
                         // Replace the delegated mapping in storage.
                         store.replace_mapping(program_id, delegated_mapping, next_delegated_map)?,
+                        // Replace the bonded mapping in storage.
+                        store.replace_mapping(program_id, bonded_mapping, next_bonded_map)?,
                     ]);
 
                     // Set the block reward ratification flag.
@@ -2394,7 +2396,7 @@ finalize compute:
         let expected_committee = committee
             .members()
             .iter()
-            .map(|(address, (amount, is_open, commission))| {
+            .map(|(address, (_, is_open, commission))| {
                 (
                     Plaintext::from_str(&address.to_string()).unwrap(),
                     Value::from_str(&format!("{{ is_open: {is_open}, commission: {commission} }}")).unwrap(),

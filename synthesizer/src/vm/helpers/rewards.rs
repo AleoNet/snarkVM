@@ -187,7 +187,7 @@ mod tests {
     fn test_staking_rewards() {
         let rng = &mut TestRng::default();
         // Sample a random committee.
-        let committee = ledger_committee::test_helpers::sample_committee(rng);
+        let committee = ledger_committee::test_helpers::sample_committee_with_commissions(rng);
         // Sample a random block reward.
         let block_reward = rng.gen_range(0..MAX_COINBASE_REWARD);
         // Retrieve an address.
@@ -241,6 +241,59 @@ mod tests {
                 let reward = block_reward as u128 * stake as u128 / committee.total_stake() as u128;
                 assert_eq!(stake + u64::try_from(reward).unwrap(), next_stake, "stake: {stake}, reward: {reward}");
             }
+        }
+    }
+
+    #[test]
+    fn test_staking_rewards_commission() {
+        let rng = &mut TestRng::default();
+        // Sample a random committee.
+        let committee = ledger_committee::test_helpers::sample_committee_with_commissions(rng);
+        // Convert the committee into stakers.
+        let stakers = crate::committee::test_helpers::to_stakers(committee.members(), rng);
+        // Sample a random block reward.
+        let block_reward = rng.gen_range(0..MAX_COINBASE_REWARD);
+        // Create a map of validators to commissions
+        let commissions: IndexMap<Address<CurrentNetwork>, u8> = committee.members()
+            .iter()
+            .map(|(address, (_, _, commission))| (*address, *commission))
+            .collect();
+        // Print the commissions from the indexmap
+        println!("commissions: {:?}", commissions);
+        // Create a map of validators to the sum of their commissions
+        let mut total_commissions: IndexMap<Address<CurrentNetwork>, u64> = commissions.clone().into_iter()
+            .map(|(address, _)| (address, 0))
+            .collect();
+
+        // Start a timer.
+        let timer = std::time::Instant::now();
+        // Compute the staking rewards.
+        let next_stakers = staking_rewards::<CurrentNetwork>(&stakers, &committee, block_reward);
+        println!("staking_rewards: {}ms", timer.elapsed().as_millis());
+        assert_eq!(next_stakers.len(), stakers.len());
+        for ((staker, (validator, stake)), (next_staker, (next_validator, next_stake))) in
+            stakers.clone().into_iter().zip(next_stakers.clone().into_iter())
+        {
+            assert_eq!(staker, next_staker);
+            assert_eq!(validator, next_validator);
+
+            let commission_rate = commissions.get(&validator).copied().unwrap_or(0);
+            let reward = block_reward as u128 * stake as u128 / committee.total_stake() as u128;
+            let commission = reward * commission_rate as u128 / 100;
+
+            if staker != validator {
+                *total_commissions.entry(validator).or_insert(0) += commission as u64;
+                assert_eq!(stake + u64::try_from(reward - commission).unwrap(), next_stake, "stake: {stake}, reward: {reward}, commission: {commission}, commission_rate: {commission_rate}");
+            }
+        }
+
+        // For each staker that is a validator, ensure the next staker = reward + sum(commissions)
+        for (validator, commission) in total_commissions {
+            let (_, stake) = stakers.get(&validator).unwrap();
+            let (_, next_stake) = next_stakers.get(&validator).unwrap();
+            let reward = block_reward as u128 * *stake as u128 / committee.total_stake() as u128;
+            let expected_stake = stake + commission + reward as u64;
+            assert_eq!(*next_stake, expected_stake, "stake: {stake}, commission: {commission}");
         }
     }
 

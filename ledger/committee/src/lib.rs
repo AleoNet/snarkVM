@@ -265,6 +265,19 @@ pub mod test_helpers {
         sample_committee_for_round(1, rng)
     }
 
+    /// Samples a random committee with random commissions.
+    pub fn sample_committee_with_commissions(rng: &mut TestRng) -> Committee<CurrentNetwork> {
+        // Sample the members.
+        let mut members = IndexMap::new();
+        for _ in 0..4 {
+            let is_open = rng.gen();
+            let commission = rng.gen_range(0..=100);
+            members.insert(Address::<CurrentNetwork>::new(rng.gen()), (2 * MIN_VALIDATOR_STAKE, is_open, commission));
+        }
+        // Return the committee.
+        Committee::<CurrentNetwork>::new(1, members).unwrap()
+    }
+
     /// Samples a random committee for a given round.
     pub fn sample_committee_for_round(round: u64, rng: &mut TestRng) -> Committee<CurrentNetwork> {
         sample_committee_for_round_and_size(round, 4, rng)
