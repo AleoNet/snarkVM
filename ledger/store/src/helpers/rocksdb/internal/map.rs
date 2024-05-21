@@ -19,6 +19,7 @@ use crate::helpers::{Map, MapRead};
 
 use core::{fmt, fmt::Debug, hash::Hash, mem};
 use indexmap::IndexMap;
+use smallvec::SmallVec;
 use std::{borrow::Cow, ops::Deref, sync::atomic::Ordering};
 use tracing::error;
 
@@ -519,12 +520,13 @@ impl<'a, V: 'a + Clone + PartialEq + Eq + Serialize + DeserializeOwned> Iterator
 
 impl<K: Serialize + DeserializeOwned, V: Serialize + DeserializeOwned> DataMap<K, V> {
     #[inline]
-    fn create_prefixed_key<Q>(&self, key: &Q) -> Result<Vec<u8>>
+    fn create_prefixed_key<Q>(&self, key: &Q) -> Result<SmallVec<[u8; 64]>>
     where
         K: Borrow<Q>,
         Q: Serialize + ?Sized,
     {
-        let mut raw_key = self.context.clone();
+        let mut raw_key: SmallVec<[u8; 64]> = SmallVec::new();
+        raw_key.extend_from_slice(&self.context);
         bincode::serialize_into(&mut raw_key, &key)?;
         Ok(raw_key)
     }
