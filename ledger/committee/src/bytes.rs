@@ -38,8 +38,8 @@ impl<N: Network> FromBytes for Committee<N> {
             )));
         }
 
-        // Calculate the number of bytes per member. Each member is a (address, stake, is_open) tuple.
-        let member_byte_size = Address::<N>::size_in_bytes() + 8 + 1;
+        // Calculate the number of bytes per member. Each member is a (address, stake, is_open, commission) tuple.
+        let member_byte_size = Address::<N>::size_in_bytes() + 8 + 1 + 1;
         // Read the member bytes.
         let mut member_bytes = vec![0u8; num_members as usize * member_byte_size];
         reader.read_exact(&mut member_bytes)?;

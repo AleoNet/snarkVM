@@ -2399,7 +2399,7 @@ finalize compute:
             .map(|(address, (_, is_open, commission))| {
                 (
                     Plaintext::from_str(&address.to_string()).unwrap(),
-                    Value::from_str(&format!("{{ is_open: {is_open}, commission: {commission} }}")).unwrap(),
+                    Value::from_str(&format!("{{ is_open: {is_open}, commission: {commission}u8 }}")).unwrap(),
                 )
             })
             .collect_vec();

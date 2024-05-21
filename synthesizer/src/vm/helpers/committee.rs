@@ -38,7 +38,7 @@ pub fn credits_maps_into_committee<N: Network>(
 ) -> Result<Committee<N>> {
     // Prepare the identifiers.
     let is_open_identifier: Identifier<N> = Identifier::from_str("is_open")?;
-    let commission_identifier: Identifier<N> = Identifier::from_str("comission")?;
+    let commission_identifier: Identifier<N> = Identifier::from_str("commission")?;
 
     // Extract the committee members.
     let committee_members: IndexMap<Address<N>, (u64, bool, u8)> = committee_map
