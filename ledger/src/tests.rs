@@ -1588,7 +1588,7 @@ fn test_max_committee_limit_with_bonds() {
     let mut committee_map = IndexMap::new();
     for (private_key, (amount, _)) in &validators {
         let address = Address::try_from(private_key).unwrap();
-        committee_map.insert(address, (*amount, true));
+        committee_map.insert(address, (*amount, true, 0));
         allocated_amount += *amount;
     }
 

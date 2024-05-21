@@ -95,9 +95,7 @@ pub fn staking_rewards<N: Network>(
         let staking_reward = u64::try_from(quotient).expect("Staking reward is too large");
 
         // Compute the commission for the validator.
-        let commission = (staking_reward as u128)
-            .saturating_mul(commission_rate as u128)
-            .saturating_div(100) as u64;
+        let commission = (staking_reward as u128).saturating_mul(commission_rate as u128).saturating_div(100) as u64;
 
         // Update the commission for the validator.
         *commissions.entry(*validator).or_insert(0) += commission;
@@ -117,7 +115,7 @@ pub fn staking_rewards<N: Network>(
     for (validator, commission) in commissions {
         let (_, stake) = updated_stakers.get(&validator).unwrap_or_else(|| {
             error!("Validator {validator} is not self bonded - skipping commission");
-            &updated_stakers.values().next().unwrap()
+            updated_stakers.values().next().unwrap()
         });
 
         final_stakers.insert(validator, (validator, stake.saturating_add(commission)));
@@ -221,7 +219,8 @@ mod tests {
         let stakers = crate::committee::test_helpers::to_stakers(committee.members(), rng);
         // Generate stakers for a non-existent committee, to ensure they are not rewarded.
         let stakers_fake = crate::committee::test_helpers::to_stakers(fake_committee.members(), rng);
-        let all_stakers: IndexMap<Address<CurrentNetwork>, (Address<CurrentNetwork>, u64)> = stakers.clone().into_iter().chain(stakers_fake.clone().into_iter()).collect();
+        let all_stakers: IndexMap<Address<CurrentNetwork>, (Address<CurrentNetwork>, u64)> =
+            stakers.clone().into_iter().chain(stakers_fake.clone()).collect();
 
         // Start a timer.
         let timer = std::time::Instant::now();
@@ -237,7 +236,8 @@ mod tests {
             // If the validator is not in the committee, the stake should not change.
             if !committee.members().contains_key(&validator) {
                 assert_eq!(stake, next_stake, "stake: {stake}, reward should be 0");
-            } else { // Otherwise, the stake should increase.
+            } else {
+                // Otherwise, the stake should increase.
                 let reward = block_reward as u128 * stake as u128 / committee.total_stake() as u128;
                 assert_eq!(stake + u64::try_from(reward).unwrap(), next_stake, "stake: {stake}, reward: {reward}");
             }
@@ -254,16 +254,13 @@ mod tests {
         // Sample a random block reward.
         let block_reward = rng.gen_range(0..MAX_COINBASE_REWARD);
         // Create a map of validators to commissions
-        let commissions: IndexMap<Address<CurrentNetwork>, u8> = committee.members()
-            .iter()
-            .map(|(address, (_, _, commission))| (*address, *commission))
-            .collect();
+        let commissions: IndexMap<Address<CurrentNetwork>, u8> =
+            committee.members().iter().map(|(address, (_, _, commission))| (*address, *commission)).collect();
         // Print the commissions from the indexmap
         println!("commissions: {:?}", commissions);
         // Create a map of validators to the sum of their commissions
-        let mut total_commissions: IndexMap<Address<CurrentNetwork>, u64> = commissions.clone().into_iter()
-            .map(|(address, _)| (address, 0))
-            .collect();
+        let mut total_commissions: IndexMap<Address<CurrentNetwork>, u64> =
+            commissions.clone().into_iter().map(|(address, _)| (address, 0)).collect();
 
         // Start a timer.
         let timer = std::time::Instant::now();
@@ -283,7 +280,11 @@ mod tests {
 
             if staker != validator {
                 *total_commissions.entry(validator).or_insert(0) += commission as u64;
-                assert_eq!(stake + u64::try_from(reward - commission).unwrap(), next_stake, "stake: {stake}, reward: {reward}, commission: {commission}, commission_rate: {commission_rate}");
+                assert_eq!(
+                    stake + u64::try_from(reward - commission).unwrap(),
+                    next_stake,
+                    "stake: {stake}, reward: {reward}, commission: {commission}, commission_rate: {commission_rate}"
+                );
             }
         }
 

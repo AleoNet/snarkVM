@@ -70,25 +70,23 @@ pub fn credits_maps_into_committee<N: Network>(
             };
 
             // Extract the microcredits for the address from the delegated map.
-            let microcredits = delegated_map
-                .iter()
-                .find_map(|(delegated_key, delegated_value)| {
-                    // Check if the address matches.
-                    let delegated_address = match delegated_key {
-                        Plaintext::Literal(Literal::Address(address), _) => Some(address),
+            let microcredits = delegated_map.iter().find_map(|(delegated_key, delegated_value)| {
+                // Check if the address matches.
+                let delegated_address = match delegated_key {
+                    Plaintext::Literal(Literal::Address(address), _) => Some(address),
+                    _ => None,
+                };
+                if delegated_address == Some(address) {
+                    // Extract the microcredits from the value.
+                    let microcredits = match delegated_value {
+                        Value::Plaintext(Plaintext::Literal(Literal::U64(microcredits), _)) => Some(**microcredits),
                         _ => None,
                     };
-                    if delegated_address == Some(address) {
-                        // Extract the microcredits from the value.
-                        let microcredits = match delegated_value {
-                          Value::Plaintext(Plaintext::Literal(Literal::U64(microcredits), _)) => Some(**microcredits),
-                          _ => None,
-                        };
 
-                        return microcredits;
-                    }
-                    None
-                });
+                    return microcredits;
+                }
+                None
+            });
 
             let microcredits_value = match microcredits {
                 Some(microcredits) => microcredits,
@@ -98,7 +96,7 @@ pub fn credits_maps_into_committee<N: Network>(
             Ok((*address, (microcredits_value, is_open, commission)))
         })
         .collect::<Result<IndexMap<_, _>>>()?;
-     
+
     // Return the committee.
     Committee::new(starting_round, committee_members)
 }
@@ -149,13 +147,15 @@ pub fn ensure_stakers_matches<N: Network>(
 ) -> Result<()> {
     // Construct the validator map.
     let validator_map: IndexMap<_, _> = cfg_reduce!(
-        cfg_into_iter!(stakers).map(|(_, (validator, microcredits))| {
-          if committee.members().contains_key(validator) {
-            Some(indexmap! {*validator => *microcredits})
-          } else {
-            None
-          }
-        }).flatten(),
+        cfg_into_iter!(stakers)
+            .map(|(_, (validator, microcredits))| {
+                if committee.members().contains_key(validator) {
+                    Some(indexmap! {*validator => *microcredits})
+                } else {
+                    None
+                }
+            })
+            .flatten(),
         || IndexMap::new(),
         |mut acc, e| {
             for (validator, microcredits) in e {
@@ -176,7 +176,10 @@ pub fn ensure_stakers_matches<N: Network>(
     // Ensure the committee and committee map match.
     ensure!(committee.members().len() == validator_map.len(), "Committee and validator map length do not match");
     // Ensure the total microcredits match.
-    ensure!(committee.total_stake() == total_validator_microcredits, "Committee and validator map total stake do not match");
+    ensure!(
+        committee.total_stake() == total_validator_microcredits,
+        "Committee and validator map total stake do not match"
+    );
 
     // Iterate over the committee and ensure the committee and validators match.
     for (validator, (microcredits, _, _)) in committee.members() {
@@ -192,22 +195,22 @@ pub fn ensure_stakers_matches<N: Network>(
 }
 
 pub fn to_next_delegated<N: Network>(
-  next_stakers: &IndexMap<Address<N>, (Address<N>, u64)>,
+    next_stakers: &IndexMap<Address<N>, (Address<N>, u64)>,
 ) -> IndexMap<Address<N>, u64> {
-  // Construct the delegated map.
-  let delegated_map: IndexMap<Address<N>, u64> = cfg_reduce!(
-    cfg_into_iter!(next_stakers).map(|(_, (delegatee, microcredits))| indexmap! {*delegatee => *microcredits}),
-    || IndexMap::new(),
-    |mut acc, e| {
-        for (delegatee, microcredits) in e {
-            let entry: &mut u64 = acc.entry(delegatee).or_default();
-            *entry = entry.saturating_add(microcredits);
+    // Construct the delegated map.
+    let delegated_map: IndexMap<Address<N>, u64> = cfg_reduce!(
+        cfg_into_iter!(next_stakers).map(|(_, (delegatee, microcredits))| indexmap! {*delegatee => *microcredits}),
+        || IndexMap::new(),
+        |mut acc, e| {
+            for (delegatee, microcredits) in e {
+                let entry: &mut u64 = acc.entry(delegatee).or_default();
+                *entry = entry.saturating_add(microcredits);
+            }
+            acc
         }
-        acc
-    }
-  );
+    );
 
-  delegated_map
+    delegated_map
 }
 
 /// Returns the next committee, given the current committee and stakers.
@@ -220,13 +223,13 @@ pub fn to_next_committee<N: Network>(
     let mut members = IndexMap::with_capacity(current_committee.members().len());
     // Iterate over the delegatees.
     for (delegatee, microcredits) in next_delegated {
-      match current_committee.members().contains_key(delegatee) {
-        true => {
-          let (_, is_open, commission) = current_committee.members().get(delegatee).unwrap();
-          members.insert(*delegatee, (*microcredits, *is_open, *commission));
-        },
-        false => (), // do nothing, delegatee is not part of the committee
-      }
+        match current_committee.members().contains_key(delegatee) {
+            true => {
+                let (_, is_open, commission) = current_committee.members().get(delegatee).unwrap();
+                members.insert(*delegatee, (*microcredits, *is_open, *commission));
+            }
+            false => (), // do nothing, delegatee is not part of the committee
+        }
     }
     // Return the next committee.
     Committee::new(next_round, members)
@@ -358,10 +361,7 @@ pub(crate) mod test_helpers {
     pub(crate) fn to_delegations<N: Network>(
         members: &IndexMap<Address<N>, (u64, bool, u8)>,
     ) -> IndexMap<Address<N>, u64> {
-        members
-            .into_iter()
-            .map(|(validator, (microcredits, _, _))| (*validator, *microcredits))
-            .collect()
+        members.into_iter().map(|(validator, (microcredits, _, _))| (*validator, *microcredits)).collect()
     }
 
     /// Returns the withdrawal addresses, given the stakers.
@@ -483,7 +483,8 @@ mod tests {
         // Start a timer.
         let timer = std::time::Instant::now();
         // Convert the committee map into a committee.
-        let candidate_committee = credits_maps_into_committee(committee.starting_round(), committee_map, delegated_map).unwrap();
+        let candidate_committee =
+            credits_maps_into_committee(committee.starting_round(), committee_map, delegated_map).unwrap();
         println!("committee_map_into_committee: {}ms", timer.elapsed().as_millis());
         assert_eq!(candidate_committee, committee);
     }
@@ -553,7 +554,8 @@ mod tests {
         // Sample a committee.
         let committee = ledger_committee::test_helpers::sample_committee(rng);
         // Convert the committee into stakers.
-        let stakers: IndexMap<Address<console::network::MainnetV0>, (Address<console::network::MainnetV0>, u64)> = crate::committee::test_helpers::to_stakers(committee.members(), rng);
+        let stakers: IndexMap<Address<console::network::MainnetV0>, (Address<console::network::MainnetV0>, u64)> =
+            crate::committee::test_helpers::to_stakers(committee.members(), rng);
         // Convert the committee into delegations.
         let delegations = crate::committee::test_helpers::to_delegations(committee.members());
 

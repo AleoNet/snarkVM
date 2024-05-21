@@ -14,7 +14,7 @@
 
 use super::*;
 
-use ledger_committee::{MAX_DELEGATORS, MIN_DELEGATOR_STAKE, MIN_VALIDATOR_SELF_STAKE, MIN_VALIDATOR_STAKE};
+use ledger_committee::{MAX_DELEGATORS, MIN_DELEGATOR_STAKE, MIN_VALIDATOR_SELF_STAKE};
 use utilities::cfg_sort_by_cached_key;
 
 impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
@@ -1227,7 +1227,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     // Retrieve the delegator mapping from storage.
                     let current_delegator_map = store.get_mapping_speculative(program_id, delegated_mapping)?;
                     // Convert the committee mapping into a committee.
-                    let current_committee = credits_maps_into_committee(state.block_round(), current_committee_map, current_delegator_map)?;
+                    let current_committee =
+                        credits_maps_into_committee(state.block_round(), current_committee_map, current_delegator_map)?;
                     // Retrieve the bonded mapping from storage.
                     let current_bonded_map = store.get_mapping_speculative(program_id, bonded_mapping)?;
                     // Convert the bonded map into stakers.
@@ -1587,7 +1588,10 @@ finalize transfer_public:
     }
 
     /// Samples the validators.
-    fn sample_validators<N: Network>(num_validators: usize, rng: &mut TestRng) -> IndexMap<PrivateKey<N>, (u64, bool, u8)> {
+    fn sample_validators<N: Network>(
+        num_validators: usize,
+        rng: &mut TestRng,
+    ) -> IndexMap<PrivateKey<N>, (u64, bool, u8)> {
         (0..num_validators)
             .map(|_| {
                 let private_key = PrivateKey::new(rng).unwrap();
@@ -2718,7 +2722,8 @@ finalize compute:
                 (address, (amount, is_open, commission))
             })
             .collect::<IndexMap<_, _>>();
-        validators.insert(Address::try_from(PrivateKey::new(rng).unwrap()).unwrap(), (MIN_VALIDATOR_STAKE - 1, true, 0));
+        validators
+            .insert(Address::try_from(PrivateKey::new(rng).unwrap()).unwrap(), (MIN_VALIDATOR_STAKE - 1, true, 0));
 
         // Construct the committee.
         let result = Committee::new_genesis(validators);
