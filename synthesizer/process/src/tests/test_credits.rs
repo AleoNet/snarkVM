@@ -434,7 +434,6 @@ fn claim_unbond_public<F: FinalizeStorage<CurrentNetwork>>(
     finalize_store: &FinalizeStore<CurrentNetwork, F>,
     caller_private_key: &PrivateKey<CurrentNetwork>,
     address: &Address<CurrentNetwork>,
-    amount: u64,
     block_height: u32,
     rng: &mut TestRng,
 ) -> Result<()> {
@@ -443,7 +442,7 @@ fn claim_unbond_public<F: FinalizeStorage<CurrentNetwork>>(
         finalize_store,
         caller_private_key,
         "claim_unbond_public",
-        &[address.to_string(), format!("{amount}_u64")],
+        &[address.to_string()],
         Some(block_height),
         rng,
     )
@@ -1701,16 +1700,7 @@ fn test_bond_validator_fails_if_unbonding_state() {
         assert_eq!(committee_state(&store, validator_address).unwrap(), None);
 
         // Claim Unbond Public to clear unbonding state
-        claim_unbond_public(
-            &process,
-            &store,
-            validator_private_key,
-            validator_address,
-            validator_amount,
-            unlock_height,
-            rng,
-        )
-        .unwrap();
+        claim_unbond_public(&process, &store, validator_private_key, validator_address, unlock_height, rng).unwrap();
 
         // Try bond_validator again with new commission, should succeed
         let new_commission = TEST_COMMISSION + 1;
@@ -2305,18 +2295,7 @@ fn test_claim_unbond() {
 
     /* Ensure claiming an unbond fails when no unbond_state exists. */
 
-    assert!(
-        claim_unbond_public(
-            &process,
-            &finalize_store,
-            validator_private_key,
-            validator_address,
-            validator_amount,
-            1,
-            rng
-        )
-        .is_err()
-    );
+    assert!(claim_unbond_public(&process, &finalize_store, validator_private_key, validator_address, 1, rng).is_err());
 
     // Perform the unbond.
     unbond_public(&process, &finalize_store, withdrawal_private_key, validator_address, validator_amount, 1, rng)
@@ -2331,7 +2310,6 @@ fn test_claim_unbond() {
             &finalize_store,
             validator_private_key,
             validator_address,
-            validator_amount,
             unbond_height - 1,
             rng
         )
@@ -2340,16 +2318,7 @@ fn test_claim_unbond() {
 
     /* Ensure that claiming an unbond after the unlock height succeeds. */
     let random_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
-    claim_unbond_public(
-        &process,
-        &finalize_store,
-        &random_private_key,
-        validator_address,
-        validator_amount,
-        unbond_height,
-        rng,
-    )
-    .unwrap();
+    claim_unbond_public(&process, &finalize_store, &random_private_key, validator_address, unbond_height, rng).unwrap();
     assert_eq!(account_balance(&finalize_store, withdrawal_address).unwrap(), validator_amount);
 }
 
@@ -2645,16 +2614,7 @@ fn test_claim_unbond_public_to_withdrawal_address() {
     assert_eq!(withdraw_state(&store, delegator_address).unwrap(), Some(delegator_withdrawal_address));
 
     /* Ensure that claiming an unbond after the unlock height succeeds. */
-    claim_unbond_public(
-        &process,
-        &store,
-        delegator_private_key,
-        delegator_address,
-        delegator_amount,
-        unbond_height,
-        rng,
-    )
-    .unwrap();
+    claim_unbond_public(&process, &store, delegator_private_key, delegator_address, unbond_height, rng).unwrap();
 
     // Check that the bond, unbond, and withdraw states are correct.
     assert_eq!(account_balance(&store, delegator_address).unwrap(), delegator_balance - delegator_amount);
@@ -2676,16 +2636,7 @@ fn test_claim_unbond_public_to_withdrawal_address() {
     assert_eq!(withdraw_state(&store, validator_address).unwrap(), Some(*withdrawal_address));
 
     /* Ensure that claiming an unbond after the unlock height succeeds. */
-    claim_unbond_public(
-        &process,
-        &store,
-        validator_private_key,
-        validator_address,
-        validator_amount,
-        unbond_height,
-        rng,
-    )
-    .unwrap();
+    claim_unbond_public(&process, &store, validator_private_key, validator_address, unbond_height, rng).unwrap();
 
     // Check that the bond, unbond, and withdraw states are correct.
     assert_eq!(account_balance(&store, validator_address).unwrap(), validator_balance - validator_amount);
@@ -2755,8 +2706,7 @@ fn test_claim_unbond_public_removes_withdraw_mapping() {
     let unbond_height = unbond_state(&store, validator_address).unwrap().unwrap().1;
 
     /* Ensure that claiming an unbond after the unlock height succeeds. */
-    claim_unbond_public(&process, &store, validator_private_key, validator_address, unbond_amount, unbond_height, rng)
-        .unwrap();
+    claim_unbond_public(&process, &store, validator_private_key, validator_address, unbond_height, rng).unwrap();
 
     // Check that the account, bond, unbond, and withdraw states are correct.
     assert_eq!(account_balance(&store, validator_address).unwrap(), validator_balance - validator_amount);
@@ -2774,8 +2724,7 @@ fn test_claim_unbond_public_removes_withdraw_mapping() {
     let unbond_height = unbond_state(&store, validator_address).unwrap().unwrap().1;
 
     /* Ensure that claiming an unbond after the unlock height succeeds. */
-    claim_unbond_public(&process, &store, validator_private_key, validator_address, unbond_amount, unbond_height, rng)
-        .unwrap();
+    claim_unbond_public(&process, &store, validator_private_key, validator_address, unbond_height, rng).unwrap();
 
     // Check that the account, bond, unbond, and withdraw states are correct.
     // The withdraw state should be removed after the last unbond is claimed.
