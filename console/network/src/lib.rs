@@ -31,6 +31,9 @@ pub use mainnet_v0::*;
 mod testnet_v0;
 pub use testnet_v0::*;
 
+mod testnet_v1;
+pub use testnet_v1::*;
+
 pub mod prelude {
     pub use crate::{environment::prelude::*, Network};
 }
