@@ -16,7 +16,7 @@ use snarkvm_algorithms::crypto_hash::sha256::sha256;
 use snarkvm_circuit::{Aleo, Assignment};
 use snarkvm_console::{
     account::PrivateKey,
-    network::{MainnetV0, Network, TestnetV0},
+    network::{MainnetV0, Network, TestnetV0, TestnetV1},
     prelude::{One, ToBytes, Zero},
     program::{Plaintext, Record, StatePath},
     types::Field,
@@ -175,6 +175,9 @@ pub fn main() -> Result<()> {
         }
         "testnet" => {
             inclusion::<TestnetV0, snarkvm_circuit::AleoTestnetV0>()?;
+        }
+        "testnet_v1" => {
+            inclusion::<TestnetV1, snarkvm_circuit::AleoTestnetV1>()?;
         }
         _ => panic!("Invalid network"),
     };
