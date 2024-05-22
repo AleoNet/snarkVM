@@ -35,6 +35,9 @@ pub use macros::*;
 pub mod testnet_circuit;
 pub use testnet_circuit::*;
 
+pub mod testnet_v1_circuit;
+pub use testnet_v1_circuit::*;
+
 pub mod traits;
 pub use traits::*;
 
