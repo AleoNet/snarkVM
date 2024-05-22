@@ -39,10 +39,11 @@
 // 8. bond[r0].validator != r0 =>
 //   a. bond[r0].microcredits >= 10,000
 // 9. count bonded[] - count committee[] == metadata[aleo1qgqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqanmpl0]
+//   - Delegator count consistent with metadata.
 // 10. count committee[] == metadata[aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc]
-// 11. 100,000 >= count bonded[] >= count delegated[] >= count committee[]
+// 11. 100,000 + count committee[] >= count bonded[] >= count delegated[] >= count committee[]
 // 12. bond[*].microcredits > 100
-// 13. delegated[*] > 10,000
+// 13. delegated[*] >= 10,000
 
 /**********************************************************************************************************************/
 
@@ -279,8 +280,10 @@ finalize bond_validator:
 
 /**********************************************************************************************************************/
 
-// This function allows any staker to bond their microcredits to a validator and specify a withdrawal address.
-// The corresponding functions for 'bond_public' are 'unbond_public' and 'claim_unbond_public'.
+// This function allows any delegator to bond their microcredits to a validator and specify a withdrawal address.
+// The validator may or may not yet be part of the committee.
+// A minimum of 10,000 microcredits is enforced for each delegator with a maximum of 100,000 delegators in total
+// The corresponding functions for 'bond_public' are 'bond_validator', 'unbond_public' and 'claim_unbond_public'.
 function bond_public:
     input r0 as address.public;  // Validator's address.
     input r1 as address.public;  // Withdrawal address.
@@ -385,7 +388,9 @@ finalize bond_public:
 // **Delegators**: It will remove the validator if the total delegated balance falls below 10M credits.
 // It will remove the entire bond_state of the delegator if it falls below 10,000 credits.
 //
-// Validators can also forcibly unbond a delegator
+// Validators have the permission to completely unbond any of their delegators
+// When a validator unbonds a delegator, its entire bonded balance is unbonded regardless of the amount of microcredits input
+// and may end up removing the validator from the committee if the total delegated balance falls below 10M credits
 
 function unbond_public:
     input r0 as address.public; // The address of the validator or delegator to unbond.
@@ -500,7 +505,7 @@ finalize unbond_public:
             // Store the new number of delegators.
             set r25 into metadata[aleo1qgqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqanmpl0];
             /* End Update Metadata */
-        // }
+        // } Intentionally fall through to end_unbond_delegator
 
         position end_unbond_delegator;
         // {

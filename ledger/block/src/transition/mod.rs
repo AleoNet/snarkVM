@@ -307,7 +307,6 @@ impl<N: Network> Transition<N> {
     }
 }
 
-// TODO double check these functions against credits.aleo changes
 impl<N: Network> Transition<N> {
     /// Returns `true` if this is a `bond_public` transition.
     #[inline]
@@ -321,7 +320,7 @@ impl<N: Network> Transition<N> {
     /// Returns `true` if this is a `bond_validator` transition.
     #[inline]
     pub fn is_bond_validator(&self) -> bool {
-        self.inputs.len() == 4
+        self.inputs.len() == 3
             && self.outputs.len() == 1
             && self.program_id.to_string() == "credits.aleo"
             && self.function_name.to_string() == "bond_validator"
@@ -330,7 +329,7 @@ impl<N: Network> Transition<N> {
     /// Returns `true` if this is an `unbond_public` transition.
     #[inline]
     pub fn is_unbond_public(&self) -> bool {
-        self.inputs.len() == 1
+        self.inputs.len() == 2
             && self.outputs.len() == 1
             && self.program_id.to_string() == "credits.aleo"
             && self.function_name.to_string() == "unbond_public"
