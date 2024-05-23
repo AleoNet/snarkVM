@@ -149,7 +149,7 @@ impl Network for CanaryV0 {
 
     /// Returns the genesis block bytes.
     fn genesis_bytes() -> &'static [u8] {
-        snarkvm_parameters::testnet::GenesisBytes::load_bytes()
+        snarkvm_parameters::canary::GenesisBytes::load_bytes()
     }
 
     /// Returns the proving key for the given function name in `credits.aleo`.
@@ -172,7 +172,7 @@ impl Network for CanaryV0 {
         INSTANCE.get_or_init(|| {
             // Skipping the first byte, which is the encoded version.
             Arc::new(
-                CircuitProvingKey::from_bytes_le(&snarkvm_parameters::testnet::INCLUSION_PROVING_KEY[1..])
+                CircuitProvingKey::from_bytes_le(&snarkvm_parameters::canary::INCLUSION_PROVING_KEY[1..])
                     .expect("Failed to load inclusion proving key."),
             )
         })
@@ -184,7 +184,7 @@ impl Network for CanaryV0 {
         INSTANCE.get_or_init(|| {
             // Skipping the first byte, which is the encoded version.
             Arc::new(
-                CircuitVerifyingKey::from_bytes_le(&snarkvm_parameters::testnet::INCLUSION_VERIFYING_KEY[1..])
+                CircuitVerifyingKey::from_bytes_le(&snarkvm_parameters::canary::INCLUSION_VERIFYING_KEY[1..])
                     .expect("Failed to load inclusion verifying key."),
             )
         })
