@@ -433,10 +433,14 @@ impl<F: PrimeField> Mul<&F> for LinearCombination<F> {
     fn mul(self, coefficient: &F) -> Self::Output {
         let mut output = self;
         output.constant *= coefficient;
-        output.terms.iter_mut().for_each(|(_v, current_coefficient)| {
-            *current_coefficient *= coefficient;
-        });
-        output.terms.retain(|(_v, res)| !res.is_zero());
+        output.terms = output
+            .terms
+            .into_iter()
+            .filter_map(|(v, current_coefficient)| {
+                let res = current_coefficient * coefficient;
+                (!res.is_zero()).then_some((v, res))
+            })
+            .collect();
         output.value *= coefficient;
         output
     }
@@ -462,10 +466,13 @@ impl<F: PrimeField> Mul<&F> for &LinearCombination<F> {
 impl<F: PrimeField> MulAssign<&F> for LinearCombination<F> {
     fn mul_assign(&mut self, coefficient: &F) {
         self.constant *= coefficient;
-        self.terms.iter_mut().for_each(|(_v, current_coefficient)| {
-            *current_coefficient *= coefficient;
-        });
-        self.terms.retain(|(_v, res)| !res.is_zero());
+        self.terms = std::mem::take(&mut self.terms)
+            .into_iter()
+            .filter_map(|(v, current_coefficient)| {
+                let res = current_coefficient * coefficient;
+                (!res.is_zero()).then_some((v, res))
+            })
+            .collect();
         self.value *= coefficient;
     }
 }
