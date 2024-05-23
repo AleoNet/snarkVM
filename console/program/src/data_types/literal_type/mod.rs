@@ -23,10 +23,11 @@ use snarkvm_console_network::prelude::*;
 use snarkvm_console_types::{prelude::*, Boolean};
 
 use core::fmt::{self, Debug, Display};
+use enum_iterator::Sequence;
 use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, FromPrimitive)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, FromPrimitive, Sequence)]
 pub enum LiteralType {
     /// The Aleo address type.
     Address,
@@ -66,7 +67,7 @@ pub enum LiteralType {
 
 impl LiteralType {
     /// Returns the literal type name.
-    pub fn type_name(&self) -> &str {
+    pub const fn type_name(&self) -> &str {
         match self {
             Self::Address => "address",
             Self::Boolean => "boolean",
