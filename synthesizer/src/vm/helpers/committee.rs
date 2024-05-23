@@ -31,7 +31,7 @@ use std::str::FromStr;
 use rayon::prelude::*;
 
 /// Returns the committee given the committee map from finalize storage.
-pub fn credits_maps_into_committee<N: Network>(
+pub fn committee_and_delegated_maps_into_committee<N: Network>(
     starting_round: u64,
     committee_map: Vec<(Plaintext<N>, Value<N>)>,
     delegated_map: Vec<(Plaintext<N>, Value<N>)>,
@@ -235,8 +235,8 @@ pub fn to_next_committee<N: Network>(
     Committee::new(next_round, members)
 }
 
-/// Returns the committee map and bonded map, given the committee and stakers.
-pub fn to_next_credits_maps<N: Network>(
+/// Returns the committee map, bonded map, and delegated map, given the committee and stakers.
+pub fn to_next_committee_bonded_delegated_map<N: Network>(
     next_committee: &Committee<N>,
     next_stakers: &IndexMap<Address<N>, (Address<N>, u64)>,
     next_delegated: &IndexMap<Address<N>, u64>,
@@ -484,7 +484,8 @@ mod tests {
         let timer = std::time::Instant::now();
         // Convert the committee map into a committee.
         let candidate_committee =
-            credits_maps_into_committee(committee.starting_round(), committee_map, delegated_map).unwrap();
+            committee_and_delegated_maps_into_committee(committee.starting_round(), committee_map, delegated_map)
+                .unwrap();
         println!("committee_map_into_committee: {}ms", timer.elapsed().as_millis());
         assert_eq!(candidate_committee, committee);
     }
@@ -563,7 +564,7 @@ mod tests {
         let timer = std::time::Instant::now();
         // Ensure the next committee matches the current committee.
         // Note: We can perform this check, in this specific case only, because we did not apply staking rewards.
-        let (committee_map, bonded_map, _) = to_next_credits_maps(&committee, &stakers, &delegations);
+        let (committee_map, bonded_map, _) = to_next_committee_bonded_delegated_map(&committee, &stakers, &delegations);
         println!("to_next_credits_maps: {}ms", timer.elapsed().as_millis());
         assert_eq!(committee_map, to_committee_map(committee.members()));
         assert_eq!(bonded_map, to_bonded_map(&stakers));

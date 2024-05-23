@@ -1115,7 +1115,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
                     // Construct the next committee map and next bonded map.
                     let (next_committee_map, next_bonded_map, next_delegated_map) =
-                        to_next_credits_maps(committee, &next_stakers, &next_delegated);
+                        to_next_committee_bonded_delegated_map(committee, &next_stakers, &next_delegated);
 
                     // Construct the next withdraw map.
                     let next_withdraw_map = to_next_withdraw_map(&withdrawal_addresses);
@@ -1225,8 +1225,11 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     // Retrieve the delegator mapping from storage.
                     let current_delegator_map = store.get_mapping_speculative(program_id, delegated_mapping)?;
                     // Convert the committee mapping into a committee.
-                    let current_committee =
-                        credits_maps_into_committee(state.block_round(), current_committee_map, current_delegator_map)?;
+                    let current_committee = committee_and_delegated_maps_into_committee(
+                        state.block_round(),
+                        current_committee_map,
+                        current_delegator_map,
+                    )?;
                     // Retrieve the bonded mapping from storage.
                     let current_bonded_map = store.get_mapping_speculative(program_id, bonded_mapping)?;
                     // Convert the bonded map into stakers.
@@ -1246,7 +1249,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
                     // Construct the next committee map, the next bonded map, and the next delegated map.
                     let (next_committee_map, next_bonded_map, next_delegated_map) =
-                        to_next_credits_maps(&next_committee, &next_stakers, &next_delegated);
+                        to_next_committee_bonded_delegated_map(&next_committee, &next_stakers, &next_delegated);
 
                     // Insert the next committee into storage.
                     store.committee_store().insert(state.block_height(), next_committee)?;
