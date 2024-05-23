@@ -30,11 +30,11 @@ pub mod macros;
 pub mod errors;
 pub use errors::*;
 
+pub mod canary;
+
 pub mod mainnet;
 
 pub mod testnet;
-
-pub mod testnet_v1;
 
 pub mod prelude {
     pub use crate::errors::*;

@@ -39,7 +39,7 @@ use snarkvm_circuit_algorithms::{
 };
 use snarkvm_circuit_collections::merkle_tree::MerklePath;
 use snarkvm_circuit_types::{
-    environment::{prelude::*, Assignment, TestnetV1Circuit, R1CS},
+    environment::{prelude::*, Assignment, CanaryCircuit, R1CS},
     Boolean,
     Field,
     Group,
@@ -48,59 +48,59 @@ use snarkvm_circuit_types::{
 
 use core::fmt;
 
-type E = TestnetV1Circuit;
+type E = CanaryCircuit;
 
 thread_local! {
     /// The group bases for the Aleo signature and encryption schemes.
-    static GENERATOR_G: Vec<Group<AleoTestnetV1>> = Vec::constant(<console::TestnetV1 as console::Network>::g_powers().to_vec());
+    static GENERATOR_G: Vec<Group<AleoCanaryV0>> = Vec::constant(<console::CanaryV0 as console::Network>::g_powers().to_vec());
 
     /// The encryption domain as a constant field element.
-    static ENCRYPTION_DOMAIN: Field<AleoTestnetV1> = Field::constant(<console::TestnetV1 as console::Network>::encryption_domain());
+    static ENCRYPTION_DOMAIN: Field<AleoCanaryV0> = Field::constant(<console::CanaryV0 as console::Network>::encryption_domain());
     /// The graph key domain as a constant field element.
-    static GRAPH_KEY_DOMAIN: Field<AleoTestnetV1> = Field::constant(<console::TestnetV1 as console::Network>::graph_key_domain());
+    static GRAPH_KEY_DOMAIN: Field<AleoCanaryV0> = Field::constant(<console::CanaryV0 as console::Network>::graph_key_domain());
     /// The serial number domain as a constant field element.
-    static SERIAL_NUMBER_DOMAIN: Field<AleoTestnetV1> = Field::constant(<console::TestnetV1 as console::Network>::serial_number_domain());
+    static SERIAL_NUMBER_DOMAIN: Field<AleoCanaryV0> = Field::constant(<console::CanaryV0 as console::Network>::serial_number_domain());
 
     /// The BHP hash function, which can take an input of up to 256 bits.
-    static BHP_256: BHP256<AleoTestnetV1> = BHP256::<AleoTestnetV1>::constant(console::TESTNET_V1_BHP_256.clone());
+    static BHP_256: BHP256<AleoCanaryV0> = BHP256::<AleoCanaryV0>::constant(console::CANARY_BHP_256.clone());
     /// The BHP hash function, which can take an input of up to 512 bits.
-    static BHP_512: BHP512<AleoTestnetV1> = BHP512::<AleoTestnetV1>::constant(console::TESTNET_V1_BHP_512.clone());
+    static BHP_512: BHP512<AleoCanaryV0> = BHP512::<AleoCanaryV0>::constant(console::CANARY_BHP_512.clone());
     /// The BHP hash function, which can take an input of up to 768 bits.
-    static BHP_768: BHP768<AleoTestnetV1> = BHP768::<AleoTestnetV1>::constant(console::TESTNET_V1_BHP_768.clone());
+    static BHP_768: BHP768<AleoCanaryV0> = BHP768::<AleoCanaryV0>::constant(console::CANARY_BHP_768.clone());
     /// The BHP hash function, which can take an input of up to 1024 bits.
-    static BHP_1024: BHP1024<AleoTestnetV1> = BHP1024::<AleoTestnetV1>::constant(console::TESTNET_V1_BHP_1024.clone());
+    static BHP_1024: BHP1024<AleoCanaryV0> = BHP1024::<AleoCanaryV0>::constant(console::CANARY_BHP_1024.clone());
 
     /// The Keccak hash function, which outputs 256 bits.
-    static KECCAK_256: Keccak256<AleoTestnetV1> = Keccak256::<AleoTestnetV1>::new();
+    static KECCAK_256: Keccak256<AleoCanaryV0> = Keccak256::<AleoCanaryV0>::new();
     /// The Keccak hash function, which outputs 384 bits.
-    static KECCAK_384: Keccak384<AleoTestnetV1> = Keccak384::<AleoTestnetV1>::new();
+    static KECCAK_384: Keccak384<AleoCanaryV0> = Keccak384::<AleoCanaryV0>::new();
     /// The Keccak hash function, which outputs 512 bits.
-    static KECCAK_512: Keccak512<AleoTestnetV1> = Keccak512::<AleoTestnetV1>::new();
+    static KECCAK_512: Keccak512<AleoCanaryV0> = Keccak512::<AleoCanaryV0>::new();
 
     /// The Pedersen hash function, which can take an input of up to 64 bits.
-    static PEDERSEN_64: Pedersen64<AleoTestnetV1> = Pedersen64::<AleoTestnetV1>::constant(console::TESTNET_V1_PEDERSEN_64.clone());
+    static PEDERSEN_64: Pedersen64<AleoCanaryV0> = Pedersen64::<AleoCanaryV0>::constant(console::CANARY_PEDERSEN_64.clone());
     /// The Pedersen hash function, which can take an input of up to 128 bits.
-    static PEDERSEN_128: Pedersen128<AleoTestnetV1> = Pedersen128::<AleoTestnetV1>::constant(console::TESTNET_V1_PEDERSEN_128.clone());
+    static PEDERSEN_128: Pedersen128<AleoCanaryV0> = Pedersen128::<AleoCanaryV0>::constant(console::CANARY_PEDERSEN_128.clone());
 
     /// The Poseidon hash function, using a rate of 2.
-    static POSEIDON_2: Poseidon2<AleoTestnetV1> = Poseidon2::<AleoTestnetV1>::constant(console::TESTNET_V1_POSEIDON_2.clone());
+    static POSEIDON_2: Poseidon2<AleoCanaryV0> = Poseidon2::<AleoCanaryV0>::constant(console::CANARY_POSEIDON_2.clone());
     /// The Poseidon hash function, using a rate of 4.
-    static POSEIDON_4: Poseidon4<AleoTestnetV1> = Poseidon4::<AleoTestnetV1>::constant(console::TESTNET_V1_POSEIDON_4.clone());
+    static POSEIDON_4: Poseidon4<AleoCanaryV0> = Poseidon4::<AleoCanaryV0>::constant(console::CANARY_POSEIDON_4.clone());
     /// The Poseidon hash function, using a rate of 8.
-    static POSEIDON_8: Poseidon8<AleoTestnetV1> = Poseidon8::<AleoTestnetV1>::constant(console::TESTNET_V1_POSEIDON_8.clone());
+    static POSEIDON_8: Poseidon8<AleoCanaryV0> = Poseidon8::<AleoCanaryV0>::constant(console::CANARY_POSEIDON_8.clone());
 
     /// The SHA-3 hash function, which outputs 256 bits.
-    static SHA3_256: Sha3_256<AleoTestnetV1> = Sha3_256::<AleoTestnetV1>::new();
+    static SHA3_256: Sha3_256<AleoCanaryV0> = Sha3_256::<AleoCanaryV0>::new();
     /// The SHA-3 hash function, which outputs 384 bits.
-    static SHA3_384: Sha3_384<AleoTestnetV1> = Sha3_384::<AleoTestnetV1>::new();
+    static SHA3_384: Sha3_384<AleoCanaryV0> = Sha3_384::<AleoCanaryV0>::new();
     /// The SHA-3 hash function, which outputs 512 bits.
-    static SHA3_512: Sha3_512<AleoTestnetV1> = Sha3_512::<AleoTestnetV1>::new();
+    static SHA3_512: Sha3_512<AleoCanaryV0> = Sha3_512::<AleoCanaryV0>::new();
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
-pub struct AleoTestnetV1;
+pub struct AleoCanaryV0;
 
-impl Aleo for AleoTestnetV1 {
+impl Aleo for AleoCanaryV0 {
     /// Initializes the global constants for the Aleo environment.
     fn initialize_global_constants() {
         GENERATOR_G.with(|_| ());
@@ -379,7 +379,7 @@ impl Aleo for AleoTestnetV1 {
     }
 }
 
-impl Environment for AleoTestnetV1 {
+impl Environment for AleoCanaryV0 {
     type Affine = <E as Environment>::Affine;
     type BaseField = <E as Environment>::BaseField;
     type Network = <E as Environment>::Network;
@@ -535,10 +535,10 @@ impl Environment for AleoTestnetV1 {
     }
 }
 
-impl Display for AleoTestnetV1 {
+impl Display for AleoCanaryV0 {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         // TODO (howardwu): Find a better way to print the circuit.
-        fmt::Display::fmt(&TestnetV1Circuit, f)
+        fmt::Display::fmt(&CanaryCircuit, f)
     }
 }
 
@@ -547,7 +547,7 @@ mod tests {
     use super::*;
     use snarkvm_circuit_types::Field;
 
-    type CurrentAleo = AleoTestnetV1;
+    type CurrentAleo = AleoCanaryV0;
 
     /// Compute 2^EXPONENT - 1, in a purposefully constraint-inefficient manner for testing.
     fn create_example_circuit<E: Environment>() -> Field<E> {

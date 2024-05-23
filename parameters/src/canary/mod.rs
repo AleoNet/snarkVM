@@ -15,7 +15,7 @@
 pub mod genesis;
 pub use genesis::*;
 
-const REMOTE_URL: &str = "https://s3-us-west-1.amazonaws.com/testnet-v1.parameters";
+const REMOTE_URL: &str = "https://s3-us-west-1.amazonaws.com/canary.parameters";
 
 // BondPublic
 impl_remote!(BondPublicProver, REMOTE_URL, "resources/", "bond_public", "prover");
@@ -61,30 +61,30 @@ impl_remote!(FeePublicProver, REMOTE_URL, "resources/", "fee_public", "prover");
 impl_local!(FeePublicVerifier, "resources/", "fee_public", "verifier");
 
 #[macro_export]
-macro_rules! insert_testnet_v1_credit_keys {
+macro_rules! insert_canary_credit_keys {
     ($map:ident, $type:ident<$network:ident>, $variant:ident) => {{
         paste::paste! {
             let string = stringify!([<$variant:lower>]);
-            $crate::insert_testnet_v1_key!($map, string, $type<$network>, ("bond_public", $crate::testnet_v1::[<BondPublic $variant>]::load_bytes()));
-            $crate::insert_testnet_v1_key!($map, string, $type<$network>, ("unbond_public", $crate::testnet_v1::[<UnbondPublic $variant>]::load_bytes()));
-            $crate::insert_testnet_v1_key!($map, string, $type<$network>, ("unbond_delegator_as_validator", $crate::testnet_v1::[<UnbondDelegatorAsValidator $variant>]::load_bytes()));
-            $crate::insert_testnet_v1_key!($map, string, $type<$network>, ("claim_unbond_public", $crate::testnet_v1::[<ClaimUnbondPublic $variant>]::load_bytes()));
-            $crate::insert_testnet_v1_key!($map, string, $type<$network>, ("set_validator_state", $crate::testnet_v1::[<SetValidatorState $variant>]::load_bytes()));
-            $crate::insert_testnet_v1_key!($map, string, $type<$network>, ("transfer_private", $crate::testnet_v1::[<TransferPrivate $variant>]::load_bytes()));
-            $crate::insert_testnet_v1_key!($map, string, $type<$network>, ("transfer_public", $crate::testnet_v1::[<TransferPublic $variant>]::load_bytes()));
-            $crate::insert_testnet_v1_key!($map, string, $type<$network>, ("transfer_public_as_signer", $crate::testnet_v1::[<TransferPublicAsSigner $variant>]::load_bytes()));
-            $crate::insert_testnet_v1_key!($map, string, $type<$network>, ("transfer_private_to_public", $crate::testnet_v1::[<TransferPrivateToPublic $variant>]::load_bytes()));
-            $crate::insert_testnet_v1_key!($map, string, $type<$network>, ("transfer_public_to_private", $crate::testnet_v1::[<TransferPublicToPrivate $variant>]::load_bytes()));
-            $crate::insert_testnet_v1_key!($map, string, $type<$network>, ("join", $crate::testnet_v1::[<Join $variant>]::load_bytes()));
-            $crate::insert_testnet_v1_key!($map, string, $type<$network>, ("split", $crate::testnet_v1::[<Split $variant>]::load_bytes()));
-            $crate::insert_testnet_v1_key!($map, string, $type<$network>, ("fee_private", $crate::testnet_v1::[<FeePrivate $variant>]::load_bytes()));
-            $crate::insert_testnet_v1_key!($map, string, $type<$network>, ("fee_public", $crate::testnet_v1::[<FeePublic $variant>]::load_bytes()));
+            $crate::insert_canary_key!($map, string, $type<$network>, ("bond_public", $crate::canary::[<BondPublic $variant>]::load_bytes()));
+            $crate::insert_canary_key!($map, string, $type<$network>, ("unbond_public", $crate::canary::[<UnbondPublic $variant>]::load_bytes()));
+            $crate::insert_canary_key!($map, string, $type<$network>, ("unbond_delegator_as_validator", $crate::canary::[<UnbondDelegatorAsValidator $variant>]::load_bytes()));
+            $crate::insert_canary_key!($map, string, $type<$network>, ("claim_unbond_public", $crate::canary::[<ClaimUnbondPublic $variant>]::load_bytes()));
+            $crate::insert_canary_key!($map, string, $type<$network>, ("set_validator_state", $crate::canary::[<SetValidatorState $variant>]::load_bytes()));
+            $crate::insert_canary_key!($map, string, $type<$network>, ("transfer_private", $crate::canary::[<TransferPrivate $variant>]::load_bytes()));
+            $crate::insert_canary_key!($map, string, $type<$network>, ("transfer_public", $crate::canary::[<TransferPublic $variant>]::load_bytes()));
+            $crate::insert_canary_key!($map, string, $type<$network>, ("transfer_public_as_signer", $crate::canary::[<TransferPublicAsSigner $variant>]::load_bytes()));
+            $crate::insert_canary_key!($map, string, $type<$network>, ("transfer_private_to_public", $crate::canary::[<TransferPrivateToPublic $variant>]::load_bytes()));
+            $crate::insert_canary_key!($map, string, $type<$network>, ("transfer_public_to_private", $crate::canary::[<TransferPublicToPrivate $variant>]::load_bytes()));
+            $crate::insert_canary_key!($map, string, $type<$network>, ("join", $crate::canary::[<Join $variant>]::load_bytes()));
+            $crate::insert_canary_key!($map, string, $type<$network>, ("split", $crate::canary::[<Split $variant>]::load_bytes()));
+            $crate::insert_canary_key!($map, string, $type<$network>, ("fee_private", $crate::canary::[<FeePrivate $variant>]::load_bytes()));
+            $crate::insert_canary_key!($map, string, $type<$network>, ("fee_public", $crate::canary::[<FeePublic $variant>]::load_bytes()));
         }
     }};
 }
 
 #[macro_export]
-macro_rules! insert_testnet_v1_key {
+macro_rules! insert_canary_key {
     ($map:ident, $string:tt, $type:ident<$network:ident>, ($name:tt, $circuit_key:expr)) => {{
         // Load the circuit key bytes.
         let key_bytes: Vec<u8> = $circuit_key.expect(&format!("Failed to load {} bytes", $string));

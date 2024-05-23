@@ -25,14 +25,14 @@ pub use snarkvm_console_network_environment::*;
 mod helpers;
 pub use helpers::*;
 
+mod canary_v0;
+pub use canary_v0::*;
+
 mod mainnet_v0;
 pub use mainnet_v0::*;
 
 mod testnet_v0;
 pub use testnet_v0::*;
-
-mod testnet_v1;
-pub use testnet_v1::*;
 
 pub mod prelude {
     pub use crate::{environment::prelude::*, Network};

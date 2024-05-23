@@ -35,55 +35,55 @@ use snarkvm_console_algorithms::{
 
 lazy_static! {
     /// The group bases for the Aleo signature and encryption schemes.
-    static ref GENERATOR_G: Vec<Group<TestnetV1 >> = TestnetV1::new_bases("AleoAccountEncryptionAndSignatureScheme0");
+    static ref GENERATOR_G: Vec<Group<CanaryV0 >> = CanaryV0::new_bases("AleoAccountEncryptionAndSignatureScheme0");
 
     /// The Varuna sponge parameters.
-    static ref VARUNA_FS_PARAMETERS: FiatShamirParameters<TestnetV1> = FiatShamir::<TestnetV1>::sample_parameters();
+    static ref VARUNA_FS_PARAMETERS: FiatShamirParameters<CanaryV0> = FiatShamir::<CanaryV0>::sample_parameters();
 
     /// The encryption domain as a constant field element.
-    static ref ENCRYPTION_DOMAIN: Field<TestnetV1> = Field::<TestnetV1>::new_domain_separator("AleoSymmetricEncryption0");
+    static ref ENCRYPTION_DOMAIN: Field<CanaryV0> = Field::<CanaryV0>::new_domain_separator("AleoSymmetricEncryption0");
     /// The graph key domain as a constant field element.
-    static ref GRAPH_KEY_DOMAIN: Field<TestnetV1> = Field::<TestnetV1>::new_domain_separator("AleoGraphKey0");
+    static ref GRAPH_KEY_DOMAIN: Field<CanaryV0> = Field::<CanaryV0>::new_domain_separator("AleoGraphKey0");
     /// The serial number domain as a constant field element.
-    static ref SERIAL_NUMBER_DOMAIN: Field<TestnetV1> = Field::<TestnetV1>::new_domain_separator("AleoSerialNumber0");
+    static ref SERIAL_NUMBER_DOMAIN: Field<CanaryV0> = Field::<CanaryV0>::new_domain_separator("AleoSerialNumber0");
 
     /// The BHP hash function, which can take an input of up to 256 bits.
-    pub static ref TESTNET_V1_BHP_256: BHP256<TestnetV1> = BHP256::<TestnetV1>::setup("AleoBHP256").expect("Failed to setup BHP256");
+    pub static ref CANARY_BHP_256: BHP256<CanaryV0> = BHP256::<CanaryV0>::setup("AleoBHP256").expect("Failed to setup BHP256");
     /// The BHP hash function, which can take an input of up to 512 bits.
-    pub static ref TESTNET_V1_BHP_512: BHP512<TestnetV1> = BHP512::<TestnetV1>::setup("AleoBHP512").expect("Failed to setup BHP512");
+    pub static ref CANARY_BHP_512: BHP512<CanaryV0> = BHP512::<CanaryV0>::setup("AleoBHP512").expect("Failed to setup BHP512");
     /// The BHP hash function, which can take an input of up to 768 bits.
-    pub static ref TESTNET_V1_BHP_768: BHP768<TestnetV1> = BHP768::<TestnetV1>::setup("AleoBHP768").expect("Failed to setup BHP768");
+    pub static ref CANARY_BHP_768: BHP768<CanaryV0> = BHP768::<CanaryV0>::setup("AleoBHP768").expect("Failed to setup BHP768");
     /// The BHP hash function, which can take an input of up to 1024 bits.
-    pub static ref TESTNET_V1_BHP_1024: BHP1024<TestnetV1> = BHP1024::<TestnetV1>::setup("AleoBHP1024").expect("Failed to setup BHP1024");
+    pub static ref CANARY_BHP_1024: BHP1024<CanaryV0> = BHP1024::<CanaryV0>::setup("AleoBHP1024").expect("Failed to setup BHP1024");
 
     /// The Pedersen hash function, which can take an input of up to 64 bits.
-    pub static ref TESTNET_V1_PEDERSEN_64: Pedersen64<TestnetV1> = Pedersen64::<TestnetV1>::setup("AleoPedersen64");
+    pub static ref CANARY_PEDERSEN_64: Pedersen64<CanaryV0> = Pedersen64::<CanaryV0>::setup("AleoPedersen64");
     /// The Pedersen hash function, which can take an input of up to 128 bits.
-    pub static ref TESTNET_V1_PEDERSEN_128: Pedersen128<TestnetV1> = Pedersen128::<TestnetV1>::setup("AleoPedersen128");
+    pub static ref CANARY_PEDERSEN_128: Pedersen128<CanaryV0> = Pedersen128::<CanaryV0>::setup("AleoPedersen128");
 
     /// The Poseidon hash function, using a rate of 2.
-    pub static ref TESTNET_V1_POSEIDON_2: Poseidon2<TestnetV1> = Poseidon2::<TestnetV1>::setup("AleoPoseidon2").expect("Failed to setup Poseidon2");
+    pub static ref CANARY_POSEIDON_2: Poseidon2<CanaryV0> = Poseidon2::<CanaryV0>::setup("AleoPoseidon2").expect("Failed to setup Poseidon2");
     /// The Poseidon hash function, using a rate of 4.
-    pub static ref TESTNET_V1_POSEIDON_4: Poseidon4<TestnetV1> = Poseidon4::<TestnetV1>::setup("AleoPoseidon4").expect("Failed to setup Poseidon4");
+    pub static ref CANARY_POSEIDON_4: Poseidon4<CanaryV0> = Poseidon4::<CanaryV0>::setup("AleoPoseidon4").expect("Failed to setup Poseidon4");
     /// The Poseidon hash function, using a rate of 8.
-    pub static ref TESTNET_V1_POSEIDON_8: Poseidon8<TestnetV1> = Poseidon8::<TestnetV1>::setup("AleoPoseidon8").expect("Failed to setup Poseidon8");
+    pub static ref CANARY_POSEIDON_8: Poseidon8<CanaryV0> = Poseidon8::<CanaryV0>::setup("AleoPoseidon8").expect("Failed to setup Poseidon8");
 
-    pub static ref TESTNET_V1_CREDITS_PROVING_KEYS: IndexMap<String, Arc<VarunaProvingKey<Console>>> = {
+    pub static ref CANARY_CREDITS_PROVING_KEYS: IndexMap<String, Arc<VarunaProvingKey<Console>>> = {
         let mut map = IndexMap::new();
-        snarkvm_parameters::insert_testnet_v1_credit_keys!(map, VarunaProvingKey<Console>, Prover);
+        snarkvm_parameters::insert_canary_credit_keys!(map, VarunaProvingKey<Console>, Prover);
         map
     };
-    pub static ref TESTNET_V1_CREDITS_VERIFYING_KEYS: IndexMap<String, Arc<VarunaVerifyingKey<Console>>> = {
+    pub static ref CANARY_CREDITS_VERIFYING_KEYS: IndexMap<String, Arc<VarunaVerifyingKey<Console>>> = {
         let mut map = IndexMap::new();
-        snarkvm_parameters::insert_testnet_v1_credit_keys!(map, VarunaVerifyingKey<Console>, Verifier);
+        snarkvm_parameters::insert_canary_credit_keys!(map, VarunaVerifyingKey<Console>, Verifier);
         map
     };
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct TestnetV1;
+pub struct CanaryV0;
 
-impl TestnetV1 {
+impl CanaryV0 {
     /// Initializes a new instance of group bases from a given input domain message.
     fn new_bases(message: &str) -> Vec<Group<Self>> {
         // Hash the given message to a point on the curve, to initialize the starting base.
@@ -100,7 +100,7 @@ impl TestnetV1 {
     }
 }
 
-impl Environment for TestnetV1 {
+impl Environment for CanaryV0 {
     type Affine = <Console as Environment>::Affine;
     type BigInteger = <Console as Environment>::BigInteger;
     type Field = <Console as Environment>::Field;
@@ -118,7 +118,7 @@ impl Environment for TestnetV1 {
     const MONTGOMERY_B: Self::Field = Console::MONTGOMERY_B;
 }
 
-impl Network for TestnetV1 {
+impl Network for CanaryV0 {
     /// The block hash type.
     type BlockHash = AleoID<Field<Self>, { hrp2!("ab") }>;
     /// The ratification ID type.
@@ -145,7 +145,7 @@ impl Network for TestnetV1 {
     /// The maximum number of certificates in a batch.
     const MAX_CERTIFICATES: u16 = 100;
     /// The network name.
-    const NAME: &'static str = "Aleo Testnet (v1)";
+    const NAME: &'static str = "Aleo Canary (v0)";
 
     /// Returns the genesis block bytes.
     fn genesis_bytes() -> &'static [u8] {
@@ -154,14 +154,14 @@ impl Network for TestnetV1 {
 
     /// Returns the proving key for the given function name in `credits.aleo`.
     fn get_credits_proving_key(function_name: String) -> Result<&'static Arc<VarunaProvingKey<Self>>> {
-        TESTNET_V1_CREDITS_PROVING_KEYS
+        CANARY_CREDITS_PROVING_KEYS
             .get(&function_name)
             .ok_or_else(|| anyhow!("Proving key for credits.aleo/{function_name}' not found"))
     }
 
     /// Returns the verifying key for the given function name in `credits.aleo`.
     fn get_credits_verifying_key(function_name: String) -> Result<&'static Arc<VarunaVerifyingKey<Self>>> {
-        TESTNET_V1_CREDITS_VERIFYING_KEYS
+        CANARY_CREDITS_VERIFYING_KEYS
             .get(&function_name)
             .ok_or_else(|| anyhow!("Verifying key for credits.aleo/{function_name}' not found"))
     }
@@ -239,82 +239,82 @@ impl Network for TestnetV1 {
 
     /// Returns a BHP commitment with an input hasher of 256-bits and randomizer.
     fn commit_bhp256(input: &[bool], randomizer: &Scalar<Self>) -> Result<Field<Self>> {
-        TESTNET_V1_BHP_256.commit(input, randomizer)
+        CANARY_BHP_256.commit(input, randomizer)
     }
 
     /// Returns a BHP commitment with an input hasher of 512-bits and randomizer.
     fn commit_bhp512(input: &[bool], randomizer: &Scalar<Self>) -> Result<Field<Self>> {
-        TESTNET_V1_BHP_512.commit(input, randomizer)
+        CANARY_BHP_512.commit(input, randomizer)
     }
 
     /// Returns a BHP commitment with an input hasher of 768-bits and randomizer.
     fn commit_bhp768(input: &[bool], randomizer: &Scalar<Self>) -> Result<Field<Self>> {
-        TESTNET_V1_BHP_768.commit(input, randomizer)
+        CANARY_BHP_768.commit(input, randomizer)
     }
 
     /// Returns a BHP commitment with an input hasher of 1024-bits and randomizer.
     fn commit_bhp1024(input: &[bool], randomizer: &Scalar<Self>) -> Result<Field<Self>> {
-        TESTNET_V1_BHP_1024.commit(input, randomizer)
+        CANARY_BHP_1024.commit(input, randomizer)
     }
 
     /// Returns a Pedersen commitment for the given (up to) 64-bit input and randomizer.
     fn commit_ped64(input: &[bool], randomizer: &Scalar<Self>) -> Result<Field<Self>> {
-        TESTNET_V1_PEDERSEN_64.commit(input, randomizer)
+        CANARY_PEDERSEN_64.commit(input, randomizer)
     }
 
     /// Returns a Pedersen commitment for the given (up to) 128-bit input and randomizer.
     fn commit_ped128(input: &[bool], randomizer: &Scalar<Self>) -> Result<Field<Self>> {
-        TESTNET_V1_PEDERSEN_128.commit(input, randomizer)
+        CANARY_PEDERSEN_128.commit(input, randomizer)
     }
 
     /// Returns a BHP commitment with an input hasher of 256-bits and randomizer.
     fn commit_to_group_bhp256(input: &[bool], randomizer: &Scalar<Self>) -> Result<Group<Self>> {
-        TESTNET_V1_BHP_256.commit_uncompressed(input, randomizer)
+        CANARY_BHP_256.commit_uncompressed(input, randomizer)
     }
 
     /// Returns a BHP commitment with an input hasher of 512-bits and randomizer.
     fn commit_to_group_bhp512(input: &[bool], randomizer: &Scalar<Self>) -> Result<Group<Self>> {
-        TESTNET_V1_BHP_512.commit_uncompressed(input, randomizer)
+        CANARY_BHP_512.commit_uncompressed(input, randomizer)
     }
 
     /// Returns a BHP commitment with an input hasher of 768-bits and randomizer.
     fn commit_to_group_bhp768(input: &[bool], randomizer: &Scalar<Self>) -> Result<Group<Self>> {
-        TESTNET_V1_BHP_768.commit_uncompressed(input, randomizer)
+        CANARY_BHP_768.commit_uncompressed(input, randomizer)
     }
 
     /// Returns a BHP commitment with an input hasher of 1024-bits and randomizer.
     fn commit_to_group_bhp1024(input: &[bool], randomizer: &Scalar<Self>) -> Result<Group<Self>> {
-        TESTNET_V1_BHP_1024.commit_uncompressed(input, randomizer)
+        CANARY_BHP_1024.commit_uncompressed(input, randomizer)
     }
 
     /// Returns a Pedersen commitment for the given (up to) 64-bit input and randomizer.
     fn commit_to_group_ped64(input: &[bool], randomizer: &Scalar<Self>) -> Result<Group<Self>> {
-        TESTNET_V1_PEDERSEN_64.commit_uncompressed(input, randomizer)
+        CANARY_PEDERSEN_64.commit_uncompressed(input, randomizer)
     }
 
     /// Returns a Pedersen commitment for the given (up to) 128-bit input and randomizer.
     fn commit_to_group_ped128(input: &[bool], randomizer: &Scalar<Self>) -> Result<Group<Self>> {
-        TESTNET_V1_PEDERSEN_128.commit_uncompressed(input, randomizer)
+        CANARY_PEDERSEN_128.commit_uncompressed(input, randomizer)
     }
 
     /// Returns the BHP hash with an input hasher of 256-bits.
     fn hash_bhp256(input: &[bool]) -> Result<Field<Self>> {
-        TESTNET_V1_BHP_256.hash(input)
+        CANARY_BHP_256.hash(input)
     }
 
     /// Returns the BHP hash with an input hasher of 512-bits.
     fn hash_bhp512(input: &[bool]) -> Result<Field<Self>> {
-        TESTNET_V1_BHP_512.hash(input)
+        CANARY_BHP_512.hash(input)
     }
 
     /// Returns the BHP hash with an input hasher of 768-bits.
     fn hash_bhp768(input: &[bool]) -> Result<Field<Self>> {
-        TESTNET_V1_BHP_768.hash(input)
+        CANARY_BHP_768.hash(input)
     }
 
     /// Returns the BHP hash with an input hasher of 1024-bits.
     fn hash_bhp1024(input: &[bool]) -> Result<Field<Self>> {
-        TESTNET_V1_BHP_1024.hash(input)
+        CANARY_BHP_1024.hash(input)
     }
 
     /// Returns the Keccak hash with a 256-bit output.
@@ -334,27 +334,27 @@ impl Network for TestnetV1 {
 
     /// Returns the Pedersen hash for a given (up to) 64-bit input.
     fn hash_ped64(input: &[bool]) -> Result<Field<Self>> {
-        TESTNET_V1_PEDERSEN_64.hash(input)
+        CANARY_PEDERSEN_64.hash(input)
     }
 
     /// Returns the Pedersen hash for a given (up to) 128-bit input.
     fn hash_ped128(input: &[bool]) -> Result<Field<Self>> {
-        TESTNET_V1_PEDERSEN_128.hash(input)
+        CANARY_PEDERSEN_128.hash(input)
     }
 
     /// Returns the Poseidon hash with an input rate of 2.
     fn hash_psd2(input: &[Field<Self>]) -> Result<Field<Self>> {
-        TESTNET_V1_POSEIDON_2.hash(input)
+        CANARY_POSEIDON_2.hash(input)
     }
 
     /// Returns the Poseidon hash with an input rate of 4.
     fn hash_psd4(input: &[Field<Self>]) -> Result<Field<Self>> {
-        TESTNET_V1_POSEIDON_4.hash(input)
+        CANARY_POSEIDON_4.hash(input)
     }
 
     /// Returns the Poseidon hash with an input rate of 8.
     fn hash_psd8(input: &[Field<Self>]) -> Result<Field<Self>> {
-        TESTNET_V1_POSEIDON_8.hash(input)
+        CANARY_POSEIDON_8.hash(input)
     }
 
     /// Returns the SHA-3 hash with a 256-bit output.
@@ -374,87 +374,87 @@ impl Network for TestnetV1 {
 
     /// Returns the extended Poseidon hash with an input rate of 2.
     fn hash_many_psd2(input: &[Field<Self>], num_outputs: u16) -> Vec<Field<Self>> {
-        TESTNET_V1_POSEIDON_2.hash_many(input, num_outputs)
+        CANARY_POSEIDON_2.hash_many(input, num_outputs)
     }
 
     /// Returns the extended Poseidon hash with an input rate of 4.
     fn hash_many_psd4(input: &[Field<Self>], num_outputs: u16) -> Vec<Field<Self>> {
-        TESTNET_V1_POSEIDON_4.hash_many(input, num_outputs)
+        CANARY_POSEIDON_4.hash_many(input, num_outputs)
     }
 
     /// Returns the extended Poseidon hash with an input rate of 8.
     fn hash_many_psd8(input: &[Field<Self>], num_outputs: u16) -> Vec<Field<Self>> {
-        TESTNET_V1_POSEIDON_8.hash_many(input, num_outputs)
+        CANARY_POSEIDON_8.hash_many(input, num_outputs)
     }
 
     /// Returns the BHP hash with an input hasher of 256-bits.
     fn hash_to_group_bhp256(input: &[bool]) -> Result<Group<Self>> {
-        TESTNET_V1_BHP_256.hash_uncompressed(input)
+        CANARY_BHP_256.hash_uncompressed(input)
     }
 
     /// Returns the BHP hash with an input hasher of 512-bits.
     fn hash_to_group_bhp512(input: &[bool]) -> Result<Group<Self>> {
-        TESTNET_V1_BHP_512.hash_uncompressed(input)
+        CANARY_BHP_512.hash_uncompressed(input)
     }
 
     /// Returns the BHP hash with an input hasher of 768-bits.
     fn hash_to_group_bhp768(input: &[bool]) -> Result<Group<Self>> {
-        TESTNET_V1_BHP_768.hash_uncompressed(input)
+        CANARY_BHP_768.hash_uncompressed(input)
     }
 
     /// Returns the BHP hash with an input hasher of 1024-bits.
     fn hash_to_group_bhp1024(input: &[bool]) -> Result<Group<Self>> {
-        TESTNET_V1_BHP_1024.hash_uncompressed(input)
+        CANARY_BHP_1024.hash_uncompressed(input)
     }
 
     /// Returns the Pedersen hash for a given (up to) 64-bit input.
     fn hash_to_group_ped64(input: &[bool]) -> Result<Group<Self>> {
-        TESTNET_V1_PEDERSEN_64.hash_uncompressed(input)
+        CANARY_PEDERSEN_64.hash_uncompressed(input)
     }
 
     /// Returns the Pedersen hash for a given (up to) 128-bit input.
     fn hash_to_group_ped128(input: &[bool]) -> Result<Group<Self>> {
-        TESTNET_V1_PEDERSEN_128.hash_uncompressed(input)
+        CANARY_PEDERSEN_128.hash_uncompressed(input)
     }
 
     /// Returns the Poseidon hash with an input rate of 2 on the affine curve.
     fn hash_to_group_psd2(input: &[Field<Self>]) -> Result<Group<Self>> {
-        TESTNET_V1_POSEIDON_2.hash_to_group(input)
+        CANARY_POSEIDON_2.hash_to_group(input)
     }
 
     /// Returns the Poseidon hash with an input rate of 4 on the affine curve.
     fn hash_to_group_psd4(input: &[Field<Self>]) -> Result<Group<Self>> {
-        TESTNET_V1_POSEIDON_4.hash_to_group(input)
+        CANARY_POSEIDON_4.hash_to_group(input)
     }
 
     /// Returns the Poseidon hash with an input rate of 8 on the affine curve.
     fn hash_to_group_psd8(input: &[Field<Self>]) -> Result<Group<Self>> {
-        TESTNET_V1_POSEIDON_8.hash_to_group(input)
+        CANARY_POSEIDON_8.hash_to_group(input)
     }
 
     /// Returns the Poseidon hash with an input rate of 2 on the scalar field.
     fn hash_to_scalar_psd2(input: &[Field<Self>]) -> Result<Scalar<Self>> {
-        TESTNET_V1_POSEIDON_2.hash_to_scalar(input)
+        CANARY_POSEIDON_2.hash_to_scalar(input)
     }
 
     /// Returns the Poseidon hash with an input rate of 4 on the scalar field.
     fn hash_to_scalar_psd4(input: &[Field<Self>]) -> Result<Scalar<Self>> {
-        TESTNET_V1_POSEIDON_4.hash_to_scalar(input)
+        CANARY_POSEIDON_4.hash_to_scalar(input)
     }
 
     /// Returns the Poseidon hash with an input rate of 8 on the scalar field.
     fn hash_to_scalar_psd8(input: &[Field<Self>]) -> Result<Scalar<Self>> {
-        TESTNET_V1_POSEIDON_8.hash_to_scalar(input)
+        CANARY_POSEIDON_8.hash_to_scalar(input)
     }
 
     /// Returns a Merkle tree with a BHP leaf hasher of 1024-bits and a BHP path hasher of 512-bits.
     fn merkle_tree_bhp<const DEPTH: u8>(leaves: &[Vec<bool>]) -> Result<BHPMerkleTree<Self, DEPTH>> {
-        MerkleTree::new(&*TESTNET_V1_BHP_1024, &*TESTNET_V1_BHP_512, leaves)
+        MerkleTree::new(&*CANARY_BHP_1024, &*CANARY_BHP_512, leaves)
     }
 
     /// Returns a Merkle tree with a Poseidon leaf hasher with input rate of 4 and a Poseidon path hasher with input rate of 2.
     fn merkle_tree_psd<const DEPTH: u8>(leaves: &[Vec<Field<Self>>]) -> Result<PoseidonMerkleTree<Self, DEPTH>> {
-        MerkleTree::new(&*TESTNET_V1_POSEIDON_4, &*TESTNET_V1_POSEIDON_2, leaves)
+        MerkleTree::new(&*CANARY_POSEIDON_4, &*CANARY_POSEIDON_2, leaves)
     }
 
     /// Returns `true` if the given Merkle path is valid for the given root and leaf.
@@ -463,7 +463,7 @@ impl Network for TestnetV1 {
         root: &Field<Self>,
         leaf: &Vec<bool>,
     ) -> bool {
-        path.verify(&*TESTNET_V1_BHP_1024, &*TESTNET_V1_BHP_512, root, leaf)
+        path.verify(&*CANARY_BHP_1024, &*CANARY_BHP_512, root, leaf)
     }
 
     /// Returns `true` if the given Merkle path is valid for the given root and leaf.
@@ -472,7 +472,7 @@ impl Network for TestnetV1 {
         root: &Field<Self>,
         leaf: &Vec<Field<Self>>,
     ) -> bool {
-        path.verify(&*TESTNET_V1_POSEIDON_4, &*TESTNET_V1_POSEIDON_2, root, leaf)
+        path.verify(&*CANARY_POSEIDON_4, &*CANARY_POSEIDON_2, root, leaf)
     }
 }
 
@@ -480,7 +480,7 @@ impl Network for TestnetV1 {
 mod tests {
     use super::*;
 
-    type CurrentNetwork = TestnetV1;
+    type CurrentNetwork = CanaryV0;
 
     #[test]
     fn test_g_scalar_multiply() {

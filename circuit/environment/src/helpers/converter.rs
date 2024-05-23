@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::{Circuit, LinearCombination, TestnetCircuit, TestnetV1Circuit, Variable, R1CS};
+use crate::{CanaryCircuit, Circuit, LinearCombination, TestnetCircuit, Variable, R1CS};
 use snarkvm_curves::edwards_bls12::Fq;
 use snarkvm_fields::PrimeField;
 
@@ -44,13 +44,13 @@ impl snarkvm_algorithms::r1cs::ConstraintSynthesizer<Fq> for TestnetCircuit {
     }
 }
 
-impl snarkvm_algorithms::r1cs::ConstraintSynthesizer<Fq> for TestnetV1Circuit {
+impl snarkvm_algorithms::r1cs::ConstraintSynthesizer<Fq> for CanaryCircuit {
     /// Synthesizes the constraints from the environment into a `snarkvm_algorithms::r1cs`-compliant constraint system.
     fn generate_constraints<CS: snarkvm_algorithms::r1cs::ConstraintSystem<Fq>>(
         &self,
         cs: &mut CS,
     ) -> Result<(), snarkvm_algorithms::r1cs::SynthesisError> {
-        crate::testnet_v1_circuit::TESTNET_V1_CIRCUIT.with(|circuit| circuit.borrow().generate_constraints(cs))
+        crate::canary_circuit::CANARY_CIRCUIT.with(|circuit| circuit.borrow().generate_constraints(cs))
     }
 }
 

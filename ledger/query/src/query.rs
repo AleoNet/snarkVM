@@ -72,8 +72,8 @@ impl<N: Network, B: BlockStorage<N>> QueryTrait<N> for Query<N, B> {
                 console::network::TestnetV0::ID => {
                     Ok(Self::get_request(&format!("{url}/testnet/latest/stateRoot"))?.into_json()?)
                 }
-                console::network::TestnetV1::ID => {
-                    Ok(Self::get_request(&format!("{url}/testnet_v1/latest/stateRoot"))?.into_json()?)
+                console::network::CanaryV0::ID => {
+                    Ok(Self::get_request(&format!("{url}/canary/latest/stateRoot"))?.into_json()?)
                 }
                 _ => bail!("Unsupported network ID in inclusion query"),
             },
@@ -92,8 +92,8 @@ impl<N: Network, B: BlockStorage<N>> QueryTrait<N> for Query<N, B> {
                 console::network::TestnetV0::ID => {
                     Ok(Self::get_request_async(&format!("{url}/testnet/latest/stateRoot")).await?.json().await?)
                 }
-                console::network::TestnetV1::ID => {
-                    Ok(Self::get_request_async(&format!("{url}/testnet_v1/latest/stateRoot")).await?.json().await?)
+                console::network::CanaryV0::ID => {
+                    Ok(Self::get_request_async(&format!("{url}/canary/latest/stateRoot")).await?.json().await?)
                 }
                 _ => bail!("Unsupported network ID in inclusion query"),
             },
@@ -111,8 +111,8 @@ impl<N: Network, B: BlockStorage<N>> QueryTrait<N> for Query<N, B> {
                 console::network::TestnetV0::ID => {
                     Ok(Self::get_request(&format!("{url}/testnet/statePath/{commitment}"))?.into_json()?)
                 }
-                console::network::TestnetV1::ID => {
-                    Ok(Self::get_request(&format!("{url}/testnet_v1/statePath/{commitment}"))?.into_json()?)
+                console::network::CanaryV0::ID => {
+                    Ok(Self::get_request(&format!("{url}/canary/statePath/{commitment}"))?.into_json()?)
                 }
                 _ => bail!("Unsupported network ID in inclusion query"),
             },
@@ -131,11 +131,8 @@ impl<N: Network, B: BlockStorage<N>> QueryTrait<N> for Query<N, B> {
                 console::network::TestnetV0::ID => {
                     Ok(Self::get_request_async(&format!("{url}/testnet/statePath/{commitment}")).await?.json().await?)
                 }
-                console::network::TestnetV1::ID => {
-                    Ok(Self::get_request_async(&format!("{url}/testnet_v1/statePath/{commitment}"))
-                        .await?
-                        .json()
-                        .await?)
+                console::network::CanaryV0::ID => {
+                    Ok(Self::get_request_async(&format!("{url}/canary/statePath/{commitment}")).await?.json().await?)
                 }
                 _ => bail!("Unsupported network ID in inclusion query"),
             },
@@ -157,8 +154,8 @@ impl<N: Network, B: BlockStorage<N>> Query<N, B> {
                 console::network::TestnetV0::ID => {
                     Ok(Self::get_request(&format!("{url}/testnet/program/{program_id}"))?.into_json()?)
                 }
-                console::network::TestnetV1::ID => {
-                    Ok(Self::get_request(&format!("{url}/testnet_v1/program/{program_id}"))?.into_json()?)
+                console::network::CanaryV0::ID => {
+                    Ok(Self::get_request(&format!("{url}/canary/program/{program_id}"))?.into_json()?)
                 }
                 _ => bail!("Unsupported network ID in inclusion query"),
             },
@@ -179,8 +176,8 @@ impl<N: Network, B: BlockStorage<N>> Query<N, B> {
                 console::network::TestnetV0::ID => {
                     Ok(Self::get_request_async(&format!("{url}/testnet/program/{program_id}")).await?.json().await?)
                 }
-                console::network::TestnetV1::ID => {
-                    Ok(Self::get_request_async(&format!("{url}/testnet_v1/program/{program_id}")).await?.json().await?)
+                console::network::CanaryV0::ID => {
+                    Ok(Self::get_request_async(&format!("{url}/canary/program/{program_id}")).await?.json().await?)
                 }
                 _ => bail!("Unsupported network ID in inclusion query"),
             },
