@@ -74,7 +74,7 @@ impl_local!(BetaH, "resources/", "beta-h", "usrs");
 impl_remote!(BondPublicProver, REMOTE_URL, "resources/", "bond_public", "prover");
 impl_local!(BondPublicVerifier, "resources/", "bond_public", "verifier");
 // BondValidator
-impl_local!(BondValidatorProver, "resources/", "bond_validator", "prover");
+impl_remote!(BondValidatorProver, REMOTE_URL, "resources/", "bond_validator", "prover");
 impl_local!(BondValidatorVerifier, "resources/", "bond_validator", "verifier");
 // UnbondPublic
 impl_remote!(UnbondPublicProver, REMOTE_URL, "resources/", "unbond_public", "prover");
@@ -175,8 +175,8 @@ mod tests {
         Degree18::load_bytes().expect("Failed to load degree 18");
         Degree19::load_bytes().expect("Failed to load degree 19");
         Degree20::load_bytes().expect("Failed to load degree 20");
-        BondValidatorVerifier::load_bytes().expect("Failed to load bond_validator verifier");
         BondPublicVerifier::load_bytes().expect("Failed to load bond_public verifier");
+        BondValidatorVerifier::load_bytes().expect("Failed to load bond_validator verifier");
         UnbondPublicVerifier::load_bytes().expect("Failed to load unbond_public verifier");
         ClaimUnbondPublicVerifier::load_bytes().expect("Failed to load claim_unbond_public verifier");
         SetValidatorStateVerifier::load_bytes().expect("Failed to load set_validator_state verifier");
