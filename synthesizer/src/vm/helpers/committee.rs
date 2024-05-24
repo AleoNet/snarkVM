@@ -70,30 +70,27 @@ pub fn committee_and_delegated_maps_into_committee<N: Network>(
             };
 
             // Extract the microcredits for the address from the delegated map.
-            let microcredits = delegated_map.iter().find_map(|(delegated_key, delegated_value)| {
-                // Check if the address matches.
+            let Some(microcredits) = delegated_map.iter().find_map(|(delegated_key, delegated_value)| {
+                // Retrieve the delegated address.
                 let delegated_address = match delegated_key {
                     Plaintext::Literal(Literal::Address(address), _) => Some(address),
                     _ => None,
                 };
-                if delegated_address == Some(address) {
+                // Check if the address matches.
+                match delegated_address == Some(address) {
                     // Extract the microcredits from the value.
-                    let microcredits = match delegated_value {
+                    true => match delegated_value {
                         Value::Plaintext(Plaintext::Literal(Literal::U64(microcredits), _)) => Some(**microcredits),
                         _ => None,
-                    };
-
-                    return microcredits;
+                    },
+                    false => None,
                 }
-                None
-            });
-
-            let microcredits_value = match microcredits {
-                Some(microcredits) => microcredits,
-                None => bail!("Missing microcredits for committee member - {address}"),
+            }) else {
+                bail!("Missing microcredits for committee member - {address}");
             };
+
             // Return the committee member.
-            Ok((*address, (microcredits_value, is_open, commission)))
+            Ok((*address, (microcredits, is_open, commission)))
         })
         .collect::<Result<IndexMap<_, _>>>()?;
 
