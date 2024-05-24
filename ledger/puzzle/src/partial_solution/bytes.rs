@@ -14,8 +14,8 @@
 
 use super::*;
 
-impl<N: Network> FromBytes for Solution<N> {
-    /// Reads the solution from the buffer.
+impl<N: Network> FromBytes for PartialSolution<N> {
+    /// Reads the partial solution from the buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let epoch_hash = N::BlockHash::read_le(&mut reader)?;
         let address = Address::<N>::read_le(&mut reader)?;
@@ -25,8 +25,8 @@ impl<N: Network> FromBytes for Solution<N> {
     }
 }
 
-impl<N: Network> ToBytes for Solution<N> {
-    /// Writes the solution to the buffer.
+impl<N: Network> ToBytes for PartialSolution<N> {
+    /// Writes the parital solution to the buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.epoch_hash.write_le(&mut writer)?;
         self.address.write_le(&mut writer)?;
@@ -47,13 +47,13 @@ mod tests {
         let private_key = PrivateKey::<CurrentNetwork>::new(&mut rng)?;
         let address = Address::try_from(private_key)?;
 
-        // Sample a new solution.
-        let expected = Solution::new(rng.gen(), address, u64::rand(&mut rng)).unwrap();
+        // Sample a new partial solution.
+        let expected = PartialSolution::new(rng.gen(), address, u64::rand(&mut rng)).unwrap();
 
         // Check the byte representation.
         let expected_bytes = expected.to_bytes_le()?;
-        assert_eq!(expected, Solution::read_le(&expected_bytes[..])?);
-        assert!(Solution::<CurrentNetwork>::read_le(&expected_bytes[1..]).is_err());
+        assert_eq!(expected, PartialSolution::read_le(&expected_bytes[..])?);
+        assert!(PartialSolution::<CurrentNetwork>::read_le(&expected_bytes[1..]).is_err());
 
         Ok(())
     }

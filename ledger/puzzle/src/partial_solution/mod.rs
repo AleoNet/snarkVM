@@ -19,9 +19,9 @@ mod string;
 use crate::SolutionID;
 use console::{account::Address, network::prelude::*, prelude::DeserializeExt};
 
-/// The solution for the puzzle from a prover.
+/// The partial solution for the puzzle from a prover.
 #[derive(Copy, Clone, Eq, PartialEq, Hash)]
-pub struct Solution<N: Network> {
+pub struct PartialSolution<N: Network> {
     /// The solution ID.
     solution_id: SolutionID<N>,
     /// The epoch hash.
@@ -32,8 +32,8 @@ pub struct Solution<N: Network> {
     counter: u64,
 }
 
-impl<N: Network> Solution<N> {
-    /// Initializes a new instance of the solution.
+impl<N: Network> PartialSolution<N> {
+    /// Initializes a new instance of the partial solution.
     pub fn new(epoch_hash: N::BlockHash, address: Address<N>, counter: u64) -> Result<Self> {
         // Compute the solution ID.
         let solution_id = SolutionID::new(epoch_hash, address, counter)?;

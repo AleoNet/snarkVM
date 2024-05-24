@@ -14,12 +14,12 @@
 
 use super::*;
 
-impl<N: Network> Serialize for Solution<N> {
-    /// Serializes the solution to a JSON-string or buffer.
+impl<N: Network> Serialize for PartialSolution<N> {
+    /// Serializes the partial solution to a JSON-string or buffer.
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
             true => {
-                let mut partial_solution = serializer.serialize_struct("Solution", 4)?;
+                let mut partial_solution = serializer.serialize_struct("PartialSolution", 4)?;
                 partial_solution.serialize_field("solution_id", &self.solution_id)?;
                 partial_solution.serialize_field("epoch_hash", &self.epoch_hash)?;
                 partial_solution.serialize_field("address", &self.address)?;
@@ -31,8 +31,8 @@ impl<N: Network> Serialize for Solution<N> {
     }
 }
 
-impl<'de, N: Network> Deserialize<'de> for Solution<N> {
-    /// Deserializes the solution from a JSON-string or buffer.
+impl<'de, N: Network> Deserialize<'de> for PartialSolution<N> {
+    /// Deserializes the partial solution from a JSON-string or buffer.
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         match deserializer.is_human_readable() {
             true => {
@@ -41,7 +41,7 @@ impl<'de, N: Network> Deserialize<'de> for Solution<N> {
                     DeserializeExt::take_from_value::<D>(&mut partial_solution, "solution_id")?;
 
                 // Recover the partial solution.
-                let solution = Self::new(
+                let partial_solution = Self::new(
                     DeserializeExt::take_from_value::<D>(&mut partial_solution, "epoch_hash")?,
                     DeserializeExt::take_from_value::<D>(&mut partial_solution, "address")?,
                     DeserializeExt::take_from_value::<D>(&mut partial_solution, "counter")?,
@@ -49,8 +49,8 @@ impl<'de, N: Network> Deserialize<'de> for Solution<N> {
                 .map_err(de::Error::custom)?;
 
                 // Ensure the solution ID matches.
-                match solution_id == solution.id() {
-                    true => Ok(solution),
+                match solution_id == partial_solution.id() {
+                    true => Ok(partial_solution),
                     false => Err(de::Error::custom(error("Mismatching solution ID, possible data corruption"))),
                 }
             }
@@ -72,8 +72,8 @@ mod tests {
         let private_key = PrivateKey::<CurrentNetwork>::new(&mut rng)?;
         let address = Address::try_from(private_key)?;
 
-        // Sample a new solution.
-        let expected = Solution::new(rng.gen(), address, u64::rand(&mut rng)).unwrap();
+        // Sample a new partial solution.
+        let expected = PartialSolution::new(rng.gen(), address, u64::rand(&mut rng)).unwrap();
 
         // Serialize
         let expected_string = &expected.to_string();
@@ -81,7 +81,7 @@ mod tests {
         assert_eq!(expected, serde_json::from_str(&candidate_string)?);
 
         // Deserialize
-        assert_eq!(expected, Solution::from_str(expected_string)?);
+        assert_eq!(expected, PartialSolution::from_str(expected_string)?);
         assert_eq!(expected, serde_json::from_str(&candidate_string)?);
 
         Ok(())
@@ -93,8 +93,8 @@ mod tests {
         let private_key = PrivateKey::<CurrentNetwork>::new(&mut rng)?;
         let address = Address::try_from(private_key)?;
 
-        // Sample a new solution.
-        let expected = Solution::new(rng.gen(), address, u64::rand(&mut rng)).unwrap();
+        // Sample a new partial solution.
+        let expected = PartialSolution::new(rng.gen(), address, u64::rand(&mut rng)).unwrap();
 
         // Serialize
         let expected_bytes = expected.to_bytes_le()?;
@@ -102,7 +102,7 @@ mod tests {
         assert_eq!(&expected_bytes[..], &expected_bytes_with_size_encoding[8..]);
 
         // Deserialize
-        assert_eq!(expected, Solution::read_le(&expected_bytes[..])?);
+        assert_eq!(expected, PartialSolution::read_le(&expected_bytes[..])?);
         assert_eq!(expected, bincode::deserialize(&expected_bytes_with_size_encoding[..])?);
 
         Ok(())
