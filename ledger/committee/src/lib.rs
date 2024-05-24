@@ -84,6 +84,11 @@ impl<N: Network> Committee<N> {
             members.values().all(|(stake, _, _)| *stake >= MIN_VALIDATOR_STAKE),
             "All members must have at least {MIN_VALIDATOR_STAKE} microcredits in stake"
         );
+        // Ensure all members have a commission percentage within 100%.
+        ensure!(
+            members.values().all(|(_, _, commission)| *commission <= 100),
+            "All members must have a commission percentage less than or equal to 100"
+        );
         // Compute the total stake of the committee for this round.
         let total_stake = Self::compute_total_stake(&members)?;
         // Compute the committee ID.
