@@ -468,7 +468,7 @@ mod tests {
     }
 
     #[test]
-    fn test_committee_map_into_committee() {
+    fn test_committee_and_delegated_maps_into_committee() {
         let rng = &mut TestRng::default();
 
         // Sample a committee.
@@ -486,7 +486,7 @@ mod tests {
         let candidate_committee =
             committee_and_delegated_maps_into_committee(committee.starting_round(), committee_map, delegated_map)
                 .unwrap();
-        println!("committee_map_into_committee: {}ms", timer.elapsed().as_millis());
+        println!("committee_and_delegated_maps_into_committee: {}ms", timer.elapsed().as_millis());
         assert_eq!(candidate_committee, committee);
     }
 
@@ -549,7 +549,7 @@ mod tests {
     }
 
     #[test]
-    fn test_to_next_credits_maps() {
+    fn test_to_next_committee_bonded_delegated_map() {
         let rng = &mut TestRng::default();
 
         // Sample a committee.
@@ -565,7 +565,7 @@ mod tests {
         // Ensure the next committee matches the current committee.
         // Note: We can perform this check, in this specific case only, because we did not apply staking rewards.
         let (committee_map, bonded_map, _) = to_next_committee_bonded_delegated_map(&committee, &stakers, &delegations);
-        println!("to_next_credits_maps: {}ms", timer.elapsed().as_millis());
+        println!("to_next_committee_bonded_delegated_map: {}ms", timer.elapsed().as_millis());
         assert_eq!(committee_map, to_committee_map(committee.members()));
         assert_eq!(bonded_map, to_bonded_map(&stakers));
     }
