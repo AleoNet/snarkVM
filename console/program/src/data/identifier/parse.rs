@@ -54,7 +54,7 @@ impl<N: Network> FromStr for Identifier<N> {
 
         // Ensure that the identifier is not a literal.
         ensure!(
-            !enum_iterator::all::<crate::LiteralType>().any(|lt| lt.type_name() == identifier),
+            crate::LiteralType::from_str(identifier).is_err(),
             "Identifier '{identifier}' is a reserved literal type"
         );
 
