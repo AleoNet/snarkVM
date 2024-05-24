@@ -122,7 +122,12 @@ impl<N: Network> Puzzle<N> {
 
     /// Returns the proof target given the solution.
     pub fn get_proof_target(&self, solution: &Solution<N>) -> Result<u64> {
-        self.get_proof_target_from_partial_solution(solution.partial_solution())
+        // Calculate the proof target.
+        let proof_target = self.get_proof_target_from_partial_solution(solution.partial_solution())?;
+
+        ensure!(solution.target() == proof_target, "The proof target does not match the expected proof target");
+
+        Ok(proof_target)
     }
 
     /// Returns the proof target given the partial solution.
@@ -155,7 +160,14 @@ impl<N: Network> Puzzle<N> {
             // Check if the proof target is in the cache.
             match self.proof_target_cache.write().get(id) {
                 // If the proof target is in the cache, then store it.
-                Some(proof_target) => targets[i] = *proof_target,
+                Some(proof_target) => {
+                    // Ensure that the proof target matches the expected proof target.
+                    ensure!(
+                        solution.target() == *proof_target,
+                        "The proof target does not match the expected proof target"
+                    );
+                    targets[i] = *proof_target
+                }
                 // Otherwise, add it to the list of solutions that need to be computed.
                 None => to_compute.push((i, id, *solution)),
             }
@@ -173,9 +185,10 @@ impl<N: Network> Puzzle<N> {
                     // Get the proof target.
                     let proof_target = Self::leaves_to_proof_target(leaves)?;
                     // Ensure that the proof target matches the expected proof target.
-                    if proof_target != solution.target() {
-                        bail!("The proof target does not match the expected proof target")
-                    }
+                    ensure!(
+                        solution.target() == proof_target,
+                        "The proof target does not match the expected proof target"
+                    );
                     // Insert the proof target into the cache.
                     self.proof_target_cache.write().put(*solution_id, proof_target);
                     // Return the proof target.
@@ -456,6 +469,71 @@ mod tests {
 
         let solutions = PuzzleSolutions::new(vec![solution]).unwrap();
         assert!(puzzle.check_solutions(&solutions, epoch_hash, 0u64).is_ok());
+    }
+
+    #[test]
+    fn test_check_solution_with_incorrect_target_fails() {
+        let mut rng = rand::thread_rng();
+
+        // Initialize a new puzzle.
+        let puzzle = sample_puzzle();
+
+        // Initialize an epoch hash.
+        let epoch_hash = rng.gen();
+
+        // Generate inputs.
+        let private_key = PrivateKey::<CurrentNetwork>::new(&mut rng).unwrap();
+        let address = Address::try_from(private_key).unwrap();
+
+        // Generate a solution.
+        let solution = puzzle.prove(epoch_hash, address, rng.gen(), None).unwrap();
+
+        // Generate a solution with an incorrect target.
+        let incorrect_solution = Solution::new(*solution.partial_solution(), solution.target().saturating_add(1));
+
+        // Ensure the incorrect solution is invalid.
+        assert!(puzzle.check_solution(&incorrect_solution, epoch_hash, 0u64).is_err());
+
+        // Ensure the invalid solution is invalid on a fresh puzzle instance.
+        let new_puzzle = sample_puzzle();
+        assert!(new_puzzle.check_solution(&incorrect_solution, epoch_hash, 0u64).is_err());
+
+        // Ensure the incorrect solutions are invalid.
+        let incorrect_solutions = PuzzleSolutions::new(vec![incorrect_solution]).unwrap();
+        assert!(puzzle.check_solutions(&incorrect_solutions, epoch_hash, 0u64).is_err());
+
+        // Ensure the incorrect solutions are invalid on a fresh puzzle instance.
+        let new_puzzle = sample_puzzle();
+        assert!(new_puzzle.check_solutions(&incorrect_solutions, epoch_hash, 0u64).is_err());
+    }
+
+    #[test]
+    fn test_check_solutions_with_incorrect_target_fails() {
+        let mut rng = TestRng::default();
+
+        // Initialize a new puzzle.
+        let puzzle = sample_puzzle();
+
+        // Initialize an epoch hash.
+        let epoch_hash = rng.gen();
+
+        for batch_size in 1..=CurrentNetwork::MAX_SOLUTIONS {
+            // Initialize the incorrect solutions.
+            let incorrect_solutions = (0..batch_size)
+                .map(|_| {
+                    let solution = puzzle.prove(epoch_hash, rng.gen(), rng.gen(), None).unwrap();
+                    Solution::new(*solution.partial_solution(), solution.target().saturating_add(1))
+                })
+                .collect::<Vec<_>>();
+            let incorrect_solutions = PuzzleSolutions::new(incorrect_solutions).unwrap();
+
+            // Ensure the incorrect solutions are invalid.
+            assert!(puzzle.check_solutions(&incorrect_solutions, epoch_hash, 0u64).is_err());
+
+            // Ensure the incorrect solutions are invalid on a fresh puzzle instance.
+            let new_puzzle = sample_puzzle();
+            assert!(new_puzzle.check_solutions(&incorrect_solutions, epoch_hash, 0u64).is_err());
+        }
     }
 
     #[test]
