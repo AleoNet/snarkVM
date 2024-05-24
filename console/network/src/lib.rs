@@ -115,10 +115,12 @@ pub trait Network:
     const STARTING_SUPPLY: u64 = 1_500_000_000_000_000; // 1.5B credits
     /// The cost in microcredits per byte for the deployment transaction.
     const DEPLOYMENT_FEE_MULTIPLIER: u64 = 1_000; // 1 millicredit per byte
-    /// The storage cost in microcredits per byte for the execution transaction.
-    const EXECUTION_STORAGE_FEE_MULTIPLIER: u64 = 100; // 1 microcredit per byte
-    /// The maximum size execution transactions can be before the execution storage multiplier applies.
-    const EXECUTION_STORAGE_PENALTY_THRESHOLD: u64 = 15_000;
+    /// The degree of the polynomial used to calculate the storage fee.
+    const EXECUTION_STORAGE_FEE_DEGREE: u32 = 2;
+    /// The constant that divides the storage polynomial.
+    const EXECUTION_STORAGE_FEE_SCALING_FACTOR: u64 = 1000;
+    /// The maximum size execution transactions can be before a quadratic storage penalty applies.
+    const EXECUTION_STORAGE_PENALTY_THRESHOLD: u64 = 5_000;
     /// The cost in microcredits per constraint for the deployment transaction.
     const SYNTHESIS_FEE_MULTIPLIER: u64 = 25; // 25 microcredits per constraint
     /// The maximum number of variables in a deployment.

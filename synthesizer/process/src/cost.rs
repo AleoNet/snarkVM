@@ -62,9 +62,11 @@ pub fn execution_cost<N: Network>(process: &Process<N>, execution: &Execution<N>
     // Compute the storage cost in microcredits.
     let mut storage_cost = execution.size_in_bytes()?;
 
-    // Compute a storage cost penalty if above the size penalty threshold.
+    // Compute a quadratic storage cost penalty if above the size penalty threshold.
     if storage_cost > N::EXECUTION_STORAGE_PENALTY_THRESHOLD {
-        storage_cost = storage_cost.saturating_mul(N::EXECUTION_STORAGE_FEE_MULTIPLIER)
+        storage_cost = storage_cost
+            .saturating_pow(N::EXECUTION_STORAGE_FEE_DEGREE)
+            .saturating_div(N::EXECUTION_STORAGE_FEE_SCALING_FACTOR);
     }
 
     // Get the root transition.
