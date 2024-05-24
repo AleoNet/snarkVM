@@ -167,7 +167,7 @@ pub fn ensure_stakers_matches<N: Network>(
     );
 
     // Compute the total microcredits.
-    let total_validator_microcredits =
+    let total_microcredits =
         cfg_reduce!(cfg_iter!(validator_map).map(|(_, microcredits)| *microcredits), || 0u64, |a, b| {
             // Add the staker's microcredits to the total microcredits.
             a.saturating_add(b)
@@ -176,10 +176,7 @@ pub fn ensure_stakers_matches<N: Network>(
     // Ensure the committee and committee map match.
     ensure!(committee.members().len() == validator_map.len(), "Committee and validator map length do not match");
     // Ensure the total microcredits match.
-    ensure!(
-        committee.total_stake() == total_validator_microcredits,
-        "Committee and validator map total stake do not match"
-    );
+    ensure!(committee.total_stake() == total_microcredits, "Committee and validator map total stake do not match");
 
     // Iterate over the committee and ensure the committee and validators match.
     for (validator, (microcredits, _, _)) in committee.members() {
@@ -192,6 +189,31 @@ pub fn ensure_stakers_matches<N: Network>(
     }
 
     Ok(())
+}
+
+/// Returns the next committee, given the current committee and stakers.
+pub fn to_next_committee<N: Network>(
+    current_committee: &Committee<N>,
+    next_round: u64,
+    next_delegated: &IndexMap<Address<N>, u64>,
+) -> Result<Committee<N>> {
+    // Return the next committee.
+    Committee::new(
+        next_round,
+        cfg_iter!(next_delegated)
+            .flat_map(|(delegatee, microcredits)| {
+                match current_committee.members().contains_key(delegatee) {
+                    true => {
+                        let Some((_, is_open, commission)) = current_committee.members().get(delegatee) else {
+                            return None;
+                        };
+                        Some((*delegatee, (*microcredits, *is_open, *commission)))
+                    }
+                    false => None, // Do nothing, as the delegatee is not part of the committee.
+                }
+            })
+            .collect(),
+    )
 }
 
 pub fn to_next_delegated<N: Network>(
@@ -213,28 +235,6 @@ pub fn to_next_delegated<N: Network>(
     delegated_map
 }
 
-/// Returns the next committee, given the current committee and stakers.
-pub fn to_next_committee<N: Network>(
-    current_committee: &Committee<N>,
-    next_round: u64,
-    next_delegated: &IndexMap<Address<N>, u64>,
-) -> Result<Committee<N>> {
-    // Initialize the members.
-    let mut members = IndexMap::with_capacity(current_committee.members().len());
-    // Iterate over the delegatees.
-    for (delegatee, microcredits) in next_delegated {
-        match current_committee.members().contains_key(delegatee) {
-            true => {
-                let (_, is_open, commission) = current_committee.members().get(delegatee).unwrap();
-                members.insert(*delegatee, (*microcredits, *is_open, *commission));
-            }
-            false => (), // do nothing, delegatee is not part of the committee
-        }
-    }
-    // Return the next committee.
-    Committee::new(next_round, members)
-}
-
 /// Returns the committee map, bonded map, and delegated map, given the committee and stakers.
 pub fn to_next_committee_bonded_delegated_map<N: Network>(
     next_committee: &Committee<N>,
@@ -247,7 +247,7 @@ pub fn to_next_committee_bonded_delegated_map<N: Network>(
     let is_open_identifier = Identifier::from_str("is_open").expect("Failed to parse 'is_open'");
     let commission_identifier = Identifier::from_str("commission").expect("Failed to parse 'commission'");
 
-    // Construct the committee and delegated maps.
+    // Construct the committee map.
     let committee_map = cfg_iter!(next_committee.members())
         .map(|(validator, (_, is_open, commission))| {
             // Construct the committee state.

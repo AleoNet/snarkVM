@@ -93,10 +93,11 @@ pub fn staking_rewards<N: Network>(
             let staking_reward = u64::try_from(quotient).expect("Staking reward is too large");
 
             // Update the staking reward with the commission.
+            //
             // Note: This approach to computing commissions is far more computationally-efficient,
-            // however it does introduce a small error of precision that is accepted for the
-            // sake of performance. There is a negligible difference (at most 100 microcredits)
-            // between validators (+) and the delegators (-) in the allocated commission difference.
+            // however it does introduce a small (deterministic) precision error that is accepted for the
+            // sake of performance. There is a negligible difference (at most 100 microcredits per delegator)
+            // between the validators (+) and the delegators (-) in the allocated commission difference.
             let staking_reward_after_commission = match staker == validator {
                 // If the staker is the validator, add the total commission to the staking reward.
                 true => {
