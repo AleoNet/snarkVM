@@ -202,15 +202,11 @@ pub fn to_next_committee<N: Network>(
         next_round,
         cfg_iter!(next_delegated)
             .flat_map(|(delegatee, microcredits)| {
-                match current_committee.members().contains_key(delegatee) {
-                    true => {
-                        let Some((_, is_open, commission)) = current_committee.members().get(delegatee) else {
-                            return None;
-                        };
-                        Some((*delegatee, (*microcredits, *is_open, *commission)))
-                    }
-                    false => None, // Do nothing, as the delegatee is not part of the committee.
-                }
+                let Some((_, is_open, commission)) = current_committee.members().get(delegatee) else {
+                    // Do nothing, as the delegatee is not part of the committee.
+                    return None;
+                };
+                Some((*delegatee, (*microcredits, *is_open, *commission)))
             })
             .collect(),
     )
