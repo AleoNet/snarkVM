@@ -445,7 +445,7 @@ finalize unbond_public:
     // Note: If the bonded state does not exist, reject the transition.
     get bonded[r1] into r5;
 
-    /* Check Caller Permission */
+    /* Check Caller's Permission */
 
     // Get the staker's withdrawal address.
     get withdraw[r1] into r6;
@@ -473,7 +473,7 @@ finalize unbond_public:
     is.eq r5.validator r1 into r13;
     branch.eq r13 true to unbond_validator;
 
-    /* Unbond the delegator */
+    /* Unbond the Delegator */
     // {
         // Retrieve or initialize the unbonding state.
         get.or_use unbonding[r1] r4 into r14;
@@ -514,7 +514,7 @@ finalize unbond_public:
         // Check if the new bonded state is falling below 10,000 credits, or if the validator is forcing an unbond on the delegator.
         branch.eq r18 true to remove_delegator;
 
-        /* Decrement Delegator */
+        /* Decrement the Delegator */
         // {
             /* Bonded */
 
@@ -523,7 +523,7 @@ finalize unbond_public:
             // Set the new bond state.
             set r23 into bonded[r1];
 
-            // Jump to end of unbond delegator process.
+            // Jump to the end of the unbond delegator process.
             branch.eq true true to end_unbond_delegator;
         // }
 
@@ -546,15 +546,15 @@ finalize unbond_public:
 
         position end_unbond_delegator;
         // {
-            // Check if the new delegated total is below 10M credits.
+            // Check if the new delegated total is at least 10M credits.
             gte r22 10_000_000_000_000u64 into r26;
-            // Jump to end if the delegated total is above 10M credits.
+            // Jump to end if the delegated total is at least 10M credits.
             branch.eq r26 true to end;
         // }
         // If the delegated total is below 10M credits, continue to unbonding the validator.
     //}
 
-    /* Unbond the validator */
+    /* Unbond the Validator */
     position unbond_validator;
     // {
         // Check if the committee contains the validator.
@@ -580,6 +580,7 @@ finalize unbond_public:
         branch.eq r32 true to remove_validator;
 
         // Calculate the updated delegated total after unbonding.
+        // Note: If the subtraction underflows, reject the transition.
         sub r31 r2 into r33;
 
         // Calculate the updated amount of microcredits after unbonding.
@@ -598,6 +599,7 @@ finalize unbond_public:
         // Retrieve or initialize the unbonding state.
         get.or_use unbonding[r5.validator] r4 into r38;
         // Increment the unbond amount.
+        // Note: If the addition overflows, reject the transition.
         add r38.microcredits r2 into r39;
         // Set the updated unbond state.
         cast r39 r3 into r40 as unbond_state;
@@ -619,9 +621,11 @@ finalize unbond_public:
         branch.eq true true to end;
     //}
 
-    /* Remove the validator from the committee */
+    /* Remove the Validator from the Committee */
     position remove_validator;
     // {
+        /* Committee */
+
         // Remove the validator from the committee.
         remove committee[r5.validator];
 
@@ -651,6 +655,7 @@ finalize unbond_public:
         // Retrieve or initialize the unbonding state.
         get.or_use unbonding[r5.validator] r4 into r45;
         // Increment the unbond amount by the full bonded amount.
+        // Note: If the addition overflows, reject the transition.
         add r30.microcredits r45.microcredits into r46;
         // Construct the updated unbond state.
         cast r46 r3 into r47 as unbond_state;
@@ -688,8 +693,12 @@ finalize claim_unbond_public:
     // Enforce the unbonding is complete.
     assert.eq r2 true;
 
+    /* Withdraw */
+
     // Get the withdrawal address for the address.
     get withdraw[r0] into r3;
+
+    /* Account */
 
     // Add the unbonded amount to the withdrawal address public balance.
     // Increments `account[r3]` by `r1.microcredits`.
@@ -699,6 +708,8 @@ finalize claim_unbond_public:
     add r1.microcredits r4 into r5;
     set r5 into account[r3];
 
+    /* Unbonding */
+
     // Remove the unbond state for the staker.
     remove unbonding[r0];
 
@@ -706,6 +717,8 @@ finalize claim_unbond_public:
     contains bonded[r0] into r6;
     // Ends the `claim_unbond_public` logic.
     branch.eq r6 true to end;
+
+    /* Withdraw */
 
     // If the caller is no longer bonded, remove the withdrawal address.
     remove withdraw[r0];
