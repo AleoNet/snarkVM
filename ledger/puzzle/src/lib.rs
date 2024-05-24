@@ -16,6 +16,9 @@
 #![allow(clippy::too_many_arguments)]
 #![warn(clippy::cast_possible_truncation)]
 
+mod partial_solution;
+pub use partial_solution::*;
+
 mod solution;
 pub use solution::*;
 
@@ -97,7 +100,7 @@ impl<N: Network> Puzzle<N> {
     }
 
     /// Returns the Merkle leaves for the puzzle, given the solution.
-    pub fn get_leaves(&self, solution: &Solution<N>) -> Result<Vec<Vec<bool>>> {
+    pub fn get_leaves(&self, solution: &PartialSolution<N>) -> Result<Vec<Vec<bool>>> {
         // Initialize a seeded random number generator.
         let mut rng = ChaChaRng::seed_from_u64(*solution.id());
         // Output the leaves.
@@ -119,18 +122,23 @@ impl<N: Network> Puzzle<N> {
 
     /// Returns the proof target given the solution.
     pub fn get_proof_target(&self, solution: &Solution<N>) -> Result<u64> {
+        self.get_proof_target_from_partial_solution(solution.partial_solution())
+    }
+
+    /// Returns the proof target given the partial solution.
+    pub fn get_proof_target_from_partial_solution(&self, partial_solution: &PartialSolution<N>) -> Result<u64> {
         // If the proof target is in the cache, then return it.
-        if let Some(proof_target) = self.proof_target_cache.write().get(&solution.id()) {
+        if let Some(proof_target) = self.proof_target_cache.write().get(&partial_solution.id()) {
             return Ok(*proof_target);
         }
 
         // Construct the leaves of the Merkle tree.
-        let leaves = self.get_leaves(solution)?;
+        let leaves = self.get_leaves(partial_solution)?;
         // Get the proof target.
         let proof_target = Self::leaves_to_proof_target(&leaves)?;
 
         // Insert the proof target into the cache.
-        self.proof_target_cache.write().put(solution.id(), proof_target);
+        self.proof_target_cache.write().put(partial_solution.id(), proof_target);
         // Return the proof target.
         Ok(proof_target)
     }
@@ -160,10 +168,14 @@ impl<N: Network> Puzzle<N> {
             let leaves = self.get_all_leaves(&solutions_subset)?;
             // Construct the Merkle roots and truncate them to a u64.
             let targets_subset = cfg_iter!(leaves)
-                .zip(cfg_keys!(solutions_subset))
-                .map(|(leaves, solution_id)| {
+                .zip(cfg_iter!(solutions_subset))
+                .map(|(leaves, (solution_id, solution))| {
                     // Get the proof target.
                     let proof_target = Self::leaves_to_proof_target(leaves)?;
+                    // Ensure that the proof target matches the expected proof target.
+                    if proof_target != solution.target() {
+                        bail!("The proof target does not match the expected proof target")
+                    }
                     // Insert the proof target into the cache.
                     self.proof_target_cache.write().put(*solution_id, proof_target);
                     // Return the proof target.
@@ -196,18 +208,19 @@ impl<N: Network> Puzzle<N> {
         counter: u64,
         minimum_proof_target: Option<u64>,
     ) -> Result<Solution<N>> {
-        // Construct the solution.
-        let solution = Solution::new(epoch_hash, address, counter)?;
+        // Construct the partial solution.
+        let partial_solution = PartialSolution::new(epoch_hash, address, counter)?;
         // Compute the proof target.
-        let proof_target = self.get_proof_target(&solution)?;
+        let proof_target = self.get_proof_target_from_partial_solution(&partial_solution)?;
         // Check that the minimum proof target is met.
         if let Some(minimum_proof_target) = minimum_proof_target {
             if proof_target < minimum_proof_target {
                 bail!("Solution was below the minimum proof target ({proof_target} < {minimum_proof_target})")
             }
         }
-        // Return the solution.
-        Ok(solution)
+
+        // Construct the solution.
+        Ok(Solution::new(partial_solution, proof_target))
     }
 
     /// Returns `Ok(())` if the solution is valid.
