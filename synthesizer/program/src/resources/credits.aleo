@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2024 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -442,7 +442,7 @@ finalize unbond_public:
     cast 0u64 r3 into r4 as unbond_state;
 
     // Retrieve the staker's bond state.
-    // Note: If no bond state exists, reject the transition.
+    // Note: If the bonded state does not exist, reject the transition.
     get bonded[r1] into r5;
 
     /* Check Caller Permission */
@@ -555,33 +555,32 @@ finalize unbond_public:
     /* Unbond the validator */
     position unbond_validator;
     // {
-        /* Setup Unbond Validator */
-        // Check if the committee contains the validator
+        // Check if the committee contains the validator.
         contains committee[r5.validator] into r27;
-        // Delegator unbonding from a validator not in the committee
+        // Determine if the delegator unbonding from a validator is not in the committee.
         nor r13 r27 into r28;
-        // Jump to end if delegator unbonding from a validator not in the committee
+        // Jump to the end, if the delegator unbonding from a validator is not in the committee.
         branch.eq r28 true to end;
 
-        // Retrieve the committee state or fail if it doesn't exist.
+        // Retrieve the committee state.
+        // Note: If the committee state does not exist, reject the transition.
         get committee[r5.validator] into r29;
-
         // Retrieve the bond state of the validator.
+        // Note: If the bonded state does not exist, reject the transition.
         get bonded[r5.validator] into r30;
-
         // Retrieve the total delegated balance for the validator.
+        // Note: If the delegated state does not exist, reject the transition.
         get delegated[r5.validator] into r31;
-        /* End Setup Unbond Validator */
 
         // Check if the current delegated amount is below 10M credits.
-        // This will only be true if a delegator unbond caused the validator to fall below 10M credits.
+        // Note: This will only be `true` if a delegator unbond caused the validator to fall below 10M credits.
         lt r31 10_000_000_000_000u64 into r32;
         branch.eq r32 true to remove_validator;
 
-        // Calculate the new delegated total after unbonding.
+        // Calculate the updated delegated total after unbonding.
         sub r31 r2 into r33;
 
-        // Calculate the new bond state after unbonding.
+        // Calculate the updated amount of microcredits after unbonding.
         sub r30.microcredits r2 into r34;
 
         // Check if the new bond state is below the required minimums.
@@ -592,7 +591,8 @@ finalize unbond_public:
         and r35 r36 into r37;
         branch.eq r37 false to remove_validator;
 
-        /* Update Validator State */
+        /* Unbonding */
+
         // Retrieve or initialize the unbonding state.
         get.or_use unbonding[r5.validator] r4 into r38;
         // Increment the unbond amount.
@@ -602,16 +602,16 @@ finalize unbond_public:
         // Store the new unbonding state.
         set r40 into unbonding[r5.validator];
 
-        /* Update Delegated Total */
+        /* Delegated */
+
         // Store the new delegated total.
         set r33 into delegated[r5.validator];
-        /* End Update Delegated Total */
 
-        /* Update Validator Bonded State */
+        /* Bonded */
+
         // Construct and store the new bond state.
         cast r5.validator r34 into r41 as bond_state;
         set r41 into bonded[r5.validator];
-        /* End Update Validator Bonded State */
 
         // Jump to end.
         branch.eq true true to end;
@@ -623,36 +623,37 @@ finalize unbond_public:
         // Remove the validator from the committee.
         remove committee[r5.validator];
 
-        /* Update Metadata */
+        /* Metadata */
+
         // Retrieve the current committee size.
         get metadata[aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc] into r42;
         // Decrement the committee size by one.
         sub r42 1u32 into r43;
         // Store the new committee size.
         set r43 into metadata[aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc];
-        /* End Update Metadata */
 
-        /* Update Delegated Total */
+        /* Delegated */
+
         // Decrease the delegated total by the bonded amount.
         sub r31 r30.microcredits into r44;
+        // Store the new delegated total.
         set r44 into delegated[r5.validator];
-        /* End Update Delegated Total */
 
-        /* Clear Bonded State */
+        /* Bonded */
+
         // Remove the bonded state.
         remove bonded[r5.validator];
-        /* End Clear Bonded State */
 
-        /* Update Unbonding State */
+        /* Unbonding */
+
         // Retrieve or initialize the unbonding state.
         get.or_use unbonding[r5.validator] r4 into r45;
         // Increment the unbond amount by the full bonded amount.
         add r30.microcredits r45.microcredits into r46;
-        // Set the updated unbond state.
+        // Construct the updated unbond state.
         cast r46 r3 into r47 as unbond_state;
         // Store the new unbonding state.
         set r47 into unbonding[r5.validator];
-        /* End Update Unbonding State */
     //}
 
     position end;
