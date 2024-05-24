@@ -453,7 +453,9 @@ finalize unbond_public:
     is.eq r0 r6 into r7;
 
     // Check if the validator's withdrawal address has been set.
-    // Note: The validator's withdrawal address is **not** set if the validator is **not** in the committee.
+    // Note: This contains check must use `withdraw` and **not** `committee` to ensure the validator
+    // can unbond delegators even when the validator is not in the committee. Of course, if the validator is
+    // in the committee, then the validator must be able to unbond its delegators.
     contains withdraw[r5.validator] into r8;
     // Get the validator's withdrawal address from the bond state, using the zero address as the default.
     get.or_use withdraw[r5.validator] aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc into r9;
