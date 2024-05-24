@@ -404,7 +404,8 @@ finalize bond_public:
 
 /**********************************************************************************************************************/
 
-// This function allows any staker to unbond their microcredits from a validator, using their associated withdrawal address.
+// This function allows any staker to unbond their microcredits from a validator,
+// callable only by using the withdrawal address of the staker or the validator.
 //
 // **Validators**: It will remove the validator if the self bonded balance falls below 100 credits
 // or the total delegated balance falls below 10M credits.
@@ -417,7 +418,7 @@ finalize bond_public:
 //
 // The corresponding function for 'unbond_public' is 'claim_unbond_public'.
 function unbond_public:
-    // Input the address of the validator or delegator to unbond.
+    // Input the staker's address.
     input r0 as address.public;
     // Input the amount of microcredits to unbond.
     input r1 as u64.public;
@@ -428,9 +429,9 @@ function unbond_public:
     output r2 as credits.aleo/unbond_public.future;
 
 finalize unbond_public:
-    // Input the address of the caller.
+    // Input the caller's address.
     input r0 as address.public;
-    // Input the address of the validator or delegator to unbond.
+    // Input the staker's address.
     input r1 as address.public;
     // Input the amount of microcredits to unbond.
     input r2 as u64.public;
@@ -440,79 +441,85 @@ finalize unbond_public:
     // Construct the default unbonding state.
     cast 0u64 r3 into r4 as unbond_state;
 
-    // Retrieve the bond state of the validator or delegator, or fail if no bond state exists.
+    // Retrieve the staker's bond state.
+    // Note: If no bond state exists, reject the transition.
     get bonded[r1] into r5;
 
     /* Check Caller Permission */
-    // Get the withdrawal address of the staker
+
+    // Get the staker's withdrawal address.
     get withdraw[r1] into r6;
-    // Check if the validator withdrawal address has been set
-    // It isn't set if the validator isn't in the committee
-    contains withdraw[r5.validator] into r7;
-    // Get the withdrawal address of the validator from the bond state, using the 0group address as an unused backup
-    get.or_use withdraw[r5.validator] aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc into r8;
-    // Check if the validator withdrawal address matches the caller
-    is.eq r0 r8 into r9;
-    // AND the withdraw address has been set (to prevent an edge case where a validator uses the 0group address as a withdrawal address)
-    and r7 r9 into r10;
-    // Check if the caller is equal to the staker withdrawal address
-    is.eq r0 r6 into r11;
-    // Either the caller is the withdrawal address of the staker OR (the validator's withdrawal address has been set and is equal to the caller)
-    or r10 r11 into r12;
-    // Enforce the permission as true
+    // Check if the caller's address equals the staker's withdrawal address.
+    is.eq r0 r6 into r7;
+
+    // Check if the validator's withdrawal address has been set.
+    // Note: The validator's withdrawal address is **not** set if the validator is **not** in the committee.
+    contains withdraw[r5.validator] into r8;
+    // Get the validator's withdrawal address from the bond state, using the zero address as the default.
+    get.or_use withdraw[r5.validator] aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc into r9;
+    // Check if the validator's withdrawal address matches the caller.
+    is.eq r0 r9 into r10;
+    // AND the withdraw address has been set (to prevent an edge case where a validator uses the zero address as a withdrawal address).
+    and r8 r10 into r11;
+
+    // Either the caller is the staker's withdrawal address OR the validator's withdrawal address is set to the caller.
+    or r7 r11 into r12;
+    // Enforce the permission as `true`.
     assert.eq r12 true;
 
     // Check if bonded to self (validator) or to a different address (delegator).
     is.eq r5.validator r1 into r13;
     branch.eq r13 true to unbond_validator;
 
-    /* Unbond Delegator */
+    /* Unbond the delegator */
     // {
-        /* Setup Unbond Delegator */
         // Retrieve or initialize the unbonding state.
         get.or_use unbonding[r1] r4 into r14;
-        // Retrieve total delegated balance for the validator.
+        // Retrieve the delegated amount in microcredits for the validator.
         get delegated[r5.validator] into r15;
-        /* End Setup Unbond Delegator */
 
-        // Calculate new bonded microcredits, fail on overdraft.
+        // Calculate new bonded microcredits.
+        // Note: If the subtraction underflows, reject the transition.
         sub r5.microcredits r2 into r16;
 
-        // Check if the delegator will have < 10,000 credits bonded.
+        // Check if the delegator will fall below 10,000 bonded credits.
         lt r16 10_000_000_000u64 into r17;
 
-        // If validator is forcing delegator to unbond or delegator will have < 10,000 credits bonded.
-        or r17 r10 into r18;
+        // If the validator is forcing the delegator to unbond OR the delegator will fall below 10,000 bonded credits.
+        or r11 r17 into r18;
 
         // Determine the amount to unbond: requested amount if >= 10,000 credits, otherwise the full bonded amount.
         ternary r18 r5.microcredits r2 into r19;
 
-        /* Update Unbonding state */
+        /* Unbonding */
+
         // Increment existing unbond amount by the new unbond amount.
-        add r19 r14.microcredits into r20;
-        // Set the updated unbond state.
+        // Note: If the addition overflows, reject the transition.
+        add r14.microcredits r19 into r20;
+        // Construct the updated unbond state.
         cast r20 r3 into r21 as unbond_state;
         // Store the new unbonding state.
         set r21 into unbonding[r1];
-        /* End Update Unbonding state */
 
-        /* Update Delegated State */
-        // Calculate new delegated total for the validator.
+        /* Delegated */
+
+        // Calculate the new delegated total for the validator.
+        // Note: If the subtraction underflows, reject the transition.
         sub r15 r19 into r22;
         // Store the new delegated total.
         set r22 into delegated[r5.validator];
-        /* End Update Delegated state */
 
-        // Check if the new bonded state is below 10,000 credits or validator is forcing unbond.
+        // Check if the new bonded state is falling below 10,000 credits, or if the validator is forcing an unbond on the delegator.
         branch.eq r18 true to remove_delegator;
 
         /* Decrement Delegator */
         // {
-            /* Update Bonded state */
-            // Set the new bond state.
+            /* Bonded */
+
+            // Construct the new bond state.
             cast r5.validator r16 into r23 as bond_state;
+            // Set the new bond state.
             set r23 into bonded[r1];
-            /* End Update Bonded state */
 
             // Jump to end of unbond delegator process.
             branch.eq true true to end_unbond_delegator;
@@ -520,19 +527,19 @@ finalize unbond_public:
 
         position remove_delegator;
         // {
-            /* Update Bonded state */
+            /* Bonded */
+
             // Remove the bonded state.
             remove bonded[r1];
-            /* End Update Bonded state */
 
-            /* Update Metadata */
+            /* Metadata */
+
             // Retrieve the current number of delegators.
             get metadata[aleo1qgqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqanmpl0] into r24;
             // Decrement the number of delegators by one.
             sub r24 1u32 into r25;
             // Store the new number of delegators.
             set r25 into metadata[aleo1qgqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqanmpl0];
-            /* End Update Metadata */
         // } Intentionally fall through to end_unbond_delegator
 
         position end_unbond_delegator;
