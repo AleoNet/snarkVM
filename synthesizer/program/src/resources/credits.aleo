@@ -195,9 +195,6 @@ finalize bond_validator:
     get.or_use withdraw[r0] r1 into r4;
     // Ensure that the withdrawal address is consistent.
     assert.eq r1 r4;
-    // Set the withdrawal address.
-    // Note: This operation is only necessary on the first time for a validator entry, in order to initialize the value.
-    set r4 into withdraw[r0];
 
     // Construct the initial committee state.
     // Note: We set the initial 'is_open' state to 'true'.
@@ -249,6 +246,10 @@ finalize bond_validator:
     contains committee[r0] into r16;
     branch.eq r16 true to validator_in_committee;
     // {
+        // Set the withdrawal address.
+        // Note: This operation is only necessary on the first time for a validator entry, in order to initialize the value.
+        set r4 into withdraw[r0];
+
         // Check if the initial bond amount is at least 100 credits.
         gte r2 100_000_000u64 into r17;
         // Ensure that the initial bond is at least 100 credits.
@@ -281,13 +282,19 @@ finalize bond_validator:
 /**********************************************************************************************************************/
 
 // This function allows any delegator to bond their microcredits to a validator and specify a withdrawal address.
-// The validator may or may not yet be part of the committee.
-// A minimum of 10,000 microcredits is enforced for each delegator with a maximum of 100,000 delegators in total
-// The corresponding functions for 'bond_public' are 'bond_validator', 'unbond_public' and 'claim_unbond_public'.
+//
+// The declared validator is **not** required to be in the committee yet, however it may **not** be unbonding.
+// This function enforces a minimum of 10,000 microcredits for each delegator.
+// The maximum number of delegators allowed in the committee is 100,000 delegator addresses.
+//
+// The corresponding functions for 'bond_public' are 'bond_validator', 'unbond_public', and 'claim_unbond_public'.
 function bond_public:
-    input r0 as address.public;  // Validator's address.
-    input r1 as address.public;  // Withdrawal address.
-    input r2 as u64.public;      // Amount of microcredits to bond.
+    // Input the validator's address.
+    input r0 as address.public;
+    // Input the withdrawal address.
+    input r1 as address.public;
+    // Input the amount of microcredits to bond.
+    input r2 as u64.public;
 
     // Determine if the amount is at least one credit.
     gte r2 1_000_000u64 into r3;
@@ -303,23 +310,29 @@ function bond_public:
     output r4 as credits.aleo/bond_public.future;
 
 finalize bond_public:
-    input r0 as address.public;  // Staker's address.
-    input r1 as address.public;  // Validator's address.
-    input r2 as address.public;  // Withdrawal address.
-    input r3 as u64.public;      // Amount of microcredits to bond.
+    // Input the staker's address.
+    input r0 as address.public;
+    // Input the validator's address.
+    input r1 as address.public;
+    // Input the withdrawal address.
+    input r2 as address.public;
+    // Input the amount of microcredits to bond.
+    input r3 as u64.public;
 
     // Retrieve the withdrawal address for the staker.
     get.or_use withdraw[r0] r2 into r4;
     // Ensure that the withdrawal address is consistent.
     assert.eq r2 r4;
-    // Set the withdrawal address.
-    set r2 into withdraw[r0];
 
     // Check if the delegator is already bonded to the validator.
     contains bonded[r0] into r5;
     branch.eq r5 true to continue_bond_delegator;
     // {
-        // Ensure that the validator is open to new stakers. For pre-bond Default to is_open true.
+        // Set the withdrawal address.
+        // Note: This operation is only necessary on the first time for a staker entry, in order to initialize the value.
+        set r2 into withdraw[r0];
+
+        // Ensure that the validator is open to new stakers. By default, `is_open` is set to `true`.
         cast true 0u8 into r6 as committee_state;
         get.or_use committee[r1] r6 into r7;
         assert.eq r7.is_open true;
@@ -366,35 +379,48 @@ finalize bond_public:
     // Decrement the balance of the caller.
     sub r16 r3 into r17;
 
+    /* Delegated */
+
+    // Get current total delegated amount.
+    get.or_use delegated[r1] 0u64 into r18;
+    // Add new bond amount to current delegation.
+    add r3 r18 into r19;
+
+    /* Unbonding */
+
+    // Check if the validator exists in the unbonding state.
+    contains unbonding[r1] into r20;
+    // Ensure the validator currently is not unbonding.
+    assert.eq r20 false;
+
     /* Writes */
 
     // Update the bond state for the caller.
     set r15 into bonded[r0];
     // Update the balance of the caller.
     set r17 into account[r0];
-    // Update total delegated amount.
-    // Get current total delegated amount.
-    get.or_use delegated[r1] 0u64 into r18;
-    // Add new bond amount to current delegation.
-    add r3 r18 into r19;
     // Update delegated amount.
     set r19 into delegated[r1];
 
 /**********************************************************************************************************************/
 
-// Unbond a staker using their associated withdrawal address
+// This function allows any staker to unbond their microcredits from a validator, using their associated withdrawal address.
+//
 // **Validators**: It will remove the validator if the self bonded balance falls below 100 credits
 // or the total delegated balance falls below 10M credits.
 // **Delegators**: It will remove the validator if the total delegated balance falls below 10M credits.
 // It will remove the entire bond_state of the delegator if it falls below 10,000 credits.
 //
-// Validators have the permission to completely unbond any of their delegators
-// When a validator unbonds a delegator, its entire bonded balance is unbonded regardless of the amount of microcredits input
-// and may end up removing the validator from the committee if the total delegated balance falls below 10M credits
-
+// Validators are permitted to fully unbond any of their delegators. When a validator unbonds a delegator,
+// the entire bonded balance is unbonded, regardless of the amount of microcredits and may end up removing the validator
+// from the committee if the total delegated balance falls below 10M credits.
+//
+// The corresponding function for 'unbond_public' is 'claim_unbond_public'.
 function unbond_public:
-    input r0 as address.public; // The address of the validator or delegator to unbond.
-    input r1 as u64.public;     // Amount of microcredits to unbond.
+    // Input the address of the validator or delegator to unbond.
+    input r0 as address.public;
+    // Input the amount of microcredits to unbond.
+    input r1 as u64.public;
 
     // Unbond the specified amount of microcredits for the specified validator.
     async unbond_public self.caller r0 r1 into r2;
@@ -402,15 +428,17 @@ function unbond_public:
     output r2 as credits.aleo/unbond_public.future;
 
 finalize unbond_public:
-    input r0 as address.public; // Address of the caller.
-    input r1 as address.public; // Address of the validator or delegator.
-    input r2 as u64.public;     // Amount of microcredits to unbond.
+    // Input the address of the caller.
+    input r0 as address.public;
+    // Input the address of the validator or delegator to unbond.
+    input r1 as address.public;
+    // Input the amount of microcredits to unbond.
+    input r2 as u64.public;
 
-    /* Setup unbond public */
-    // Set default unbonding state.
+    // Set the default unbonding state.
     add block.height 360u32 into r3;
+    // Construct the default unbonding state.
     cast 0u64 r3 into r4 as unbond_state;
-    /* End setup unbond public */
 
     // Retrieve the bond state of the validator or delegator, or fail if no bond state exists.
     get bonded[r1] into r5;
@@ -624,12 +652,14 @@ finalize unbond_public:
 
 /**********************************************************************************************************************/
 
-// The `claim_unbond_public` function allows any address to run a crank to enable a staker to claim their microcredits
+// The `claim_unbond_public` function allows any staker to claim their microcredits
 // to their withdrawal address after the unbonding period.
+//
+// Note: Please be advised that this function is callable by any user for any staker.
 //
 // This function also removes the staker's withdrawal address if the staker no longer has any bonded balance.
 function claim_unbond_public:
-    // The address of the staker
+    // Input the staker's address.
     input r0 as address.public;
 
     // Claim the unbonded microcredits.
