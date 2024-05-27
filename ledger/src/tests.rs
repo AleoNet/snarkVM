@@ -489,7 +489,6 @@ finalize foo:
     assert_eq!(program, ledger.get_program(program_id).unwrap())
 }
 
-// TODO update this test for the new bonding/commission
 #[test]
 fn test_bond_and_unbond_validator() {
     let rng = &mut TestRng::default();
@@ -500,8 +499,10 @@ fn test_bond_and_unbond_validator() {
     // Sample new account for the new committee member.
     let new_member_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
     let new_member_address = Address::try_from(&new_member_private_key).unwrap();
+    let new_member_withdrawal_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+    let new_member_withdrawal_address = Address::try_from(&new_member_withdrawal_private_key).unwrap();
 
-    // Fund the new committee member.
+    // Fund the new committee member and their withdrawwal address.
     let inputs = [
         Value::from_str(&format!("{new_member_address}")).unwrap(),
         Value::from_str("20000000000000u64").unwrap(), // 20 million credits.
@@ -510,10 +511,24 @@ fn test_bond_and_unbond_validator() {
         .vm
         .execute(&private_key, ("credits.aleo", "transfer_public"), inputs.iter(), None, 0, None, rng)
         .unwrap();
+    let inputs = [
+        Value::from_str(&format!("{new_member_withdrawal_address}")).unwrap(),
+        Value::from_str("20000000u64").unwrap(), // 20 credits.
+    ];
+    let transfer_to_withdrawal_transaction = ledger
+        .vm
+        .execute(&private_key, ("credits.aleo", "transfer_public"), inputs.iter(), None, 0, None, rng)
+        .unwrap();
 
     // Construct the next block.
     let transfer_block = ledger
-        .prepare_advance_to_next_beacon_block(&private_key, vec![], vec![], vec![transfer_transaction], rng)
+        .prepare_advance_to_next_beacon_block(
+            &private_key,
+            vec![],
+            vec![],
+            vec![transfer_transaction, transfer_to_withdrawal_transaction],
+            rng,
+        )
         .unwrap();
 
     // Check that the next block is valid.
@@ -524,19 +539,20 @@ fn test_bond_and_unbond_validator() {
 
     // Construct the bond public
     let bond_amount = MIN_VALIDATOR_STAKE;
+    let commission = 10u8;
     let inputs = [
-        Value::from_str(&format!("{new_member_address}")).unwrap(),
-        Value::from_str(&format!("{new_member_address}")).unwrap(),
+        Value::from_str(&format!("{new_member_withdrawal_address}")).unwrap(),
         Value::from_str(&format!("{bond_amount}u64")).unwrap(),
+        Value::from_str(&format!("{commission}u8")).unwrap(),
     ];
-    let bond_public_transaction = ledger
+    let bond_validator_transaction = ledger
         .vm
-        .execute(&new_member_private_key, ("credits.aleo", "bond_public"), inputs.iter(), None, 0, None, rng)
+        .execute(&new_member_private_key, ("credits.aleo", "bond_validator"), inputs.iter(), None, 0, None, rng)
         .unwrap();
 
     // Construct the next block.
-    let bond_public_block = ledger
-        .prepare_advance_to_next_beacon_block(&private_key, vec![], vec![], vec![bond_public_transaction], rng)
+    let bond_validator_block = ledger
+        .prepare_advance_to_next_beacon_block(&private_key, vec![], vec![], vec![bond_validator_transaction], rng)
         .unwrap();
 
     // Check that the committee does not include the new member.
@@ -544,10 +560,10 @@ fn test_bond_and_unbond_validator() {
     assert!(!committee.is_committee_member(new_member_address));
 
     // Check that the next block is valid.
-    ledger.check_next_block(&bond_public_block, rng).unwrap();
+    ledger.check_next_block(&bond_validator_block, rng).unwrap();
 
     // Add the bond public block to the ledger.
-    ledger.advance_to_next_block(&bond_public_block).unwrap();
+    ledger.advance_to_next_block(&bond_validator_block).unwrap();
 
     // Check that the committee is updated with the new member.
     let committee = ledger.latest_committee().unwrap();
@@ -570,12 +586,23 @@ fn test_bond_and_unbond_validator() {
     };
     assert_eq!(num_validators, committee.num_members());
 
-    // Construct the bond public
+    // Construct the unbond public
     let unbond_amount = committee.get_stake(new_member_address);
-    let inputs = [Value::from_str(&format!("{unbond_amount}u64")).unwrap()];
+    let inputs = [
+        Value::from_str(&format!("{new_member_address}")).unwrap(),
+        Value::from_str(&format!("{unbond_amount}u64")).unwrap(),
+    ];
     let unbond_public_transaction = ledger
         .vm
-        .execute(&new_member_private_key, ("credits.aleo", "unbond_public"), inputs.iter(), None, 0, None, rng)
+        .execute(
+            &new_member_withdrawal_private_key,
+            ("credits.aleo", "unbond_public"),
+            inputs.iter(),
+            None,
+            0,
+            None,
+            rng,
+        )
         .unwrap();
 
     // Construct the next block.

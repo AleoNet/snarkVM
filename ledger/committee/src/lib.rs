@@ -274,9 +274,13 @@ pub mod test_helpers {
     pub fn sample_committee_with_commissions(rng: &mut TestRng) -> Committee<CurrentNetwork> {
         // Sample the members.
         let mut members = IndexMap::new();
-        for _ in 0..4 {
+        for index in 0..4 {
             let is_open = rng.gen();
-            let commission = rng.gen_range(0..=100);
+            let commission = match index {
+                0 => 0,
+                1 => 100,
+                _ => rng.gen_range(0..=100),
+            };
             members.insert(Address::<CurrentNetwork>::new(rng.gen()), (2 * MIN_VALIDATOR_STAKE, is_open, commission));
         }
         // Return the committee.
