@@ -14,7 +14,7 @@
 
 use snarkvm_algorithms::crypto_hash::sha256::sha256;
 use snarkvm_circuit::Aleo;
-use snarkvm_console::network::{prelude::ToBytes, MainnetV0, Network, TestnetV0};
+use snarkvm_console::network::{prelude::ToBytes, CanaryV0, MainnetV0, Network, TestnetV0};
 use snarkvm_synthesizer::{Process, Program};
 
 use anyhow::Result;
@@ -152,6 +152,7 @@ pub fn main() -> Result<()> {
         "credits" => match args[2].as_str() {
             "mainnet" => credits_program::<MainnetV0, snarkvm_circuit::AleoV0>(),
             "testnet" => credits_program::<TestnetV0, snarkvm_circuit::AleoTestnetV0>(),
+            "canary" => credits_program::<CanaryV0, snarkvm_circuit::AleoCanaryV0>(),
             _ => panic!("Invalid network"),
         }?,
         _ => panic!("Invalid parameter"),
