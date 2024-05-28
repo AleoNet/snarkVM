@@ -70,8 +70,8 @@ pub fn staking_rewards<N: Network>(
                 return (*staker, (*validator, *stake));
             }
 
-            // If the staker has less than the minimum required stake, skip the staker.
-            if *stake < MIN_DELEGATOR_STAKE {
+            // If the staker has less than the minimum required stake, skip the staker, unless the staker is the validator.
+            if *stake < MIN_DELEGATOR_STAKE && *staker != *validator {
                 trace!("Staker has less than {MIN_DELEGATOR_STAKE} microcredits - skipping {staker}");
                 return (*staker, (*validator, *stake));
             }
