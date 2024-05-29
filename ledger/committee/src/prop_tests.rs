@@ -131,7 +131,7 @@ impl Arbitrary for ValidatorSet {
 }
 
 pub fn any_valid_validator() -> BoxedStrategy<Validator> {
-    (MIN_VALIDATOR_STAKE..100_000_000_000_000, any_valid_private_key(), any::<bool>(), 0..u8::MAX)
+    (MIN_VALIDATOR_STAKE..100_000_000_000_000, any_valid_private_key(), any::<bool>(), 0..100u8)
         .prop_map(|(stake, private_key, is_open, commission)| {
             let address = Address::try_from(private_key).unwrap();
             Validator { private_key, address, stake, is_open, commission }
