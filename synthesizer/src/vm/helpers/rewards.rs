@@ -359,14 +359,16 @@ mod tests {
     }
 
     #[test]
-    fn test_staking_rewards_when_staker_is_under_min_yields_no_reward() {
+    fn test_staking_rewards_when_delegator_is_under_min_yields_no_reward() {
         let rng = &mut TestRng::default();
         // Sample a random committee.
         let committee = ledger_committee::test_helpers::sample_committee(rng);
+        // Convert the committee into stakers.
+        let stakers = crate::committee::test_helpers::to_stakers(committee.members(), rng);
         // Sample a random block reward.
         let block_reward = rng.gen_range(0..MAX_COINBASE_REWARD);
-        // Retrieve an address.
-        let address = *committee.members().iter().next().unwrap().0;
+        // Retrieve an address of a delegator that isn't a validator
+        let address = *stakers.iter().find(|(address, _)| !committee.is_committee_member(**address)).unwrap().0;
 
         for _ in 0..ITERATIONS {
             // Sample a random stake.
