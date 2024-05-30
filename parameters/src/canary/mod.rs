@@ -20,12 +20,12 @@ const REMOTE_URL: &str = "https://s3-us-west-1.amazonaws.com/canary.parameters";
 // BondPublic
 impl_remote!(BondPublicProver, REMOTE_URL, "resources/", "bond_public", "prover");
 impl_local!(BondPublicVerifier, "resources/", "bond_public", "verifier");
+// BondValidator
+impl_remote!(BondValidatorProver, REMOTE_URL, "resources/", "bond_validator", "prover");
+impl_local!(BondValidatorVerifier, "resources/", "bond_validator", "verifier");
 // UnbondPublic
 impl_remote!(UnbondPublicProver, REMOTE_URL, "resources/", "unbond_public", "prover");
 impl_local!(UnbondPublicVerifier, "resources/", "unbond_public", "verifier");
-// UnbondDelegatorAsValidator
-impl_remote!(UnbondDelegatorAsValidatorProver, REMOTE_URL, "resources/", "unbond_delegator_as_validator", "prover");
-impl_local!(UnbondDelegatorAsValidatorVerifier, "resources/", "unbond_delegator_as_validator", "verifier");
 // ClaimUnbondPublic
 impl_remote!(ClaimUnbondPublicProver, REMOTE_URL, "resources/", "claim_unbond_public", "prover");
 impl_local!(ClaimUnbondPublicVerifier, "resources/", "claim_unbond_public", "verifier");
@@ -66,8 +66,8 @@ macro_rules! insert_canary_credit_keys {
         paste::paste! {
             let string = stringify!([<$variant:lower>]);
             $crate::insert_canary_key!($map, string, $type<$network>, ("bond_public", $crate::canary::[<BondPublic $variant>]::load_bytes()));
+            $crate::insert_canary_key!($map, string, $type<$network>, ("bond_validator", $crate::canary::[<BondValidator $variant>]::load_bytes()));
             $crate::insert_canary_key!($map, string, $type<$network>, ("unbond_public", $crate::canary::[<UnbondPublic $variant>]::load_bytes()));
-            $crate::insert_canary_key!($map, string, $type<$network>, ("unbond_delegator_as_validator", $crate::canary::[<UnbondDelegatorAsValidator $variant>]::load_bytes()));
             $crate::insert_canary_key!($map, string, $type<$network>, ("claim_unbond_public", $crate::canary::[<ClaimUnbondPublic $variant>]::load_bytes()));
             $crate::insert_canary_key!($map, string, $type<$network>, ("set_validator_state", $crate::canary::[<SetValidatorState $variant>]::load_bytes()));
             $crate::insert_canary_key!($map, string, $type<$network>, ("transfer_private", $crate::canary::[<TransferPrivate $variant>]::load_bytes()));
@@ -118,9 +118,8 @@ mod tests {
     #[wasm_bindgen_test]
     fn test_load_bytes() {
         BondPublicVerifier::load_bytes().expect("Failed to load bond_public verifier");
+        BondValidatorVerifier::load_bytes().expect("Failed to load bond_validator verifier");
         UnbondPublicVerifier::load_bytes().expect("Failed to load unbond_public verifier");
-        UnbondDelegatorAsValidatorVerifier::load_bytes()
-            .expect("Failed to load unbond_delegator_as_validator verifier");
         ClaimUnbondPublicVerifier::load_bytes().expect("Failed to load claim_unbond_public verifier");
         SetValidatorStateVerifier::load_bytes().expect("Failed to load set_validator_state verifier");
         TransferPrivateVerifier::load_bytes().expect("Failed to load transfer_private verifier");
