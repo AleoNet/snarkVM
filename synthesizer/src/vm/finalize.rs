@@ -413,9 +413,16 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                                         }
                                     }
                                 }
-                                // This is a foundational bug - the caller is violating protocol rules.
-                                // Note: This will abort the entire atomic batch.
-                                None => Err("Rejected execute transaction has no fee".to_string()),
+                                // This can only happen when the transaction is `credits.aleo/split`
+                                None => {
+                                    // Note: On failure, skip this transaction, and continue speculation.
+                                    #[cfg(debug_assertions)]
+                                    eprintln!("Execution failed without a fee");
+                                    // Store the aborted transaction.
+                                    aborted.push((transaction.clone(), "Execution failed without a fee".to_string()));
+                                    // Continue to the next transaction.
+                                    continue 'outer;
+                                }
                             },
                         }
                     }
