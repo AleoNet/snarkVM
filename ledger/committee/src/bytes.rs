@@ -38,8 +38,8 @@ impl<N: Network> FromBytes for Committee<N> {
             )));
         }
 
-        // Calculate the number of bytes per member. Each member is a (address, stake, is_open) tuple.
-        let member_byte_size = Address::<N>::size_in_bytes() + 8 + 1;
+        // Calculate the number of bytes per member. Each member is a (address, stake, is_open, commission) tuple.
+        let member_byte_size = Address::<N>::size_in_bytes() + 8 + 1 + 1;
         // Read the member bytes.
         let mut member_bytes = vec![0u8; num_members as usize * member_byte_size];
         reader.read_exact(&mut member_bytes)?;
@@ -52,8 +52,10 @@ impl<N: Network> FromBytes for Committee<N> {
                 let stake = u64::read_le(&mut bytes)?;
                 // Read the is_open flag.
                 let is_open = bool::read_le(&mut bytes)?;
+                // Read the commission.
+                let commission = u8::read_le(&mut bytes)?;
                 // Insert the member and (stake, is_open).
-                Ok((member, (stake, is_open)))
+                Ok((member, (stake, is_open, commission)))
             })
             .collect::<Result<IndexMap<_, _>, std::io::Error>>()?;
 
@@ -85,13 +87,15 @@ impl<N: Network> ToBytes for Committee<N> {
         // Write the number of members.
         u16::try_from(self.members.len()).map_err(|e| error(e.to_string()))?.write_le(&mut writer)?;
         // Write the members.
-        for (address, (stake, is_open)) in &self.members {
+        for (address, (stake, is_open, commission)) in &self.members {
             // Write the address.
             address.write_le(&mut writer)?;
             // Write the stake.
             stake.write_le(&mut writer)?;
             // Write the is_open flag.
             is_open.write_le(&mut writer)?;
+            // Write the commission.
+            commission.write_le(&mut writer)?;
         }
         // Write the total stake.
         self.total_stake.write_le(&mut writer)
