@@ -70,47 +70,44 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Par
         // Parse the whitespace and comments from the string.
         let (string, _) = Sanitizer::parse(string)?;
 
-        // Return the program.
-        map_res(take(0usize), move |_| {
-            // Initialize a new program.
-            let mut program = match ProgramCore::<N, Instruction, Command>::new(id) {
-                Ok(program) => program,
+        // Initialize a new program.
+        let mut program = match ProgramCore::<N, Instruction, Command>::new(id) {
+            Ok(program) => program,
+            Err(error) => {
+                eprintln!("{error}");
+                return map_res(take(0usize), move |error| Err(error))(string);
+            }
+        };
+        // Construct the program with the parsed components.
+        for component in components {
+            let result = match component {
+                P::M(mapping) => program.add_mapping(mapping),
+                P::I(struct_) => program.add_struct(struct_),
+                P::R(record) => program.add_record(record),
+                P::C(closure) => program.add_closure(closure),
+                P::F(function) => program.add_function(function),
+            };
+
+            match result {
+                Ok(_) => (),
                 Err(error) => {
                     eprintln!("{error}");
-                    return Err(error);
+                    return map_res(take(0usize), move |error| Err(error))(string);
                 }
-            };
-            // Construct the program with the parsed components.
-            for component in components.iter() {
-                let result = match component {
-                    P::M(mapping) => program.add_mapping(mapping.clone()),
-                    P::I(struct_) => program.add_struct(struct_.clone()),
-                    P::R(record) => program.add_record(record.clone()),
-                    P::C(closure) => program.add_closure(closure.clone()),
-                    P::F(function) => program.add_function(function.clone()),
-                };
+            }
+        }
+        // Lastly, add the imports (if any) to the program.
+        for import in imports {
+            match program.add_import(import) {
+                Ok(_) => (),
+                Err(error) => {
+                    eprintln!("{error}");
+                    return map_res(take(0usize), move |error| Err(error))(string);
+                }
+            }
+        }
 
-                match result {
-                    Ok(_) => (),
-                    Err(error) => {
-                        eprintln!("{error}");
-                        return Err(error);
-                    }
-                }
-            }
-            // Lastly, add the imports (if any) to the program.
-            for import in imports.iter() {
-                match program.add_import(import.clone()) {
-                    Ok(_) => (),
-                    Err(error) => {
-                        eprintln!("{error}");
-                        return Err(error);
-                    }
-                }
-            }
-            // Output the program.
-            Ok::<_, Error>(program)
-        })(string)
+        Ok((string, program))
     }
 }
 
