@@ -44,14 +44,29 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Par
         // Parse the semicolon ';' keyword from the string.
         let (string, _) = tag(";")(string)?;
 
+        fn intermediate<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>>(
+            string: &str,
+        ) -> ParserResult<P<N, Instruction, Command>> {
+            // Parse the whitespace and comments from the string.
+            let (string, _) = Sanitizer::parse(string)?;
+
+            if string.starts_with(Mapping::<N>::type_name()) {
+                map(Mapping::parse, |mapping| P::<N, Instruction, Command>::M(mapping))(string)
+            } else if string.starts_with(StructType::<N>::type_name()) {
+                map(StructType::parse, |struct_| P::<N, Instruction, Command>::I(struct_))(string)
+            } else if string.starts_with(RecordType::<N>::type_name()) {
+                map(RecordType::parse, |record| P::<N, Instruction, Command>::R(record))(string)
+            } else if string.starts_with(ClosureCore::<N, Instruction>::type_name()) {
+                map(ClosureCore::parse, |closure| P::<N, Instruction, Command>::C(closure))(string)
+            } else if string.starts_with(FunctionCore::<N, Instruction, Command>::type_name()) {
+                map(FunctionCore::parse, |function| P::<N, Instruction, Command>::F(function))(string)
+            } else {
+                Err(Err::Error(make_error(string, ErrorKind::Alt)))
+            }
+        }
+
         // Parse the struct or function from the string.
-        let (string, components) = many1(alt((
-            map(Mapping::parse, |mapping| P::<N, Instruction, Command>::M(mapping)),
-            map(StructType::parse, |struct_| P::<N, Instruction, Command>::I(struct_)),
-            map(RecordType::parse, |record| P::<N, Instruction, Command>::R(record)),
-            map(ClosureCore::parse, |closure| P::<N, Instruction, Command>::C(closure)),
-            map(FunctionCore::parse, |function| P::<N, Instruction, Command>::F(function)),
-        )))(string)?;
+        let (string, components) = many1(intermediate)(string)?;
         // Parse the whitespace and comments from the string.
         let (string, _) = Sanitizer::parse(string)?;
 
