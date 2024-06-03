@@ -15,7 +15,7 @@
 pub mod genesis;
 pub use genesis::*;
 
-const REMOTE_URL: &str = "https://s3-us-west-1.amazonaws.com/testnet.parameters";
+const REMOTE_URL: &str = "https://parameters.aleo.org/testnet";
 
 // BondPublic
 impl_remote!(BondPublicProver, REMOTE_URL, "resources/", "bond_public", "prover");
