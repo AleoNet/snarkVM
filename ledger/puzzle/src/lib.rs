@@ -123,11 +123,19 @@ impl<N: Network> Puzzle<N> {
     /// Returns the proof target given the solution.
     pub fn get_proof_target(&self, solution: &Solution<N>) -> Result<u64> {
         // Calculate the proof target.
-        let proof_target = self.get_proof_target_from_partial_solution(solution.partial_solution())?;
-
+        let proof_target = self.get_proof_target_unchecked(solution)?;
+        // Ensure the proof target matches the expected proof target.
         ensure!(solution.target() == proof_target, "The proof target does not match the expected proof target");
-
+        // Return the proof target.
         Ok(proof_target)
+    }
+
+    /// Returns the proof target given the solution.
+    ///
+    /// Note: This method does **not** check the proof target against the expected proof target.
+    pub fn get_proof_target_unchecked(&self, solution: &Solution<N>) -> Result<u64> {
+        // Calculate the proof target.
+        self.get_proof_target_from_partial_solution(solution.partial_solution())
     }
 
     /// Returns the proof target given the partial solution.
