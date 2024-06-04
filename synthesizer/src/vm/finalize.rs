@@ -14,7 +14,7 @@
 
 use super::*;
 
-use ledger_committee::{MAX_DELEGATORS, MIN_DELEGATOR_STAKE, MIN_VALIDATOR_STAKE};
+use ledger_committee::{MAX_DELEGATORS, MIN_DELEGATOR_STAKE, MIN_VALIDATOR_SELF_STAKE};
 use utilities::cfg_sort_by_cached_key;
 
 impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
@@ -943,12 +943,12 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         // Construct the committee mapping name.
         let committee_mapping = Identifier::from_str("committee")?;
 
-        // Check if the execution has any `bond_public` transitions, and collect
+        // Check if the execution has any `bond_validator` transitions, and collect
         // the unique validator addresses if so.
         // Note: This does not dedup for existing and new validator addresses.
         let bond_validator_addresses: HashSet<_> = execution
             .transitions()
-            .filter_map(|transition| match transition.is_bond_public() {
+            .filter_map(|transition| match transition.is_bond_validator() {
                 // Check the first input of the transition for the validator address.
                 true => match transition.inputs().first() {
                     Some(Input::Public(_, Some(Plaintext::Literal(Literal::Address(address), _)))) => Some(address),
@@ -997,6 +997,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         let program_id = ProgramID::from_str("credits.aleo")?;
         // Construct the committee mapping name.
         let committee_mapping = Identifier::from_str("committee")?;
+        // Construct the delegated mapping name.
+        let delegated_mapping: Identifier<N> = Identifier::from_str("delegated")?;
         // Construct the bonded mapping name.
         let bonded_mapping = Identifier::from_str("bonded")?;
         // Construct the account mapping name.
@@ -1049,13 +1051,18 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     // }
 
                     // Calculate the stake per validator using `bonded_balances`.
+                    //
+                    // Note: There is no need to check the `delegated` mapping in the genesis block,
+                    // because the design of `bonded_balances` by definition does not support
+                    // delegating to a non-bonded validator. Thus, the assumption is that the
+                    // `delegated` mapping will be correct by construction.
                     let mut stake_per_validator = IndexMap::with_capacity(committee.members().len());
                     for (address, (validator_address, _, amount)) in bonded_balances.iter() {
                         // Check that the amount meets the minimum requirement, depending on whether the address is a validator.
                         if *address == *validator_address {
                             ensure!(
-                                *amount >= MIN_VALIDATOR_STAKE,
-                                "Ratify::Genesis(..) the validator {address} must stake at least {MIN_VALIDATOR_STAKE}",
+                                *amount >= MIN_VALIDATOR_SELF_STAKE,
+                                "Ratify::Genesis(..) the validator {address} must stake at least {MIN_VALIDATOR_SELF_STAKE}",
                             );
                         } else {
                             ensure!(
@@ -1081,7 +1088,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     // Check that `committee` is consistent with `stake_per_validator`.
                     for (validator_address, amount) in &stake_per_validator {
                         // Retrieve the expected validator stake from the committee.
-                        let Some((expected_amount, _)) = committee.members().get(*validator_address) else {
+                        let Some((expected_amount, _, _)) = committee.members().get(*validator_address) else {
                             bail!(
                                 "Ratify::Genesis(..) found a validator in the bonded balances that is not in the committee"
                             )
@@ -1111,9 +1118,11 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                         },
                     );
 
+                    let next_delegated = to_next_delegated(&next_stakers);
+
                     // Construct the next committee map and next bonded map.
-                    let (next_committee_map, next_bonded_map) =
-                        to_next_commitee_map_and_bonded_map(committee, &next_stakers);
+                    let (next_committee_map, next_bonded_map, next_delegated_map) =
+                        to_next_committee_bonded_delegated_map(committee, &next_stakers, &next_delegated);
 
                     // Construct the next withdraw map.
                     let next_withdraw_map = to_next_withdraw_map(&withdrawal_addresses);
@@ -1124,6 +1133,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     finalize_operations.extend(&[
                         // Replace the committee mapping in storage.
                         store.replace_mapping(program_id, committee_mapping, next_committee_map)?,
+                        // Replace the delegated mapping in storage.
+                        store.replace_mapping(program_id, delegated_mapping, next_delegated_map)?,
                         // Replace the bonded mapping in storage.
                         store.replace_mapping(program_id, bonded_mapping, next_bonded_map)?,
                         // Replace the withdraw mapping in storage.
@@ -1193,6 +1204,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         let program_id = ProgramID::from_str("credits.aleo")?;
         // Construct the committee mapping name.
         let committee_mapping = Identifier::from_str("committee")?;
+        // Construct the delegated mapping name.
+        let delegated_mapping = Identifier::from_str("delegated")?;
         // Construct the bonded mapping name.
         let bonded_mapping = Identifier::from_str("bonded")?;
         // Construct the account mapping name.
@@ -1216,8 +1229,14 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
                     // Retrieve the committee mapping from storage.
                     let current_committee_map = store.get_mapping_speculative(program_id, committee_mapping)?;
+                    // Retrieve the delegator mapping from storage.
+                    let current_delegator_map = store.get_mapping_speculative(program_id, delegated_mapping)?;
                     // Convert the committee mapping into a committee.
-                    let current_committee = committee_map_into_committee(state.block_round(), current_committee_map)?;
+                    let current_committee = committee_and_delegated_maps_into_committee(
+                        state.block_round(),
+                        current_committee_map,
+                        current_delegator_map,
+                    )?;
                     // Retrieve the bonded mapping from storage.
                     let current_bonded_map = store.get_mapping_speculative(program_id, bonded_mapping)?;
                     // Convert the bonded map into stakers.
@@ -1228,12 +1247,16 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
                     // Compute the updated stakers, using the committee and block reward.
                     let next_stakers = staking_rewards(&current_stakers, &current_committee, *block_reward);
-                    // Compute the updated committee, using the stakers.
-                    let next_committee = to_next_committee(&current_committee, state.block_round(), &next_stakers)?;
 
-                    // Construct the next committee map and next bonded map.
-                    let (next_committee_map, next_bonded_map) =
-                        to_next_commitee_map_and_bonded_map(&next_committee, &next_stakers);
+                    // Compute the updated delegated amounts, using the next_stakers updated amounts.
+                    let next_delegated = to_next_delegated(&next_stakers);
+
+                    // Compute the updated committee, using the delegatees.
+                    let next_committee = to_next_committee(&current_committee, state.block_round(), &next_delegated)?;
+
+                    // Construct the next committee map, the next bonded map, and the next delegated map.
+                    let (next_committee_map, next_bonded_map, next_delegated_map) =
+                        to_next_committee_bonded_delegated_map(&next_committee, &next_stakers, &next_delegated);
 
                     // Insert the next committee into storage.
                     store.committee_store().insert(state.block_height(), next_committee)?;
@@ -1241,6 +1264,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     finalize_operations.extend(&[
                         // Replace the committee mapping in storage.
                         store.replace_mapping(program_id, committee_mapping, next_committee_map)?,
+                        // Replace the delegated mapping in storage.
+                        store.replace_mapping(program_id, delegated_mapping, next_delegated_map)?,
                         // Replace the bonded mapping in storage.
                         store.replace_mapping(program_id, bonded_mapping, next_bonded_map)?,
                     ]);
@@ -1571,39 +1596,43 @@ finalize transfer_public:
     }
 
     /// Samples the validators.
-    fn sample_validators<N: Network>(num_validators: usize, rng: &mut TestRng) -> IndexMap<PrivateKey<N>, (u64, bool)> {
+    fn sample_validators<N: Network>(
+        num_validators: usize,
+        rng: &mut TestRng,
+    ) -> IndexMap<PrivateKey<N>, (u64, bool, u8)> {
         (0..num_validators)
             .map(|_| {
                 let private_key = PrivateKey::new(rng).unwrap();
                 let amount = MIN_VALIDATOR_STAKE;
                 let is_open = true;
-                (private_key, (amount, is_open))
+                let commission: u8 = 0;
+                (private_key, (amount, is_open, commission))
             })
             .collect::<IndexMap<_, _>>()
     }
 
     /// Returns a `committee_map` and the `allocated_amount` given the validators and delegators.
     fn sample_committee_map_and_allocated_amount<N: Network>(
-        validators: &IndexMap<PrivateKey<N>, (u64, bool)>,
+        validators: &IndexMap<PrivateKey<N>, (u64, bool, u8)>,
         delegators: &IndexMap<PrivateKey<N>, (Address<N>, u64)>,
-    ) -> (IndexMap<Address<N>, (u64, bool)>, u64) {
+    ) -> (IndexMap<Address<N>, (u64, bool, u8)>, u64) {
         // Reset the tracked amount.
         let mut allocated_amount = 0;
 
         // Construct the **correct** committee.
         let mut committee_map = IndexMap::new();
-        for (private_key, (amount, is_open)) in validators {
+        for (private_key, (amount, is_open, commission)) in validators {
             let address = Address::try_from(private_key).unwrap();
-            committee_map.insert(address, (*amount, *is_open));
+            committee_map.insert(address, (*amount, *is_open, *commission));
             allocated_amount += amount;
         }
         for (delegator, (validator, amount)) in delegators {
             if let indexmap::map::Entry::Occupied(mut entry) = committee_map.entry(*validator) {
-                let (current_amount, is_open) = entry.get();
+                let (current_amount, is_open, commission) = entry.get();
                 // Ensure the validator is open.
                 assert!(*is_open, "delegator {delegator} is delegating {amount} microcredits to a closed validator");
                 // Update the committee map.
-                entry.insert((current_amount + amount, *is_open));
+                entry.insert((current_amount + amount, *is_open, *commission));
             } else {
                 unreachable!("delegator {delegator} is delegating to a closed validator")
             }
@@ -1617,11 +1646,11 @@ finalize transfer_public:
     /// Returns the `bonded_balances` given the validators and delegators.
     /// Note that the withdrawal address is the same as the staker address.
     fn sample_bonded_balances<N: Network>(
-        validators: &IndexMap<PrivateKey<N>, (u64, bool)>,
+        validators: &IndexMap<PrivateKey<N>, (u64, bool, u8)>,
         delegators: &IndexMap<PrivateKey<N>, (Address<N>, u64)>,
     ) -> IndexMap<Address<N>, (Address<N>, Address<N>, u64)> {
         let mut bonded_balances = IndexMap::with_capacity(validators.len() + delegators.len());
-        for (private_key, (amount, _)) in validators {
+        for (private_key, (amount, _, _)) in validators {
             let address = Address::try_from(private_key).unwrap();
             bonded_balances.insert(address, (address, address, *amount));
         }
@@ -2196,9 +2225,9 @@ finalize compute:
 
         // Construct the committee.
         let mut committee_map = IndexMap::new();
-        for (private_key, (amount, _)) in &validators {
+        for (private_key, (amount, _, _)) in &validators {
             let address = Address::try_from(private_key).unwrap();
-            committee_map.insert(address, (*amount, true));
+            committee_map.insert(address, (*amount, true, 0));
         }
 
         // Attempt to construct a `Committee` with more than the maximum committee size.
@@ -2379,10 +2408,10 @@ finalize compute:
         let expected_committee = committee
             .members()
             .iter()
-            .map(|(address, (amount, is_open))| {
+            .map(|(address, (_, is_open, commission))| {
                 (
                     Plaintext::from_str(&address.to_string()).unwrap(),
-                    Value::from_str(&format!("{{ microcredits: {amount}u64, is_open: {is_open} }}")).unwrap(),
+                    Value::from_str(&format!("{{ is_open: {is_open}, commission: {commission}u8 }}")).unwrap(),
                 )
             })
             .collect_vec();
@@ -2697,10 +2726,12 @@ finalize compute:
                 let address = Address::try_from(&private_key).unwrap();
                 let amount = MIN_VALIDATOR_STAKE;
                 let is_open = true;
-                (address, (amount, is_open))
+                let commission = 0u8;
+                (address, (amount, is_open, commission))
             })
             .collect::<IndexMap<_, _>>();
-        validators.insert(Address::try_from(PrivateKey::new(rng).unwrap()).unwrap(), (MIN_VALIDATOR_STAKE - 1, true));
+        validators
+            .insert(Address::try_from(PrivateKey::new(rng).unwrap()).unwrap(), (MIN_VALIDATOR_STAKE - 1, true, 0));
 
         // Construct the committee.
         let result = Committee::new_genesis(validators);
@@ -2716,10 +2747,10 @@ finalize compute:
         let committee = Committee::new_genesis(
             validators
                 .iter()
-                .map(|(private_key, (amount, _))| {
+                .map(|(private_key, (amount, _, _))| {
                     let address = Address::try_from(private_key).unwrap();
                     allocated_amount += *amount;
-                    (address, (*amount, true))
+                    (address, (*amount, true, 0u8))
                 })
                 .collect(),
         )
@@ -2767,14 +2798,14 @@ finalize compute:
 
         // Construct the committee.
         let mut committee_map = IndexMap::new();
-        for (private_key, (amount, _)) in &validators {
+        for (private_key, (amount, _, _)) in &validators {
             let address = Address::try_from(private_key).unwrap();
             let amount = if address == Address::try_from(validators.keys().next().unwrap()).unwrap() {
                 *amount + MIN_DELEGATOR_STAKE - 1
             } else {
                 *amount
             };
-            committee_map.insert(address, (amount, true));
+            committee_map.insert(address, (amount, true, 0u8));
             allocated_amount += amount;
         }
         let committee = Committee::new_genesis(committee_map).unwrap();
@@ -2807,14 +2838,14 @@ finalize compute:
 
         // Construct the committee.
         let mut committee_map = IndexMap::new();
-        for (private_key, (amount, _)) in &validators {
+        for (private_key, (amount, _, _)) in &validators {
             let address = Address::try_from(private_key).unwrap();
             let amount = if address == Address::try_from(validators.keys().next().unwrap()).unwrap() {
                 *amount + MIN_DELEGATOR_STAKE
             } else {
                 *amount
             };
-            committee_map.insert(address, (amount, true));
+            committee_map.insert(address, (amount, true, 0u8));
             allocated_amount += amount;
         }
         let committee = Committee::new_genesis(committee_map).unwrap();
@@ -2930,7 +2961,8 @@ finalize compute:
                 let private_key = PrivateKey::new(rng).unwrap();
                 let amount = MIN_VALIDATOR_STAKE;
                 let is_open = i != 0;
-                (private_key, (amount, is_open))
+                let commission = 0;
+                (private_key, (amount, is_open, commission))
             })
             .collect::<IndexMap<_, _>>();
 

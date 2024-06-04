@@ -19,6 +19,9 @@ extern crate snarkvm_circuit_environment_witness;
 
 pub use snarkvm_circuit_environment_witness::rename_selfs;
 
+pub mod canary_circuit;
+pub use canary_circuit::*;
+
 pub mod circuit;
 pub use circuit::*;
 

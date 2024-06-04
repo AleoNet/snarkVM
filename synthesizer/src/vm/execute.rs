@@ -206,6 +206,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
     use console::{
         account::{Address, ViewKey},
         network::MainnetV0,
@@ -245,27 +246,69 @@ mod tests {
     }
 
     #[test]
-    fn test_bond_public_transaction_size() {
+    fn test_bond_validator_transaction_size() {
         let rng = &mut TestRng::default();
 
         // Initialize a new caller.
-        let caller_private_key = crate::vm::test_helpers::sample_genesis_private_key(rng);
-        let address = Address::try_from(&caller_private_key).unwrap();
+        let validator_private_key = crate::vm::test_helpers::sample_genesis_private_key(rng);
+        let withdrawal_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+        let withdrawal_address = Address::try_from(&withdrawal_private_key).unwrap();
 
         // Prepare the VM and records.
         let (vm, _) = prepare_vm(rng).unwrap();
 
         // Prepare the inputs.
         let inputs = [
-            Value::<CurrentNetwork>::from_str(&address.to_string()).unwrap(),
-            Value::<CurrentNetwork>::from_str(&address.to_string()).unwrap(),
+            Value::<CurrentNetwork>::from_str(&withdrawal_address.to_string()).unwrap(),
+            Value::<CurrentNetwork>::from_str("1_000_000u64").unwrap(),
+            Value::<CurrentNetwork>::from_str("5u8").unwrap(),
+        ]
+        .into_iter();
+
+        // Execute.
+        let transaction =
+            vm.execute(&validator_private_key, ("credits.aleo", "bond_validator"), inputs, None, 0, None, rng).unwrap();
+
+        // Ensure the transaction is a bond public transition.
+        assert_eq!(transaction.transitions().count(), 2);
+        assert!(transaction.transitions().take(1).next().unwrap().is_bond_validator());
+
+        // Assert the size of the transaction.
+        let transaction_size_in_bytes = transaction.to_bytes_le().unwrap().len();
+        assert_eq!(2914, transaction_size_in_bytes, "Update me if serialization has changed");
+
+        // Assert the size of the execution.
+        assert!(matches!(transaction, Transaction::Execute(_, _, _)));
+        if let Transaction::Execute(_, execution, _) = &transaction {
+            let execution_size_in_bytes = execution.to_bytes_le().unwrap().len();
+            assert_eq!(1463, execution_size_in_bytes, "Update me if serialization has changed");
+        }
+    }
+
+    #[test]
+    fn test_bond_public_transaction_size() {
+        let rng = &mut TestRng::default();
+
+        // Initialize a new caller.
+        let validator_private_key = crate::vm::test_helpers::sample_genesis_private_key(rng);
+        let validator_address = Address::try_from(&validator_private_key).unwrap();
+        let delegator_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+        let delegator_address = Address::try_from(&delegator_private_key).unwrap();
+
+        // Prepare the VM and records.
+        let (vm, _) = prepare_vm(rng).unwrap();
+
+        // Prepare the inputs.
+        let inputs = [
+            Value::<CurrentNetwork>::from_str(&validator_address.to_string()).unwrap(),
+            Value::<CurrentNetwork>::from_str(&delegator_address.to_string()).unwrap(),
             Value::<CurrentNetwork>::from_str("1_000_000u64").unwrap(),
         ]
         .into_iter();
 
         // Execute.
         let transaction =
-            vm.execute(&caller_private_key, ("credits.aleo", "bond_public"), inputs, None, 0, None, rng).unwrap();
+            vm.execute(&delegator_private_key, ("credits.aleo", "bond_public"), inputs, None, 0, None, rng).unwrap();
 
         // Ensure the transaction is a bond public transition.
         assert_eq!(transaction.transitions().count(), 2);
@@ -284,17 +327,49 @@ mod tests {
     }
 
     #[test]
-    fn test_unbond_public_transaction_size() {
+    fn test_credits_bond_public_cost() {
         let rng = &mut TestRng::default();
+        let credits_program = "credits.aleo";
+        let function_name = "bond_public";
 
         // Initialize a new caller.
-        let caller_private_key = crate::vm::test_helpers::sample_genesis_private_key(rng);
+        let caller_private_key: PrivateKey<MainnetV0> = PrivateKey::new(rng).unwrap();
+        let validator_private_key: PrivateKey<MainnetV0> = PrivateKey::new(rng).unwrap();
+        let validator_address = Address::try_from(&validator_private_key).unwrap();
+        let withdrawal_address = Address::try_from(&caller_private_key).unwrap();
+        let bond_public_amount = 1_000_000u64;
+        let inputs =
+            &[validator_address.to_string(), withdrawal_address.to_string(), format!("{bond_public_amount}_u64")];
 
         // Prepare the VM and records.
         let (vm, _) = prepare_vm(rng).unwrap();
 
         // Prepare the inputs.
-        let inputs = [Value::<CurrentNetwork>::from_str("1u64").unwrap()].into_iter();
+
+        let authorization = vm.authorize(&caller_private_key, credits_program, function_name, inputs, rng).unwrap();
+
+        let execution = vm.execute_authorization_raw(authorization, None, rng).unwrap();
+        let (cost, _) = execution_cost(&vm.process().read(), &execution).unwrap();
+        println!("Cost: {}", cost);
+    }
+
+    #[test]
+    fn test_unbond_public_transaction_size() {
+        let rng = &mut TestRng::default();
+
+        // Initialize a new caller.
+        let caller_private_key = crate::vm::test_helpers::sample_genesis_private_key(rng);
+        let address = Address::try_from(&caller_private_key).unwrap();
+
+        // Prepare the VM and records.
+        let (vm, _) = prepare_vm(rng).unwrap();
+
+        // Prepare the inputs.
+        let inputs = [
+            Value::<CurrentNetwork>::from_str(&address.to_string()).unwrap(),
+            Value::<CurrentNetwork>::from_str("1u64").unwrap(),
+        ]
+        .into_iter();
 
         // Execute.
         let transaction =
@@ -306,13 +381,13 @@ mod tests {
 
         // Assert the size of the transaction.
         let transaction_size_in_bytes = transaction.to_bytes_le().unwrap().len();
-        assert_eq!(2760, transaction_size_in_bytes, "Update me if serialization has changed");
+        assert_eq!(2867, transaction_size_in_bytes, "Update me if serialization has changed");
 
         // Assert the size of the execution.
         assert!(matches!(transaction, Transaction::Execute(_, _, _)));
         if let Transaction::Execute(_, execution, _) = &transaction {
             let execution_size_in_bytes = execution.to_bytes_le().unwrap().len();
-            assert_eq!(1309, execution_size_in_bytes, "Update me if serialization has changed");
+            assert_eq!(1416, execution_size_in_bytes, "Update me if serialization has changed");
         }
     }
 

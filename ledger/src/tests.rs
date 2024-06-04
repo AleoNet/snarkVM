@@ -21,7 +21,7 @@ use crate::{
 use aleo_std::StorageMode;
 use console::{
     account::{Address, PrivateKey},
-    network::prelude::*,
+    network::{prelude::*, MainnetV0},
     program::{Entry, Identifier, Literal, Plaintext, ProgramID, Value},
     types::U16,
 };
@@ -206,6 +206,8 @@ fn test_insufficient_public_fees() {
     // Sample recipient.
     let recipient_private_key = PrivateKey::new(rng).unwrap();
     let recipient_address = Address::try_from(&recipient_private_key).unwrap();
+    let withdrawal_private_key = PrivateKey::<MainnetV0>::new(rng).unwrap();
+    let withdrawal_address = Address::try_from(&withdrawal_private_key).unwrap();
 
     // Fund the recipient with 1 million credits.
     {
@@ -228,13 +230,13 @@ fn test_insufficient_public_fees() {
     // Attempt to bond the node with insufficient public fees.
     {
         let inputs = [
-            Value::from_str(&format!("{recipient_address}")).unwrap(),
-            Value::from_str(&format!("{recipient_address}")).unwrap(),
+            Value::from_str(&format!("{withdrawal_address}")).unwrap(),
             Value::from_str("1000000000000u64").unwrap(),
+            Value::from_str("10u8").unwrap(),
         ];
         let transaction = ledger
             .vm
-            .execute(&recipient_private_key, ("credits.aleo", "bond_public"), inputs.into_iter(), None, 0, None, rng)
+            .execute(&recipient_private_key, ("credits.aleo", "bond_validator"), inputs.into_iter(), None, 0, None, rng)
             .unwrap();
 
         let block =
@@ -499,8 +501,10 @@ fn test_bond_and_unbond_validator() {
     // Sample new account for the new committee member.
     let new_member_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
     let new_member_address = Address::try_from(&new_member_private_key).unwrap();
+    let new_member_withdrawal_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+    let new_member_withdrawal_address = Address::try_from(&new_member_withdrawal_private_key).unwrap();
 
-    // Fund the new committee member.
+    // Fund the new committee member and their withdrawwal address.
     let inputs = [
         Value::from_str(&format!("{new_member_address}")).unwrap(),
         Value::from_str("20000000000000u64").unwrap(), // 20 million credits.
@@ -509,10 +513,24 @@ fn test_bond_and_unbond_validator() {
         .vm
         .execute(&private_key, ("credits.aleo", "transfer_public"), inputs.iter(), None, 0, None, rng)
         .unwrap();
+    let inputs = [
+        Value::from_str(&format!("{new_member_withdrawal_address}")).unwrap(),
+        Value::from_str("20000000u64").unwrap(), // 20 credits.
+    ];
+    let transfer_to_withdrawal_transaction = ledger
+        .vm
+        .execute(&private_key, ("credits.aleo", "transfer_public"), inputs.iter(), None, 0, None, rng)
+        .unwrap();
 
     // Construct the next block.
     let transfer_block = ledger
-        .prepare_advance_to_next_beacon_block(&private_key, vec![], vec![], vec![transfer_transaction], rng)
+        .prepare_advance_to_next_beacon_block(
+            &private_key,
+            vec![],
+            vec![],
+            vec![transfer_transaction, transfer_to_withdrawal_transaction],
+            rng,
+        )
         .unwrap();
 
     // Check that the next block is valid.
@@ -523,19 +541,20 @@ fn test_bond_and_unbond_validator() {
 
     // Construct the bond public
     let bond_amount = MIN_VALIDATOR_STAKE;
+    let commission = 10u8;
     let inputs = [
-        Value::from_str(&format!("{new_member_address}")).unwrap(),
-        Value::from_str(&format!("{new_member_address}")).unwrap(),
+        Value::from_str(&format!("{new_member_withdrawal_address}")).unwrap(),
         Value::from_str(&format!("{bond_amount}u64")).unwrap(),
+        Value::from_str(&format!("{commission}u8")).unwrap(),
     ];
-    let bond_public_transaction = ledger
+    let bond_validator_transaction = ledger
         .vm
-        .execute(&new_member_private_key, ("credits.aleo", "bond_public"), inputs.iter(), None, 0, None, rng)
+        .execute(&new_member_private_key, ("credits.aleo", "bond_validator"), inputs.iter(), None, 0, None, rng)
         .unwrap();
 
     // Construct the next block.
-    let bond_public_block = ledger
-        .prepare_advance_to_next_beacon_block(&private_key, vec![], vec![], vec![bond_public_transaction], rng)
+    let bond_validator_block = ledger
+        .prepare_advance_to_next_beacon_block(&private_key, vec![], vec![], vec![bond_validator_transaction], rng)
         .unwrap();
 
     // Check that the committee does not include the new member.
@@ -543,10 +562,10 @@ fn test_bond_and_unbond_validator() {
     assert!(!committee.is_committee_member(new_member_address));
 
     // Check that the next block is valid.
-    ledger.check_next_block(&bond_public_block, rng).unwrap();
+    ledger.check_next_block(&bond_validator_block, rng).unwrap();
 
     // Add the bond public block to the ledger.
-    ledger.advance_to_next_block(&bond_public_block).unwrap();
+    ledger.advance_to_next_block(&bond_validator_block).unwrap();
 
     // Check that the committee is updated with the new member.
     let committee = ledger.latest_committee().unwrap();
@@ -569,12 +588,23 @@ fn test_bond_and_unbond_validator() {
     };
     assert_eq!(num_validators, committee.num_members());
 
-    // Construct the bond public
+    // Construct the unbond public
     let unbond_amount = committee.get_stake(new_member_address);
-    let inputs = [Value::from_str(&format!("{unbond_amount}u64")).unwrap()];
+    let inputs = [
+        Value::from_str(&format!("{new_member_address}")).unwrap(),
+        Value::from_str(&format!("{unbond_amount}u64")).unwrap(),
+    ];
     let unbond_public_transaction = ledger
         .vm
-        .execute(&new_member_private_key, ("credits.aleo", "unbond_public"), inputs.iter(), None, 0, None, rng)
+        .execute(
+            &new_member_withdrawal_private_key,
+            ("credits.aleo", "unbond_public"),
+            inputs.iter(),
+            None,
+            0,
+            None,
+            rng,
+        )
         .unwrap();
 
     // Construct the next block.
@@ -1587,15 +1617,19 @@ fn test_max_committee_limit_with_bonds() {
     let mut committee_map = IndexMap::new();
     for (private_key, (amount, _)) in &validators {
         let address = Address::try_from(private_key).unwrap();
-        committee_map.insert(address, (*amount, true));
+        committee_map.insert(address, (*amount, true, 0));
         allocated_amount += *amount;
     }
 
     // Initialize two new validators.
     let first_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
     let first_address = Address::try_from(&first_private_key).unwrap();
+    let first_withdrawal_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+    let first_withdrawal_address = Address::try_from(&first_withdrawal_private_key).unwrap();
     let second_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
     let second_address = Address::try_from(&second_private_key).unwrap();
+    let second_withdrawal_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+    let second_withdrawal_address = Address::try_from(&second_withdrawal_private_key).unwrap();
 
     // Construct the public balances, allocating the remaining supply to the first validator and two new validators.
     // The remaining validators will have a balance of 0.
@@ -1604,10 +1638,12 @@ fn test_max_committee_limit_with_bonds() {
         public_balances.insert(Address::try_from(private_key).unwrap(), 0);
     }
     let remaining_supply = <CurrentNetwork as Network>::STARTING_SUPPLY - allocated_amount;
-    let amount = remaining_supply / 3;
+    let amount = remaining_supply / 5;
     public_balances.insert(Address::try_from(validators.keys().next().unwrap()).unwrap(), amount);
     public_balances.insert(first_address, amount);
-    public_balances.insert(second_address, remaining_supply - 2 * amount);
+    public_balances.insert(first_withdrawal_address, amount);
+    public_balances.insert(second_address, amount);
+    public_balances.insert(second_withdrawal_address, remaining_supply - 4 * amount);
 
     // Construct the bonded balances.
     let bonded_balances = validators
@@ -1639,11 +1675,11 @@ fn test_max_committee_limit_with_bonds() {
         .vm()
         .execute(
             &first_private_key,
-            ("credits.aleo", "bond_public"),
+            ("credits.aleo", "bond_validator"),
             vec![
-                Value::<CurrentNetwork>::from_str(&first_address.to_string()).unwrap(),
-                Value::<CurrentNetwork>::from_str(&first_address.to_string()).unwrap(),
+                Value::<CurrentNetwork>::from_str(&first_withdrawal_address.to_string()).unwrap(),
                 Value::<CurrentNetwork>::from_str(&format!("{MIN_VALIDATOR_STAKE}u64")).unwrap(),
+                Value::<CurrentNetwork>::from_str("10u8").unwrap(),
             ]
             .iter(),
             None,
@@ -1683,11 +1719,11 @@ fn test_max_committee_limit_with_bonds() {
         .vm()
         .execute(
             &second_private_key,
-            ("credits.aleo", "bond_public"),
+            ("credits.aleo", "bond_validator"),
             vec![
-                Value::<CurrentNetwork>::from_str(&second_address.to_string()).unwrap(),
-                Value::<CurrentNetwork>::from_str(&second_address.to_string()).unwrap(),
+                Value::<CurrentNetwork>::from_str(&second_withdrawal_address.to_string()).unwrap(),
                 Value::<CurrentNetwork>::from_str(&format!("{MIN_VALIDATOR_STAKE}u64")).unwrap(),
+                Value::<CurrentNetwork>::from_str("10u8").unwrap(),
             ]
             .iter(),
             None,
@@ -1730,9 +1766,13 @@ fn test_max_committee_limit_with_bonds() {
     let unbond_first_validator = ledger
         .vm()
         .execute(
-            &first_private_key,
+            &first_withdrawal_private_key,
             ("credits.aleo", "unbond_public"),
-            vec![Value::<CurrentNetwork>::from_str(&format!("{MIN_VALIDATOR_STAKE}u64")).unwrap()].iter(),
+            vec![
+                Value::<CurrentNetwork>::from_str(&first_address.to_string()).unwrap(),
+                Value::<CurrentNetwork>::from_str(&format!("{MIN_VALIDATOR_STAKE}u64")).unwrap(),
+            ]
+            .iter(),
             None,
             0,
             None,
@@ -1745,11 +1785,11 @@ fn test_max_committee_limit_with_bonds() {
         .vm()
         .execute(
             &second_private_key,
-            ("credits.aleo", "bond_public"),
+            ("credits.aleo", "bond_validator"),
             vec![
-                Value::<CurrentNetwork>::from_str(&second_address.to_string()).unwrap(),
-                Value::<CurrentNetwork>::from_str(&second_address.to_string()).unwrap(),
+                Value::<CurrentNetwork>::from_str(&second_withdrawal_address.to_string()).unwrap(),
                 Value::<CurrentNetwork>::from_str(&format!("{MIN_VALIDATOR_STAKE}u64")).unwrap(),
+                Value::<CurrentNetwork>::from_str("10u8").unwrap(),
             ]
             .iter(),
             None,

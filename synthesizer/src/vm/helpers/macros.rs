@@ -66,6 +66,10 @@ macro_rules! convert {
                 // Process the logic.
                 $logic!(console::network::TestnetV0, circuit::AleoTestnetV0)
             }
+            console::network::CanaryV0::ID => {
+                // Process the logic.
+                $logic!(console::network::CanaryV0, circuit::AleoCanaryV0)
+            }
             _ => bail!("Unsupported VM configuration for network: {}", N::ID),
         }
     }};
@@ -92,6 +96,14 @@ macro_rules! process {
                     .ok_or_else(|| anyhow!("Failed to downcast {}", stringify!($self.process)))?;
                 // Process the logic.
                 $logic!(process.read(), console::network::TestnetV0, circuit::AleoTestnetV0)
+            }
+            console::network::CanaryV0::ID => {
+                // Cast the process.
+                let process = (&$self.process as &dyn std::any::Any)
+                    .downcast_ref::<Arc<RwLock<Process<console::network::CanaryV0>>>>()
+                    .ok_or_else(|| anyhow!("Failed to downcast {}", stringify!($self.process)))?;
+                // Process the logic.
+                $logic!(process.read(), console::network::CanaryV0, circuit::AleoCanaryV0)
             }
             _ => bail!("Unsupported VM configuration for network: {}", N::ID),
         }

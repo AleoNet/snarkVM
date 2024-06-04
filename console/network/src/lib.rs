@@ -25,6 +25,9 @@ pub use snarkvm_console_network_environment::*;
 mod helpers;
 pub use helpers::*;
 
+mod canary_v0;
+pub use canary_v0::*;
+
 mod mainnet_v0;
 pub use mainnet_v0::*;
 
