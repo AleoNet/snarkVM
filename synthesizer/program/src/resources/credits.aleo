@@ -43,7 +43,7 @@
 // 10. count committee[] == metadata[aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc]
 // 11. 100,000 + count committee[] >= count bonded[] >= count delegated[] >= count committee[]
 // 12. bond[*].microcredits > 100
-// 13. delegated[*] >= 10,000
+
 
 /**********************************************************************************************************************/
 
