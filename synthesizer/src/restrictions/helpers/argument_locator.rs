@@ -17,7 +17,9 @@ use console::network::prelude::*;
 /// A locator for a function argument of the form `{is_input}/{index}`.
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub struct ArgumentLocator {
+    /// The `is_input` flag is `true` if the argument is an input, otherwise it is an output.
     is_input: bool,
+    /// The (zero-based) index of the argument.
     index: u16,
 }
 

@@ -68,6 +68,11 @@ impl<N: Network> Restrictions<N> {
     pub fn new() -> Self {
         Self { programs: IndexMap::new(), functions: IndexMap::new(), arguments: IndexMap::new() }
     }
+
+    /// Returns the restriction ID, for the current state of the `Restrictions` list.
+    pub fn to_restriction_id(&self) -> Result<Field<N>> {
+        Self::compute_restriction_id(&self.programs, &self.functions, &self.arguments)
+    }
 }
 
 impl<N: Network> Restrictions<N> {
@@ -191,9 +196,9 @@ impl<N: Network> Restrictions<N> {
 impl<N: Network> Restrictions<N> {
     /// Returns the restriction ID.
     pub fn compute_restriction_id(
-        programs: IndexMap<ProgramID<N>, BlockRange>,
-        functions: IndexMap<Locator<N>, BlockRange>,
-        arguments: IndexMap<Locator<N>, IndexMap<ArgumentLocator, IndexMap<Literal<N>, BlockRange>>>,
+        programs: &IndexMap<ProgramID<N>, BlockRange>,
+        functions: &IndexMap<Locator<N>, BlockRange>,
+        arguments: &IndexMap<Locator<N>, IndexMap<ArgumentLocator, IndexMap<Literal<N>, BlockRange>>>,
     ) -> Result<Field<N>> {
         // Prepare the preimage data.
         let mut preimage = Vec::new();
@@ -231,7 +236,9 @@ impl<N: Network> Restrictions<N> {
                 preimage.push(Field::from_u64(arguments.len() as u64));
                 // Encode the arguments.
                 for (literal, range) in arguments {
-                    // TODO (howardwu): Encode the literal.
+                    // Encode the literal.
+                    preimage.extend_from_slice(&Plaintext::from(literal).to_fields()?);
+                    // Encode the range.
                     preimage.extend_from_slice(&range.to_fields()?);
                 }
             }
