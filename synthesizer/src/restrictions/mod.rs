@@ -313,22 +313,54 @@ mod tests {
 
     /// **Attention**: This method is used to auto-generate the restrictions lists for each network
     /// to be used by the `snarkvm_parameters` crate.
-    #[rustfmt::skip]
     #[test]
     fn test_restrictions_list_comparison() {
+        #[rustfmt::skip]
+        macro_rules! check_restrictions {
+            ($restrictions:expr, $network:ident) => {{
+                // Write the restrictions to a JSON-compatible string.
+                let restrictions_string = $restrictions.to_string();
+                // Compute the restrictions ID.
+                let restrictions_id = $restrictions.to_restrictions_id().unwrap();
+                // Print out the restrictions list.
+                println!("========\n Restrictions for '{}' ({restrictions_id})\n========\n{restrictions_string}", Network::NAME);
+                // Compare the restrictions list.
+                assert_eq!(
+                    restrictions_string,
+                    Restrictions::<$network>::load().unwrap().to_string(),
+                    "Ensure 'snarkvm_parameters/src/NETWORK/resources/restrictions.json' matches 'restrictions_string' in this test"
+                );
+            }};
+        }
 
-        // Set the network.
-        type Network = console::network::MainnetV0;
+        // Attention: The 'restrictions' variable **must match** the 'restrictions.json' in 'snarkvm_parameters' for each network.
+        {
+            // Set the network.
+            type Network = console::network::MainnetV0;
+            // Initialize the restrictions.
+            let restrictions = Restrictions::<Network>::new_blank();
+            // Check the restrictions.
+            check_restrictions!(restrictions, Network);
+        }
 
-        // Initialize the restrictions.
-        let restrictions = Restrictions::<Network>::new_blank();
-        // Write the restrictions to a JSON-compatible string.
-        let restrictions_string = restrictions.to_string();
-        // Compute the restrictions ID.
-        let restrictions_id = restrictions.to_restrictions_id().unwrap();
-        // Print out the restrictions list.
-        println!("========\n Restrictions for '{}' ({restrictions_id})\n========\n{restrictions_string}", Network::NAME);
-        // Compare the restrictions list.
+        // Attention: The 'restrictions' variable **must match** the 'restrictions.json' in 'snarkvm_parameters' for each network.
+        {
+            // Set the network.
+            type Network = console::network::TestnetV0;
+            // Initialize the restrictions.
+            let restrictions = Restrictions::<Network>::new_blank();
+            // Check the restrictions.
+            check_restrictions!(restrictions, Network);
+        }
 
+        // Attention: The 'restrictions' variable **must match** the 'restrictions.json' in 'snarkvm_parameters' for each network.
+        {
+            // Set the network.
+            type Network = console::network::CanaryV0;
+            // Initialize the restrictions.
+            let restrictions = Restrictions::<Network>::new_blank();
+            // Check the restrictions.
+            check_restrictions!(restrictions, Network);
+        }
     }
 }
