@@ -94,7 +94,7 @@ mod tests {
     fn sample_restrictions<R: Rng + CryptoRng>(rng: &mut R) -> Restrictions<CurrentNetwork> {
         const NUM_RESTRICTIONS: usize = 10;
 
-        let mut restrictions = Restrictions::<CurrentNetwork>::default();
+        let mut restrictions = Restrictions::<CurrentNetwork>::new_blank();
         // Add the program restrictions.
         for _ in 0..NUM_RESTRICTIONS {
             let program_id = sample_program_id(rng);

@@ -56,22 +56,20 @@ pub struct Restrictions<N: Network> {
     arguments: IndexMap<Locator<N>, IndexMap<ArgumentLocator, IndexMap<Literal<N>, BlockRange>>>,
 }
 
-impl<N: Network> Default for Restrictions<N> {
-    /// Initializes a new `Restrictions` instance.
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl<N: Network> Restrictions<N> {
+    /// Initializes the `Restrictions` instance for the current network.
+    pub fn load() -> Result<Self> {
+        Self::from_str(N::restrictions_list_as_str())
+    }
+
     /// Initializes a new `Restrictions` instance.
-    pub fn new() -> Self {
+    pub fn new_blank() -> Self {
         Self { programs: IndexMap::new(), functions: IndexMap::new(), arguments: IndexMap::new() }
     }
 
-    /// Returns the restriction ID, for the current state of the `Restrictions` list.
-    pub fn to_restriction_id(&self) -> Result<Field<N>> {
-        Self::compute_restriction_id(&self.programs, &self.functions, &self.arguments)
+    /// Returns the restrictions ID, for the current state of the `Restrictions` list.
+    pub fn to_restrictions_id(&self) -> Result<Field<N>> {
+        Self::compute_restrictions_id(&self.programs, &self.functions, &self.arguments)
     }
 }
 
@@ -194,8 +192,8 @@ impl<N: Network> Restrictions<N> {
 }
 
 impl<N: Network> Restrictions<N> {
-    /// Returns the restriction ID.
-    pub fn compute_restriction_id(
+    /// Returns the restrictions ID.
+    pub fn compute_restrictions_id(
         programs: &IndexMap<ProgramID<N>, BlockRange>,
         functions: &IndexMap<Locator<N>, BlockRange>,
         arguments: &IndexMap<Locator<N>, IndexMap<ArgumentLocator, IndexMap<Literal<N>, BlockRange>>>,
@@ -262,7 +260,7 @@ mod tests {
 
     #[test]
     fn test_restrictions_program_restricted() {
-        let mut restrictions = Restrictions::<CurrentNetwork>::default();
+        let mut restrictions = Restrictions::<CurrentNetwork>::new_blank();
         let program_id = ProgramID::from_str("restricted.aleo").unwrap();
         let range = BlockRange::Range(10..20);
         restrictions.programs.insert(program_id, range);
@@ -275,7 +273,7 @@ mod tests {
 
     #[test]
     fn test_restrictions_function_restricted() {
-        let mut restrictions = Restrictions::<CurrentNetwork>::default();
+        let mut restrictions = Restrictions::<CurrentNetwork>::new_blank();
         let program_id = ProgramID::from_str("restricted.aleo").unwrap();
         let function_id = Identifier::from_str("foo").unwrap();
         let range = BlockRange::Range(10..20);
@@ -291,7 +289,7 @@ mod tests {
     fn test_restrictions_argument_restricted() {
         let rng = &mut TestRng::default();
 
-        let mut restrictions = Restrictions::<CurrentNetwork>::default();
+        let mut restrictions = Restrictions::<CurrentNetwork>::new_blank();
         let program_id = ProgramID::from_str("restricted.aleo").unwrap();
         let function_id = Identifier::from_str("bar").unwrap();
         let range = BlockRange::Range(10..20);
@@ -311,5 +309,26 @@ mod tests {
         assert!(restrictions.is_argument_restricted(&transition, 15));
         assert!(!restrictions.is_argument_restricted(&transition, 20));
         assert!(!restrictions.is_argument_restricted(&transition, 25));
+    }
+
+    /// **Attention**: This method is used to auto-generate the restrictions lists for each network
+    /// to be used by the `snarkvm_parameters` crate.
+    #[rustfmt::skip]
+    #[test]
+    fn test_restrictions_list_comparison() {
+
+        // Set the network.
+        type Network = console::network::MainnetV0;
+
+        // Initialize the restrictions.
+        let restrictions = Restrictions::<Network>::new_blank();
+        // Write the restrictions to a JSON-compatible string.
+        let restrictions_string = restrictions.to_string();
+        // Compute the restrictions ID.
+        let restrictions_id = restrictions.to_restrictions_id().unwrap();
+        // Print out the restrictions list.
+        println!("========\n Restrictions for '{}' ({restrictions_id})\n========\n{restrictions_string}", Network::NAME);
+        // Compare the restrictions list.
+
     }
 }

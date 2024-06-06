@@ -33,6 +33,6 @@ impl<N: Network> Debug for Restrictions<N> {
 impl<N: Network> Display for Restrictions<N> {
     /// Displays the restrictions as a JSON-string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "{}", serde_json::to_string(self).map_err::<fmt::Error, _>(ser::Error::custom)?)
+        write!(f, "{}", serde_json::to_string_pretty(self).map_err::<fmt::Error, _>(ser::Error::custom)?)
     }
 }
