@@ -30,6 +30,8 @@ pub mod macros;
 pub mod errors;
 pub use errors::*;
 
+pub mod canary;
+
 pub mod mainnet;
 
 pub mod testnet;
