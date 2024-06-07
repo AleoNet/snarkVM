@@ -135,7 +135,7 @@ mod tests {
     ) {
         // Serialize
         let expected_string = expected.to_string();
-        let candidate_string = serde_json::to_string(&expected).unwrap();
+        let candidate_string = serde_json::to_string_pretty(&expected).unwrap();
         let candidate = serde_json::from_str::<T>(&candidate_string).unwrap();
         assert_eq!(expected, candidate);
         assert_eq!(expected_string, candidate_string);
