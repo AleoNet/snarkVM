@@ -15,6 +15,9 @@
 pub(crate) mod committee;
 pub use committee::*;
 
+mod history;
+pub use history::*;
+
 mod macros;
 
 mod rewards;

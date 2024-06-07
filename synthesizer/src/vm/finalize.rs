@@ -1260,6 +1260,22 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
                     // Insert the next committee into storage.
                     store.committee_store().insert(state.block_height(), next_committee)?;
+
+                    #[cfg(feature = "history")]
+                    {
+                        // Load a `History` object.
+                        let history = History::new(N::ID, store.storage_mode().clone());
+
+                        // Write the committee mapping as JSON.
+                        history.store_entry(HistoryVariant::Committee, state.block_height(), &next_committee_map)?;
+                        // Write the delegated mapping as JSON.
+                        history.store_entry(HistoryVariant::Delegated, state.block_height(), &next_delegated_map)?;
+                        // Write the bonded mapping as JSON.
+                        history.store_entry(HistoryVariant::Bonded, state.block_height(), &next_bonded_map)?;
+
+                        // TODO: Write the unbonding mapping.
+                    }
+
                     // Store the finalize operations for updating the committee and bonded mapping.
                     finalize_operations.extend(&[
                         // Replace the committee mapping in storage.

@@ -1124,7 +1124,7 @@ dependencies = [
  "futures-sink",
  "futures-util",
  "http",
- "indexmap 2.1.0",
+ "indexmap 2.2.6",
  "slab",
  "tokio",
  "tokio-util",
@@ -1282,9 +1282,9 @@ dependencies = [
 
 [[package]]
 name = "indexmap"
-version = "2.1.0"
+version = "2.2.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d530e1a18b1cb4c484e6e34556a0d948706958449fca0cab753d649f2bce3d1f"
+checksum = "168fb715dda47215e360912c096649d23d58bf392ac62f73919e831745e40f26"
 dependencies = [
  "equivalent",
  "hashbrown 0.14.3",
@@ -2413,11 +2413,11 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
-version = "1.0.111"
+version = "1.0.117"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "176e46fa42316f18edd598015a5166857fc835ec732f5215eac6b7bdbf0a84f4"
+checksum = "455182ea6142b14f93f4bc5320a2b31c1f266b66a4a5c858b013302a5d8cbfc3"
 dependencies = [
- "indexmap 2.1.0",
+ "indexmap 2.2.6",
  "itoa",
  "ryu",
  "serde",
@@ -2441,7 +2441,7 @@ version = "0.9.30"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b1bf28c79a99f70ee1f1d83d10c875d2e70618417fda01ad1785e027579d9d38"
 dependencies = [
- "indexmap 2.1.0",
+ "indexmap 2.2.6",
  "itoa",
  "ryu",
  "serde",
@@ -2539,7 +2539,7 @@ dependencies = [
  "clap",
  "colored",
  "dotenvy",
- "indexmap 2.1.0",
+ "indexmap 2.2.6",
  "num-format",
  "once_cell",
  "parking_lot",
@@ -2580,7 +2580,7 @@ dependencies = [
  "fxhash",
  "hashbrown 0.14.3",
  "hex",
- "indexmap 2.1.0",
+ "indexmap 2.2.6",
  "itertools 0.11.0",
  "lazy_static",
  "num-traits",
@@ -2670,7 +2670,7 @@ name = "snarkvm-circuit-environment"
 version = "0.16.19"
 dependencies = [
  "criterion",
- "indexmap 2.1.0",
+ "indexmap 2.2.6",
  "itertools 0.11.0",
  "nom",
  "num-traits",
@@ -2861,7 +2861,7 @@ version = "0.16.19"
 dependencies = [
  "aleo-std",
  "criterion",
- "indexmap 2.1.0",
+ "indexmap 2.2.6",
  "rayon",
  "snarkvm-console-algorithms",
  "snarkvm-console-network",
@@ -2873,7 +2873,7 @@ name = "snarkvm-console-network"
 version = "0.16.19"
 dependencies = [
  "anyhow",
- "indexmap 2.1.0",
+ "indexmap 2.2.6",
  "itertools 0.11.0",
  "lazy_static",
  "once_cell",
@@ -2914,7 +2914,7 @@ dependencies = [
  "bincode",
  "enum_index",
  "enum_index_derive",
- "indexmap 2.1.0",
+ "indexmap 2.2.6",
  "num-derive",
  "num-traits",
  "once_cell",
@@ -3065,7 +3065,7 @@ dependencies = [
  "anyhow",
  "bincode",
  "criterion",
- "indexmap 2.1.0",
+ "indexmap 2.2.6",
  "parking_lot",
  "rand",
  "rayon",
@@ -3102,7 +3102,7 @@ name = "snarkvm-ledger-block"
 version = "0.16.19"
 dependencies = [
  "bincode",
- "indexmap 2.1.0",
+ "indexmap 2.2.6",
  "once_cell",
  "rayon",
  "serde_json",
@@ -3127,7 +3127,7 @@ version = "0.16.19"
 dependencies = [
  "anyhow",
  "bincode",
- "indexmap 2.1.0",
+ "indexmap 2.2.6",
  "parking_lot",
  "proptest",
  "rand",
@@ -3160,7 +3160,7 @@ name = "snarkvm-ledger-narwhal-batch-certificate"
 version = "0.16.19"
 dependencies = [
  "bincode",
- "indexmap 2.1.0",
+ "indexmap 2.2.6",
  "rayon",
  "serde_json",
  "snarkvm-console",
@@ -3174,7 +3174,7 @@ name = "snarkvm-ledger-narwhal-batch-header"
 version = "0.16.19"
 dependencies = [
  "bincode",
- "indexmap 2.1.0",
+ "indexmap 2.2.6",
  "rayon",
  "serde_json",
  "snarkvm-console",
@@ -3198,7 +3198,7 @@ name = "snarkvm-ledger-narwhal-subdag"
 version = "0.16.19"
 dependencies = [
  "bincode",
- "indexmap 2.1.0",
+ "indexmap 2.2.6",
  "rayon",
  "serde_json",
  "snarkvm-console",
@@ -3240,7 +3240,7 @@ dependencies = [
  "anyhow",
  "bincode",
  "criterion",
- "indexmap 2.1.0",
+ "indexmap 2.2.6",
  "lru",
  "once_cell",
  "parking_lot",
@@ -3259,7 +3259,7 @@ version = "0.16.19"
 dependencies = [
  "anyhow",
  "colored",
- "indexmap 2.1.0",
+ "indexmap 2.2.6",
  "rand",
  "rand_chacha",
  "rayon",
@@ -3286,7 +3286,7 @@ dependencies = [
  "aleo-std-storage",
  "anyhow",
  "bincode",
- "indexmap 2.1.0",
+ "indexmap 2.2.6",
  "once_cell",
  "parking_lot",
  "rayon",
@@ -3343,7 +3343,7 @@ dependencies = [
  "curl",
  "encoding",
  "hex",
- "indexmap 2.1.0",
+ "indexmap 2.2.6",
  "itertools 0.11.0",
  "js-sys",
  "lazy_static",
@@ -3371,7 +3371,7 @@ dependencies = [
  "aleo-std",
  "anyhow",
  "criterion",
- "indexmap 2.1.0",
+ "indexmap 2.2.6",
  "itertools 0.11.0",
  "lru",
  "once_cell",
@@ -3407,7 +3407,7 @@ dependencies = [
  "bincode",
  "colored",
  "criterion",
- "indexmap 2.1.0",
+ "indexmap 2.2.6",
  "once_cell",
  "parking_lot",
  "rand",
@@ -3432,7 +3432,7 @@ version = "0.16.19"
 dependencies = [
  "bincode",
  "criterion",
- "indexmap 2.1.0",
+ "indexmap 2.2.6",
  "paste",
  "rand",
  "rand_chacha",
