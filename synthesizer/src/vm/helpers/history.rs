@@ -42,8 +42,6 @@ pub fn history_directory_path(network: u16, storage_mode: StorageMode) -> PathBu
 
 #[derive(Copy, Clone)]
 pub enum HistoryVariant {
-    /// A `committee` mapping.
-    Committee,
     /// A `bonded` mapping.
     Bonded,
     /// A `delegated` mapping.
@@ -56,7 +54,6 @@ impl HistoryVariant {
     /// Returns the name of the variant.
     pub fn name(&self) -> &'static str {
         match self {
-            Self::Committee => "committee",
             Self::Bonded => "bonded",
             Self::Delegated => "delegated",
             Self::Unbonding => "unbonding",
@@ -76,36 +73,33 @@ impl History {
     }
 
     /// Stores an entry into the history.
-    pub fn store_entry<T>(&self, variant: HistoryVariant, height: u32, data: &T) -> Result<()>
+    pub fn store_entry<T>(&self, height: u32, variant: HistoryVariant, data: &T) -> Result<()>
     where
         T: Serialize + ?Sized,
     {
-        // Get the path to the variant directory.
-        let variant_path = self.variant_path(variant);
-        // Create the variant directory if it does not exist.
-        if !variant_path.exists() {
-            std::fs::create_dir_all(&variant_path)?;
+        // Get the path to the block directory.
+        let block_path = self.path.join(format!("block-{height}"));
+        // Create the block directory if it does not exist.
+        if !block_path.exists() {
+            std::fs::create_dir_all(&block_path)?;
         }
-        // Write the entry to the variant directory.
-        let entry_path = variant_path.join(format!("{}-{height}.json", variant.name()));
+
+        // Write the entry to the block directory.
+        let entry_path = block_path.join(format!("block-{height}-{}.json", variant.name()));
         std::fs::write(entry_path, serde_json::to_string_pretty(data)?)?;
 
         Ok(())
     }
 
     /// Loads an entry from the history.
-    pub fn load_entry(&self, variant: HistoryVariant, height: u32) -> Result<String> {
-        // Get the path to the variant directory.
-        let variant_path = self.variant_path(variant);
-        // Read the entry from the variant directory.
-        let entry_path = variant_path.join(format!("{}-{height}.json", variant.name()));
+    pub fn load_entry(&self, height: u32, variant: HistoryVariant) -> Result<String> {
+        // Get the path to the block directory.
+        let block_path = self.path.join(format!("block-{height}"));
+        // Get the path to the entry.
+        let entry_path = block_path.join(format!("block-{height}-{}.json", variant.name()));
+        // Load the entry.
         let result = std::fs::read_to_string(entry_path)?;
 
         Ok(result)
-    }
-
-    /// Get the path to a variant directory.
-    fn variant_path(&self, variant: HistoryVariant) -> PathBuf {
-        self.path.join(variant.name())
     }
 }
