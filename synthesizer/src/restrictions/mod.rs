@@ -29,6 +29,8 @@ use indexmap::IndexMap;
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct Restrictions<N: Network> {
+    /// The restrictions ID, for the current state of the `Restrictions` list.
+    restrictions_id: Field<N>,
     /// The set of program IDs that are restricted from being executed.
     /// e.g. `restricted.aleo` => `..` (all blocks)
     /// e.g. `restricted.aleo` => `10..` (from block 10 onwards)
@@ -52,28 +54,44 @@ pub struct Restrictions<N: Network> {
     /// - When a transition does not match the program ID or function name, the total lookup cost is `O(1)`.
     /// - When a transition matches the program ID & function name, the initial lookup cost is `O(num_inputs + num_outputs)`.
     ///    - If an input or output index does not match, the additional lookup cost is `0`.
-    ///    - If an input or output index matches, the additional lookup cost is `O(n)` for `n` arguments with the same index.
+    ///    - If an input or output index matches, the additional lookup cost is `O(n)` for `n` restricted arguments with the same index.
     arguments: IndexMap<Locator<N>, IndexMap<ArgumentLocator, IndexMap<Literal<N>, BlockRange>>>,
 }
 
 impl<N: Network> Restrictions<N> {
     /// Initializes the `Restrictions` instance for the current network.
     pub fn load() -> Result<Self> {
-        Self::from_str(N::restrictions_list_as_str())
+        // Load the restrictions list from the network.
+        let restrictions = Self::from_str(N::restrictions_list_as_str())?;
+        // Ensure the restrictions ID matches the computed value.
+        let expected_restrictions_id =
+            Self::compute_restrictions_id(&restrictions.programs, &restrictions.functions, &restrictions.arguments)?;
+        if restrictions.restrictions_id != expected_restrictions_id {
+            bail!(
+                "The restrictions ID does not match the computed value upon initialization (expected - {expected_restrictions_id})"
+            );
+        }
+        // Return the restrictions.
+        Ok(restrictions)
     }
 
     /// Initializes a new `Restrictions` instance.
-    pub fn new_blank() -> Self {
-        Self { programs: IndexMap::new(), functions: IndexMap::new(), arguments: IndexMap::new() }
-    }
-
-    /// Returns the restrictions ID, for the current state of the `Restrictions` list.
-    pub fn to_restrictions_id(&self) -> Result<Field<N>> {
-        Self::compute_restrictions_id(&self.programs, &self.functions, &self.arguments)
+    pub fn new_blank() -> Result<Self> {
+        Ok(Self {
+            restrictions_id: Self::compute_restrictions_id(&IndexMap::new(), &IndexMap::new(), &IndexMap::new())?,
+            programs: IndexMap::new(),
+            functions: IndexMap::new(),
+            arguments: IndexMap::new(),
+        })
     }
 }
 
 impl<N: Network> Restrictions<N> {
+    /// Returns the restrictions ID, for the current state of the `Restrictions` list.
+    pub fn restrictions_id(&self) -> Field<N> {
+        self.restrictions_id
+    }
+
     /// Returns the set of program IDs that are restricted from being executed.
     pub fn programs(&self) -> &IndexMap<ProgramID<N>, BlockRange> {
         &self.programs
@@ -260,7 +278,7 @@ mod tests {
 
     #[test]
     fn test_restrictions_program_restricted() {
-        let mut restrictions = Restrictions::<CurrentNetwork>::new_blank();
+        let mut restrictions = Restrictions::<CurrentNetwork>::new_blank().unwrap();
         let program_id = ProgramID::from_str("restricted.aleo").unwrap();
         let range = BlockRange::Range(10..20);
         restrictions.programs.insert(program_id, range);
@@ -273,7 +291,7 @@ mod tests {
 
     #[test]
     fn test_restrictions_function_restricted() {
-        let mut restrictions = Restrictions::<CurrentNetwork>::new_blank();
+        let mut restrictions = Restrictions::<CurrentNetwork>::new_blank().unwrap();
         let program_id = ProgramID::from_str("restricted.aleo").unwrap();
         let function_id = Identifier::from_str("foo").unwrap();
         let range = BlockRange::Range(10..20);
@@ -289,7 +307,7 @@ mod tests {
     fn test_restrictions_argument_restricted() {
         let rng = &mut TestRng::default();
 
-        let mut restrictions = Restrictions::<CurrentNetwork>::new_blank();
+        let mut restrictions = Restrictions::<CurrentNetwork>::new_blank().unwrap();
         let program_id = ProgramID::from_str("restricted.aleo").unwrap();
         let function_id = Identifier::from_str("bar").unwrap();
         let range = BlockRange::Range(10..20);
@@ -321,7 +339,7 @@ mod tests {
                 // Write the restrictions to a JSON-compatible string.
                 let restrictions_string = $restrictions.to_string();
                 // Compute the restrictions ID.
-                let restrictions_id = $restrictions.to_restrictions_id().unwrap();
+                let restrictions_id = $restrictions.restrictions_id();
                 // Print out the restrictions list.
                 println!("========\n Restrictions for '{}' ({restrictions_id})\n========\n{restrictions_string}", Network::NAME);
                 // Compare the restrictions list.
@@ -338,7 +356,7 @@ mod tests {
             // Set the network.
             type Network = console::network::MainnetV0;
             // Initialize the restrictions.
-            let restrictions = Restrictions::<Network>::new_blank();
+            let restrictions = Restrictions::<Network>::new_blank().unwrap();
             // Check the restrictions.
             check_restrictions!(restrictions, Network);
         }
@@ -348,7 +366,7 @@ mod tests {
             // Set the network.
             type Network = console::network::TestnetV0;
             // Initialize the restrictions.
-            let restrictions = Restrictions::<Network>::new_blank();
+            let restrictions = Restrictions::<Network>::new_blank().unwrap();
             // Check the restrictions.
             check_restrictions!(restrictions, Network);
         }
@@ -358,7 +376,7 @@ mod tests {
             // Set the network.
             type Network = console::network::CanaryV0;
             // Initialize the restrictions.
-            let restrictions = Restrictions::<Network>::new_blank();
+            let restrictions = Restrictions::<Network>::new_blank().unwrap();
             // Check the restrictions.
             check_restrictions!(restrictions, Network);
         }

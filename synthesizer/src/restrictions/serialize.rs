@@ -21,7 +21,8 @@ impl<N: Network + Serialize> Serialize for Restrictions<N> {
     where
         S: Serializer,
     {
-        let mut state = serializer.serialize_struct("Restrictions", 3)?;
+        let mut state = serializer.serialize_struct("Restrictions", 4)?;
+        state.serialize_field("restrictions_id", &self.restrictions_id)?;
         state.serialize_field("programs", &self.programs)?;
         state.serialize_field("functions", &self.functions)?;
         state.serialize_field("arguments", &self.arguments)?;
@@ -36,6 +37,7 @@ impl<'de, N: Network> Deserialize<'de> for Restrictions<N> {
 
         // Recover the restrictions.
         Ok(Self {
+            restrictions_id: DeserializeExt::take_from_value::<D>(&mut restrictions, "restrictions_id")?,
             programs: DeserializeExt::take_from_value::<D>(&mut restrictions, "programs")?,
             functions: DeserializeExt::take_from_value::<D>(&mut restrictions, "functions")?,
             arguments: DeserializeExt::take_from_value::<D>(&mut restrictions, "arguments")?,
@@ -94,7 +96,7 @@ mod tests {
     fn sample_restrictions<R: Rng + CryptoRng>(rng: &mut R) -> Restrictions<CurrentNetwork> {
         const NUM_RESTRICTIONS: usize = 10;
 
-        let mut restrictions = Restrictions::<CurrentNetwork>::new_blank();
+        let mut restrictions = Restrictions::<CurrentNetwork>::new_blank().unwrap();
         // Add the program restrictions.
         for _ in 0..NUM_RESTRICTIONS {
             let program_id = sample_program_id(rng);
@@ -127,6 +129,14 @@ mod tests {
             }
             restrictions.arguments.insert(locator, arguments);
         }
+        // Set the restrictions ID.
+        restrictions.restrictions_id = Restrictions::compute_restrictions_id(
+            &restrictions.programs,
+            &restrictions.functions,
+            &restrictions.arguments,
+        )
+        .unwrap();
+        // Return the restrictions.
         restrictions
     }
 

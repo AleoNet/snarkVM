@@ -194,9 +194,9 @@ mod tests {
             let expected = sample_argument_locator(rng);
 
             // Test the parser.
-            let arugment_locator = ArgumentLocator::parse(&expected.to_string()).unwrap().1;
-            assert_eq!(expected.is_input(), arugment_locator.is_input());
-            assert_eq!(expected.index(), arugment_locator.index());
+            let argument_locator = ArgumentLocator::parse(&expected.to_string()).unwrap().1;
+            assert_eq!(expected.is_input(), argument_locator.is_input());
+            assert_eq!(expected.index(), argument_locator.index());
 
             // Test the from_str.
             let argument_locator = ArgumentLocator::from_str(&expected.to_string()).unwrap();
