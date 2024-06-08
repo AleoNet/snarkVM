@@ -88,22 +88,24 @@ impl<N: Network> Restrictions<N> {
 
 impl<N: Network> Restrictions<N> {
     /// Returns the restrictions ID, for the current state of the `Restrictions` list.
-    pub fn restrictions_id(&self) -> Field<N> {
+    pub const fn restrictions_id(&self) -> Field<N> {
         self.restrictions_id
     }
 
     /// Returns the set of program IDs that are restricted from being executed.
-    pub fn programs(&self) -> &IndexMap<ProgramID<N>, BlockRange> {
+    pub const fn programs(&self) -> &IndexMap<ProgramID<N>, BlockRange> {
         &self.programs
     }
 
     /// Returns the set of `(program ID, function ID)` pairs that are restricted from being executed.
-    pub fn functions(&self) -> &IndexMap<Locator<N>, BlockRange> {
+    pub const fn functions(&self) -> &IndexMap<Locator<N>, BlockRange> {
         &self.functions
     }
 
     /// Returns the set of `(program ID, function ID, argument)` triples that are restricted from being executed.
-    pub fn arguments(&self) -> &IndexMap<Locator<N>, IndexMap<ArgumentLocator, IndexMap<Literal<N>, BlockRange>>> {
+    pub const fn arguments(
+        &self,
+    ) -> &IndexMap<Locator<N>, IndexMap<ArgumentLocator, IndexMap<Literal<N>, BlockRange>>> {
         &self.arguments
     }
 }
