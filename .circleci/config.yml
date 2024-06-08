@@ -3,13 +3,10 @@ version: 2.1
 parameters:
   xlarge:
     type: string
-    default: xlarge
+    default: anf/xlarge
   twoxlarge:
     type: string
-    default: 2xlarge
-  twoxlargeplus:
-    type: string
-    default: 2xlarge+
+    default: anf/2xlarge
 
 orbs:
   windows: circleci/windows@5.0
@@ -651,7 +648,7 @@ jobs:
   parameters:
     docker:
       - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
-    resource_class: << pipeline.parameters.twoxlargeplus >>
+    resource_class: << pipeline.parameters.xlarge >>
     steps:
       - run_serial:
           workspace_member: parameters
@@ -660,7 +657,7 @@ jobs:
   synthesizer:
     docker:
       - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
-    resource_class: << pipeline.parameters.twoxlargeplus >>
+    resource_class: << pipeline.parameters.twoxlarge >>
     steps:
       - run_serial:
           flags: --lib --bins
