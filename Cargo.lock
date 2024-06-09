@@ -3378,6 +3378,7 @@ dependencies = [
  "parking_lot",
  "rand",
  "rayon",
+ "serde",
  "serde_json",
  "serde_yaml",
  "snarkvm-algorithms",

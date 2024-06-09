@@ -31,7 +31,7 @@ snark = [ "synthesizer-snark" ]
 aleo-cli = [ ]
 async = [ "ledger-query/async", "synthesizer-process/async" ]
 cuda = [ "algorithms/cuda" ]
-history = [ "serde_json" ]
+history = [ "serde", "serde_json" ]
 rocks = [ "ledger-store/rocks" ]
 serial = [
   "console/serial",
@@ -163,8 +163,13 @@ version = "0.8"
 version = "1"
 optional = true
 
+[dependencies.serde]
+version = "1.0"
+optional = true
+
 [dependencies.serde_json]
-version = "1.0.117"
+version = "1.0"
+features = [ "preserve_order" ]
 optional = true
 
 [dependencies.tracing]

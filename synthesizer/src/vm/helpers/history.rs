@@ -12,22 +12,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use console::prelude::Serialize;
+use console::prelude::{Deserialize, Serialize};
 
 use aleo_std::{aleo_ledger_dir, StorageMode};
 
 use anyhow::Result;
 use serde_json;
-use std::path::PathBuf;
+use std::{
+    fmt::{Display, Formatter},
+    path::PathBuf,
+};
 
-/// Returns the path where a history directory may be stored.
+/// Returns the path where a `history` directory may be stored.
 pub fn history_directory_path(network: u16, storage_mode: StorageMode) -> PathBuf {
     const HISTORY_DIRECTORY_NAME: &str = "history";
 
     // Create the name of the history directory.
     let directory_name = match &storage_mode {
-        StorageMode::Development(id) => format!(".{HISTORY_DIRECTORY_NAME}-{}-{}", network, id),
-        StorageMode::Production | StorageMode::Custom(_) => format!("{HISTORY_DIRECTORY_NAME}-{}", network),
+        StorageMode::Development(id) => format!(".{HISTORY_DIRECTORY_NAME}-{network}-{id}"),
+        StorageMode::Production | StorageMode::Custom(_) => format!("{HISTORY_DIRECTORY_NAME}-{network}"),
     };
 
     // Obtain the path to the ledger.
@@ -40,23 +43,22 @@ pub fn history_directory_path(network: u16, storage_mode: StorageMode) -> PathBu
     path
 }
 
-#[derive(Copy, Clone)]
-pub enum HistoryVariant {
-    /// A `bonded` mapping.
+#[derive(Copy, Clone, Serialize, Deserialize)]
+pub enum MappingName {
+    /// The `bonded` mapping.
     Bonded,
-    /// A `delegated` mapping.
+    /// The `delegated` mapping.
     Delegated,
-    /// An `unbonding` mapping.
+    /// The `unbonding` mapping.
     Unbonding,
 }
 
-impl HistoryVariant {
-    /// Returns the name of the variant.
-    pub fn name(&self) -> &'static str {
+impl Display for MappingName {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Bonded => "bonded",
-            Self::Delegated => "delegated",
-            Self::Unbonding => "unbonding",
+            Self::Bonded => write!(f, "bonded"),
+            Self::Delegated => write!(f, "delegated"),
+            Self::Unbonding => write!(f, "unbonding"),
         }
     }
 }
@@ -67,13 +69,13 @@ pub struct History {
 }
 
 impl History {
-    /// Initializes a new instance of the history.
+    /// Initializes a new instance of `History`.
     pub fn new(network: u16, storage_mode: StorageMode) -> Self {
         Self { path: history_directory_path(network, storage_mode) }
     }
 
-    /// Stores an entry into the history.
-    pub fn store_entry<T>(&self, height: u32, variant: HistoryVariant, data: &T) -> Result<()>
+    /// Stores a mapping from a given block in the history directory as JSON.
+    pub fn store_entry<T>(&self, height: u32, mapping: MappingName, data: &T) -> Result<()>
     where
         T: Serialize + ?Sized,
     {
@@ -85,18 +87,18 @@ impl History {
         }
 
         // Write the entry to the block directory.
-        let entry_path = block_path.join(format!("block-{height}-{}.json", variant.name()));
+        let entry_path = block_path.join(format!("block-{height}-{mapping}.json"));
         std::fs::write(entry_path, serde_json::to_string_pretty(data)?)?;
 
         Ok(())
     }
 
-    /// Loads an entry from the history.
-    pub fn load_entry(&self, height: u32, variant: HistoryVariant) -> Result<String> {
+    /// Loads the JSON string for a mapping from a given block from the history directory.
+    pub fn load_entry(&self, height: u32, mapping: MappingName) -> Result<String> {
         // Get the path to the block directory.
         let block_path = self.path.join(format!("block-{height}"));
         // Get the path to the entry.
-        let entry_path = block_path.join(format!("block-{height}-{}.json", variant.name()));
+        let entry_path = block_path.join(format!("block-{height}-{mapping}.json"));
         // Load the entry.
         let result = std::fs::read_to_string(entry_path)?;
 
