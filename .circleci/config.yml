@@ -1,12 +1,15 @@
 version: 2.1
 
 parameters:
+  large:
+    type: string
+    default: $CI_LARGE
   xlarge:
     type: string
-    default: xlarge
+    default: $CI_XLARGE
   twoxlarge:
     type: string
-    default: xlarge
+    default: $CI_2XLARGE
 
 orbs:
   windows: circleci/windows@5.0
