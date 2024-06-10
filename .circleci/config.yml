@@ -3,13 +3,13 @@ version: 2.1
 parameters:
   large:
     type: string
-    default: ${CI_LARGE}
+    default: "${CI_LARGE}"
   xlarge:
     type: string
-    default: ${CI_XLARGE}
+    default: "${CI_XLARGE}"
   twoxlarge:
     type: string
-    default: ${CI_2XLARGE}
+    default: "${CI_2XLARGE}"
 
 orbs:
   windows: circleci/windows@5.0
