@@ -15,7 +15,7 @@
 pub mod genesis;
 pub use genesis::*;
 
-const REMOTE_URL: &str = "https://s3-us-west-1.amazonaws.com/canary.parameters";
+const REMOTE_URL: &str = "https://parameters.aleo.org/canary";
 
 // BondPublic
 impl_remote!(BondPublicProver, REMOTE_URL, "resources/", "bond_public", "prover");
