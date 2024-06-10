@@ -746,7 +746,7 @@ jobs:
   synthesizer-program-integration-instruction-is:
     docker:
       - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
-    resource_class: << pipeline.parameters.2xlarge >>
+    resource_class: << pipeline.parameters.twoxlarge >>
     steps:
       - run_serial:
           flags: instruction::is --test '*'
@@ -756,7 +756,7 @@ jobs:
   synthesizer-program-integration-instruction-equal:
     docker:
       - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
-    resource_class: << pipeline.parameters.2xlarge >>
+    resource_class: << pipeline.parameters.twoxlarge >>
     steps:
       - run_serial:
           flags: instruction::equal --test '*'
@@ -766,7 +766,7 @@ jobs:
   synthesizer-program-integration-instruction-commit:
     docker:
       - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
-    resource_class: << pipeline.parameters.2xlarge >>
+    resource_class: << pipeline.parameters.twoxlarge >>
     steps:
       - run_serial:
           flags: instruction::commit --test '*'
