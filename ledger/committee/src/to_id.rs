@@ -25,7 +25,7 @@ impl<N: Network> Committee<N> {
     /// Returns the commmitee ID.
     pub fn compute_committee_id(
         starting_round: u64,
-        members: &IndexMap<Address<N>, (u64, bool)>,
+        members: &IndexMap<Address<N>, (u64, bool, u8)>,
         total_stake: u64,
     ) -> Result<Field<N>> {
         let mut preimage = Vec::new();
@@ -34,13 +34,15 @@ impl<N: Network> Committee<N> {
         // Write the number of members.
         u16::try_from(members.len())?.write_le(&mut preimage)?;
         // Write the members.
-        for (address, (stake, is_open)) in members {
+        for (address, (stake, is_open, commission)) in members {
             // Write the address.
             address.write_le(&mut preimage)?;
             // Write the stake.
             stake.write_le(&mut preimage)?;
             // Write the is_open flag.
             is_open.write_le(&mut preimage)?;
+            // Write the commission.
+            commission.write_le(&mut preimage)?;
         }
         // Insert the total stake.
         total_stake.write_le(&mut preimage)?;
