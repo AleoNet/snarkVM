@@ -3,10 +3,10 @@ version: 2.1
 parameters:
   xlarge:
     type: string
-    default: anf/xlarge
+    default: echo ${CI_XLARGE}
   twoxlarge:
     type: string
-    default: anf/2xlarge
+    default: echo ${CI_2xLARGE}
 
 orbs:
   windows: circleci/windows@5.0
