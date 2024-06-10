@@ -6,7 +6,7 @@ parameters:
     default: echo ${CI_XLARGE}
   twoxlarge:
     type: string
-    default: echo ${CI_2xLARGE}
+    default: echo ${CI_2XLARGE}
 
 orbs:
   windows: circleci/windows@5.0
