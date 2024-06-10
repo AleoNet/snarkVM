@@ -44,6 +44,7 @@ pub fn history_directory_path(network: u16, storage_mode: StorageMode) -> PathBu
 }
 
 #[derive(Copy, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum MappingName {
     /// The `bonded` mapping.
     Bonded,
@@ -75,7 +76,7 @@ impl History {
     }
 
     /// Stores a mapping from a given block in the history directory as JSON.
-    pub fn store_entry<T>(&self, height: u32, mapping: MappingName, data: &T) -> Result<()>
+    pub fn store_mapping<T>(&self, height: u32, mapping: MappingName, data: &T) -> Result<()>
     where
         T: Serialize + ?Sized,
     {
@@ -94,7 +95,7 @@ impl History {
     }
 
     /// Loads the JSON string for a mapping from a given block from the history directory.
-    pub fn load_entry(&self, height: u32, mapping: MappingName) -> Result<String> {
+    pub fn load_mapping(&self, height: u32, mapping: MappingName) -> Result<String> {
         // Get the path to the block directory.
         let block_path = self.path.join(format!("block-{height}"));
         // Get the path to the entry.

@@ -1267,14 +1267,13 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                         let history = History::new(N::ID, store.storage_mode().clone());
 
                         // Write the delegated mapping as JSON.
-                        history.store_entry(state.block_height(), MappingName::Delegated, &next_delegated_map)?;
+                        history.store_mapping(state.block_height(), MappingName::Delegated, &next_delegated_map)?;
                         // Write the bonded mapping as JSON.
-                        history.store_entry(state.block_height(), MappingName::Bonded, &next_bonded_map)?;
+                        history.store_mapping(state.block_height(), MappingName::Bonded, &next_bonded_map)?;
 
-                        // TODO: Write the unbonding mapping.
                         let unbonding_mapping = Identifier::from_str("unbonding")?;
                         let unbonding_map = store.get_mapping_speculative(program_id, unbonding_mapping)?;
-                        history.store_entry(state.block_height(), MappingName::Unbonding, &unbonding_map)?;
+                        history.store_mapping(state.block_height(), MappingName::Unbonding, &unbonding_map)?;
                     }
 
                     // Store the finalize operations for updating the committee and bonded mapping.
