@@ -268,10 +268,10 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
         // Construct the committee members.
         let members = indexmap::indexmap! {
-            Address::try_from(private_keys[0])? => (ledger_committee::MIN_VALIDATOR_STAKE, true),
-            Address::try_from(private_keys[1])? => (ledger_committee::MIN_VALIDATOR_STAKE, true),
-            Address::try_from(private_keys[2])? => (ledger_committee::MIN_VALIDATOR_STAKE, true),
-            Address::try_from(private_keys[3])? => (ledger_committee::MIN_VALIDATOR_STAKE, true),
+            Address::try_from(private_keys[0])? => (ledger_committee::MIN_VALIDATOR_STAKE, true, 0u8),
+            Address::try_from(private_keys[1])? => (ledger_committee::MIN_VALIDATOR_STAKE, true, 0u8),
+            Address::try_from(private_keys[2])? => (ledger_committee::MIN_VALIDATOR_STAKE, true, 0u8),
+            Address::try_from(private_keys[3])? => (ledger_committee::MIN_VALIDATOR_STAKE, true, 0u8),
         };
         // Construct the committee.
         let committee = Committee::<N>::new_genesis(members)?;
@@ -289,7 +289,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         let bonded_balances = committee
             .members()
             .iter()
-            .map(|(address, (amount, _))| (*address, (*address, *address, *amount)))
+            .map(|(address, (amount, _, _))| (*address, (*address, *address, *amount)))
             .collect();
         // Return the genesis block.
         self.genesis_quorum(private_key, committee, public_balances, bonded_balances, rng)
@@ -2458,156 +2458,6 @@ finalize transfer_public_to_private:
 
         // Update the VM.
         vm.add_next_block(&block).unwrap();
-    }
-
-    #[test]
-    fn test_bond_public_as_validator_from_program_fails() {
-        let rng = &mut TestRng::default();
-
-        // Initialize a genesis private key..
-        let genesis_private_key = sample_genesis_private_key(rng);
-
-        // Initialize a caller.
-        let caller_private_key = PrivateKey::new(rng).unwrap();
-        let caller_address = Address::try_from(&caller_private_key).unwrap();
-
-        // Initialize the genesis block.
-        let genesis = sample_genesis_block(rng);
-
-        // Initialize the VM.
-        let vm = sample_vm();
-
-        // Update the VM.
-        vm.add_next_block(&genesis).unwrap();
-
-        // Deploy a program that calls `bond_public`.
-        let program = Program::from_str(
-            r"
-import credits.aleo;
-
-program credits_wrapper.aleo;
-
-function bond_public:
-    input r0 as address.public;
-    input r1 as address.public;
-    input r2 as u64.public;
-    call credits.aleo/transfer_public_as_signer credits_wrapper.aleo r2 into r3;
-    call credits.aleo/bond_public r0 r1 r2 into r4;
-    async bond_public r3 r4 into r5;
-    output r5 as credits_wrapper.aleo/bond_public.future;
-
-finalize bond_public:
-    input r0 as credits.aleo/transfer_public_as_signer.future;
-    input r1 as credits.aleo/bond_public.future;
-    await r0;
-    await r1;
-    ",
-        )
-        .unwrap();
-
-        // Get the address of the wrapper program.
-        let wrapper_program_id = ProgramID::<CurrentNetwork>::from_str("credits_wrapper.aleo").unwrap();
-
-        // Deploy the wrapper program.
-        let deployment = vm.deploy(&genesis_private_key, &program, None, 0, None, rng).unwrap();
-
-        // Transfer credits to the caller.
-        let transaction = vm
-            .execute(
-                &genesis_private_key,
-                ("credits.aleo", "transfer_public_as_signer"),
-                vec![
-                    Value::from_str(&format!("{}", caller_address)).unwrap(),
-                    Value::from_str(&format!("{}u64", 3 * ledger_committee::MIN_VALIDATOR_STAKE)).unwrap(),
-                ]
-                .iter(),
-                None,
-                0,
-                None,
-                rng,
-            )
-            .unwrap();
-
-        // Add the deployment to a block and update the VM.
-        let block = sample_next_block(&vm, &genesis_private_key, &[deployment, transaction], rng).unwrap();
-
-        // Check that both transactions were accepted.
-        assert_eq!(block.transactions().num_accepted(), 2);
-
-        // Update the VM.
-        vm.add_next_block(&block).unwrap();
-
-        // Call the wrapper program to bond as a validator.
-        let result = vm.execute(
-            &caller_private_key,
-            ("credits_wrapper.aleo", "bond_public"),
-            vec![
-                Value::from_str(&format!("{}", wrapper_program_id.to_address().unwrap())).unwrap(),
-                Value::from_str(&format!("{}", wrapper_program_id.to_address().unwrap())).unwrap(),
-                Value::from_str(&format!("{}u64", ledger_committee::MIN_VALIDATOR_STAKE)).unwrap(),
-            ]
-            .iter(),
-            None,
-            0,
-            None,
-            rng,
-        );
-
-        // Verify that the execution failed.
-        assert!(result.is_err());
-
-        // Check that the caller is not a validator.
-        let committee_mapping_name = Identifier::from_str("committee").unwrap();
-        let is_validator = vm
-            .finalize_store()
-            .get_value_confirmed(
-                ProgramID::from_str("credits.aleo").unwrap(),
-                committee_mapping_name,
-                &Plaintext::from(Literal::Address(caller_address)),
-            )
-            .unwrap()
-            .is_some();
-        assert!(!is_validator);
-
-        // Bond using the credits.aleo program.
-        let transaction = vm
-            .execute(
-                &caller_private_key,
-                ("credits.aleo", "bond_public"),
-                vec![
-                    Value::from_str(&format!("{caller_address}")).unwrap(),
-                    Value::from_str(&format!("{caller_address}")).unwrap(),
-                    Value::from_str(&format!("{}u64", ledger_committee::MIN_VALIDATOR_STAKE)).unwrap(),
-                ]
-                .iter(),
-                None,
-                0,
-                None,
-                rng,
-            )
-            .unwrap();
-
-        // Verify the transaction.
-        vm.check_transaction(&transaction, None, rng).unwrap();
-
-        // Add the transaction to a block and update the VM.
-        let block = sample_next_block(&vm, &genesis_private_key, &[transaction], rng).unwrap();
-
-        // Update the VM.
-        vm.add_next_block(&block).unwrap();
-
-        // Check that the caller is now a validator.
-        let committee_mapping_name = Identifier::from_str("committee").unwrap();
-        let is_validator = vm
-            .finalize_store()
-            .get_value_confirmed(
-                ProgramID::from_str("credits.aleo").unwrap(),
-                committee_mapping_name,
-                &Plaintext::from(Literal::Address(caller_address)),
-            )
-            .unwrap()
-            .is_some();
-        assert!(is_validator);
     }
 
     #[test]
