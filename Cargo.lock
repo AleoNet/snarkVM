@@ -3395,6 +3395,7 @@ dependencies = [
  "snarkvm-synthesizer-program",
  "snarkvm-synthesizer-snark",
  "snarkvm-utilities",
+ "tempfile",
  "tracing",
  "walkdir",
 ]

@@ -398,7 +398,19 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         self.block_store().pause_atomic_writes()?;
 
         // First, insert the block.
-        self.block_store().insert(block)?;
+        if let Err(insert_error) = self.block_store().insert(block) {
+            if cfg!(feature = "rocks") {
+                // Clear all pending atomic operations so that unpausing the atomic writes
+                // doesn't execute any of the queued storage operations.
+                self.block_store().abort_atomic();
+                // Disable the atomic batch override.
+                // Note: This call is guaranteed to succeed (without error), because `DISCARD_BATCH == true`.
+                self.block_store().unpause_atomic_writes::<true>()?;
+            }
+
+            return Err(insert_error);
+        };
+
         // Next, finalize the transactions.
         match self.finalize(state, block.ratifications(), block.solutions(), block.transactions()) {
             Ok(_ratified_finalize_operations) => {
@@ -450,12 +462,16 @@ pub(crate) mod test_helpers {
     };
     use ledger_block::{Block, Header, Metadata, Transition};
     use ledger_store::helpers::memory::ConsensusMemory;
+    #[cfg(feature = "rocks")]
+    use ledger_store::helpers::rocksdb::ConsensusDB;
     use ledger_test_helpers::{large_transaction_program, small_transaction_program};
     use synthesizer_program::Program;
 
     use indexmap::IndexMap;
     use once_cell::sync::OnceCell;
     use std::borrow::Borrow;
+    #[cfg(feature = "rocks")]
+    use std::path::Path;
     use synthesizer_snark::VerifyingKey;
 
     pub(crate) type CurrentNetwork = MainnetV0;
@@ -468,6 +484,12 @@ pub(crate) mod test_helpers {
     pub(crate) fn sample_vm() -> VM<CurrentNetwork, ConsensusMemory<CurrentNetwork>> {
         // Initialize a new VM.
         VM::from(ConsensusStore::open(None).unwrap()).unwrap()
+    }
+
+    #[cfg(feature = "rocks")]
+    pub(crate) fn sample_vm_rocks(path: &Path) -> VM<CurrentNetwork, ConsensusDB<CurrentNetwork>> {
+        // Initialize a new VM.
+        VM::from(ConsensusStore::open(path.to_owned()).unwrap()).unwrap()
     }
 
     pub(crate) fn sample_genesis_private_key(rng: &mut TestRng) -> PrivateKey<CurrentNetwork> {
@@ -2474,5 +2496,34 @@ finalize transfer_public_to_private:
 
         // Ensure this call succeeds.
         vm.puzzle.prove(rng.gen(), rng.gen(), rng.gen(), None).unwrap();
+    }
+
+    #[cfg(feature = "rocks")]
+    #[test]
+    fn test_atomic_unpause_on_error() {
+        let rng = &mut TestRng::default();
+
+        // Initialize a genesis private key..
+        let genesis_private_key = sample_genesis_private_key(rng);
+
+        // Initialize the genesis block.
+        let genesis = sample_genesis_block(rng);
+
+        // Initialize a VM and sample 2 blocks using it.
+        let vm = sample_vm();
+        vm.add_next_block(&genesis).unwrap();
+        let block1 = sample_next_block(&vm, &genesis_private_key, &[], rng).unwrap();
+        vm.add_next_block(&block1).unwrap();
+        let block2 = sample_next_block(&vm, &genesis_private_key, &[], rng).unwrap();
+
+        // Create a new, rocks-based VM shadowing the 1st one.
+        let tempdir = tempfile::tempdir().unwrap();
+        let vm = sample_vm_rocks(tempdir.path());
+        vm.add_next_block(&genesis).unwrap();
+        // This time, however, try to insert the 2nd block first, which fails due to height.
+        assert!(vm.add_next_block(&block2).is_err());
+
+        // It should still be possible to insert the 1st block afterwards.
+        vm.add_next_block(&block1).unwrap();
     }
 }
