@@ -3,10 +3,10 @@ version: 2.1
 parameters:
   xlarge:
     type: string
-    default: anf/xlarge
+    default: aleonet/xlarge
   twoxlarge:
     type: string
-    default: anf/2xlarge
+    default: aleonet/2xlarge
 
 orbs:
   windows: circleci/windows@5.0
