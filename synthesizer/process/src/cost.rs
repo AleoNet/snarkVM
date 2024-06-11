@@ -424,9 +424,9 @@ function over_five_thousand:
     output 5u64 as u64.public;
     "#;
     // Cost for a program +1 byte above the threshold.
-    const STORAGE_COST_ABOVE_THRESHOLD: u64 = 25_010;
+    const STORAGE_COST_ABOVE_THRESHOLD: u64 = 5002;
     // Storage cost for an execution transaction at the maximum transaction size.
-    const STORAGE_COST_MAX: u64 = 16_384_000;
+    const STORAGE_COST_MAX: u64 = 3_276_800;
 
     fn test_storage_cost_bounds<N: Network>() {
         // Calculate the bounds directly above and below the size threshold.

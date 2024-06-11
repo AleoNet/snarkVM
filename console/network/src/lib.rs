@@ -119,7 +119,7 @@ pub trait Network:
     /// The cost in microcredits per byte for the deployment transaction.
     const DEPLOYMENT_FEE_MULTIPLIER: u64 = 1_000; // 1 millicredit per byte
     /// The constant that divides the storage polynomial.
-    const EXECUTION_STORAGE_FEE_SCALING_FACTOR: u64 = 1000;
+    const EXECUTION_STORAGE_FEE_SCALING_FACTOR: u64 = 5000;
     /// The maximum size execution transactions can be before a quadratic storage penalty applies.
     const EXECUTION_STORAGE_PENALTY_THRESHOLD: u64 = 5_000;
     /// The cost in microcredits per constraint for the deployment transaction.
