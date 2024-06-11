@@ -149,6 +149,10 @@ package = "snarkvm-ledger-block"
 path = "./block"
 features = [ "test" ]
 
+[dev-dependencies.ledger-test-helpers]
+package = "snarkvm-ledger-test-helpers"
+path = "./test-helpers"
+
 [dev-dependencies.serde_json]
 version = "1.0"
 features = [ "preserve_order" ]

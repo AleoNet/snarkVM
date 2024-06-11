@@ -33,6 +33,7 @@ fn initialize_vm<R: Rng + CryptoRng>(
     private_key: &PrivateKey<MainnetV0>,
     rng: &mut R,
 ) -> (VM<MainnetV0, ConsensusMemory<MainnetV0>>, Vec<Record<MainnetV0, Plaintext<MainnetV0>>>) {
+    // Initialize the VM.
     let vm = VM::from(ConsensusStore::open(None).unwrap()).unwrap();
 
     // Initialize the genesis block.

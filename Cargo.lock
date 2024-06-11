@@ -858,6 +858,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "enum-iterator"
+version = "2.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c280b9e6b3ae19e152d8e31cf47f18389781e119d4013a2a2bb0180e5facc635"
+dependencies = [
+ "enum-iterator-derive",
+]
+
+[[package]]
+name = "enum-iterator-derive"
+version = "1.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a1ab991c1362ac86c61ab6f556cff143daa22e5a15e4e189df818b2fd19fe65b"
+dependencies = [
+ "proc-macro2",
+ "quote 1.0.35",
+ "syn 2.0.48",
+]
+
+[[package]]
 name = "enum_index"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2912,6 +2932,7 @@ name = "snarkvm-console-program"
 version = "0.16.19"
 dependencies = [
  "bincode",
+ "enum-iterator",
  "enum_index",
  "enum_index_derive",
  "indexmap 2.2.6",
@@ -3356,6 +3377,7 @@ dependencies = [
  "snarkvm-circuit",
  "snarkvm-console",
  "snarkvm-curves",
+ "snarkvm-ledger-block",
  "snarkvm-ledger-store",
  "snarkvm-synthesizer",
  "snarkvm-utilities",
@@ -3370,6 +3392,7 @@ version = "0.16.19"
 dependencies = [
  "aleo-std",
  "anyhow",
+ "bincode",
  "criterion",
  "indexmap 2.2.6",
  "itertools 0.11.0",
@@ -3396,6 +3419,7 @@ dependencies = [
  "snarkvm-synthesizer-program",
  "snarkvm-synthesizer-snark",
  "snarkvm-utilities",
+ "tempfile",
  "tracing",
  "walkdir",
 ]

@@ -855,6 +855,12 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         // Abort the transactions that are have duplicates or are invalid. This will prevent the VM from performing
         // verification on transactions that would have been aborted in `VM::atomic_speculate`.
         for transaction in transactions.iter() {
+            // Abort the transaction early if it is a fee transaction.
+            if transaction.is_fee() {
+                aborted_transactions.push((*transaction, "Fee transactions are not allowed in speculate".to_string()));
+                continue;
+            }
+
             // Determine if the transaction should be aborted.
             match self.should_abort_transaction(
                 transaction,
@@ -900,14 +906,6 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             // Verify the transactions and collect the error message if there is one.
             let (valid, invalid): (Vec<_>, Vec<_>) =
                 cfg_into_iter!(transactions).zip(rngs).partition_map(|(transaction, mut rng)| {
-                    // Abort the transaction if it is a fee transaction.
-                    if transaction.is_fee() {
-                        return Either::Right((
-                            *transaction,
-                            "Fee transactions are not allowed in speculate".to_string(),
-                        ));
-                    }
-
                     // Verify the transaction.
                     match self.check_transaction(transaction, None, &mut rng) {
                         // If the transaction is valid, add it to the list of valid transactions.
@@ -1341,7 +1339,10 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::vm::{test_helpers, test_helpers::sample_finalize_state};
+    use crate::vm::{
+        test_helpers,
+        test_helpers::{sample_finalize_state, sample_vm},
+    };
     use console::{
         account::{Address, PrivateKey, ViewKey},
         program::{Ciphertext, Entry, Record},
@@ -2232,8 +2233,7 @@ finalize compute:
         let rng = &mut TestRng::default();
 
         // Initialize the VM.
-        let vm =
-            VM::from(ConsensusStore::<CurrentNetwork, ConsensusMemory<CurrentNetwork>>::open(None).unwrap()).unwrap();
+        let vm = sample_vm();
 
         // Construct the validators, greater than the maximum committee size.
         let validators =
@@ -2291,8 +2291,7 @@ finalize compute:
         let rng = &mut TestRng::default();
 
         // Initialize the VM.
-        let vm =
-            VM::from(ConsensusStore::<CurrentNetwork, ConsensusMemory<CurrentNetwork>>::open(None).unwrap()).unwrap();
+        let vm = sample_vm();
 
         // Construct the validators.
         // Note: We use a smaller committee size to ensure that there is enough supply to allocate to the validators and genesis block transactions.
@@ -2348,8 +2347,7 @@ finalize compute:
         println!("Initializing VMs.");
 
         // Initialize the VM.
-        let vm =
-            VM::from(ConsensusStore::<CurrentNetwork, ConsensusMemory<CurrentNetwork>>::open(None).unwrap()).unwrap();
+        let vm = sample_vm();
 
         println!("Constructing validator and delegator sets.");
 
@@ -2541,10 +2539,8 @@ finalize compute:
         println!("Initializing VMs.");
 
         // Initialize two VMs.
-        let vm_1 =
-            VM::from(ConsensusStore::<CurrentNetwork, ConsensusMemory<CurrentNetwork>>::open(None).unwrap()).unwrap();
-        let vm_2 =
-            VM::from(ConsensusStore::<CurrentNetwork, ConsensusMemory<CurrentNetwork>>::open(None).unwrap()).unwrap();
+        let vm_1 = sample_vm();
+        let vm_2 = sample_vm();
 
         println!("Constructing validator and delegator sets.");
 
@@ -2732,8 +2728,7 @@ finalize compute:
         let rng = &mut TestRng::default();
 
         // Initialize the VM.
-        let vm =
-            VM::from(ConsensusStore::<CurrentNetwork, ConsensusMemory<CurrentNetwork>>::open(None).unwrap()).unwrap();
+        let vm = sample_vm();
 
         // Attempt to construct a genesis quorum, with a validator with an insufficient amount.
         let mut validators = (0..3)
@@ -2796,8 +2791,7 @@ finalize compute:
         let rng = &mut TestRng::default();
 
         // Initialize the VM.
-        let vm =
-            VM::from(ConsensusStore::<CurrentNetwork, ConsensusMemory<CurrentNetwork>>::open(None).unwrap()).unwrap();
+        let vm = sample_vm();
 
         // Track the allocated amount.
         let mut allocated_amount = 0;
@@ -2892,8 +2886,7 @@ finalize compute:
         let rng = &mut TestRng::default();
 
         // Initialize the VM.
-        let vm =
-            VM::from(ConsensusStore::<CurrentNetwork, ConsensusMemory<CurrentNetwork>>::open(None).unwrap()).unwrap();
+        let vm = sample_vm();
 
         // Initialize the validators.
         let validators = sample_validators(4, rng);
@@ -2968,8 +2961,7 @@ finalize compute:
         let rng = &mut TestRng::default();
 
         // Initialize the VM.
-        let vm =
-            VM::from(ConsensusStore::<CurrentNetwork, ConsensusMemory<CurrentNetwork>>::open(None).unwrap()).unwrap();
+        let vm = sample_vm();
 
         // Initialize the validators, with one closed.
         let validators = (0..4)
@@ -3108,8 +3100,7 @@ finalize compute:
         let rng = &mut TestRng::default();
 
         // Initialize the VM.
-        let vm =
-            VM::from(ConsensusStore::<CurrentNetwork, ConsensusMemory<CurrentNetwork>>::open(None).unwrap()).unwrap();
+        let vm = sample_vm();
 
         // Sample the validators.
         let validators = sample_validators(NUM_VALIDATORS, rng);
