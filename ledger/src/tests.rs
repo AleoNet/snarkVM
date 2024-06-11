@@ -33,6 +33,11 @@ use synthesizer::{program::Program, vm::VM, Stack};
 use indexmap::IndexMap;
 use rand::seq::SliceRandom;
 
+/// Initializes a sample VM.
+fn sample_vm() -> VM<CurrentNetwork, ConsensusMemory<CurrentNetwork>> {
+    VM::from(ConsensusStore::<CurrentNetwork, ConsensusMemory<CurrentNetwork>>::open(None).unwrap()).unwrap()
+}
+
 #[test]
 fn test_load() {
     let rng = &mut TestRng::default();
@@ -1615,7 +1620,7 @@ fn test_abort_invalid_transaction() {
     let crate::test_helpers::TestEnv { ledger, private_key, address, .. } = crate::test_helpers::sample_test_env(rng);
 
     // Initialize a new VM.
-    let vm = VM::from(ConsensusStore::<CurrentNetwork, ConsensusMemory<CurrentNetwork>>::open(None).unwrap()).unwrap();
+    let vm = sample_vm();
 
     // Construct a custom genesis block.
     let custom_genesis = vm.genesis_beacon(&private_key, rng).unwrap();
@@ -1779,7 +1784,7 @@ fn test_max_committee_limit_with_bonds() {
     let rng = &mut TestRng::default();
 
     // Initialize the VM.
-    let vm = VM::from(ConsensusStore::<CurrentNetwork, ConsensusMemory<CurrentNetwork>>::open(None).unwrap()).unwrap();
+    let vm = sample_vm();
 
     // Construct the validators, one less than the maximum committee size.
     let validators = (0..Committee::<CurrentNetwork>::MAX_COMMITTEE_SIZE - 1)

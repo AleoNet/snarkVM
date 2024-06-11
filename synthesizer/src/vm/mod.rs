@@ -21,7 +21,7 @@ mod execute;
 mod finalize;
 mod verify;
 
-use crate::{cast_mut_ref, cast_ref, convert, process};
+use crate::{cast_mut_ref, cast_ref, convert, process, Restrictions};
 use console::{
     account::{Address, PrivateKey},
     network::prelude::*,
@@ -80,12 +80,14 @@ pub struct VM<N: Network, C: ConsensusStorage<N>> {
     puzzle: Puzzle<N>,
     /// The VM store.
     store: ConsensusStore<N, C>,
+    /// A cache containing the list of recent partially-verified transactions.
+    partially_verified_transactions: Arc<RwLock<LruCache<N::TransactionID, ()>>>,
+    /// The restrictions list.
+    restrictions: Restrictions<N>,
     /// The lock to guarantee atomicity over calls to speculate and finalize.
     atomic_lock: Arc<Mutex<()>>,
     /// The lock for ensuring there is no concurrency when advancing blocks.
     block_lock: Arc<Mutex<()>>,
-    /// A cache containing the list of recent partially-verified transactions.
-    partially_verified_transactions: Arc<RwLock<LruCache<N::TransactionID, ()>>>,
 }
 
 impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
@@ -187,11 +189,12 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             process: Arc::new(RwLock::new(process)),
             puzzle: Self::new_puzzle()?,
             store,
-            atomic_lock: Arc::new(Mutex::new(())),
-            block_lock: Arc::new(Mutex::new(())),
             partially_verified_transactions: Arc::new(RwLock::new(LruCache::new(
                 NonZeroUsize::new(Transactions::<N>::MAX_TRANSACTIONS).unwrap(),
             ))),
+            restrictions: Restrictions::load()?,
+            atomic_lock: Arc::new(Mutex::new(())),
+            block_lock: Arc::new(Mutex::new(())),
         })
     }
 
@@ -217,6 +220,12 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     #[inline]
     pub fn partially_verified_transactions(&self) -> Arc<RwLock<LruCache<N::TransactionID, ()>>> {
         self.partially_verified_transactions.clone()
+    }
+
+    /// Returns the restrictions.
+    #[inline]
+    pub const fn restrictions(&self) -> &Restrictions<N> {
+        &self.restrictions
     }
 }
 

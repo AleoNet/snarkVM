@@ -152,6 +152,11 @@ impl Network for TestnetV0 {
         snarkvm_parameters::testnet::GenesisBytes::load_bytes()
     }
 
+    /// Returns the restrictions list as a JSON-compatible string.
+    fn restrictions_list_as_str() -> &'static str {
+        snarkvm_parameters::testnet::RESTRICTIONS_LIST
+    }
+
     /// Returns the proving key for the given function name in `credits.aleo`.
     fn get_credits_proving_key(function_name: String) -> Result<&'static Arc<VarunaProvingKey<Self>>> {
         TESTNET_CREDITS_PROVING_KEYS

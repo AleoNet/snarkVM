@@ -22,12 +22,13 @@ use console::{
     program::{Identifier, Literal, Plaintext, ProgramID, Value},
 };
 use ledger_committee::{MAX_DELEGATORS, MIN_DELEGATOR_STAKE};
+use ledger_store::ConsensusStore;
+use synthesizer::VM;
+
 #[cfg(not(feature = "rocks"))]
 use ledger_store::helpers::memory::ConsensusMemory;
 #[cfg(feature = "rocks")]
 use ledger_store::helpers::rocksdb::ConsensusDB;
-use ledger_store::ConsensusStore;
-use synthesizer::VM;
 
 use criterion::Criterion;
 use indexmap::indexmap;

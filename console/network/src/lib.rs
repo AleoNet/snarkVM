@@ -215,6 +215,9 @@ pub trait Network:
     /// Returns the genesis block bytes.
     fn genesis_bytes() -> &'static [u8];
 
+    /// Returns the restrictions list as a JSON-compatible string.
+    fn restrictions_list_as_str() -> &'static str;
+
     /// Returns the proving key for the given function name in `credits.aleo`.
     fn get_credits_proving_key(function_name: String) -> Result<&'static Arc<VarunaProvingKey<Self>>>;
 
