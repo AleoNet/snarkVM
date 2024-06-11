@@ -14,21 +14,23 @@
 
 use super::*;
 
-impl<N: Network> FromBytes for Solution<N> {
-    /// Reads the solution from the buffer.
+impl<N: Network> FromBytes for PartialSolution<N> {
+    /// Reads the partial solution from the buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let partial_solution = PartialSolution::read_le(&mut reader)?;
-        let target = u64::read_le(&mut reader)?;
+        let epoch_hash = N::BlockHash::read_le(&mut reader)?;
+        let address = Address::<N>::read_le(&mut reader)?;
+        let counter = u64::read_le(&mut reader)?;
 
-        Ok(Self::new(partial_solution, target))
+        Self::new(epoch_hash, address, counter).map_err(error)
     }
 }
 
-impl<N: Network> ToBytes for Solution<N> {
-    /// Writes the solution to the buffer.
+impl<N: Network> ToBytes for PartialSolution<N> {
+    /// Writes the parital solution to the buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.partial_solution.write_le(&mut writer)?;
-        self.target.write_le(&mut writer)
+        self.epoch_hash.write_le(&mut writer)?;
+        self.address.write_le(&mut writer)?;
+        self.counter.write_le(&mut writer)
     }
 }
 
@@ -45,15 +47,13 @@ mod tests {
         let private_key = PrivateKey::<CurrentNetwork>::new(&mut rng)?;
         let address = Address::try_from(private_key)?;
 
-        // Sample a new solution.
-        let partial_solution = PartialSolution::new(rng.gen(), address, u64::rand(&mut rng)).unwrap();
-        let target = u64::rand(&mut rng);
-        let expected = Solution::new(partial_solution, target);
+        // Sample a new partial solution.
+        let expected = PartialSolution::new(rng.gen(), address, u64::rand(&mut rng)).unwrap();
 
         // Check the byte representation.
         let expected_bytes = expected.to_bytes_le()?;
-        assert_eq!(expected, Solution::read_le(&expected_bytes[..])?);
-        assert!(Solution::<CurrentNetwork>::read_le(&expected_bytes[1..]).is_err());
+        assert_eq!(expected, PartialSolution::read_le(&expected_bytes[..])?);
+        assert!(PartialSolution::<CurrentNetwork>::read_le(&expected_bytes[1..]).is_err());
 
         Ok(())
     }
