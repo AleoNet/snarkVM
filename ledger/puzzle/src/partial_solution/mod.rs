@@ -16,51 +16,48 @@ mod bytes;
 mod serialize;
 mod string;
 
-use crate::{PartialSolution, SolutionID};
+use crate::SolutionID;
 use console::{account::Address, network::prelude::*, prelude::DeserializeExt};
 
-/// A helper struct around a puzzle solution.
+/// The partial solution for the puzzle from a prover.
 #[derive(Copy, Clone, Eq, PartialEq, Hash)]
-pub struct Solution<N: Network> {
-    /// The partial solution.
-    partial_solution: PartialSolution<N>,
-    /// The solution target.
-    target: u64,
+pub struct PartialSolution<N: Network> {
+    /// The solution ID.
+    solution_id: SolutionID<N>,
+    /// The epoch hash.
+    epoch_hash: N::BlockHash,
+    /// The address of the prover.
+    address: Address<N>,
+    /// The counter for the solution.
+    counter: u64,
 }
 
-impl<N: Network> Solution<N> {
-    /// Initializes a new instance of the solution.
-    pub fn new(partial_solution: PartialSolution<N>, target: u64) -> Self {
-        Self { partial_solution, target }
-    }
-
-    /// Returns the partial solution..
-    pub const fn partial_solution(&self) -> &PartialSolution<N> {
-        &self.partial_solution
+impl<N: Network> PartialSolution<N> {
+    /// Initializes a new instance of the partial solution.
+    pub fn new(epoch_hash: N::BlockHash, address: Address<N>, counter: u64) -> Result<Self> {
+        // Compute the solution ID.
+        let solution_id = SolutionID::new(epoch_hash, address, counter)?;
+        // Return the partial solution.
+        Ok(Self { solution_id, epoch_hash, address, counter })
     }
 
     /// Returns the solution ID.
     pub const fn id(&self) -> SolutionID<N> {
-        self.partial_solution.id()
+        self.solution_id
     }
 
     /// Returns the epoch hash of the solution.
     pub const fn epoch_hash(&self) -> N::BlockHash {
-        self.partial_solution.epoch_hash()
+        self.epoch_hash
     }
 
     /// Returns the address of the prover.
     pub const fn address(&self) -> Address<N> {
-        self.partial_solution.address()
+        self.address
     }
 
     /// Returns the counter for the solution.
     pub const fn counter(&self) -> u64 {
-        self.partial_solution.counter()
-    }
-
-    /// Returns the target for the solution.
-    pub const fn target(&self) -> u64 {
-        self.target
+        self.counter
     }
 }

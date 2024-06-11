@@ -14,24 +14,24 @@
 
 use super::*;
 
-impl<N: Network> FromStr for Solution<N> {
+impl<N: Network> FromStr for PartialSolution<N> {
     type Err = Error;
 
-    /// Initializes the solution from a JSON-string.
+    /// Initializes the partial solution from a JSON-string.
     fn from_str(solution: &str) -> Result<Self, Self::Err> {
         Ok(serde_json::from_str(solution)?)
     }
 }
 
-impl<N: Network> Debug for Solution<N> {
-    /// Prints the solution as a JSON-string.
+impl<N: Network> Debug for PartialSolution<N> {
+    /// Prints the partial solution as a JSON-string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         Display::fmt(self, f)
     }
 }
 
-impl<N: Network> Display for Solution<N> {
-    /// Displays the solution as a JSON-string.
+impl<N: Network> Display for PartialSolution<N> {
+    /// Displays the partial solution as a JSON-string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         write!(f, "{}", serde_json::to_string(self).map_err::<fmt::Error, _>(ser::Error::custom)?)
     }
@@ -50,14 +50,12 @@ mod tests {
         let private_key = PrivateKey::<CurrentNetwork>::new(&mut rng)?;
         let address = Address::try_from(private_key)?;
 
-        // Sample a new solution.
-        let partial_solution = PartialSolution::new(rng.gen(), address, u64::rand(&mut rng)).unwrap();
-        let target = u64::rand(&mut rng);
-        let expected = Solution::new(partial_solution, target);
+        // Sample a new partial solution.
+        let expected = PartialSolution::new(rng.gen(), address, u64::rand(&mut rng)).unwrap();
 
         // Check the string representation.
         let candidate = expected.to_string();
-        assert_eq!(expected, Solution::from_str(&candidate)?);
+        assert_eq!(expected, PartialSolution::from_str(&candidate)?);
 
         Ok(())
     }

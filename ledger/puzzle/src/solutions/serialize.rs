@@ -44,6 +44,7 @@ impl<'de, N: Network> Deserialize<'de> for PuzzleSolutions<N> {
 #[cfg(test)]
 pub(super) mod tests {
     use super::*;
+    use crate::PartialSolution;
     use console::account::{Address, PrivateKey};
 
     type CurrentNetwork = console::network::MainnetV0;
@@ -55,7 +56,8 @@ pub(super) mod tests {
             let private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
             let address = Address::try_from(private_key).unwrap();
 
-            let solution = Solution::new(rng.gen(), address, u64::rand(rng)).unwrap();
+            let partial_solution = PartialSolution::new(rng.gen(), address, u64::rand(rng)).unwrap();
+            let solution = Solution::new(partial_solution, u64::rand(rng));
             solutions.push(solution);
         }
         PuzzleSolutions::new(solutions).unwrap()
