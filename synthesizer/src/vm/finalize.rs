@@ -855,6 +855,12 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         // Abort the transactions that are have duplicates or are invalid. This will prevent the VM from performing
         // verification on transactions that would have been aborted in `VM::atomic_speculate`.
         for transaction in transactions.iter() {
+            // Abort the transaction early if it is a fee transaction.
+            if transaction.is_fee() {
+                aborted_transactions.push((*transaction, "Fee transactions are not allowed in speculate".to_string()));
+                continue;
+            }
+
             // Determine if the transaction should be aborted.
             match self.should_abort_transaction(
                 transaction,
@@ -900,14 +906,6 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             // Verify the transactions and collect the error message if there is one.
             let (valid, invalid): (Vec<_>, Vec<_>) =
                 cfg_into_iter!(transactions).zip(rngs).partition_map(|(transaction, mut rng)| {
-                    // Abort the transaction if it is a fee transaction.
-                    if transaction.is_fee() {
-                        return Either::Right((
-                            *transaction,
-                            "Fee transactions are not allowed in speculate".to_string(),
-                        ));
-                    }
-
                     // Verify the transaction.
                     match self.check_transaction(transaction, None, &mut rng) {
                         // If the transaction is valid, add it to the list of valid transactions.
