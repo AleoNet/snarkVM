@@ -413,21 +413,12 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                                         }
                                     }
                                 }
-                                None => {
-                                    if execution.len() == 1 && execution.peek().unwrap().is_split() {
-                                        // `credits.aleo/split` failed without a fee.
-                                        #[cfg(debug_assertions)]
-                                        eprintln!("Execution failed without a fee");
-                                        // Store the aborted transaction.
-                                        aborted.push((transaction.clone(), "Execution failed without a fee".to_string()));
-                                        // Continue to the next transaction.
-                                        continue 'outer;
-                                    } else {
-                                        // This is a foundational bug - the caller is violating protocol rules.
-                                        // Note: This will abort the entire atomic batch.
-                                        Err("Rejected execute transaction has no fee".to_string())
-                                    }
-                                }
+
+                                // This is a foundational bug - the caller is violating protocol rules.
+                                // It is possible that a `credits.aleo/split` transaction has no fee. However, it
+                                // is a simple transition without finalize operations and should not fail here.
+                                // Note: This will abort the entire atomic batch.
+                                None => Err("Rejected execute transaction has no fee".to_string()),
                             },
                         }
                     }
