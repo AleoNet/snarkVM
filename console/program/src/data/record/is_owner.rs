@@ -15,6 +15,7 @@
 use super::*;
 
 impl<N: Network> Record<N, Ciphertext<N>> {
+    /// Determines whether the record belongs to the account.
     /// Decrypts `self` into plaintext using the given view key.
     pub fn is_owner(&self, view_key: &ViewKey<N>) -> bool {
         // Compute the address.
