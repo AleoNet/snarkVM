@@ -118,6 +118,6 @@ impl History {
 
     // A helper function to calculate the group number for a given block height.
     fn group(height: u32) -> u32 {
-        height.saturating_div(2u32 << 16)
+        height.saturating_div(u16::MAX as u32)
     }
 }
