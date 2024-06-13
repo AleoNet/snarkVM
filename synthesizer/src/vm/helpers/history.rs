@@ -107,17 +107,6 @@ impl History {
         Ok(data)
     }
 
-    /// Removes data for a given block from the history directory.
-    pub fn remove_block(&self, height: u32) -> Result<()> {
-        let path = self.block_path(height);
-        // Remove the block directory if it exists.
-        if path.exists() {
-            std::fs::remove_dir_all(path)?;
-        }
-
-        Ok(())
-    }
-
     // A helper function to get the path to the block directory.
     fn block_path(&self, height: u32) -> PathBuf {
         // Get the path the directory group.
