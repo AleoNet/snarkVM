@@ -54,7 +54,7 @@ pub fn staking_rewards<N: Network>(
         .map(|(staker, (validator, stake))| {
             // If the validator is not in the committee, skip the staker.
             let Some((validator_stake, _is_open, commission_rate)) = committee.members().get(validator) else {
-                error!("Validator {validator} is not in the committee - skipping {staker}");
+                trace!("Validator {validator} is not in the committee - skipping {staker}");
                 return (*staker, (*validator, *stake));
             };
 
