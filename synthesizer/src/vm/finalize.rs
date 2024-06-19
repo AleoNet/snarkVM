@@ -1783,7 +1783,6 @@ finalize transfer_public:
         // Initialize a new address.
         let new_validator_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
         let new_validator_address = Address::try_from(&new_validator_private_key).unwrap();
-        let new_validator_withdrawal_address = Address::<CurrentNetwork>::new(rng.gen());
 
         // Construct the committee.
         // Track the allocated amount.
@@ -1822,9 +1821,9 @@ finalize transfer_public:
 
         // Attempt to bond a new validator above the maximum number of validators.
         let inputs = vec![
-            Value::<CurrentNetwork>::from_str(&new_validator_withdrawal_address.to_string()).unwrap(), // Withdrawal address
-            Value::<CurrentNetwork>::from_str(&format!("{MIN_VALIDATOR_STAKE}u64")).unwrap(),          // Amount
-            Value::<CurrentNetwork>::from_str("42u8").unwrap(),                                        // Commission
+            Value::<CurrentNetwork>::from_str(&validator_addresses.first().unwrap().to_string()).unwrap(), // Withdrawal address
+            Value::<CurrentNetwork>::from_str(&format!("{MIN_VALIDATOR_STAKE}u64")).unwrap(),              // Amount
+            Value::<CurrentNetwork>::from_str("42u8").unwrap(),                                            // Commission
         ];
 
         // Execute.
