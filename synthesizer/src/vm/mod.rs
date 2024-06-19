@@ -25,7 +25,7 @@ use crate::{cast_mut_ref, cast_ref, convert, process, Restrictions};
 use console::{
     account::{Address, PrivateKey},
     network::prelude::*,
-    program::{Identifier, Literal, Locator, Plaintext, ProgramID, ProgramOwner, Record, Value},
+    program::{Argument, Identifier, Literal, Locator, Plaintext, ProgramID, ProgramOwner, Record, Value},
     types::{Field, Group, U64},
 };
 use ledger_block::{
@@ -35,7 +35,7 @@ use ledger_block::{
     Execution,
     Fee,
     Header,
-    Input,
+    Output,
     Ratifications,
     Ratify,
     Rejected,
