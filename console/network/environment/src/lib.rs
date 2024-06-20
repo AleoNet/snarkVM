@@ -137,7 +137,7 @@ pub mod prelude {
     };
     pub use serde::{
         de,
-        de::{DeserializeOwned, SeqAccess, Visitor},
+        de::{DeserializeOwned, EnumAccess, MapAccess, SeqAccess, VariantAccess, Visitor},
         ser::{self, SerializeSeq, SerializeStruct},
         Deserialize,
         Deserializer,

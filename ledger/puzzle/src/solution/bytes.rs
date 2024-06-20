@@ -17,20 +17,18 @@ use super::*;
 impl<N: Network> FromBytes for Solution<N> {
     /// Reads the solution from the buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let epoch_hash = N::BlockHash::read_le(&mut reader)?;
-        let address = Address::<N>::read_le(&mut reader)?;
-        let counter = u64::read_le(&mut reader)?;
+        let partial_solution = PartialSolution::read_le(&mut reader)?;
+        let target = u64::read_le(&mut reader)?;
 
-        Self::new(epoch_hash, address, counter).map_err(error)
+        Ok(Self::new(partial_solution, target))
     }
 }
 
 impl<N: Network> ToBytes for Solution<N> {
     /// Writes the solution to the buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.epoch_hash.write_le(&mut writer)?;
-        self.address.write_le(&mut writer)?;
-        self.counter.write_le(&mut writer)
+        self.partial_solution.write_le(&mut writer)?;
+        self.target.write_le(&mut writer)
     }
 }
 
@@ -48,7 +46,9 @@ mod tests {
         let address = Address::try_from(private_key)?;
 
         // Sample a new solution.
-        let expected = Solution::new(rng.gen(), address, u64::rand(&mut rng)).unwrap();
+        let partial_solution = PartialSolution::new(rng.gen(), address, u64::rand(&mut rng)).unwrap();
+        let target = u64::rand(&mut rng);
+        let expected = Solution::new(partial_solution, target);
 
         // Check the byte representation.
         let expected_bytes = expected.to_bytes_le()?;

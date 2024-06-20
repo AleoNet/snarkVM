@@ -15,6 +15,11 @@
 pub(crate) mod committee;
 pub use committee::*;
 
+#[cfg(feature = "history")]
+mod history;
+#[cfg(feature = "history")]
+pub use history::*;
+
 mod macros;
 
 mod rewards;

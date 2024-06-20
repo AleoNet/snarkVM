@@ -19,12 +19,10 @@ impl<N: Network> Serialize for Solution<N> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
             true => {
-                let mut partial_solution = serializer.serialize_struct("Solution", 4)?;
-                partial_solution.serialize_field("solution_id", &self.solution_id)?;
-                partial_solution.serialize_field("epoch_hash", &self.epoch_hash)?;
-                partial_solution.serialize_field("address", &self.address)?;
-                partial_solution.serialize_field("counter", &self.counter)?;
-                partial_solution.end()
+                let mut solution = serializer.serialize_struct("Solution", 2)?;
+                solution.serialize_field("partial_solution", &self.partial_solution)?;
+                solution.serialize_field("target", &self.target)?;
+                solution.end()
             }
             false => ToBytesSerializer::serialize_with_size_encoding(self, serializer),
         }
@@ -36,23 +34,12 @@ impl<'de, N: Network> Deserialize<'de> for Solution<N> {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         match deserializer.is_human_readable() {
             true => {
-                let mut partial_solution = serde_json::Value::deserialize(deserializer)?;
-                let solution_id: SolutionID<N> =
-                    DeserializeExt::take_from_value::<D>(&mut partial_solution, "solution_id")?;
+                let mut solution = serde_json::Value::deserialize(deserializer)?;
 
-                // Recover the partial solution.
-                let solution = Self::new(
-                    DeserializeExt::take_from_value::<D>(&mut partial_solution, "epoch_hash")?,
-                    DeserializeExt::take_from_value::<D>(&mut partial_solution, "address")?,
-                    DeserializeExt::take_from_value::<D>(&mut partial_solution, "counter")?,
-                )
-                .map_err(de::Error::custom)?;
-
-                // Ensure the solution ID matches.
-                match solution_id == solution.id() {
-                    true => Ok(solution),
-                    false => Err(de::Error::custom(error("Mismatching solution ID, possible data corruption"))),
-                }
+                Ok(Self::new(
+                    DeserializeExt::take_from_value::<D>(&mut solution, "partial_solution")?,
+                    DeserializeExt::take_from_value::<D>(&mut solution, "target")?,
+                ))
             }
             false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "solution"),
         }
@@ -73,7 +60,9 @@ mod tests {
         let address = Address::try_from(private_key)?;
 
         // Sample a new solution.
-        let expected = Solution::new(rng.gen(), address, u64::rand(&mut rng)).unwrap();
+        let partial_solution = PartialSolution::new(rng.gen(), address, u64::rand(&mut rng)).unwrap();
+        let target = u64::rand(&mut rng);
+        let expected = Solution::new(partial_solution, target);
 
         // Serialize
         let expected_string = &expected.to_string();
@@ -94,7 +83,9 @@ mod tests {
         let address = Address::try_from(private_key)?;
 
         // Sample a new solution.
-        let expected = Solution::new(rng.gen(), address, u64::rand(&mut rng)).unwrap();
+        let partial_solution = PartialSolution::new(rng.gen(), address, u64::rand(&mut rng)).unwrap();
+        let target = u64::rand(&mut rng);
+        let expected = Solution::new(partial_solution, target);
 
         // Serialize
         let expected_bytes = expected.to_bytes_le()?;
