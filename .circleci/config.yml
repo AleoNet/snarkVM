@@ -15,7 +15,7 @@ parameters:
     default: xlarge
   twoxlarge:
     type: string
-    default: twoxlarge
+    default: aleonet/2xlarge
 
 orbs:
   windows: circleci/windows@5.0
@@ -530,7 +530,7 @@ jobs:
   ledger-block:
     docker:
       - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
-    resource_class: << pipeline.parameters.xlarge >>
+    resource_class: << pipeline.parameters.twoxlarge >>
     steps:
       - run_serial:
           workspace_member: ledger/block
@@ -638,7 +638,7 @@ jobs:
   ledger-store:
     docker:
       - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
-    resource_class: << pipeline.parameters.xlarge >>
+    resource_class: << pipeline.parameters.twoxlarge >>
     steps:
       - run_serial:
           flags: --features=rocks
@@ -657,7 +657,7 @@ jobs:
   parameters:
     docker:
       - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
-    resource_class: << pipeline.parameters.xlarge >>
+    resource_class: << pipeline.parameters.twoxlarge >>
     steps:
       - run_serial:
           workspace_member: parameters
@@ -666,7 +666,7 @@ jobs:
   synthesizer:
     docker:
       - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
-    resource_class: << pipeline.parameters.xlarge >>
+    resource_class: << pipeline.parameters.twoxlarge >>
     steps:
       - run_serial:
           flags: --lib --bins
@@ -676,7 +676,7 @@ jobs:
   synthesizer-integration:
     docker:
       - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
-    resource_class: << pipeline.parameters.large >>
+    resource_class: << pipeline.parameters.twoxlarge >>
     steps:
       - run_serial:
           flags: --test '*'
@@ -715,7 +715,7 @@ jobs:
   synthesizer-program-integration:
     docker:
       - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
-    resource_class: << pipeline.parameters.xlarge >>
+    resource_class: << pipeline.parameters.twoxlarge >>
     steps:
       - run_serial:
           flags: --test '*' -- --skip keccak --skip psd --skip sha --skip instruction::is --skip instruction::equal --skip instruction::commit
@@ -755,7 +755,7 @@ jobs:
   synthesizer-program-integration-instruction-is:
     docker:
       - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
-    resource_class: << pipeline.parameters.xlarge >>
+    resource_class: << pipeline.parameters.twoxlarge >>
     steps:
       - run_serial:
           flags: instruction::is --test '*'
