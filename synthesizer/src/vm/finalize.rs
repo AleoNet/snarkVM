@@ -947,9 +947,12 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         let bond_validator_addresses: HashSet<_> = execution
             .transitions()
             .filter_map(|transition| match transition.is_bond_validator() {
-                // Check the first input of the transition for the validator address.
-                true => match transition.inputs().first() {
-                    Some(Input::Public(_, Some(Plaintext::Literal(Literal::Address(address), _)))) => Some(address),
+                // Get the first argument of the transition output if it is a `Future` with a `Plaintext` argument.
+                true => match transition.outputs().first() {
+                    Some(Output::Future(_, Some(future))) => future.arguments().first().and_then(|arg| match arg {
+                        Argument::Plaintext(Plaintext::Literal(Literal::Address(address), _)) => Some(*address),
+                        _ => None,
+                    }),
                     _ => None,
                 },
                 false => None,
@@ -1763,6 +1766,93 @@ finalize transfer_public:
 
         // Check that the unconfirmed transaction ID of the rejected deployment is correct.
         assert_eq!(candidate_transactions[0].to_unconfirmed_transaction_id().unwrap(), deployment_transaction_id);
+    }
+
+    #[test]
+    fn test_bond_validator_above_maximum_fails() {
+        // Initialize an RNG.
+        let rng = &mut TestRng::default();
+
+        // Initialize the VM.
+        let vm = sample_vm();
+
+        // Initialize the validators with the maximum number of validators.
+        let validators =
+            sample_validators::<CurrentNetwork>(Committee::<CurrentNetwork>::MAX_COMMITTEE_SIZE as usize, rng);
+
+        // Initialize a new address.
+        let new_validator_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+        let new_validator_address = Address::try_from(&new_validator_private_key).unwrap();
+
+        // Construct the committee.
+        // Track the allocated amount.
+        let (committee_map, allocated_amount) =
+            sample_committee_map_and_allocated_amount(&validators, &IndexMap::new());
+
+        // Collect all of the addresses in a single place
+        let validator_addresses =
+            validators.keys().map(|private_key| Address::try_from(private_key).unwrap()).collect::<Vec<_>>();
+
+        // Construct the public balances, allocating the remaining supply.
+        let new_validator_balance = MIN_VALIDATOR_STAKE + 100_000_000;
+        let mut public_balances = sample_public_balances(
+            &validator_addresses,
+            <CurrentNetwork as Network>::STARTING_SUPPLY - allocated_amount - new_validator_balance,
+        );
+        // Set the public balance of the new validator to the minimum validator stake.
+        public_balances.insert(new_validator_address, new_validator_balance);
+
+        // Construct the bonded balances.
+        let bonded_balances = sample_bonded_balances(&validators, &IndexMap::new());
+
+        // Construct the genesis block, which should pass.
+        let block = vm
+            .genesis_quorum(
+                validators.keys().next().unwrap(),
+                Committee::new_genesis(committee_map).unwrap(),
+                public_balances,
+                bonded_balances,
+                rng,
+            )
+            .unwrap();
+
+        // Add the block.
+        vm.add_next_block(&block).unwrap();
+
+        // Attempt to bond a new validator above the maximum number of validators.
+        let inputs = vec![
+            Value::<CurrentNetwork>::from_str(&validator_addresses.first().unwrap().to_string()).unwrap(), // Withdrawal address
+            Value::<CurrentNetwork>::from_str(&format!("{MIN_VALIDATOR_STAKE}u64")).unwrap(),              // Amount
+            Value::<CurrentNetwork>::from_str("42u8").unwrap(),                                            // Commission
+        ];
+
+        // Execute.
+        let bond_validator_transaction = vm
+            .execute(
+                &new_validator_private_key,
+                ("credits.aleo", "bond_validator"),
+                inputs.into_iter(),
+                None,
+                1,
+                None,
+                rng,
+            )
+            .unwrap();
+
+        // Verify.
+        vm.check_transaction(&bond_validator_transaction, None, rng).unwrap();
+
+        // Speculate on the transactions.
+        let transactions = [bond_validator_transaction.clone()];
+        let (_, confirmed_transactions, _, _) =
+            vm.atomic_speculate(sample_finalize_state(1), None, vec![], &None.into(), transactions.iter()).unwrap();
+
+        // Assert that the transaction is rejected.
+        assert_eq!(confirmed_transactions.len(), 1);
+        assert_eq!(
+            confirmed_transactions[0],
+            reject(0, &bond_validator_transaction, confirmed_transactions[0].finalize_operations())
+        );
     }
 
     #[test]
