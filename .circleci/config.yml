@@ -211,7 +211,7 @@ jobs:
   circuit-algorithms:
     docker:
       - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
-    resource_class: << pipeline.parameters.small >>
+    resource_class: << pipeline.parameters.medium >>
     steps:
       - run_serial:
           workspace_member: circuit/algorithms
@@ -366,7 +366,7 @@ jobs:
   console-collections:
     docker:
       - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
-    resource_class: << pipeline.parameters.large >>
+    resource_class: << pipeline.parameters.xlarge >>
     steps:
       - run_serial:
           workspace_member: console/collections
@@ -511,7 +511,7 @@ jobs:
   ledger-with-valid-solutions:
     docker:
       - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
-    resource_class: << pipeline.parameters.large >>
+    resource_class: << pipeline.parameters.xlarge >>
     steps:
       - run_serial:
           flags: valid_solutions --features=test
@@ -539,7 +539,7 @@ jobs:
   ledger-committee:
     docker:
       - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
-    resource_class: << pipeline.parameters.small >>
+    resource_class: << pipeline.parameters.medium >>
     steps:
       - run_serial:
           workspace_member: ledger/committee
@@ -705,7 +705,7 @@ jobs:
   synthesizer-program:
     docker:
       - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
-    resource_class: << pipeline.parameters.large >>
+    resource_class: << pipeline.parameters.xlarge >>
     steps:
       - run_serial:
           flags: --lib --bins
@@ -725,7 +725,7 @@ jobs:
   synthesizer-program-integration-keccak:
     docker:
       - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
-    resource_class: << pipeline.parameters.medium >>
+    resource_class: << pipeline.parameters.xlarge >>
     steps:
       - run_serial:
           flags: keccak --test '*'
@@ -775,7 +775,7 @@ jobs:
   synthesizer-program-integration-instruction-commit:
     docker:
       - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
-    resource_class: << pipeline.parameters.large >>
+    resource_class: << pipeline.parameters.xlarge >>
     steps:
       - run_serial:
           flags: instruction::commit --test '*'
@@ -846,7 +846,7 @@ jobs:
   check-clippy:
     docker:
       - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
-    resource_class: << pipeline.parameters.large >>
+    resource_class: << pipeline.parameters.xlarge >>
     steps:
       - checkout
       - setup_environment:
