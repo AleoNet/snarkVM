@@ -140,13 +140,18 @@ impl Network for MainnetV0 {
     /// The function name for the inclusion circuit.
     const INCLUSION_FUNCTION_NAME: &'static str = snarkvm_parameters::mainnet::NETWORK_INCLUSION_FUNCTION_NAME;
     /// The maximum number of certificates in a batch.
-    const MAX_CERTIFICATES: u16 = 10;
+    const MAX_CERTIFICATES: u16 = 15;
     /// The network name.
     const NAME: &'static str = "Aleo Mainnet (v0)";
 
     /// Returns the genesis block bytes.
     fn genesis_bytes() -> &'static [u8] {
         snarkvm_parameters::mainnet::GenesisBytes::load_bytes()
+    }
+
+    /// Returns the restrictions list as a JSON-compatible string.
+    fn restrictions_list_as_str() -> &'static str {
+        snarkvm_parameters::mainnet::RESTRICTIONS_LIST
     }
 
     /// Returns the proving key for the given function name in `credits.aleo`.

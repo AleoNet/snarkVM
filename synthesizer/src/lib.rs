@@ -33,6 +33,11 @@ pub use crate::process::{Authorization, CallMetrics, Process, Stack, Trace};
 pub use crate::program::{Closure, Command, Finalize, Function, Instruction, Program};
 
 #[cfg(all(feature = "process", feature = "program", feature = "snark"))]
+mod restrictions;
+#[cfg(all(feature = "process", feature = "program", feature = "snark"))]
+pub use restrictions::*;
+
+#[cfg(all(feature = "process", feature = "program", feature = "snark"))]
 pub mod vm;
 #[cfg(all(feature = "process", feature = "program", feature = "snark"))]
 pub use vm::*;

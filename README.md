@@ -71,10 +71,11 @@ Alternatively, you can install `snarkvm` by building from the source code as fol
 
 ```bash
 # Download the source code
-git clone https://github.com/AleoNet/snarkvm && cd snarkvm
-
+git clone --branch mainnet --single-branch https://github.com/AleoNet/snarkVM.git 
+cd snarkVM
+git checkout tags/testnet-beta
 # Install snarkVM
-$ cargo install --path .
+cargo install --path .
 ```
 
 Now to use `snarkvm`, in your terminal, run:

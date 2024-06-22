@@ -1199,6 +1199,11 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
         (*self.tree.read().root()).into()
     }
 
+    /// Returns the current block height.
+    pub fn current_block_height(&self) -> u32 {
+        u32::try_from(self.tree.read().number_of_leaves()).unwrap() - 1
+    }
+
     /// Returns the state root that contains the given `block height`.
     pub fn get_state_root(&self, block_height: u32) -> Result<Option<N::StateRoot>> {
         self.storage.get_state_root(block_height)

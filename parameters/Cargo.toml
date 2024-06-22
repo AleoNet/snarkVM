@@ -115,6 +115,9 @@ path = "../circuit"
 [dev-dependencies.snarkvm-console]
 path = "../console"
 
+[dev-dependencies.snarkvm-ledger-block]
+path = "../ledger/block"
+
 [dev-dependencies.snarkvm-ledger-store]
 path = "../ledger/store"
 
