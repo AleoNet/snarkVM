@@ -1,5 +1,5 @@
 <p align="center">
-    <img alt="snarkVM" width="1412" src="https://repository-images.githubusercontent.com/247216177/29db4fb6-1330-4a3d-a27f-f07b7391592d">
+    <img alt="snarkVM" width="1412" src="https://aleo.org/snarkVM.png">
 </p>
 
 <p align="center">
@@ -71,10 +71,11 @@ Alternatively, you can install `snarkvm` by building from the source code as fol
 
 ```bash
 # Download the source code
-git clone https://github.com/AleoNet/snarkvm && cd snarkvm
-
+git clone --branch mainnet --single-branch https://github.com/AleoNet/snarkVM.git 
+cd snarkVM
+git checkout tags/testnet-beta
 # Install snarkVM
-$ cargo install --path .
+cargo install --path .
 ```
 
 Now to use `snarkvm`, in your terminal, run:
