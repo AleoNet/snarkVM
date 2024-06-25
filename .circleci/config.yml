@@ -16,9 +16,6 @@ parameters:
   twoxlarge:
     type: string
     default: aleonet/2xlarge
-  twoxlargeplus:
-    type: string
-    default: aleonet/2xlarge+
 
 orbs:
   windows: circleci/windows@5.0
@@ -669,7 +666,7 @@ jobs:
   synthesizer:
     docker:
       - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
-    resource_class: << pipeline.parameters.twoxlargeplus >>
+    resource_class: << pipeline.parameters.twoxlarge >>
     steps:
       - run_serial:
           flags: --lib --bins
