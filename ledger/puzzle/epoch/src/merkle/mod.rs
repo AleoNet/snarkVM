@@ -72,7 +72,7 @@ impl<N: Network> MerklePuzzle<N> {
         // Seed a random number generator from the epoch hash.
         let mut epoch_rng = ChaChaRng::seed_from_u64(seed);
         // Sample a random number of leaves.
-        Ok(epoch_rng.gen_range(MIN_NUMBER_OF_LEAVES..MAX_NUMBER_OF_LEAVES))
+        Ok(epoch_rng.gen_range(MIN_NUMBER_OF_LEAVES..=MAX_NUMBER_OF_LEAVES))
     }
 }
 

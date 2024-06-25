@@ -261,7 +261,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         // Initialize a new instance of the puzzle.
         macro_rules! logic {
             ($network:path, $aleo:path) => {{
-                let puzzle = Puzzle::new::<ledger_puzzle_epoch::MerklePuzzle<$network>>();
+                let puzzle = Puzzle::new::<ledger_puzzle_epoch::SynthesisPuzzle<$network, $aleo>>();
                 Ok(cast_ref!(puzzle as Puzzle<N>).clone())
             }};
         }

@@ -24,13 +24,28 @@ license = "Apache-2.0"
 edition = "2021"
 
 [features]
-default = [ "merkle", "rayon" ]
+default = [ "synthesis", "rayon" ]
 serial = [
   "console/serial",
   "snarkvm-ledger-puzzle/serial",
 ]
 merkle = [ ]
+synthesis = [
+  "aleo-std",
+  "circuit",
+  "lru",
+  "parking_lot",
+  "snarkvm-synthesizer-process",
+  "snarkvm-synthesizer-program"
+]
+timer = [ "aleo-std/timer" ]
 wasm = [ "console/wasm" ]
+
+[dependencies.circuit]
+package = "snarkvm-circuit"
+path = "../../../circuit"
+version = "=0.16.19"
+optional = true
 
 [dependencies.console]
 package = "snarkvm-console"
@@ -41,6 +56,21 @@ version = "=0.16.19"
 path = "../."
 version = "=0.16.19"
 
+[dependencies.snarkvm-synthesizer-process]
+path = "../../../synthesizer/process"
+version = "=0.16.19"
+optional = true
+
+[dependencies.snarkvm-synthesizer-program]
+path = "../../../synthesizer/program"
+version = "=0.16.19"
+optional = true
+
+[dependencies.aleo-std]
+version = "0.1.24"
+default-features = false
+optional = true
+
 [dependencies.anyhow]
 version = "1.0.73"
 
@@ -50,6 +80,14 @@ version = "2"
 [dependencies.indexmap]
 version = "2.0"
 features = [ "serde", "rayon" ]
+
+[dependencies.lru]
+version = "0.12"
+optional = true
+
+[dependencies.parking_lot]
+version = "0.12"
+optional = true
 
 [dependencies.rand]
 version = "0.8"
