@@ -1070,10 +1070,13 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                                 *amount >= MIN_DELEGATOR_STAKE,
                                 "Ratify::Genesis(..) the delegator {address} must stake at least {MIN_DELEGATOR_STAKE}",
                             );
-                            // If the address is a delegator, check that the corresponding validator is open or the validator does not exist.
+                            // If the corresponding validator is not a committee member yet, then continue.
+                            if !committee.is_committee_member(*validator_address) {
+                                continue;
+                            }
+                            // If the address is a delegator, check that the corresponding validator is open.
                             ensure!(
-                                committee.is_committee_member_open(*validator_address)
-                                    || !committee.is_committee_member(*validator_address),
+                                committee.is_committee_member_open(*validator_address),
                                 "Ratify::Genesis(..) the delegator {address} is delegating to a closed validator {validator_address}",
                             );
                         }
