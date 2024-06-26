@@ -107,7 +107,7 @@ impl<N: Network, A: Aleo<Network = N>> SynthesisPuzzle<N, A> {
     /// Returns the epoch program for the given epoch hash.
     pub fn get_epoch_program(&self, epoch_hash: N::BlockHash) -> Result<EpochProgram<N>> {
         // If the epoch program is in the cache, return it.
-        if let Some(epoch_program) = self.epoch_program_cache.write().get(&epoch_hash) {
+        if let Some(epoch_program) = self.epoch_program_cache.read().get(&epoch_hash) {
             return Ok(epoch_program.clone());
         }
 
