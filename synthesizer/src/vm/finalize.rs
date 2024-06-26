@@ -1073,7 +1073,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                             // If the address is a delegator, check that the corresponding validator is open or the validator does not exist.
                             ensure!(
                                 committee.is_committee_member_open(*validator_address)
-                                    || committee.is_committee_member(*validator_address),
+                                    || !committee.is_committee_member(*validator_address),
                                 "Ratify::Genesis(..) the delegator {address} is delegating to a closed validator {validator_address}",
                             );
                         }
