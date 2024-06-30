@@ -160,7 +160,7 @@ and Merkle Puzzle.
 
 ### K-ary Merkle Tree
 
--   Both versions of the puzzle use a K-ary Merkle Tree of `DEPTH` 8
+-   Both versions of the puzzle use a K-ary Merkle Tree of `DEPTH` 9
     and `ARITY` 8.
 
 -   The leaf and path hash functions is SHA-256.
