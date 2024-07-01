@@ -42,7 +42,7 @@ impl<N: Network> EpochProgram<N> {
 
         // Pad the leaves up to the next power of two.
         if leaves.len() < num_padded_leaves {
-            leaves.resize(num_padded_leaves, vec![false; 254]);
+            leaves.resize(num_padded_leaves, vec![false; <A as Environment>::BaseField::size_in_bits()]);
         }
 
         Ok(leaves)

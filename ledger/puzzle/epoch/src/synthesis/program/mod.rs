@@ -17,7 +17,7 @@ mod to_leaves;
 mod to_r1cs;
 
 use crate::synthesis::helpers::*;
-use circuit::{environment::R1CS, Mode};
+use circuit::{environment::R1CS, prelude::PrimeField, Environment, Mode};
 use console::{
     account::PrivateKey,
     network::Network,
