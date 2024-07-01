@@ -91,6 +91,7 @@ impl<N: Network> Process<N> {
 
             // Ensure each output is valid.
             let num_inputs = transition.inputs().len();
+            let num_outputs = transition.outputs().len();
             if transition
                 .outputs()
                 .iter()
@@ -105,6 +106,10 @@ impl<N: Network> Process<N> {
             let stack = self.get_stack(transition.program_id())?;
             // Retrieve the function from the stack.
             let function = stack.get_function(transition.function_name())?;
+
+            // Ensure the number of inputs and outputs match the expected number in the function.
+            ensure!(function.inputs().len() == num_inputs, "The number of transition inputs is incorrect");
+            ensure!(function.outputs().len() == num_outputs, "The number of transition outputs is incorrect");
 
             // Retrieve the parent program ID.
             // Note: The last transition in the execution does not have a parent, by definition.
