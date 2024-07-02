@@ -12,12 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#[cfg(feature = "merkle")]
-pub mod merkle;
-#[cfg(feature = "merkle")]
-pub use merkle::*;
+use console::program::LiteralType;
 
-#[cfg(feature = "synthesis")]
-pub mod synthesis;
-#[cfg(feature = "synthesis")]
-pub use synthesis::*;
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub enum PuzzleDestination {
+    Ephemeral(LiteralType, u16),
+    Register(LiteralType),
+}
+
+impl PuzzleDestination {
+    /// Returns whether or not the puzzle operand is an ephemeral register.
+    #[inline]
+    pub fn is_ephemeral(&self) -> bool {
+        matches!(self, Self::Ephemeral(_, _))
+    }
+
+    /// Returns whether or not the puzzle operand is a register.
+    #[inline]
+    pub fn is_register(&self) -> bool {
+        matches!(self, Self::Register(_))
+    }
+}

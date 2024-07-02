@@ -41,9 +41,8 @@ pub const fn puzzle_reward(coinbase_reward: u64) -> u64 {
 }
 
 /// Calculates the coinbase reward for a given block.
-///     R_coinbase = max(0, H_Y10 - H) * R_anchor * min(P, C_R) / C
-///     R_anchor = Anchor reward.
-///     H_Y10 = Anchor block height at year 10.
+///     R_coinbase = R_anchor(H) * min(P, C_R) / C
+///     R_anchor = Anchor reward at block height.
 ///     H = Current block height.
 ///     P = Combined proof target.
 ///     C_R = Remaining coinbase target.
@@ -62,9 +61,6 @@ pub fn coinbase_reward(
     // Compute the remaining proof target.
     let remaining_proof_target = combined_proof_target.min(remaining_coinbase_target as u128);
 
-    /* Until the anchor block height at year 10, the coinbase reward is determined by this equation: */
-    /*   anchor_block_reward * remaining_proof_target / coinbase_target */
-
     // Compute the anchor block reward.
     let anchor_block_reward = anchor_block_reward_at_height(block_height, starting_supply, anchor_height, block_time);
 
@@ -80,27 +76,35 @@ pub fn coinbase_reward(
 }
 
 /// Calculates the anchor block reward for the given block height.
-///     R_anchor = floor((2 * S * H_A * H_R) / (H_Y10 * (H_Y10 + 1))).
+///     R_anchor = max(floor((2 * S * H_A * H_R) / (H_Y10 * (H_Y10 + 1))), R_Y9).
 ///     S = Starting supply.
 ///     H_A = Anchor block height.
 ///     H_R = Remaining number of blocks until year 10.
 ///     H_Y10 = Expected block height at year 10.
-const fn anchor_block_reward_at_height(
-    block_height: u32,
-    starting_supply: u64,
-    anchor_height: u32,
-    block_time: u16,
-) -> u128 {
-    // Calculate the block height at year 10.
-    let block_height_at_year_10 = block_height_at_year(block_time, 10) as u128;
-    // Compute the remaining blocks until year 10, as a u64.
-    let num_remaining_blocks_to_year_10 = block_height_at_year_10.saturating_sub(block_height as u128);
-    // Compute the numerator.
-    let numerator = 2 * starting_supply as u128 * anchor_height as u128 * num_remaining_blocks_to_year_10;
-    // Compute the denominator.
-    let denominator = block_height_at_year_10 * (block_height_at_year_10 + 1);
-    // Return the anchor block reward.
-    numerator / denominator
+///     R_Y9 = Reward at year 9.
+fn anchor_block_reward_at_height(block_height: u32, starting_supply: u64, anchor_height: u32, block_time: u16) -> u128 {
+    // A helper function to calculate the reward at a given block height, without the year 9 baseline.
+    const fn block_reward_at_height(height: u32, starting_supply: u64, anchor_height: u32, block_time: u16) -> u128 {
+        // Calculate the block height at year 10.
+        let block_height_at_year_10 = block_height_at_year(block_time, 10) as u128;
+        // Compute the remaining blocks until year 10.
+        let num_remaining_blocks_to_year_10 = block_height_at_year_10.saturating_sub(height as u128);
+        // Compute the numerator.
+        let numerator = 2 * starting_supply as u128 * anchor_height as u128 * num_remaining_blocks_to_year_10;
+        // Compute the denominator.
+        let denominator = block_height_at_year_10 * (block_height_at_year_10 + 1);
+        // Compute the quotient.
+        numerator / denominator
+    }
+
+    // Calculate the block height at year 9.
+    let block_height_at_year_9 = block_height_at_year(block_time, 9);
+    // Compute the unadjusted reward at year 9.
+    let reward_at_year_9 = block_reward_at_height(block_height_at_year_9, starting_supply, anchor_height, block_time);
+    // Compute the unadjusted reward at the given block height.
+    let reward_at_block_height = block_reward_at_height(block_height, starting_supply, anchor_height, block_time);
+    // Compute the anchor block reward.
+    reward_at_block_height.max(reward_at_year_9)
 }
 
 /// Returns the block height after a given number of years for a specific block time.
@@ -309,21 +313,50 @@ mod tests {
 
     #[test]
     fn test_anchor_block_reward() {
-        let reward = anchor_block_reward_at_height(
+        // Check the anchor block reward at block 1.
+        let reward_at_block_1 = anchor_block_reward_at_height(
             1,
             CurrentNetwork::STARTING_SUPPLY,
             CurrentNetwork::ANCHOR_HEIGHT,
             CurrentNetwork::BLOCK_TIME,
         );
-        assert_eq!(reward, EXPECTED_ANCHOR_BLOCK_REWARD_AT_BLOCK_1);
+        assert_eq!(reward_at_block_1, EXPECTED_ANCHOR_BLOCK_REWARD_AT_BLOCK_1);
 
-        // Calculate the block height at year 10.
-        let block_height_at_year_10 = block_height_at_year(CurrentNetwork::BLOCK_TIME, 10);
+        // A helper function to check the the reward at the first expected block of a given year.
+        fn check_reward_at_year(year: u32, expected_reward: u128) {
+            let reward_at_year = anchor_block_reward_at_height(
+                block_height_at_year(CurrentNetwork::BLOCK_TIME, year),
+                CurrentNetwork::STARTING_SUPPLY,
+                CurrentNetwork::ANCHOR_HEIGHT,
+                CurrentNetwork::BLOCK_TIME,
+            );
+            assert_eq!(reward_at_year, expected_reward);
+        }
 
-        // Ensure that the reward is decreasing for blocks before year 10.
-        let mut previous_reward = reward;
+        // Check the anchor block reward at the start of years 1 through 15.
+        check_reward_at_year(1, 171_232_871);
+        check_reward_at_year(2, 152_206_996);
+        check_reward_at_year(3, 133_181_122);
+        check_reward_at_year(4, 114_155_247);
+        check_reward_at_year(5, 95_129_372);
+        check_reward_at_year(6, 76_103_498);
+        check_reward_at_year(7, 57_077_623);
+        check_reward_at_year(8, 38_051_749);
+        check_reward_at_year(9, 19_025_874);
+        check_reward_at_year(10, 19_025_874);
+        check_reward_at_year(11, 19_025_874);
+        check_reward_at_year(12, 19_025_874);
+        check_reward_at_year(13, 19_025_874);
+        check_reward_at_year(14, 19_025_874);
+        check_reward_at_year(15, 19_025_874);
+
+        // Calculate the block height at year 9.
+        let block_height_at_year_9 = block_height_at_year(CurrentNetwork::BLOCK_TIME, 9);
+
+        // Ensure that the reward is decreasing for blocks before year 9.
+        let mut previous_reward = reward_at_block_1;
         let anchor_height = CurrentNetwork::ANCHOR_HEIGHT as usize;
-        for height in (2..block_height_at_year_10).step_by(anchor_height).skip(1) {
+        for height in (2..block_height_at_year_9).step_by(anchor_height).skip(1) {
             let reward = anchor_block_reward_at_height(
                 height,
                 CurrentNetwork::STARTING_SUPPLY,
@@ -334,16 +367,74 @@ mod tests {
             previous_reward = reward;
         }
 
-        // Ensure that the reward is zero for blocks after year 10.
-        for height in block_height_at_year_10..(block_height_at_year_10 + ITERATIONS) {
+        // Ensure that the reward is 19_025_874 for blocks after year 9.
+        for height in block_height_at_year_9..(block_height_at_year_9 + ITERATIONS) {
             let reward = anchor_block_reward_at_height(
                 height,
                 CurrentNetwork::STARTING_SUPPLY,
                 CurrentNetwork::ANCHOR_HEIGHT,
                 CurrentNetwork::BLOCK_TIME,
             );
-            assert_eq!(reward, 0);
+            assert_eq!(reward, 19_025_874);
         }
+    }
+
+    #[test]
+    fn test_total_anchor_block_reward() {
+        // A helper function used to add the anchor block reward for a given range of block heights.
+        fn add_anchor_block_reward(total_reward: &mut u128, start_height: u32, end_height: u32) {
+            for height in start_height..end_height {
+                *total_reward += anchor_block_reward_at_height(
+                    height,
+                    CurrentNetwork::STARTING_SUPPLY,
+                    CurrentNetwork::ANCHOR_HEIGHT,
+                    CurrentNetwork::BLOCK_TIME,
+                );
+            }
+        }
+
+        // Initialize the total reward.
+        let mut total_reward = 0;
+
+        // A helper function to check the sum of all possible anchor rewards over a given year.
+        let mut check_sum_of_anchor_rewards = |year: u32, expected_reward: u128| {
+            assert!(year > 0, "Year must be greater than 0");
+            let end_height = block_height_at_year(CurrentNetwork::BLOCK_TIME, year);
+            let start_height = std::cmp::max(1, block_height_at_year(CurrentNetwork::BLOCK_TIME, year - 1));
+            add_anchor_block_reward(&mut total_reward, start_height, end_height);
+            assert_eq!(total_reward, expected_reward);
+        };
+
+        // Check the sum of all anchor block rewards at block at year 1.
+        check_sum_of_anchor_rewards(1, 569999799602807);
+        // Check the sum of all anchor block rewards at block at year 2.
+        check_sum_of_anchor_rewards(2, 1079999791366949);
+        // Check the sum of all anchor block rewards at block at year 3.
+        check_sum_of_anchor_rewards(3, 1529999785033683);
+        // Check the sum of all anchor block rewards at block at year 4.
+        check_sum_of_anchor_rewards(4, 1919999780603002);
+        // Check the sum of all anchor block rewards at block at year 5.
+        check_sum_of_anchor_rewards(5, 2249999778074916);
+        // Check the sum of all anchor block rewards at block at year 6.
+        check_sum_of_anchor_rewards(6, 2519999777449404);
+        // Check the sum of all anchor block rewards at block at year 7.
+        check_sum_of_anchor_rewards(7, 2729999778726485);
+        // Check the sum of all anchor block rewards at block at year 8.
+        check_sum_of_anchor_rewards(8, 2879999781906155);
+        // Check the sum of all anchor block rewards at block at year 9.
+        check_sum_of_anchor_rewards(9, 2969999786988413);
+        // Check the sum of all anchor block rewards at block at year 10.
+        check_sum_of_anchor_rewards(10, 3029999783234813);
+        // Check the sum of all anchor block rewards at block at year 11.
+        check_sum_of_anchor_rewards(11, 3089999779481213);
+        // Check the sum of all anchor block rewards at block at year 12.
+        check_sum_of_anchor_rewards(12, 3149999775727613);
+        // Check the sum of all anchor block rewards at block at year 13.
+        check_sum_of_anchor_rewards(13, 3209999771974013);
+        // Check the sum of all anchor block rewards at block at year 14.
+        check_sum_of_anchor_rewards(14, 3269999768220413);
+        // Check the sum of all anchor block rewards at block at year 15.
+        check_sum_of_anchor_rewards(15, 3329999764466813);
     }
 
     #[test]
@@ -562,7 +653,7 @@ mod tests {
             }
         }
 
-        assert_eq!(total_reward, 1_499_999_984_232_003, "Update me if my parameters have changed");
+        assert_eq!(total_reward, 1_514_999_979_651_171, "Update me if my parameters have changed");
     }
 
     #[test]
@@ -571,7 +662,7 @@ mod tests {
 
         let block_height_at_year_10 = block_height_at_year(CurrentNetwork::BLOCK_TIME, 10);
 
-        // Check that the block at year 10 has a reward of 0.
+        // Check that the block at year 10 has a reward of 15.
         let reward = coinbase_reward(
             block_height_at_year_10,
             CurrentNetwork::STARTING_SUPPLY,
@@ -582,14 +673,22 @@ mod tests {
             1,
         )
         .unwrap();
-        assert_eq!(reward, 0);
+        assert_eq!(reward, 19_025_874);
 
-        // Check that the subsequent blocks have a reward of 0.
+        // Check that the subsequent blocks have an anchor reward of 15 and reward less than or equal to 15.
         for _ in 0..ITERATIONS {
             let block_height: u32 = rng.gen_range(block_height_at_year_10..block_height_at_year_10 * 10);
             let coinbase_target = rng.gen_range(1_000_000..1_000_000_000_000_000);
             let cumulative_proof_target = rng.gen_range(0..coinbase_target);
             let combined_proof_target = rng.gen_range(0..coinbase_target as u128);
+
+            let anchor_reward = anchor_block_reward_at_height(
+                block_height,
+                CurrentNetwork::STARTING_SUPPLY,
+                CurrentNetwork::ANCHOR_HEIGHT,
+                CurrentNetwork::BLOCK_TIME,
+            );
+            assert_eq!(anchor_reward, 19_025_874);
 
             let reward = coinbase_reward(
                 block_height,
@@ -601,8 +700,7 @@ mod tests {
                 coinbase_target,
             )
             .unwrap();
-
-            assert_eq!(reward, 0);
+            assert!(reward <= 19_025_874);
         }
     }
 

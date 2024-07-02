@@ -66,7 +66,7 @@ const ARITY: u8 = 8;
 const CACHE_SIZE: usize = 1 << 10;
 
 /// The Merkle tree for the puzzle.
-type MerkleTree = KaryMerkleTree<Sha3_256, Sha3_256, 8, { ARITY }>;
+type MerkleTree = KaryMerkleTree<Sha3_256, Sha3_256, 9, { ARITY }>;
 
 /// The puzzle trait.
 pub trait PuzzleTrait<N: Network>: Send + Sync {
