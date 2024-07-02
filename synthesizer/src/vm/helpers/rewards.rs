@@ -34,7 +34,7 @@ const MAX_COINBASE_REWARD: u64 = ledger_block::MAX_COINBASE_REWARD; // Coinbase 
 ///
 /// This method ensures that stakers who are bonded to validators with more than **25%**
 /// of the total stake will not receive a staking reward. In addition, this method
-/// ensures stakers who have less than 10 credit are not eligible for a staking reward.
+/// ensures delegators who have less than 10,000 credits are not eligible for a staking reward.
 ///
 /// The choice of 25% is to ensure at least 4 validators are operational at any given time,
 /// since our security model adheres to 3f+1, where f=1. As such, we tolerate Byzantine behavior
@@ -54,7 +54,7 @@ pub fn staking_rewards<N: Network>(
         .map(|(staker, (validator, stake))| {
             // If the validator is not in the committee, skip the staker.
             let Some((validator_stake, _is_open, commission_rate)) = committee.members().get(validator) else {
-                error!("Validator {validator} is not in the committee - skipping {staker}");
+                trace!("Validator {validator} is not in the committee - skipping {staker}");
                 return (*staker, (*validator, *stake));
             };
 

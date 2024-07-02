@@ -16,6 +16,9 @@
 #![allow(clippy::too_many_arguments)]
 #![warn(clippy::cast_possible_truncation)]
 
+mod partial_solution;
+pub use partial_solution::*;
+
 mod solution;
 pub use solution::*;
 
@@ -63,7 +66,7 @@ const ARITY: u8 = 8;
 const CACHE_SIZE: usize = 1 << 10;
 
 /// The Merkle tree for the puzzle.
-type MerkleTree = KaryMerkleTree<Sha3_256, Sha3_256, 8, { ARITY }>;
+type MerkleTree = KaryMerkleTree<Sha3_256, Sha3_256, 9, { ARITY }>;
 
 /// The puzzle trait.
 pub trait PuzzleTrait<N: Network>: Send + Sync {
@@ -97,7 +100,7 @@ impl<N: Network> Puzzle<N> {
     }
 
     /// Returns the Merkle leaves for the puzzle, given the solution.
-    pub fn get_leaves(&self, solution: &Solution<N>) -> Result<Vec<Vec<bool>>> {
+    pub fn get_leaves(&self, solution: &PartialSolution<N>) -> Result<Vec<Vec<bool>>> {
         // Initialize a seeded random number generator.
         let mut rng = ChaChaRng::seed_from_u64(*solution.id());
         // Output the leaves.
@@ -119,18 +122,36 @@ impl<N: Network> Puzzle<N> {
 
     /// Returns the proof target given the solution.
     pub fn get_proof_target(&self, solution: &Solution<N>) -> Result<u64> {
+        // Calculate the proof target.
+        let proof_target = self.get_proof_target_unchecked(solution)?;
+        // Ensure the proof target matches the expected proof target.
+        ensure!(solution.target() == proof_target, "The proof target does not match the expected proof target");
+        // Return the proof target.
+        Ok(proof_target)
+    }
+
+    /// Returns the proof target given the solution.
+    ///
+    /// Note: This method does **not** check the proof target against the expected proof target.
+    pub fn get_proof_target_unchecked(&self, solution: &Solution<N>) -> Result<u64> {
+        // Calculate the proof target.
+        self.get_proof_target_from_partial_solution(solution.partial_solution())
+    }
+
+    /// Returns the proof target given the partial solution.
+    pub fn get_proof_target_from_partial_solution(&self, partial_solution: &PartialSolution<N>) -> Result<u64> {
         // If the proof target is in the cache, then return it.
-        if let Some(proof_target) = self.proof_target_cache.write().get(&solution.id()) {
+        if let Some(proof_target) = self.proof_target_cache.write().get(&partial_solution.id()) {
             return Ok(*proof_target);
         }
 
         // Construct the leaves of the Merkle tree.
-        let leaves = self.get_leaves(solution)?;
+        let leaves = self.get_leaves(partial_solution)?;
         // Get the proof target.
         let proof_target = Self::leaves_to_proof_target(&leaves)?;
 
         // Insert the proof target into the cache.
-        self.proof_target_cache.write().put(solution.id(), proof_target);
+        self.proof_target_cache.write().put(partial_solution.id(), proof_target);
         // Return the proof target.
         Ok(proof_target)
     }
@@ -147,7 +168,14 @@ impl<N: Network> Puzzle<N> {
             // Check if the proof target is in the cache.
             match self.proof_target_cache.write().get(id) {
                 // If the proof target is in the cache, then store it.
-                Some(proof_target) => targets[i] = *proof_target,
+                Some(proof_target) => {
+                    // Ensure that the proof target matches the expected proof target.
+                    ensure!(
+                        solution.target() == *proof_target,
+                        "The proof target does not match the expected proof target"
+                    );
+                    targets[i] = *proof_target
+                }
                 // Otherwise, add it to the list of solutions that need to be computed.
                 None => to_compute.push((i, id, *solution)),
             }
@@ -160,10 +188,15 @@ impl<N: Network> Puzzle<N> {
             let leaves = self.get_all_leaves(&solutions_subset)?;
             // Construct the Merkle roots and truncate them to a u64.
             let targets_subset = cfg_iter!(leaves)
-                .zip(cfg_keys!(solutions_subset))
-                .map(|(leaves, solution_id)| {
+                .zip(cfg_iter!(solutions_subset))
+                .map(|(leaves, (solution_id, solution))| {
                     // Get the proof target.
                     let proof_target = Self::leaves_to_proof_target(leaves)?;
+                    // Ensure that the proof target matches the expected proof target.
+                    ensure!(
+                        solution.target() == proof_target,
+                        "The proof target does not match the expected proof target"
+                    );
                     // Insert the proof target into the cache.
                     self.proof_target_cache.write().put(*solution_id, proof_target);
                     // Return the proof target.
@@ -196,18 +229,19 @@ impl<N: Network> Puzzle<N> {
         counter: u64,
         minimum_proof_target: Option<u64>,
     ) -> Result<Solution<N>> {
-        // Construct the solution.
-        let solution = Solution::new(epoch_hash, address, counter)?;
+        // Construct the partial solution.
+        let partial_solution = PartialSolution::new(epoch_hash, address, counter)?;
         // Compute the proof target.
-        let proof_target = self.get_proof_target(&solution)?;
+        let proof_target = self.get_proof_target_from_partial_solution(&partial_solution)?;
         // Check that the minimum proof target is met.
         if let Some(minimum_proof_target) = minimum_proof_target {
             if proof_target < minimum_proof_target {
                 bail!("Solution was below the minimum proof target ({proof_target} < {minimum_proof_target})")
             }
         }
-        // Return the solution.
-        Ok(solution)
+
+        // Construct the solution.
+        Ok(Solution::new(partial_solution, proof_target))
     }
 
     /// Returns `Ok(())` if the solution is valid.
@@ -443,6 +477,71 @@ mod tests {
 
         let solutions = PuzzleSolutions::new(vec![solution]).unwrap();
         assert!(puzzle.check_solutions(&solutions, epoch_hash, 0u64).is_ok());
+    }
+
+    #[test]
+    fn test_check_solution_with_incorrect_target_fails() {
+        let mut rng = rand::thread_rng();
+
+        // Initialize a new puzzle.
+        let puzzle = sample_puzzle();
+
+        // Initialize an epoch hash.
+        let epoch_hash = rng.gen();
+
+        // Generate inputs.
+        let private_key = PrivateKey::<CurrentNetwork>::new(&mut rng).unwrap();
+        let address = Address::try_from(private_key).unwrap();
+
+        // Generate a solution.
+        let solution = puzzle.prove(epoch_hash, address, rng.gen(), None).unwrap();
+
+        // Generate a solution with an incorrect target.
+        let incorrect_solution = Solution::new(*solution.partial_solution(), solution.target().saturating_add(1));
+
+        // Ensure the incorrect solution is invalid.
+        assert!(puzzle.check_solution(&incorrect_solution, epoch_hash, 0u64).is_err());
+
+        // Ensure the invalid solution is invalid on a fresh puzzle instance.
+        let new_puzzle = sample_puzzle();
+        assert!(new_puzzle.check_solution(&incorrect_solution, epoch_hash, 0u64).is_err());
+
+        // Ensure the incorrect solutions are invalid.
+        let incorrect_solutions = PuzzleSolutions::new(vec![incorrect_solution]).unwrap();
+        assert!(puzzle.check_solutions(&incorrect_solutions, epoch_hash, 0u64).is_err());
+
+        // Ensure the incorrect solutions are invalid on a fresh puzzle instance.
+        let new_puzzle = sample_puzzle();
+        assert!(new_puzzle.check_solutions(&incorrect_solutions, epoch_hash, 0u64).is_err());
+    }
+
+    #[test]
+    fn test_check_solutions_with_incorrect_target_fails() {
+        let mut rng = TestRng::default();
+
+        // Initialize a new puzzle.
+        let puzzle = sample_puzzle();
+
+        // Initialize an epoch hash.
+        let epoch_hash = rng.gen();
+
+        for batch_size in 1..=CurrentNetwork::MAX_SOLUTIONS {
+            // Initialize the incorrect solutions.
+            let incorrect_solutions = (0..batch_size)
+                .map(|_| {
+                    let solution = puzzle.prove(epoch_hash, rng.gen(), rng.gen(), None).unwrap();
+                    Solution::new(*solution.partial_solution(), solution.target().saturating_add(1))
+                })
+                .collect::<Vec<_>>();
+            let incorrect_solutions = PuzzleSolutions::new(incorrect_solutions).unwrap();
+
+            // Ensure the incorrect solutions are invalid.
+            assert!(puzzle.check_solutions(&incorrect_solutions, epoch_hash, 0u64).is_err());
+
+            // Ensure the incorrect solutions are invalid on a fresh puzzle instance.
+            let new_puzzle = sample_puzzle();
+            assert!(new_puzzle.check_solutions(&incorrect_solutions, epoch_hash, 0u64).is_err());
+        }
     }
 
     #[test]

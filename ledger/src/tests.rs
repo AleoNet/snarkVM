@@ -25,13 +25,18 @@ use console::{
     program::{Entry, Identifier, Literal, Plaintext, ProgramID, Value},
     types::U16,
 };
-use ledger_block::{ConfirmedTransaction, Ratify, Rejected, Transaction};
+use ledger_block::{ConfirmedTransaction, Execution, Ratify, Rejected, Transaction};
 use ledger_committee::{Committee, MIN_VALIDATOR_STAKE};
 use ledger_store::{helpers::memory::ConsensusMemory, ConsensusStore};
 use synthesizer::{program::Program, vm::VM, Stack};
 
 use indexmap::IndexMap;
 use rand::seq::SliceRandom;
+
+/// Initializes a sample VM.
+fn sample_vm() -> VM<CurrentNetwork, ConsensusMemory<CurrentNetwork>> {
+    VM::from(ConsensusStore::<CurrentNetwork, ConsensusMemory<CurrentNetwork>>::open(None).unwrap()).unwrap()
+}
 
 #[test]
 fn test_load() {
@@ -779,56 +784,107 @@ fn test_execute_duplicate_input_ids() {
 
     // Fetch the unspent records.
     let records = find_records();
-    let record_1 = records[0].clone();
+    let record_execution = records[0].clone();
+    let record_deployment = records[1].clone();
 
-    // Prepare a transfer that spends the record.
+    // Prepare a transfer that spends a record.
     let inputs = [
-        Value::Record(record_1.clone()),
+        Value::Record(record_execution.clone()),
         Value::from_str(&format!("{address}")).unwrap(),
         Value::from_str("100u64").unwrap(),
     ];
-    let transfer_1 = ledger
-        .vm
-        .execute(&private_key, ("credits.aleo", "transfer_private"), inputs.into_iter(), None, 0, None, rng)
-        .unwrap();
-    let transfer_1_id = transfer_1.id();
 
-    // Prepare a transfer that attempts to spend the same record.
-    let inputs = [
-        Value::Record(record_1.clone()),
-        Value::from_str(&format!("{address}")).unwrap(),
-        Value::from_str("1000u64").unwrap(),
-    ];
-    let transfer_2 = ledger
-        .vm
-        .execute(&private_key, ("credits.aleo", "transfer_private"), inputs.into_iter(), None, 0, None, rng)
-        .unwrap();
-    let transfer_2_id = transfer_2.id();
+    let num_duplicate_deployments = 3;
+    let mut executions = Vec::with_capacity(num_duplicate_deployments + 1);
+    let mut execution_ids = Vec::with_capacity(num_duplicate_deployments + 1);
+    let mut deployments = Vec::with_capacity(num_duplicate_deployments);
+    let mut deployment_ids = Vec::with_capacity(num_duplicate_deployments);
 
-    // Prepare a transfer that attempts to spend the same record in the fee.
+    // Create Executions and Deployments, spending the same record.
+    for i in 0..num_duplicate_deployments {
+        // Execute.
+        let execution = ledger
+            .vm
+            .execute(&private_key, ("credits.aleo", "transfer_private"), inputs.clone().iter(), None, 0, None, rng)
+            .unwrap();
+        execution_ids.push(execution.id());
+        executions.push(execution);
+        // Deploy.
+        let program_id = ProgramID::<CurrentNetwork>::from_str(&format!("dummy_program_{i}.aleo")).unwrap();
+        let program = Program::<CurrentNetwork>::from_str(&format!(
+            "
+program {program_id};
+function foo:
+    input r0 as u8.private;
+    async foo r0 into r1;
+    output r1 as {program_id}/foo.future;
+finalize foo:
+    input r0 as u8.public;
+    add r0 r0 into r1;",
+        ))
+        .unwrap();
+        let deployment =
+            ledger.vm.deploy(&private_key, &program, Some(record_deployment.clone()), 0, None, rng).unwrap();
+        deployment_ids.push(deployment.id());
+        deployments.push(deployment);
+    }
+
+    // Create one more execution which spends the record as a fee.
     let inputs = [Value::from_str(&format!("{address}")).unwrap(), Value::from_str("100u64").unwrap()];
-    let transfer_3 = ledger
+    let execution = ledger
         .vm
         .execute(
             &private_key,
             ("credits.aleo", "transfer_public"),
-            inputs.into_iter(),
-            Some(record_1.clone()),
+            inputs.clone().iter(),
+            Some(record_execution.clone()),
             0,
             None,
             rng,
         )
         .unwrap();
-    let transfer_3_id = transfer_3.id();
+    execution_ids.push(execution.id());
+    executions.push(execution);
 
-    // Prepare a transfer that attempts to spend the same record for the subsequent block.
-    let inputs =
-        [Value::Record(record_1), Value::from_str(&format!("{address}")).unwrap(), Value::from_str("1000u64").unwrap()];
-    let transfer_4 = ledger
+    // Select a transaction to mutate by a malicious validator.
+    let transaction_to_mutate = executions.last().unwrap().clone();
+
+    // Create a mutated execution which adds one transition, resulting in a different transaction id.
+    // This simulates a malicious validator re-using execution content.
+    let execution_to_mutate = transaction_to_mutate.execution().unwrap();
+    // Sample a transition.
+    let sample = ledger_test_helpers::sample_transition(rng);
+    // Extend the transitions.
+    let mutated_transitions = std::iter::once(sample).chain(execution_to_mutate.transitions().cloned());
+    // Create a mutated execution.
+    let mutated_execution = Execution::from(
+        mutated_transitions,
+        execution_to_mutate.global_state_root(),
+        execution_to_mutate.proof().cloned(),
+    )
+    .unwrap();
+    // Create a new fee for the execution.
+    let fee_authorization = ledger
         .vm
-        .execute(&private_key, ("credits.aleo", "transfer_private"), inputs.into_iter(), None, 0, None, rng)
+        .authorize_fee_public(
+            &private_key,
+            *executions.last().unwrap().fee_amount().unwrap(),
+            0,
+            mutated_execution.to_execution_id().unwrap(),
+            rng,
+        )
         .unwrap();
-    let transfer_4_id = transfer_4.id();
+    let fee = ledger.vm.execute_fee_authorization(fee_authorization, None, rng).unwrap();
+    // Create a mutated transaction.
+    let mutated_transaction = Transaction::from_execution(mutated_execution, Some(fee)).unwrap();
+    execution_ids.push(mutated_transaction.id());
+    executions.push(mutated_transaction);
+
+    // Create a mutated execution which just takes the fee transition, resulting in a different transaction id.
+    // This simulates a malicious validator transforming a transaction to a fee transaction.
+    let mutated_transaction = Transaction::from_fee(transaction_to_mutate.fee_transition().unwrap()).unwrap();
+    execution_ids.push(mutated_transaction.id());
+    executions.push(mutated_transaction);
 
     // Create a block.
     let block = ledger
@@ -836,7 +892,63 @@ fn test_execute_duplicate_input_ids() {
             &private_key,
             vec![],
             vec![],
-            vec![transfer_1, transfer_2, transfer_3],
+            vec![
+                executions.pop().unwrap(),
+                executions.pop().unwrap(),
+                executions.pop().unwrap(),
+                executions.pop().unwrap(),
+                executions.pop().unwrap(),
+                deployments.pop().unwrap(),
+                deployments.pop().unwrap(),
+            ],
+            rng,
+        )
+        .unwrap();
+
+    // Check that the next block is valid.
+    ledger.check_next_block(&block, rng).unwrap();
+
+    // Add the block to the ledger.
+    ledger.advance_to_next_block(&block).unwrap();
+
+    // Enforce that the block transactions were correct.
+    assert_eq!(block.transactions().num_accepted(), 2);
+    println!("execution_ids: {:?}", execution_ids);
+    assert_eq!(block.transactions().transaction_ids().collect::<Vec<_>>(), vec![&execution_ids[2], &deployment_ids[2]]);
+    assert_eq!(block.aborted_transaction_ids(), &vec![
+        execution_ids[5],
+        execution_ids[4],
+        execution_ids[3],
+        execution_ids[1],
+        deployment_ids[1]
+    ]);
+
+    // Ensure that verification was not run on aborted deployments.
+    let partially_verified_transaction = ledger.vm().partially_verified_transactions().read().clone();
+
+    assert!(partially_verified_transaction.contains(&execution_ids[2]));
+    assert!(partially_verified_transaction.contains(&deployment_ids[2]));
+    assert!(!partially_verified_transaction.contains(&execution_ids[1]));
+    assert!(!partially_verified_transaction.contains(&deployment_ids[1]));
+    assert!(!partially_verified_transaction.contains(&execution_ids[3]));
+    assert!(!partially_verified_transaction.contains(&execution_ids[4])); // Verification was run, but the execution was invalid.
+    assert!(!partially_verified_transaction.contains(&execution_ids[5]));
+
+    // Prepare a transfer that will succeed for the subsequent block.
+    let inputs = [Value::from_str(&format!("{address}")).unwrap(), Value::from_str("1000u64").unwrap()];
+    let transfer = ledger
+        .vm
+        .execute(&private_key, ("credits.aleo", "transfer_public"), inputs.into_iter(), None, 0, None, rng)
+        .unwrap();
+    let transfer_id = transfer.id();
+
+    // Create a block.
+    let block = ledger
+        .prepare_advance_to_next_beacon_block(
+            &private_key,
+            vec![],
+            vec![],
+            vec![executions.pop().unwrap(), deployments.pop().unwrap(), transfer],
             rng,
         )
         .unwrap();
@@ -849,43 +961,14 @@ fn test_execute_duplicate_input_ids() {
 
     // Enforce that the block transactions were correct.
     assert_eq!(block.transactions().num_accepted(), 1);
-    assert_eq!(block.transactions().transaction_ids().collect::<Vec<_>>(), vec![&transfer_1_id]);
-    assert_eq!(block.aborted_transaction_ids(), &vec![transfer_2_id, transfer_3_id]);
+    assert_eq!(block.transactions().transaction_ids().collect::<Vec<_>>(), vec![&transfer_id]);
+    assert_eq!(block.aborted_transaction_ids(), &vec![execution_ids[0], deployment_ids[0]]);
 
-    // Ensure that verification was not run on aborted transactions.
+    // Ensure that verification was not run on transactions aborted in a previous block.
     let partially_verified_transaction = ledger.vm().partially_verified_transactions().read().clone();
-    assert!(partially_verified_transaction.contains(&transfer_1_id));
-    assert!(!partially_verified_transaction.contains(&transfer_2_id));
-    assert!(!partially_verified_transaction.contains(&transfer_3_id));
-
-    // Prepare a transfer that will succeed for the subsequent block.
-    let inputs = [Value::from_str(&format!("{address}")).unwrap(), Value::from_str("1000u64").unwrap()];
-    let transfer_5 = ledger
-        .vm
-        .execute(&private_key, ("credits.aleo", "transfer_public"), inputs.into_iter(), None, 0, None, rng)
-        .unwrap();
-    let transfer_5_id = transfer_5.id();
-
-    // Create a block.
-    let block = ledger
-        .prepare_advance_to_next_beacon_block(&private_key, vec![], vec![], vec![transfer_4, transfer_5], rng)
-        .unwrap();
-
-    // Check that the next block is valid.
-    ledger.check_next_block(&block, rng).unwrap();
-
-    // Add the block to the ledger.
-    ledger.advance_to_next_block(&block).unwrap();
-
-    // Enforce that the block transactions were correct.
-    assert_eq!(block.transactions().num_accepted(), 1);
-    assert_eq!(block.transactions().transaction_ids().collect::<Vec<_>>(), vec![&transfer_5_id]);
-    assert_eq!(block.aborted_transaction_ids(), &vec![transfer_4_id]);
-
-    // Ensure that verification was not run on aborted transactions.
-    let partially_verified_transaction = ledger.vm().partially_verified_transactions().read().clone();
-    assert!(partially_verified_transaction.contains(&transfer_5_id));
-    assert!(!partially_verified_transaction.contains(&transfer_4_id));
+    assert!(partially_verified_transaction.contains(&transfer_id));
+    assert!(!partially_verified_transaction.contains(&execution_ids[0]));
+    assert!(!partially_verified_transaction.contains(&deployment_ids[0]));
 }
 
 #[test]
@@ -893,7 +976,8 @@ fn test_execute_duplicate_output_ids() {
     let rng = &mut TestRng::default();
 
     // Initialize the test environment.
-    let crate::test_helpers::TestEnv { ledger, private_key, address, .. } = crate::test_helpers::sample_test_env(rng);
+    let crate::test_helpers::TestEnv { ledger, private_key, view_key, address, .. } =
+        crate::test_helpers::sample_test_env(rng);
 
     // Deploy a test program to the ledger.
     let program = Program::<CurrentNetwork>::from_str(
@@ -926,8 +1010,25 @@ function create_duplicate_record:
     // Add the block to the ledger.
     ledger.advance_to_next_block(&block).unwrap();
 
-    // Create a transaction with different transition ids, but with a fixed output record (output ID).
-    let mut create_transaction_with_duplicate_output_id = |x: u64| -> Transaction<CurrentNetwork> {
+    // A helper function to find records.
+    let find_records = || {
+        let microcredits = Identifier::from_str("microcredits").unwrap();
+        ledger
+            .find_records(&view_key, RecordsFilter::SlowUnspent(private_key))
+            .unwrap()
+            .filter(|(_, record)| match record.data().get(&microcredits) {
+                Some(Entry::Private(Plaintext::Literal(Literal::U64(amount), _))) => !amount.is_zero(),
+                _ => false,
+            })
+            .collect::<indexmap::IndexMap<_, _>>()
+    };
+
+    // Fetch the unspent records.
+    let records = find_records();
+    let record_1 = records[0].clone();
+
+    // Create an execution with different transition ids, but with a fixed output record (output ID).
+    let mut create_execution_with_duplicate_output_id = |x: u64| -> Transaction<CurrentNetwork> {
         // Use a fixed seed RNG.
         let fixed_rng = &mut TestRng::from_seed(1);
 
@@ -964,16 +1065,61 @@ function create_duplicate_record:
         Transaction::from_execution(execution, Some(fee)).unwrap()
     };
 
+    // Create an deployment with different transition ids, but with a fixed output record (output ID).
+    let create_deployment_with_duplicate_output_id = |x: u64| -> Transaction<CurrentNetwork> {
+        // Use a fixed seed RNG.
+        let fixed_rng = &mut TestRng::from_seed(1);
+
+        // Deploy a test program to the ledger.
+        let program = Program::<CurrentNetwork>::from_str(&format!(
+            "
+program dummy_program_{x}.aleo;
+
+record dummy_program:
+    owner as address.private;
+    rand_var as u64.private;
+
+function create_duplicate_record:
+    input r0 as u64.private;
+    cast self.caller 1u64 into r1 as dummy_program.record;
+    output r1 as dummy_program.record;"
+        ))
+        .unwrap();
+
+        // Create a transaction with a fixed rng.
+        let transaction = ledger.vm.deploy(&private_key, &program, None, 0, None, fixed_rng).unwrap();
+
+        // Extract the deployment and owner.
+        let deployment = transaction.deployment().unwrap().clone();
+        let owner = *transaction.owner().unwrap();
+
+        // Create a new fee for the execution.
+        let fee_authorization = ledger
+            .vm
+            .authorize_fee_private(
+                &private_key,
+                record_1.clone(),
+                *transaction.fee_amount().unwrap(),
+                0,
+                deployment.to_deployment_id().unwrap(),
+                fixed_rng,
+            )
+            .unwrap();
+        let fee = ledger.vm.execute_fee_authorization(fee_authorization, None, fixed_rng).unwrap();
+
+        Transaction::from_deployment(owner, deployment, fee).unwrap()
+    };
+
     // Create the first transfer.
-    let transfer_1 = create_transaction_with_duplicate_output_id(1);
+    let transfer_1 = create_execution_with_duplicate_output_id(1);
     let transfer_1_id = transfer_1.id();
 
     // Create a second transfer with the same output id.
-    let transfer_2 = create_transaction_with_duplicate_output_id(2);
+    let transfer_2 = create_execution_with_duplicate_output_id(2);
     let transfer_2_id = transfer_2.id();
 
     // Create a third transfer with the same output id.
-    let transfer_3 = create_transaction_with_duplicate_output_id(3);
+    let transfer_3 = create_execution_with_duplicate_output_id(3);
     let transfer_3_id = transfer_3.id();
 
     // Ensure that each transaction has a duplicate output id.
@@ -983,9 +1129,34 @@ function create_duplicate_record:
     assert_eq!(tx_1_output_id, tx_2_output_id);
     assert_eq!(tx_1_output_id, tx_3_output_id);
 
+    // Create the first deployment.
+    let deployment_1 = create_deployment_with_duplicate_output_id(1);
+    let deployment_1_id = deployment_1.id();
+
+    // Create a second deployment with the same output id.
+    let deployment_2 = create_deployment_with_duplicate_output_id(2);
+    let deployment_2_id = deployment_2.id();
+
+    // Create a third deployment with the same output id.
+    let deployment_3 = create_deployment_with_duplicate_output_id(3);
+    let deployment_3_id = deployment_3.id();
+
+    // Ensure that each transaction has a duplicate output id.
+    let deployment_1_output_id = deployment_1.output_ids().next().unwrap();
+    let deployment_2_output_id = deployment_2.output_ids().next().unwrap();
+    let deployment_3_output_id = deployment_3.output_ids().next().unwrap();
+    assert_eq!(deployment_1_output_id, deployment_2_output_id);
+    assert_eq!(deployment_1_output_id, deployment_3_output_id);
+
     // Create a block.
     let block = ledger
-        .prepare_advance_to_next_beacon_block(&private_key, vec![], vec![], vec![transfer_1, transfer_2], rng)
+        .prepare_advance_to_next_beacon_block(
+            &private_key,
+            vec![],
+            vec![],
+            vec![transfer_1, transfer_2, deployment_1, deployment_2],
+            rng,
+        )
         .unwrap();
 
     // Check that the next block is valid.
@@ -995,14 +1166,16 @@ function create_duplicate_record:
     ledger.advance_to_next_block(&block).unwrap();
 
     // Enforce that the block transactions were correct.
-    assert_eq!(block.transactions().num_accepted(), 1);
-    assert_eq!(block.transactions().transaction_ids().collect::<Vec<_>>(), vec![&transfer_1_id]);
-    assert_eq!(block.aborted_transaction_ids(), &vec![transfer_2_id]);
+    assert_eq!(block.transactions().num_accepted(), 2);
+    assert_eq!(block.transactions().transaction_ids().collect::<Vec<_>>(), vec![&transfer_1_id, &deployment_1_id]);
+    assert_eq!(block.aborted_transaction_ids(), &vec![transfer_2_id, deployment_2_id]);
 
-    // Ensure that verification was not run on aborted transactions.
+    // Ensure that verification was not run on aborted deployments.
     let partially_verified_transaction = ledger.vm().partially_verified_transactions().read().clone();
     assert!(partially_verified_transaction.contains(&transfer_1_id));
+    assert!(partially_verified_transaction.contains(&deployment_1_id));
     assert!(!partially_verified_transaction.contains(&transfer_2_id));
+    assert!(!partially_verified_transaction.contains(&deployment_2_id));
 
     // Prepare a transfer that will succeed for the subsequent block.
     let inputs = [Value::from_str(&format!("{address}")).unwrap(), Value::from_str("1000u64").unwrap()];
@@ -1014,7 +1187,13 @@ function create_duplicate_record:
 
     // Create a block.
     let block = ledger
-        .prepare_advance_to_next_beacon_block(&private_key, vec![], vec![], vec![transfer_3, transfer_4], rng)
+        .prepare_advance_to_next_beacon_block(
+            &private_key,
+            vec![],
+            vec![],
+            vec![transfer_3, transfer_4, deployment_3],
+            rng,
+        )
         .unwrap();
 
     // Check that the next block is valid.
@@ -1026,12 +1205,13 @@ function create_duplicate_record:
     // Enforce that the block transactions were correct.
     assert_eq!(block.transactions().num_accepted(), 1);
     assert_eq!(block.transactions().transaction_ids().collect::<Vec<_>>(), vec![&transfer_4_id]);
-    assert_eq!(block.aborted_transaction_ids(), &vec![transfer_3_id]);
+    assert_eq!(block.aborted_transaction_ids(), &vec![transfer_3_id, deployment_3_id]);
 
-    // Ensure that verification was not run on aborted transactions.
+    // Ensure that verification was not run on transactions aborted in a previous block.
     let partially_verified_transaction = ledger.vm().partially_verified_transactions().read().clone();
     assert!(partially_verified_transaction.contains(&transfer_4_id));
     assert!(!partially_verified_transaction.contains(&transfer_3_id));
+    assert!(!partially_verified_transaction.contains(&deployment_3_id));
 }
 
 #[test]
@@ -1067,6 +1247,9 @@ function empty_function:
     ledger.advance_to_next_block(&block).unwrap();
 
     // Create a transaction with different transaction IDs, but with a fixed transition ID.
+    // NOTE: there's no use creating deployments with duplicate (fee) transition ids,
+    //       as this is only possible if they have duplicate programs, duplicate transaction_ids,
+    //       which will not abort but fail on check_next_block.
     let mut create_transaction_with_duplicate_transition_id = || -> Transaction<CurrentNetwork> {
         // Use a fixed seed RNG.
         let fixed_rng = &mut TestRng::from_seed(1);
@@ -1174,7 +1357,7 @@ function empty_function:
     assert_eq!(block.transactions().transaction_ids().collect::<Vec<_>>(), vec![&transfer_transaction_id]);
     assert_eq!(block.aborted_transaction_ids(), &vec![transaction_3_id]);
 
-    // Ensure that verification was not run on aborted transactions.
+    // Ensure that verification was not run on transactions aborted in a previous block.
     let partially_verified_transaction = ledger.vm().partially_verified_transactions().read().clone();
     assert!(partially_verified_transaction.contains(&transfer_transaction_id));
     assert!(!partially_verified_transaction.contains(&transaction_3_id));
@@ -1215,7 +1398,10 @@ function simple_output:
     // Add the block to the ledger.
     ledger.advance_to_next_block(&block).unwrap();
 
-    // Create a transaction with different transaction ids, but with a TPK.
+    // Create a transaction with different transaction ids, but with a duplicate TPK.
+    // NOTE: there's no use creating deployments with duplicate (fee) TPKs,
+    //       as this is only possible if they have duplicate programs, duplicate transaction_ids,
+    //       which will not abort but fail on check_next_block.
     let mut create_transaction_with_duplicate_tpk = |function: &str| -> Transaction<CurrentNetwork> {
         // Use a fixed seed RNG.
         let fixed_rng = &mut TestRng::from_seed(1);
@@ -1321,7 +1507,7 @@ function simple_output:
     assert_eq!(block.transactions().transaction_ids().collect::<Vec<_>>(), vec![&transfer_transaction_id]);
     assert_eq!(block.aborted_transaction_ids(), &vec![transaction_3_id]);
 
-    // Ensure that verification was not run on aborted transactions.
+    // Ensure that verification was not run on transactions aborted in a previous block.
     let partially_verified_transaction = ledger.vm().partially_verified_transactions().read().clone();
     assert!(partially_verified_transaction.contains(&transfer_transaction_id));
     assert!(!partially_verified_transaction.contains(&transaction_3_id));
@@ -1434,7 +1620,7 @@ fn test_abort_invalid_transaction() {
     let crate::test_helpers::TestEnv { ledger, private_key, address, .. } = crate::test_helpers::sample_test_env(rng);
 
     // Initialize a new VM.
-    let vm = VM::from(ConsensusStore::<CurrentNetwork, ConsensusMemory<CurrentNetwork>>::open(None).unwrap()).unwrap();
+    let vm = sample_vm();
 
     // Construct a custom genesis block.
     let custom_genesis = vm.genesis_beacon(&private_key, rng).unwrap();
@@ -1598,7 +1784,7 @@ fn test_max_committee_limit_with_bonds() {
     let rng = &mut TestRng::default();
 
     // Initialize the VM.
-    let vm = VM::from(ConsensusStore::<CurrentNetwork, ConsensusMemory<CurrentNetwork>>::open(None).unwrap()).unwrap();
+    let vm = sample_vm();
 
     // Construct the validators, one less than the maximum committee size.
     let validators = (0..Committee::<CurrentNetwork>::MAX_COMMITTEE_SIZE - 1)

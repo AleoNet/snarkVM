@@ -310,11 +310,6 @@ impl<N: Network> Block<N> {
         let height = self.height();
         let timestamp = self.timestamp();
 
-        // Ensure the solutions are not accepted after the block height at year 10.
-        if !self.solutions.is_empty() && height > block_height_at_year(N::BLOCK_TIME, 10) {
-            bail!("Solutions are no longer accepted after the block height at year 10.");
-        }
-
         // Ensure the number of solutions is within the allowed range.
         ensure!(
             self.solutions.len() <= N::MAX_SOLUTIONS,

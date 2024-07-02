@@ -16,3 +16,8 @@
 pub mod merkle;
 #[cfg(feature = "merkle")]
 pub use merkle::*;
+
+#[cfg(feature = "synthesis")]
+pub mod synthesis;
+#[cfg(feature = "synthesis")]
+pub use synthesis::*;

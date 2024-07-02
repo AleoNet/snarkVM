@@ -97,14 +97,14 @@ pub trait Network:
     const GENESIS_TIMESTAMP: i64;
     /// The genesis block coinbase target.
     #[cfg(not(feature = "test"))]
-    const GENESIS_COINBASE_TARGET: u64 = (1u64 << 10).saturating_sub(1);
+    const GENESIS_COINBASE_TARGET: u64 = (1u64 << 29).saturating_sub(1);
     /// The genesis block coinbase target.
     /// This is deliberately set to a low value (32) for testing purposes only.
     #[cfg(feature = "test")]
     const GENESIS_COINBASE_TARGET: u64 = (1u64 << 5).saturating_sub(1);
     /// The genesis block proof target.
     #[cfg(not(feature = "test"))]
-    const GENESIS_PROOF_TARGET: u64 = 1u64 << 8;
+    const GENESIS_PROOF_TARGET: u64 = 1u64 << 27;
     /// The genesis block proof target.
     /// This is deliberately set to a low value (8) for testing purposes only.
     #[cfg(feature = "test")]
@@ -118,6 +118,10 @@ pub trait Network:
     const STARTING_SUPPLY: u64 = 1_500_000_000_000_000; // 1.5B credits
     /// The cost in microcredits per byte for the deployment transaction.
     const DEPLOYMENT_FEE_MULTIPLIER: u64 = 1_000; // 1 millicredit per byte
+    /// The constant that divides the storage polynomial.
+    const EXECUTION_STORAGE_FEE_SCALING_FACTOR: u64 = 5000;
+    /// The maximum size execution transactions can be before a quadratic storage penalty applies.
+    const EXECUTION_STORAGE_PENALTY_THRESHOLD: u64 = 5000;
     /// The cost in microcredits per constraint for the deployment transaction.
     const SYNTHESIS_FEE_MULTIPLIER: u64 = 25; // 25 microcredits per constraint
     /// The maximum number of variables in a deployment.
@@ -214,6 +218,9 @@ pub trait Network:
 
     /// Returns the genesis block bytes.
     fn genesis_bytes() -> &'static [u8];
+
+    /// Returns the restrictions list as a JSON-compatible string.
+    fn restrictions_list_as_str() -> &'static str;
 
     /// Returns the proving key for the given function name in `credits.aleo`.
     fn get_credits_proving_key(function_name: String) -> Result<&'static Arc<VarunaProvingKey<Self>>>;
