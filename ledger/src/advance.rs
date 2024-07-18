@@ -127,8 +127,8 @@ pub fn split_candidate_solutions<T, F>(
     verification_fn: F,
 ) -> (Vec<T>, Vec<T>)
 where
-    T: Sized,
-    F: Fn(&T) -> bool,
+    T: Sized + Copy,
+    F: Fn(&mut T) -> bool,
 {
     // Separate the candidate solutions into valid and aborted solutions.
     let mut valid_candidate_solutions = Vec::with_capacity(max_solutions);
@@ -147,7 +147,7 @@ where
         }
 
         // Split off a chunk of the candidate solutions.
-        let candidates_chunk = if candidate_solutions.len() > chunk_size {
+        let mut candidates_chunk = if candidate_solutions.len() > chunk_size {
             candidate_solutions.split_off(candidate_solutions.len() - chunk_size)
         } else {
             std::mem::take(&mut candidate_solutions)
@@ -155,10 +155,10 @@ where
 
         // Verify the solutions in the chunk.
         let verification_results: Vec<_> = candidates_chunk
-            .into_iter()
+            .iter_mut()
             .rev()
             .map(|solution| {
-                let verified = verification_fn(&solution);
+                let verified = verification_fn(solution);
                 (solution, verified)
             })
             .collect();
@@ -166,9 +166,9 @@ where
         // Process the results of the verification.
         for (solution, is_valid) in verification_results.into_iter() {
             if is_valid && valid_candidate_solutions.len() < max_solutions {
-                valid_candidate_solutions.push(solution);
+                valid_candidate_solutions.push(*solution);
             } else {
-                aborted_candidate_solutions.push(solution);
+                aborted_candidate_solutions.push(*solution);
             }
         }
     }
@@ -201,7 +201,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                 // Separate the candidate solutions into valid and aborted solutions.
                 let (valid_candidate_solutions, aborted_candidate_solutions) =
                     split_candidate_solutions(candidate_solutions, N::MAX_SOLUTIONS, |solution| {
-                        self.puzzle().check_solution(solution, latest_epoch_hash, latest_proof_target).is_ok()
+                        self.puzzle().check_solution_mut(solution, latest_epoch_hash, latest_proof_target).is_ok()
                     });
 
                 // Check if there are any valid solutions.

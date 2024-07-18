@@ -1774,7 +1774,7 @@ fn test_split_candidate_solutions() {
         let candidate_solutions: Vec<u8> = rng.sample_iter(Standard).take(num_candidates).collect();
 
         let (_accepted, _aborted) =
-            split_candidate_solutions(candidate_solutions, max_solutions, |candidate| candidate % 2 == 0);
+            split_candidate_solutions(candidate_solutions, max_solutions, |candidate| *candidate % 2 == 0);
     }
 }
 
