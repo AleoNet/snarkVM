@@ -44,6 +44,7 @@ use ledger_block::{
     Transactions,
 };
 use ledger_committee::Committee;
+use ledger_narwhal_data::Data;
 use ledger_puzzle::Puzzle;
 use ledger_query::Query;
 use ledger_store::{
@@ -81,7 +82,7 @@ pub struct VM<N: Network, C: ConsensusStorage<N>> {
     /// The VM store.
     store: ConsensusStore<N, C>,
     /// A cache containing the list of recent partially-verified transactions.
-    partially_verified_transactions: Arc<RwLock<LruCache<N::TransactionID, ()>>>, // TODO: we should also store the checksum
+    partially_verified_transactions: Arc<RwLock<LruCache<N::TransactionID, N::TransmissionChecksum>>>,
     /// The restrictions list.
     restrictions: Restrictions<N>,
     /// The lock to guarantee atomicity over calls to speculate and finalize.
@@ -218,8 +219,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
     /// Returns the partially-verified transactions.
     #[inline]
-    pub fn partially_verified_transactions(&self) -> Arc<RwLock<LruCache<N::TransactionID, ()>>> {
-        // N::TransmissionChecksum
+    pub fn partially_verified_transactions(&self) -> Arc<RwLock<LruCache<N::TransactionID, N::TransmissionChecksum>>> {
         self.partially_verified_transactions.clone()
     }
 
