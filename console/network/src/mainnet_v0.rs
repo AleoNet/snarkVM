@@ -131,7 +131,7 @@ impl Network for MainnetV0 {
     /// The transition ID type.
     type TransitionID = AleoID<Field<Self>, { hrp2!("au") }>;
     /// The transmission checksum type.
-    type TransmissionChecksum = AleoID<Field<Self>, { hrp2!("ch") }>;
+    type TransmissionChecksum = [u8; 32];
 
     /// The network edition.
     const EDITION: u16 = 0;

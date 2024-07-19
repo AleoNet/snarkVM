@@ -216,7 +216,7 @@ pub trait Network:
     /// The transition ID type.
     type TransitionID: Bech32ID<Field<Self>>;
     /// The transmission checksum type.
-    type TransmissionChecksum: Bech32ID<Field<Self>>;
+    type TransmissionChecksum;
 
     /// Returns the genesis block bytes.
     fn genesis_bytes() -> &'static [u8];
