@@ -2704,7 +2704,7 @@ mod valid_solutions {
             malicious_solution.id(),
             "The malicious solution should have the same ID as the valid solution"
         );
-        assert_eq!(
+        assert_ne!(
             valid_solution.target(),
             malicious_solution.target(),
             "The malicious solution should have a different target than the valid solution"
