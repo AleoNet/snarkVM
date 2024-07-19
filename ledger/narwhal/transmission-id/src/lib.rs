@@ -62,6 +62,15 @@ impl<N: Network> TransmissionID<N> {
             _ => None,
         }
     }
+
+    /// Returns the checksum of the transmission.
+    pub fn checksum(&self) -> Option<N::TransmissionChecksum> {
+        match self {
+            Self::Ratification => None,
+            Self::Solution(_, checksum) => Some(*checksum),
+            Self::Transaction(_, checksum) => Some(*checksum),
+        }
+    }
 }
 
 #[cfg(any(test, feature = "test-helpers"))]
@@ -83,14 +92,14 @@ pub mod test_helpers {
         for _ in 0..5 {
             sample.push(TransmissionID::Solution(
                 SolutionID::from(rng.gen::<u64>()),
-                <CurrentNetwork as Network>::TransmissionChecksum::from(rng.gen::<[u8; 32]>()),
+                <CurrentNetwork as Network>::TransmissionChecksum::from(rng.gen::<u128>()),
             ));
         }
         // Append sample transaction IDs.
         for _ in 0..5 {
             let id = TransmissionID::Transaction(
                 <CurrentNetwork as Network>::TransactionID::from(Field::rand(rng)),
-                <CurrentNetwork as Network>::TransmissionChecksum::from(rng.gen::<[u8; 32]>()),
+                <CurrentNetwork as Network>::TransmissionChecksum::from(rng.gen::<u128>()),
             );
             sample.push(id);
         }

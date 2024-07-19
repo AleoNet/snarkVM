@@ -42,8 +42,8 @@ impl<N: Network> ToBytes for TransmissionID<N> {
             }
             Self::Transaction(id, checksum) => {
                 2u8.write_le(&mut writer)?;
-                checksum.write_le(&mut writer)?;
-                id.write_le(&mut writer)
+                id.write_le(&mut writer)?;
+                checksum.write_le(&mut writer)
             }
         }
     }
