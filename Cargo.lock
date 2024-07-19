@@ -3132,6 +3132,7 @@ dependencies = [
  "snarkvm-ledger-authority",
  "snarkvm-ledger-committee",
  "snarkvm-ledger-narwhal-batch-header",
+ "snarkvm-ledger-narwhal-data",
  "snarkvm-ledger-narwhal-subdag",
  "snarkvm-ledger-narwhal-transmission-id",
  "snarkvm-ledger-puzzle",
