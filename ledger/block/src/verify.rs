@@ -563,7 +563,7 @@ impl<N: Network> Block<N> {
             // Process the transmission ID.
             match transmission_id {
                 TransmissionID::Ratification => {}
-                TransmissionID::Solution(solution_id) => {
+                TransmissionID::Solution(solution_id, _) => {
                     match solutions.peek() {
                         // Check the next solution matches the expected solution ID.
                         Some((_, solution)) if solution.id() == *solution_id => {
@@ -578,7 +578,7 @@ impl<N: Network> Block<N> {
                         }
                     }
                 }
-                TransmissionID::Transaction(transaction_id) => {
+                TransmissionID::Transaction(transaction_id, _) => {
                     match unconfirmed_transaction_ids.peek() {
                         // Check the next transaction matches the expected transaction.
                         Some(expected_id) if transaction_id == *expected_id => {

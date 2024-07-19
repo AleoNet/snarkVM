@@ -46,7 +46,7 @@ pub fn decouple_transmissions<N: Network>(
         // Deserialize and store the transmission.
         match (transmission_id, transmission) {
             (TransmissionID::Ratification, Transmission::Ratification) => (),
-            (TransmissionID::Solution(commitment), Transmission::Solution(solution)) => {
+            (TransmissionID::Solution(commitment, _), Transmission::Solution(solution)) => {
                 // Deserialize the solution.
                 let solution = solution.deserialize_blocking()?;
                 // Ensure the transmission ID corresponds to the solution.
@@ -54,7 +54,7 @@ pub fn decouple_transmissions<N: Network>(
                 // Insert the solution into the list.
                 solutions.push(solution);
             }
-            (TransmissionID::Transaction(transaction_id), Transmission::Transaction(transaction)) => {
+            (TransmissionID::Transaction(transaction_id, _), Transmission::Transaction(transaction)) => {
                 // Deserialize the transaction.
                 let transaction = transaction.deserialize_blocking()?;
                 // Ensure the transmission ID corresponds to the transaction.
