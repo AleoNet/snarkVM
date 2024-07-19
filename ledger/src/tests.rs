@@ -2696,13 +2696,18 @@ mod valid_solutions {
         let valid_solution = valid_solution.unwrap();
 
         // Construct a malicious solution with a different target.
-        let malicious_solution =
-            Solution::new(*valid_solution.partial_solution(), valid_solution.target().saturating_add(1));
+        let different_target = valid_solution.target().wrapping_sub(1);
+        let malicious_solution = Solution::new(*valid_solution.partial_solution(), different_target);
 
         assert_eq!(
             valid_solution.id(),
             malicious_solution.id(),
             "The malicious solution should have the same ID as the valid solution"
+        );
+        assert_eq!(
+            valid_solution.target(),
+            malicious_solution.target(),
+            "The malicious solution should have a different target than the valid solution"
         );
 
         // Create a valid transaction for the block.
