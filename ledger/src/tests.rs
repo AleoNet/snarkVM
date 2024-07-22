@@ -2745,12 +2745,12 @@ mod valid_solutions {
             assert_eq!(*solution, expected_solution, "Check that the block has the correct solution");
         };
 
-        // Case 1: The valid solution is included in the block.
-        let candidate_solutions = vec![valid_solution];
+        // Case 1: The malicious solution is included in the block construction.
+        let candidate_solutions = vec![malicious_solution];
         check_block(candidate_solutions);
 
-        // Case 2: The malicious solution is included in the block.
-        let candidate_solutions = vec![malicious_solution];
+        // Case 2: The valid solution is included in the block construction.
+        let candidate_solutions = vec![valid_solution];
         check_block(candidate_solutions);
     }
 
