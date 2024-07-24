@@ -1774,7 +1774,7 @@ fn test_split_candidate_solutions() {
         let candidate_solutions: Vec<u8> = rng.sample_iter(Standard).take(num_candidates).collect();
 
         let (_accepted, _aborted) =
-            split_candidate_solutions(candidate_solutions, max_solutions, |candidate| candidate % 2 == 0);
+            split_candidate_solutions(candidate_solutions, max_solutions, |candidate| *candidate % 2 == 0);
     }
 }
 
@@ -2351,6 +2351,7 @@ finalize is_id:
 #[cfg(feature = "test")]
 mod valid_solutions {
     use super::*;
+    use ledger_puzzle::Solution;
     use rand::prelude::SliceRandom;
     use std::collections::HashSet;
 
@@ -2667,5 +2668,147 @@ mod valid_solutions {
         let expected_aborted_solutions =
             candidate_solutions.iter().skip(CurrentNetwork::MAX_SOLUTIONS).map(|s| s.id()).collect::<HashSet<_>>();
         assert_eq!(block_aborted_solution_ids, expected_aborted_solutions, "Aborted solutions do not match");
+    }
+
+    #[test]
+    fn test_malicious_solution() {
+        // Initialize an RNG.
+        let rng = &mut TestRng::default();
+
+        // Initialize the test environment.
+        let crate::test_helpers::TestEnv { ledger, private_key, address, .. } =
+            crate::test_helpers::sample_test_env(rng);
+
+        // Retrieve the puzzle parameters.
+        let puzzle = ledger.puzzle();
+        let latest_epoch_hash = ledger.latest_epoch_hash().unwrap();
+        let minimum_proof_target = ledger.latest_proof_target();
+
+        // Initialize a valid solution object.
+        let mut valid_solution = None;
+        while valid_solution.is_none() {
+            let solution = puzzle.prove(latest_epoch_hash, address, rng.gen(), None).unwrap();
+            if puzzle.get_proof_target(&solution).unwrap() >= minimum_proof_target {
+                valid_solution = Some(solution);
+            }
+        }
+        // Unwrap the valid solution.
+        let valid_solution = valid_solution.unwrap();
+
+        // Construct a malicious solution with a different target.
+        let different_target = valid_solution.target().wrapping_sub(1);
+        let malicious_solution = Solution::new(*valid_solution.partial_solution(), different_target);
+
+        assert_eq!(
+            valid_solution.id(),
+            malicious_solution.id(),
+            "The malicious solution should have the same ID as the valid solution"
+        );
+        assert_ne!(
+            valid_solution.target(),
+            malicious_solution.target(),
+            "The malicious solution should have a different target than the valid solution"
+        );
+
+        // Create a valid transaction for the block.
+        let inputs = [Value::from_str(&format!("{address}")).unwrap(), Value::from_str("10u64").unwrap()];
+        let transfer_transaction = ledger
+            .vm
+            .execute(&private_key, ("credits.aleo", "transfer_public"), inputs.iter(), None, 0, None, rng)
+            .unwrap();
+
+        // Check that the block creation fixes the malformed solution.
+        let expected_solution_id = valid_solution.id();
+        let expected_solution = valid_solution;
+        let mut check_block = |candidate_solutions: Vec<Solution<CurrentNetwork>>| {
+            // Create a block.
+            let block = ledger
+                .prepare_advance_to_next_beacon_block(
+                    &private_key,
+                    vec![],
+                    candidate_solutions.clone(),
+                    vec![transfer_transaction.clone()],
+                    rng,
+                )
+                .unwrap();
+
+            // Check that the next block is valid.
+            ledger.check_next_block(&block, rng).unwrap();
+
+            // Check that the block's solutions are well-formed.
+            assert_eq!(block.solutions().len(), 1);
+            assert_eq!(block.aborted_solution_ids().len(), 0);
+
+            // Fetch the solution from the block.
+            let (solution_id, solution) = block.solutions().as_ref().unwrap().first().unwrap();
+            assert_eq!(*solution_id, expected_solution_id, "Check that the block has the correct solution ID");
+            assert_eq!(*solution, expected_solution, "Check that the block has the correct solution");
+        };
+
+        // Case 1: The malicious solution is included in the block construction.
+        let candidate_solutions = vec![malicious_solution];
+        check_block(candidate_solutions);
+
+        // Case 2: The valid solution is included in the block construction.
+        let candidate_solutions = vec![valid_solution];
+        check_block(candidate_solutions);
+    }
+
+    #[test]
+    fn test_solution_with_insufficient_target() {
+        // Initialize an RNG.
+        let rng = &mut TestRng::default();
+
+        // Initialize the test environment.
+        let crate::test_helpers::TestEnv { ledger, private_key, address, .. } =
+            crate::test_helpers::sample_test_env(rng);
+
+        // Retrieve the puzzle parameters.
+        let puzzle = ledger.puzzle();
+        let latest_epoch_hash = ledger.latest_epoch_hash().unwrap();
+        let minimum_proof_target = ledger.latest_proof_target();
+
+        // Initialize a valid solution object.
+        let mut invalid_solution = None;
+        while invalid_solution.is_none() {
+            let solution = puzzle.prove(latest_epoch_hash, address, rng.gen(), None).unwrap();
+            if puzzle.get_proof_target(&solution).unwrap() < minimum_proof_target {
+                invalid_solution = Some(solution);
+            }
+        }
+        // Unwrap the invalid solution.
+        let invalid_solution = invalid_solution.unwrap();
+
+        // Create a valid transaction for the block.
+        let inputs = [Value::from_str(&format!("{address}")).unwrap(), Value::from_str("10u64").unwrap()];
+        let transfer_transaction = ledger
+            .vm
+            .execute(&private_key, ("credits.aleo", "transfer_public"), inputs.iter(), None, 0, None, rng)
+            .unwrap();
+
+        // Create a block.
+        let block = ledger
+            .prepare_advance_to_next_beacon_block(
+                &private_key,
+                vec![],
+                vec![invalid_solution],
+                vec![transfer_transaction],
+                rng,
+            )
+            .unwrap();
+
+        // Check that the next block is valid.
+        ledger.check_next_block(&block, rng).unwrap();
+
+        // Add the deployment block to the ledger.
+        ledger.advance_to_next_block(&block).unwrap();
+
+        // Check that the block's solutions are well-formed.
+        assert_eq!(block.solutions().len(), 0);
+        assert_eq!(block.aborted_solution_ids().len(), 1);
+
+        // Check that the aborted solution is correct.
+        let block_aborted_solution_id = block.aborted_solution_ids().first().unwrap();
+        assert_eq!(*block_aborted_solution_id, invalid_solution.id(), "Aborted solutions do not match");
     }
 }
