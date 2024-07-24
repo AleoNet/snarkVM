@@ -33,14 +33,14 @@ pub enum TransmissionID<N: Network> {
 }
 
 impl<N: Network> From<(SolutionID<N>, N::TransmissionChecksum)> for TransmissionID<N> {
-    /// Converts the solution ID into a transmission ID.
+    /// Converts the solution ID and checksum into a transmission ID.
     fn from((solution_id, checksum): (SolutionID<N>, N::TransmissionChecksum)) -> Self {
         Self::Solution(solution_id, checksum)
     }
 }
 
 impl<N: Network> From<(&N::TransactionID, &N::TransmissionChecksum)> for TransmissionID<N> {
-    /// Converts the transaction ID into a transmission ID.
+    /// Converts the transaction ID and checksum into a transmission ID.
     fn from((transaction_id, checksum): (&N::TransactionID, &N::TransmissionChecksum)) -> Self {
         Self::Transaction(*transaction_id, *checksum)
     }
@@ -63,7 +63,7 @@ impl<N: Network> TransmissionID<N> {
         }
     }
 
-    /// Returns the checksum of the transmission.
+    /// Returns the checksum if the transmission is a solution or a transaction.
     pub fn checksum(&self) -> Option<N::TransmissionChecksum> {
         match self {
             Self::Ratification => None,
