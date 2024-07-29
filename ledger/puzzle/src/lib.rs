@@ -266,6 +266,34 @@ impl<N: Network> Puzzle<N> {
         Ok(())
     }
 
+    /// ATTENTION: This function will update the target if the solution target is different from the calculated one.
+    /// Returns `Ok(())` if the solution is valid.
+    pub fn check_solution_mut(
+        &self,
+        solution: &mut Solution<N>,
+        expected_epoch_hash: N::BlockHash,
+        expected_proof_target: u64,
+    ) -> Result<()> {
+        // Ensure the epoch hash matches.
+        if solution.epoch_hash() != expected_epoch_hash {
+            bail!(
+                "Solution does not match the expected epoch hash (found '{}', expected '{expected_epoch_hash}')",
+                solution.epoch_hash()
+            )
+        }
+        // Calculate the proof target of the solution.
+        let proof_target = self.get_proof_target_unchecked(solution)?;
+
+        // Set the target with the newly calculated proof target value.
+        solution.target = proof_target;
+
+        // Ensure the solution is greater than or equal to the expected proof target.
+        if proof_target < expected_proof_target {
+            bail!("Solution does not meet the proof target requirement ({proof_target} < {expected_proof_target})")
+        }
+        Ok(())
+    }
+
     /// Returns `Ok(())` if the solutions are valid.
     pub fn check_solutions(
         &self,
