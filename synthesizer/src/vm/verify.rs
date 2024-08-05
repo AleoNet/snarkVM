@@ -134,8 +134,12 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         // First, verify the fee.
         self.check_fee(transaction, rejected_id)?;
 
+        // Construct the transaction checksum.
+        let checksum = Data::<Transaction<N>>::Buffer(transaction.to_bytes_le()?.into()).to_checksum::<N>()?;
+
         // Check if the transaction exists in the partially-verified cache.
-        let is_partially_verified = self.partially_verified_transactions.read().peek(&transaction.id()).is_some();
+        let is_partially_verified =
+            self.partially_verified_transactions.read().peek(&(transaction.id())) == Some(&checksum);
 
         // Next, verify the deployment or execution.
         match transaction {
@@ -188,7 +192,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         // If the above checks have passed and this is not a fee transaction,
         // then add the transaction ID to the partially-verified transactions cache.
         if !matches!(transaction, Transaction::Fee(..)) && !is_partially_verified {
-            self.partially_verified_transactions.write().push(transaction.id(), ());
+            self.partially_verified_transactions.write().push(transaction.id(), checksum);
         }
 
         finish!(timer, "Verify the transaction");
@@ -383,7 +387,7 @@ mod tests {
         account::{Address, ViewKey},
         types::Field,
     };
-    use ledger_block::{Block, Header, Metadata, Transaction};
+    use ledger_block::{Block, Header, Metadata, Transaction, Transition};
 
     type CurrentNetwork = test_helpers::CurrentNetwork;
 
@@ -640,5 +644,74 @@ function compute:
 
         // Ensure that the program can't be deployed.
         assert!(vm.deploy_raw(&program, rng).is_err());
+    }
+
+    #[test]
+    fn test_check_mutated_execution() {
+        let rng = &mut TestRng::default();
+
+        // Initialize the VM.
+        let vm = crate::vm::test_helpers::sample_vm();
+        // Fetch the caller's private key.
+        let caller_private_key = crate::vm::test_helpers::sample_genesis_private_key(rng);
+        // Initialize the genesis block.
+        let genesis = crate::vm::test_helpers::sample_genesis_block(rng);
+        // Update the VM.
+        vm.add_next_block(&genesis).unwrap();
+
+        // Fetch a valid execution transaction with a public fee.
+        let valid_transaction = crate::vm::test_helpers::sample_execution_transaction_with_public_fee(rng);
+        vm.check_transaction(&valid_transaction, None, rng).unwrap();
+
+        // Mutate the execution transaction by inserting a Field::Zero as an output.
+        let execution = valid_transaction.execution().unwrap();
+
+        // Extract the first transition from the execution.
+        let transitions: Vec<_> = execution.transitions().collect();
+        assert_eq!(transitions.len(), 1);
+        let transition = transitions[0].clone();
+
+        // Mutate the transition by adding an additional `Field::zero` output. This is significant because the Varuna
+        // verifier pads the inputs with `Field::zero`s, which means that the same proof is valid for both the
+        // original and the mutated executions.
+        let added_output = Output::ExternalRecord(Field::zero());
+        let mutated_outputs = [transition.outputs(), &[added_output]].concat();
+        let mutated_transition = Transition::new(
+            *transition.program_id(),
+            *transition.function_name(),
+            transition.inputs().to_vec(),
+            mutated_outputs,
+            *transition.tpk(),
+            *transition.tcm(),
+            *transition.scm(),
+        )
+        .unwrap();
+
+        // Construct the mutated execution.
+        let mutated_execution = Execution::from(
+            [mutated_transition].into_iter(),
+            execution.global_state_root(),
+            execution.proof().cloned(),
+        )
+        .unwrap();
+
+        // Authorize the fee.
+        let authorization = vm
+            .authorize_fee_public(
+                &caller_private_key,
+                10_000_000,
+                100,
+                mutated_execution.to_execution_id().unwrap(),
+                rng,
+            )
+            .unwrap();
+        // Compute the fee.
+        let fee = vm.execute_fee_authorization(authorization, None, rng).unwrap();
+
+        // Construct the transaction.
+        let mutated_transaction = Transaction::from_execution(mutated_execution, Some(fee)).unwrap();
+
+        // Ensure that the mutated transaction fails verification due to an extra output.
+        assert!(vm.check_transaction(&mutated_transaction, None, rng).is_err());
     }
 }

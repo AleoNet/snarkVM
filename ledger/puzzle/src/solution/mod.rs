@@ -25,7 +25,7 @@ pub struct Solution<N: Network> {
     /// The partial solution.
     partial_solution: PartialSolution<N>,
     /// The solution target.
-    target: u64,
+    pub(super) target: u64,
 }
 
 impl<N: Network> Solution<N> {
