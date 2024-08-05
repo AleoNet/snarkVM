@@ -48,13 +48,15 @@ fn test_vm_execute_and_finalize() {
         load_tests::<_, ProgramTest>("./tests/vm/execute_and_finalize", "./expectations/vm/execute_and_finalize");
 
     // Run each test and compare it against its corresponding expectation.
-    tests.par_iter().for_each(|test| {
-        // Run the test.
-        let output = run_test(test);
-        // Check against the expected output.
-        test.check(&output).unwrap();
-        // Save the output.
-        test.save(&output).unwrap();
+    tests.chunks(10).collect_vec().into_iter().for_each(|chunk| {
+        chunk.par_iter().for_each(|test| {
+            // Run the test.
+            let output = run_test(test);
+            // Check against the expected output.
+            test.check(&output).unwrap();
+            // Save the output.
+            test.save(&output).unwrap();
+        });
     });
 }
 
