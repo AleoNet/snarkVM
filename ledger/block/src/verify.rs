@@ -539,14 +539,15 @@ impl<N: Network> Block<N> {
     ) -> Result<(Vec<SolutionID<N>>, Vec<N::TransactionID>)> {
         // Prepare an iterator over the solution IDs.
         let mut solutions = solutions.as_ref().map(|s| s.deref()).into_iter().flatten().peekable();
-        // Prepare an iterator over the unconfirmed transaction IDs.
-        let unconfirmed_transaction_ids = cfg_iter!(transactions)
-            .map(|confirmed| confirmed.to_unconfirmed_transaction_id())
+        // Prepare an iterator over the unconfirmed transactions.
+        let unconfirmed_transactions = cfg_iter!(transactions)
+            .map(|confirmed| confirmed.to_unconfirmed_transaction())
             .collect::<Result<Vec<_>>>()?;
-        let mut unconfirmed_transaction_ids = unconfirmed_transaction_ids.iter().peekable();
+        let mut unconfirmed_transactions = unconfirmed_transactions.iter().peekable();
 
-        // Initialize a set of already seen transmission IDs.
-        let mut seen_transmission_ids = HashSet::new();
+        // Initialize a set of already seen transaction and solution IDs.
+        let mut seen_transaction_ids = HashSet::new();
+        let mut seen_solution_ids = HashSet::new();
 
         // Initialize a set of aborted or already-existing solution IDs.
         let mut aborted_or_existing_solution_ids = HashSet::new();
@@ -555,17 +556,31 @@ impl<N: Network> Block<N> {
 
         // Iterate over the transmission IDs.
         for transmission_id in subdag.transmission_ids() {
-            // If the transmission ID has already been seen, then continue.
-            if !seen_transmission_ids.insert(transmission_id) {
-                continue;
+            // If the transaction or solution ID has already been seen, then continue.
+            // Note: This is done instead of checking `TransmissionID` directly, because we need to
+            // ensure that each transaction or solution ID is unique. The `TransmissionID` is guaranteed
+            // to be unique, however the transaction/solution ID may not be due to malleability concerns.
+            match transmission_id {
+                TransmissionID::Ratification => {}
+                TransmissionID::Solution(solution_id, _) => {
+                    if !seen_solution_ids.insert(solution_id) {
+                        continue;
+                    }
+                }
+                TransmissionID::Transaction(transaction_id, _) => {
+                    if !seen_transaction_ids.insert(transaction_id) {
+                        continue;
+                    }
+                }
             }
 
             // Process the transmission ID.
             match transmission_id {
                 TransmissionID::Ratification => {}
-                TransmissionID::Solution(solution_id) => {
+                TransmissionID::Solution(solution_id, _checksum) => {
                     match solutions.peek() {
                         // Check the next solution matches the expected solution ID.
+                        // We don't check against the checksum, because check_solution_mut might mutate the solution.
                         Some((_, solution)) if solution.id() == *solution_id => {
                             // Increment the solution iterator.
                             solutions.next();
@@ -578,12 +593,17 @@ impl<N: Network> Block<N> {
                         }
                     }
                 }
-                TransmissionID::Transaction(transaction_id) => {
-                    match unconfirmed_transaction_ids.peek() {
+                TransmissionID::Transaction(transaction_id, checksum) => {
+                    match unconfirmed_transactions.peek() {
                         // Check the next transaction matches the expected transaction.
-                        Some(expected_id) if transaction_id == *expected_id => {
-                            // Increment the unconfirmed transaction ID iterator.
-                            unconfirmed_transaction_ids.next();
+                        Some(transaction)
+                            if transaction.id() == *transaction_id
+                                && Data::<Transaction<N>>::Buffer(transaction.to_bytes_le()?.into())
+                                    .to_checksum::<N>()?
+                                    == *checksum =>
+                        {
+                            // Increment the unconfirmed transaction iterator.
+                            unconfirmed_transactions.next();
                         }
                         // Otherwise, add the transaction ID to the aborted or existing list.
                         _ => {
@@ -599,7 +619,7 @@ impl<N: Network> Block<N> {
         // Ensure there are no more solutions in the block.
         ensure!(solutions.next().is_none(), "There exists more solutions than expected.");
         // Ensure there are no more transactions in the block.
-        ensure!(unconfirmed_transaction_ids.next().is_none(), "There exists more transactions than expected.");
+        ensure!(unconfirmed_transactions.next().is_none(), "There exists more transactions than expected.");
 
         // Ensure the aborted solution IDs match.
         for aborted_solution_id in aborted_solution_ids {
