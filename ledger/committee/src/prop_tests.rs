@@ -186,7 +186,7 @@ fn committee_members(input: CommitteeContext) {
     }
     let quorum_threshold = committee.quorum_threshold();
     let availability_threshold = committee.availability_threshold();
-    // (2f + 1) + (f + 1) - 1 = 3f + 1 = N
+    // (N - f) + (f + 1) - 1 = N
     assert_eq!(quorum_threshold + availability_threshold - 1, total_stake);
 }
 
