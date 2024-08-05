@@ -173,6 +173,7 @@ impl<N: Network> Committee<N> {
     pub fn quorum_threshold(&self) -> u64 {
         // Assuming `N = 3f + 1 + k`, where `0 <= k < 3`,
         // then `2N/3 + 1 = 2f + 1 + (2k + 2)/3 = 2f + 1 + k = N - f`.
+        // In the line above, `/` means integer division.
         self.total_stake().saturating_mul(2).saturating_div(3).saturating_add(1)
     }
 
