@@ -413,7 +413,10 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                                         }
                                     }
                                 }
+
                                 // This is a foundational bug - the caller is violating protocol rules.
+                                // It is possible that a `credits.aleo/split` transaction has no fee. However, it
+                                // is a simple transition without finalize operations and should not fail here.
                                 // Note: This will abort the entire atomic batch.
                                 None => Err("Rejected execute transaction has no fee".to_string()),
                             },
