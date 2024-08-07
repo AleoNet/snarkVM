@@ -13,6 +13,7 @@ wasm = [
   "snarkvm-parameters/wasm"
 ]
 test = []
+test_targets = []
 
 [dependencies.snarkvm-algorithms]
 path = "../../algorithms"
