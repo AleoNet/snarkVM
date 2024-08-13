@@ -78,7 +78,7 @@ mod tests {
         // Attack 1: Forge block 2' with the subdag of block 3.
         ////////////////////////////////////////////////////////////////////////////
         {
-            println!("\n\n\nPERFORMING ATTACK 1: FORGING BLOCK 2' WITH THE SUBDAG OF BLOCK 3");
+            println!("PERFORMING ATTACK 1: FORGING BLOCK 2' WITH THE SUBDAG OF BLOCK 3");
 
             let block_3_subdag =
                 if let Authority::Quorum(subdag) = block_3.authority() { subdag } else { unreachable!("") };
@@ -101,7 +101,7 @@ mod tests {
         // Attack 2: Forge block 2' with the combined subdag of block 2 and 3.
         ////////////////////////////////////////////////////////////////////////////
         {
-            println!("\n\n\nPERFORMING ATTACK 2: FORGING BLOCK 2' WITH THE COMBINED SUBDAG OF BLOCK 2 AND 3");
+            println!("PERFORMING ATTACK 2: FORGING BLOCK 2' WITH THE COMBINED SUBDAG OF BLOCK 2 AND 3");
 
             // Fetch the subdags.
             let block_2_subdag =

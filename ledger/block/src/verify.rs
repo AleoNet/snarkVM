@@ -178,15 +178,10 @@ impl<N: Network> Block<N> {
                     for round in previous_round..=subdag.anchor_round() {
                         ensure!(
                             subdag.contains_key(&round),
-                            "Subdag does not contain round {} in block {}",
-                            round,
-                            expected_height
+                            "Subdag is missing round {round} in block {expected_height}",
                         );
                     }
                 }
-
-                // TODO (raychu86): Add is_linked checks
-
                 // Output the subdag anchor round.
                 subdag.anchor_round()
             }
