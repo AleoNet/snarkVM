@@ -1,6 +1,6 @@
 # Using the Test Framework
 
-This directory contains a set of utilities and integration tests for various components of `synthesizer` crate. The test framework is based loosely off ideas from [Characterization Testing](https://en.wikipedia.org/wiki/Characterization_test) (you have have heard these referred to as "golden tests"). At a high level, the framework runs a set of integration tests and compares their output to their corresponding expected output. If the output does not match, the framework returns an error.
+This directory contains a set of utilities and integration tests for various components of `synthesizer` crate. The test framework is based loosely off ideas from [Characterization Testing](https://en.wikipedia.org/wiki/Characterization_test) (you have heard these referred to as "golden tests"). At a high level, the framework runs a set of integration tests and compares their output to their corresponding expected output. If the output does not match, the framework returns an error.
 
 
 Some important files/folders are:

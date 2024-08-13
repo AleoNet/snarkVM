@@ -241,7 +241,7 @@ impl<N: Network> Block<N> {
                 "Leader certificate has an incorrect committee ID"
             );
 
-            // Check that all all certificates on each round have the same committee ID.
+            // Check that all certificates on each round have the same committee ID.
             cfg_iter!(subdag).try_for_each(|(round, certificates)| {
                 // Check that every certificate for a given round shares the same committee ID.
                 let expected_committee_id = certificates

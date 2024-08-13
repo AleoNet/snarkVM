@@ -289,7 +289,7 @@ pub(crate) fn sample_instructions<N: Network>(
                     // Move to the next instruction type.
                     continue 'outer;
                 }
-                // Check the the first destination is a register.
+                // Check the first destination is a register.
                 match instruction_destinations[0] {
                     PuzzleDestination::Ephemeral(literal_type, _) | PuzzleDestination::Register(literal_type) => {
                         instruction_string.push_str(&format!(" as {literal_type}"));

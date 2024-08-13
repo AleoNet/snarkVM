@@ -365,7 +365,7 @@ impl<N: Network> Process<N> {
                 }
             }
         }
-        // Check that the the traversal completed correctly.
+        // Check that the traversal completed correctly.
         ensure!(traversal_stack.is_empty(), "Invalid traversal - traversal stack is not empty");
         ensure!(
             counter == execution.len(),

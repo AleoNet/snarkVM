@@ -72,7 +72,7 @@ impl<N: Network> Process<N> {
         Ok(authorization)
     }
 
-    /// Authorizes the fee given the the fee amount (in microcredits) and the deployment or execution ID.
+    /// Authorizes the fee given the fee amount (in microcredits) and the deployment or execution ID.
     #[inline]
     pub fn authorize_fee_public<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
         &self,

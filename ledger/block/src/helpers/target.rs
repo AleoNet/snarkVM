@@ -322,7 +322,7 @@ mod tests {
         );
         assert_eq!(reward_at_block_1, EXPECTED_ANCHOR_BLOCK_REWARD_AT_BLOCK_1);
 
-        // A helper function to check the the reward at the first expected block of a given year.
+        // A helper function to check the reward at the first expected block of a given year.
         fn check_reward_at_year(year: u32, expected_reward: u128) {
             let reward_at_year = anchor_block_reward_at_height(
                 block_height_at_year(CurrentNetwork::BLOCK_TIME, year),

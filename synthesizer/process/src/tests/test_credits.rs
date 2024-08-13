@@ -2556,7 +2556,7 @@ fn test_bonding_new_staker_to_closed_validator_fails() {
     );
 }
 
-// All the the above test cases use the same staker and withdraw addresses.
+// All the above test cases use the same staker and withdraw addresses.
 // The following test check the functionality of the withdraw address using a different staker and withdraw address.
 
 #[test]

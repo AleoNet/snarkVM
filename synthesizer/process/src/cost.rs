@@ -166,7 +166,7 @@ fn cost_in_size<'a, N: Network>(
     Ok(base_cost.saturating_add(byte_multiplier.saturating_mul(size_of_operands)))
 }
 
-/// Returns the the cost of a command in a finalize scope.
+/// Returns the cost of a command in a finalize scope.
 pub fn cost_per_command<N: Network>(stack: &Stack<N>, finalize: &Finalize<N>, command: &Command<N>) -> Result<u64> {
     match command {
         Command::Instruction(Instruction::Abs(_)) => Ok(500),

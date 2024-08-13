@@ -20,7 +20,7 @@ impl<N: Network> Future<N> {
         // Ensure the path is not empty.
         ensure!(!path.is_empty(), "Attempted to find an argument with an empty path.");
 
-        // A helper enum to track the the argument.
+        // A helper enum to track the argument.
         enum ArgumentRefType<'a, N: Network> {
             /// A plaintext type.
             Plaintext(&'a Plaintext<N>),

@@ -84,7 +84,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         result
     }
 
-    /// Authorizes the fee given the the fee amount (in microcredits) and the deployment or execution ID.
+    /// Authorizes the fee given the fee amount (in microcredits) and the deployment or execution ID.
     #[inline]
     pub fn authorize_fee_public<R: Rng + CryptoRng>(
         &self,
