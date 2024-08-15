@@ -276,9 +276,6 @@ version = "3.8"
 [build-dependencies.walkdir]
 version = "2"
 
-[dev-dependencies.aleo-std]
-version = "0.1.24"
-
 [profile.release]
 opt-level = 3
 lto = "thin"

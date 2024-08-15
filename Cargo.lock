@@ -2553,7 +2553,6 @@ dependencies = [
 name = "snarkvm"
 version = "0.16.19"
 dependencies = [
- "aleo-std",
  "anstyle",
  "anyhow",
  "bincode",
