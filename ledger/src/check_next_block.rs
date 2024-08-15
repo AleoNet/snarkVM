@@ -206,8 +206,6 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                     block.height()
                 );
             }
-
-            // Instead of doing leader checks. Do a is_linked check for all certificates?
         }
 
         Ok(())

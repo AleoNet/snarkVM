@@ -2975,13 +2975,12 @@ fn test_forged_block_subdags() {
         Ledger::<CurrentNetwork, ConsensusMemory<CurrentNetwork>>::load(genesis, StorageMode::Development(111))
             .unwrap();
     ledger.advance_to_next_block(&block_1).unwrap();
+    ledger.check_next_block(&block_2, rng).unwrap();
 
     ////////////////////////////////////////////////////////////////////////////
     // Attack 1: Forge block 2' with the subdag of block 3.
     ////////////////////////////////////////////////////////////////////////////
     {
-        println!("PERFORMING ATTACK 1: FORGING BLOCK 2' WITH THE SUBDAG OF BLOCK 3");
-
         let block_3_subdag =
             if let Authority::Quorum(subdag) = block_3.authority() { subdag } else { unreachable!("") };
 
@@ -3003,8 +3002,6 @@ fn test_forged_block_subdags() {
     // Attack 2: Forge block 2' with the combined subdag of block 2 and 3.
     ////////////////////////////////////////////////////////////////////////////
     {
-        println!("PERFORMING ATTACK 2: FORGING BLOCK 2' WITH THE COMBINED SUBDAG OF BLOCK 2 AND 3");
-
         // Fetch the subdags.
         let block_2_subdag =
             if let Authority::Quorum(subdag) = block_2.authority() { subdag } else { unreachable!("") };
