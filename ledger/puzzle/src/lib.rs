@@ -172,7 +172,7 @@ impl<N: Network> Puzzle<N> {
                     // Ensure that the proof target matches the expected proof target.
                     ensure!(
                         solution.target() == *proof_target,
-                        "The proof target does not match the expected proof target"
+                        "The proof target does not match the cached proof target"
                     );
                     targets[i] = *proof_target
                 }
@@ -195,7 +195,7 @@ impl<N: Network> Puzzle<N> {
                     // Ensure that the proof target matches the expected proof target.
                     ensure!(
                         solution.target() == proof_target,
-                        "The proof target does not match the expected proof target"
+                        "The proof target does not match the computed proof target"
                     );
                     // Insert the proof target into the cache.
                     self.proof_target_cache.write().put(*solution_id, proof_target);
