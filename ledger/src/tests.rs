@@ -69,14 +69,14 @@ fn construct_quorum_blocks(
 ) -> Vec<Block<CurrentNetwork>> {
     // Initialize the ledger with the genesis block.
     let ledger =
-        Ledger::<CurrentNetwork, ConsensusMemory<CurrentNetwork>>::load(genesis.clone(), StorageMode::Development(123))
+        Ledger::<CurrentNetwork, ConsensusMemory<CurrentNetwork>>::load(genesis.clone(), StorageMode::Production)
             .unwrap();
 
     // Initialize the round parameters.
     assert!(num_blocks > 0);
     assert!(num_blocks < 25);
     let rounds_per_commit = 2;
-    let final_round = num_blocks.saturating_mul(2);
+    let final_round = num_blocks.saturating_mul(rounds_per_commit);
 
     // Sample rounds of batch certificates starting at the genesis round from a static set of 4 authors.
     let (round_to_certificates_map, committee) = {
@@ -84,6 +84,7 @@ fn construct_quorum_blocks(
         let mut round_to_certificates_map: HashMap<u64, IndexSet<BatchCertificate<CurrentNetwork>>> = HashMap::new();
         let mut previous_certificates: IndexSet<BatchCertificate<CurrentNetwork>> = IndexSet::with_capacity(4);
 
+        // Create certificates for each round.
         for round in 1..=final_round {
             let mut current_certificates = IndexSet::new();
             let previous_certificate_ids =
@@ -100,6 +101,7 @@ fn construct_quorum_blocks(
                     rng,
                 )
                 .unwrap();
+                // Add signatures for the batch headers. This creates a fully connected DAG.
                 let signatures = private_keys
                     .iter()
                     .enumerate()
@@ -124,15 +126,21 @@ fn construct_quorum_blocks(
         round_to_certificates_map: &HashMap<u64, IndexSet<BatchCertificate<CurrentNetwork>>>,
         rng: &mut TestRng,
     ) -> Block<CurrentNetwork> {
+        // Construct the subdag for the block.
         let mut subdag_map = BTreeMap::new();
+        // Add the leader certificate.
         subdag_map.insert(round, [leader_certificate.clone()].into());
+        // Add the certificates of the previous round.
         subdag_map.insert(round - 1, round_to_certificates_map.get(&(round - 1)).unwrap().clone());
+        // Add the certificates from the previous leader round, excluding the previous leader certificate.
+        // This assumes the number of rounds per commit is 2.
         if let Some(prev_leader_cert) = previous_leader_certificate {
             let mut previous_leader_round_certificates =
                 round_to_certificates_map.get(&(round - 2)).cloned().unwrap_or_default();
             previous_leader_round_certificates.shift_remove(prev_leader_cert);
             subdag_map.insert(round - 2, previous_leader_round_certificates);
         }
+        // Construct the block.
         let subdag = Subdag::from(subdag_map).unwrap();
         let block = ledger.prepare_advance_to_next_quorum_block(subdag, Default::default(), rng).unwrap();
         ledger.check_next_block(&block, rng).unwrap();
@@ -143,7 +151,7 @@ fn construct_quorum_blocks(
     let mut blocks = Vec::new();
     let mut previous_leader_certificate: Option<&BatchCertificate<CurrentNetwork>> = None;
 
-    // Construct the blocks
+    // Construct the blocks.
     for block_height in 1..=num_blocks {
         let round = block_height.saturating_mul(rounds_per_commit);
         let leader = committee.get_leader(round).unwrap();
@@ -2972,8 +2980,7 @@ fn test_forged_block_subdags() {
 
     // Construct the ledger.
     let ledger =
-        Ledger::<CurrentNetwork, ConsensusMemory<CurrentNetwork>>::load(genesis, StorageMode::Development(111))
-            .unwrap();
+        Ledger::<CurrentNetwork, ConsensusMemory<CurrentNetwork>>::load(genesis, StorageMode::Production).unwrap();
     ledger.advance_to_next_block(&block_1).unwrap();
     ledger.check_next_block(&block_2, rng).unwrap();
 
