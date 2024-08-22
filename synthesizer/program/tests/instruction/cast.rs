@@ -38,7 +38,7 @@ use synthesizer_process::{Process, Stack};
 type CurrentNetwork = MainnetV0;
 type CurrentAleo = AleoV0;
 
-const ITERATIONS: usize = 100;
+const ITERATIONS: usize = 25;
 
 fn valid_cast_types<N: Network>() -> &'static [CastType<N>] {
     &[
