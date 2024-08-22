@@ -60,7 +60,7 @@ fn extract_transmissions(
     transmissions
 }
 
-/// Construct `num_blocks` quroum blocks given a set of validator private keys and the genesis block.
+/// Construct `num_blocks` quorum blocks given a set of validator private keys and the genesis block.
 fn construct_quorum_blocks(
     private_keys: Vec<PrivateKey<CurrentNetwork>>,
     genesis: Block<CurrentNetwork>,
@@ -117,8 +117,8 @@ fn construct_quorum_blocks(
         (round_to_certificates_map, committee)
     };
 
-    // Helper function to create a quroum block.
-    fn create_next_quroum_block(
+    // Helper function to create a quorum block.
+    fn create_next_quorum_block(
         ledger: &Ledger<CurrentNetwork, ConsensusMemory<CurrentNetwork>>,
         round: u64,
         leader_certificate: &BatchCertificate<CurrentNetwork>,
@@ -157,7 +157,7 @@ fn construct_quorum_blocks(
         let leader = committee.get_leader(round).unwrap();
         let leader_certificate =
             round_to_certificates_map.get(&round).unwrap().iter().find(|c| c.author() == leader).unwrap();
-        let block = create_next_quroum_block(
+        let block = create_next_quorum_block(
             &ledger,
             round,
             leader_certificate,
@@ -2970,13 +2970,13 @@ fn test_forged_block_subdags() {
         PrivateKey::new(genesis_rng).unwrap(),
     ];
 
-    // Construct 3 quroum blocks.
-    let mut quroum_blocks = construct_quorum_blocks(private_keys.to_vec(), genesis.clone(), 3, rng);
+    // Construct 3 quorum blocks.
+    let mut quorum_blocks = construct_quorum_blocks(private_keys.to_vec(), genesis.clone(), 3, rng);
 
     // Extract the individual blocks.
-    let block_1 = quroum_blocks.remove(0);
-    let block_2 = quroum_blocks.remove(0);
-    let block_3 = quroum_blocks.remove(0);
+    let block_1 = quorum_blocks.remove(0);
+    let block_2 = quorum_blocks.remove(0);
+    let block_3 = quorum_blocks.remove(0);
 
     // Construct the ledger.
     let ledger =

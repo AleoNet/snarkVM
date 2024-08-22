@@ -170,21 +170,9 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         for round in (self.latest_round().saturating_add(2)..=subdag.anchor_round().saturating_sub(2)).rev().step_by(2)
         {
             // Retrieve the previous committee lookback.
-            let previous_committee_lookback = {
-                // Determine the round number for the previous committee.
-                let previous_round = match round % 2 == 0 {
-                    true => round.saturating_sub(1),
-                    false => round.saturating_sub(2),
-                };
-                // Determine the previous committee lookback round.
-                let committee_lookback_round = previous_round.saturating_sub(Committee::<N>::COMMITTEE_LOOKBACK_RANGE);
-                // Output the previous committee lookback.
-                self.get_committee_for_round(committee_lookback_round)
-                    .and_then(|opt| {
-                        opt.ok_or_else(|| anyhow!("No committee found for lookback round {committee_lookback_round}"))
-                    })
-                    .map_err(|e| anyhow!("Failed to retrieve previous committee for round {round}: {e}"))?
-            };
+            let previous_committee_lookback = self
+                .get_committee_lookback_for_round(round)?
+                .ok_or_else(|| anyhow!("No committee lookback found for round {round}"))?;
 
             // Compute the leader for the commit round.
             let computed_leader = previous_committee_lookback
