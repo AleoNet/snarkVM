@@ -13,6 +13,7 @@
 // limitations under the License.
 
 mod assert;
+mod cast;
 mod commit;
 mod hash;
 mod is;
