@@ -169,6 +169,25 @@ pub struct CastOperation<N: Network, const VARIANT: u8> {
 }
 
 impl<N: Network, const VARIANT: u8> CastOperation<N, VARIANT> {
+    /// Initializes a new `cast` instruction.
+    #[inline]
+    pub fn new(operands: Vec<Operand<N>>, destination: Register<N>, cast_type: CastType<N>) -> Result<Self> {
+        // Ensure the number of operands is within the bounds.
+        let max_operands = match cast_type {
+            CastType::GroupYCoordinate
+            | CastType::GroupXCoordinate
+            | CastType::Plaintext(PlaintextType::Literal(_)) => 1,
+            CastType::Plaintext(PlaintextType::Struct(_)) => N::MAX_STRUCT_ENTRIES,
+            CastType::Plaintext(PlaintextType::Array(_)) => N::MAX_ARRAY_ELEMENTS,
+            CastType::Record(_) | CastType::ExternalRecord(_) => N::MAX_RECORD_ENTRIES,
+        };
+        if operands.is_empty() || operands.len() > max_operands {
+            bail!("The number of operands must be nonzero and <= {max_operands}");
+        }
+        // Return the instruction.
+        Ok(Self { operands, destination, cast_type })
+    }
+
     /// Returns the opcode.
     #[inline]
     pub const fn opcode() -> Opcode {

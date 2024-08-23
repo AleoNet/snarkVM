@@ -718,7 +718,7 @@ jobs:
     resource_class: << pipeline.parameters.twoxlarge >>
     steps:
       - run_serial:
-          flags: --test '*' -- --skip keccak --skip psd --skip sha --skip instruction::is --skip instruction::equal --skip instruction::commit
+          flags: --test '*' -- --skip keccak --skip psd --skip sha --skip instruction::is --skip instruction::equal --skip instruction::commit --skip instruction::cast
           workspace_member: synthesizer/program
           cache_key: snarkvm-synthesizer-program-cache
 
@@ -779,6 +779,16 @@ jobs:
     steps:
       - run_serial:
           flags: instruction::commit --test '*'
+          workspace_member: synthesizer/program
+          cache_key: snarkvm-synthesizer-program-cache
+
+  synthesizer-program-integration-instruction-cast:
+    docker:
+      - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
+    resource_class: << pipeline.parameters.xlarge >>
+    steps:
+      - run_serial:
+          flags: instruction::cast --test '*'
           workspace_member: synthesizer/program
           cache_key: snarkvm-synthesizer-program-cache
 
@@ -962,6 +972,7 @@ workflows:
       - synthesizer-program-integration-instruction-is
       - synthesizer-program-integration-instruction-equal
       - synthesizer-program-integration-instruction-commit
+      - synthesizer-program-integration-instruction-cast
       - synthesizer-snark
       - utilities
       - utilities-derives
