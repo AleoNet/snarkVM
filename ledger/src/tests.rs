@@ -2394,68 +2394,49 @@ function foo:
     // Initialize the test environment.
     let crate::test_helpers::TestEnv { ledger, private_key, .. } = crate::test_helpers::sample_test_env(rng);
 
+    // Create a helper method to deploy the programs.
+    let deploy_program = |program: &Program<CurrentNetwork>, rng: &mut TestRng| {
+        let mut attempts = 0;
+        loop {
+            if attempts >= ITERATIONS {
+                panic!("Failed to craft deployment after {ITERATIONS} attempts");
+            }
+            match try_vm_runtime!(|| ledger.vm().deploy(&private_key, program, None, 0, None, rng)) {
+                Ok(result) => break result.unwrap(),
+                Err(_) => attempts += 1,
+            }
+        }
+    };
+
     // Deploy the programs. Keep attempting to create a deployment until it is successful.
-    let deployment_tx = {
-        let mut attempts = 0;
-        loop {
-            if attempts >= ITERATIONS {
-                panic!("Failed to craft deployment after {ITERATIONS} attempts");
-            }
-            match try_vm_runtime!(|| ledger.vm().deploy(&private_key, &program, None, 0, None, rng)) {
-                Ok(result) => break result.unwrap(),
-                Err(_) => attempts += 1,
-            }
-        }
-    };
-    let deployment_tx_2 = {
-        let mut attempts = 0;
-        loop {
-            if attempts >= ITERATIONS {
-                panic!("Failed to craft deployment after {ITERATIONS} attempts");
-            }
-            match try_vm_runtime!(|| ledger.vm().deploy(&private_key, &program_2, None, 0, None, rng)) {
-                Ok(result) => break result.unwrap(),
-                Err(_) => attempts += 1,
-            }
-        }
-    };
-    let deployment_tx_3 = {
-        let mut attempts = 0;
-        loop {
-            if attempts >= ITERATIONS {
-                panic!("Failed to craft deployment after {ITERATIONS} attempts");
-            }
-            match try_vm_runtime!(|| ledger.vm().deploy(&private_key, &program_3, None, 0, None, rng)) {
-                Ok(result) => break result.unwrap(),
-                Err(_) => attempts += 1,
-            }
-        }
-    };
+    let deployment_tx = deploy_program(&program, rng);
+    let deployment_tx_2 = deploy_program(&program_2, rng);
+    let deployment_tx_3 = deploy_program(&program_3, rng);
 
     // Verify the deployment under different RNGs to ensure the deployment is valid.
     for _ in 0..ITERATIONS {
         let process = ledger.vm().process().clone();
-        // Check that the verification of the deployments are consistent.
-        let expected_result = ledger.vm().check_transaction(&deployment_tx, None, rng).is_ok();
-        let deployment = deployment_tx.deployment().unwrap().clone();
-        for _ in 0..ITERATIONS {
-            let result = process.read().verify_deployment::<CurrentAleo, _>(&deployment, rng).is_ok();
-            assert_eq!(result, expected_result);
-        }
+        // Create a helper method to verify the deployments.
+        let verify_deployment = |deployment_tx: &Transaction<CurrentNetwork>, rng: &mut TestRng| {
+            let expected_result = match try_vm_runtime!(|| ledger.vm().check_transaction(deployment_tx, None, rng)) {
+                Ok(result) => result.is_ok(),
+                Err(_) => false,
+            };
+            let deployment = deployment_tx.deployment().unwrap().clone();
+            for _ in 0..ITERATIONS {
+                let result =
+                    match try_vm_runtime!(|| process.read().verify_deployment::<CurrentAleo, _>(&deployment, rng)) {
+                        Ok(result) => result.is_ok(),
+                        Err(_) => false,
+                    };
+                assert_eq!(result, expected_result);
+            }
+        };
 
-        let expected_result = ledger.vm().check_transaction(&deployment_tx_2, None, rng).is_ok();
-        let deployment_2 = deployment_tx_2.deployment().unwrap().clone();
-        for _ in 0..ITERATIONS {
-            let result = process.read().verify_deployment::<CurrentAleo, _>(&deployment_2, rng).is_ok();
-            assert_eq!(result, expected_result);
-        }
-
-        let expected_result = ledger.vm().check_transaction(&deployment_tx_3, None, rng).is_ok();
-        let deployment_3 = deployment_tx_3.deployment().unwrap().clone();
-        for _ in 0..ITERATIONS {
-            let result = process.read().verify_deployment::<CurrentAleo, _>(&deployment_3, rng).is_ok();
-            assert_eq!(result, expected_result);
-        }
+        // Verify the deployments.
+        verify_deployment(&deployment_tx, rng);
+        verify_deployment(&deployment_tx_2, rng);
+        verify_deployment(&deployment_tx_3, rng);
     }
 }
 
