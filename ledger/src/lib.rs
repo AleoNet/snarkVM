@@ -391,9 +391,11 @@ pub(crate) mod test_helpers {
     };
     use ledger_block::Block;
     use ledger_store::ConsensusStore;
+    use snarkvm_circuit::network::AleoV0;
     use synthesizer::vm::VM;
 
     pub(crate) type CurrentNetwork = MainnetV0;
+    pub(crate) type CurrentAleo = AleoV0;
 
     #[cfg(not(feature = "rocks"))]
     pub(crate) type CurrentLedger =

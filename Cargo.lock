@@ -3091,6 +3091,7 @@ dependencies = [
  "rand",
  "rayon",
  "serde_json",
+ "snarkvm-circuit",
  "snarkvm-console",
  "snarkvm-ledger-authority",
  "snarkvm-ledger-block",
@@ -3101,6 +3102,7 @@ dependencies = [
  "snarkvm-ledger-store",
  "snarkvm-ledger-test-helpers",
  "snarkvm-synthesizer",
+ "snarkvm-utilities",
  "time",
  "tracing",
 ]
@@ -3444,6 +3446,7 @@ dependencies = [
  "once_cell",
  "parking_lot",
  "rand",
+ "rand_chacha",
  "rayon",
  "serde_json",
  "snarkvm-circuit",
