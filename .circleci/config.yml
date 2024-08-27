@@ -666,6 +666,16 @@ jobs:
           workspace_member: parameters
           cache_key: v1-snarkvm-parameters-cache
 
+  parameters-uncached:
+    docker:
+      - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
+    resource_class: << pipeline.parameters.small >>
+    steps:
+      - run_serial:
+          flags: -- --test-threads=2 --ignored test_load_bytes_mini
+          workspace_member: parameters
+          cache_key: v-{{ epoch }}-snarkvm-parameters-cache
+
   synthesizer:
     docker:
       - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
@@ -954,6 +964,7 @@ workflows:
       - ledger-store
       - ledger-test-helpers
       - parameters
+      - parameters-uncached
       - synthesizer
       - synthesizer-integration
       - synthesizer-process
