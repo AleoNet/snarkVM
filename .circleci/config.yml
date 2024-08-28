@@ -669,7 +669,7 @@ jobs:
   parameters-uncached:
     docker:
       - image: cimg/rust:1.76.0 # Attention - Change the MSRV in Cargo.toml and rust-toolchain as well
-    resource_class: << pipeline.parameters.medium >>
+    resource_class: << pipeline.parameters.large >>
     steps:
       - run_serial:
           flags: -- --test-threads=2 --ignored test_load_bytes_mini
