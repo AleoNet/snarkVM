@@ -93,6 +93,12 @@ impl<N: Network> Stack<N> {
             "The number of functions in the program does not match the number of verifying keys"
         );
 
+        // Create a seeded rng to use for input value and sub-stack generation.
+        // This is needed to ensure that the verification results of deployments are consistent across all parties,
+        // because currently there is a possible flakiness due to overflows in Field to Scalar casting.
+        let seed = u64::from_bytes_le(&deployment.to_deployment_id()?.to_bytes_le()?[0..8])?;
+        let mut seeded_rng = rand_chacha::ChaChaRng::seed_from_u64(seed);
+
         // Iterate through the program functions and construct the callstacks and corresponding assignments.
         for (function, (_, (verifying_key, _))) in
             deployment.program().functions().values().zip_eq(deployment.verifying_keys())
@@ -111,9 +117,9 @@ impl<N: Network> Stack<N> {
                         // Retrieve the external stack.
                         let stack = self.get_external_stack(locator.program_id())?;
                         // Sample the input.
-                        stack.sample_value(&burner_address, &ValueType::Record(*locator.resource()), rng)
+                        stack.sample_value(&burner_address, &ValueType::Record(*locator.resource()), &mut seeded_rng)
                     }
-                    _ => self.sample_value(&burner_address, input_type, rng),
+                    _ => self.sample_value(&burner_address, input_type, &mut seeded_rng),
                 })
                 .collect::<Result<Vec<_>>>()?;
             lap!(timer, "Sample the inputs");
@@ -154,7 +160,7 @@ impl<N: Network> Stack<N> {
         }
 
         // Verify the certificates.
-        let rngs = (0..call_stacks.len()).map(|_| StdRng::from_seed(rng.gen())).collect::<Vec<_>>();
+        let rngs = (0..call_stacks.len()).map(|_| StdRng::from_seed(seeded_rng.gen())).collect::<Vec<_>>();
         cfg_into_iter!(call_stacks).zip_eq(deployment.verifying_keys()).zip_eq(rngs).try_for_each(
             |(((function_name, call_stack, assignments), (_, (verifying_key, certificate))), mut rng)| {
                 // Synthesize the circuit.

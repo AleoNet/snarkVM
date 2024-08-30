@@ -173,6 +173,15 @@ impl<N: Network> Block<N> {
                     subdag.anchor_round(),
                     previous_round
                 );
+                // Ensure that the rounds in the subdag are sequential.
+                if previous_round != 0 {
+                    for round in previous_round..=subdag.anchor_round() {
+                        ensure!(
+                            subdag.contains_key(&round),
+                            "Subdag is missing round {round} in block {expected_height}",
+                        );
+                    }
+                }
                 // Output the subdag anchor round.
                 subdag.anchor_round()
             }

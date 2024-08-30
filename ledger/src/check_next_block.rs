@@ -117,6 +117,9 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             ratified_finalize_operations,
         )?;
 
+        // Determine if the block subdag is correctly constructed and is not a combination of multiple subdags.
+        self.check_block_subdag_atomicity(block)?;
+
         // Ensure that each existing solution ID from the block exists in the ledger.
         for existing_solution_id in expected_existing_solution_ids {
             if !self.contains_solution_id(&existing_solution_id)? {
@@ -128,6 +131,68 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         for existing_transaction_id in expected_existing_transaction_ids {
             if !self.contains_transaction_id(&existing_transaction_id)? {
                 bail!("Transaction ID '{existing_transaction_id}' does not exist in the ledger");
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Checks that the block subdag can not be split into multiple valid subdags.
+    fn check_block_subdag_atomicity(&self, block: &Block<N>) -> Result<()> {
+        // Returns `true` if there is a path from the previous certificate to the current certificate.
+        fn is_linked<N: Network>(
+            subdag: &Subdag<N>,
+            previous_certificate: &BatchCertificate<N>,
+            current_certificate: &BatchCertificate<N>,
+        ) -> Result<bool> {
+            // Initialize the list containing the traversal.
+            let mut traversal = vec![current_certificate];
+            // Iterate over the rounds from the current certificate to the previous certificate.
+            for round in (previous_certificate.round()..current_certificate.round()).rev() {
+                // Retrieve all of the certificates for this past round.
+                let certificates = subdag.get(&round).ok_or(anyhow!("No certificates found for round {round}"))?;
+                // Filter the certificates to only include those that are in the traversal.
+                traversal = certificates
+                    .into_iter()
+                    .filter(|p| traversal.iter().any(|c| c.previous_certificate_ids().contains(&p.id())))
+                    .collect();
+            }
+            Ok(traversal.contains(&previous_certificate))
+        }
+
+        // Check if the block has a subdag.
+        let subdag = match block.authority() {
+            Authority::Quorum(subdag) => subdag,
+            _ => return Ok(()),
+        };
+
+        // Iterate over the rounds to find possible leader certificates.
+        for round in (self.latest_round().saturating_add(2)..=subdag.anchor_round().saturating_sub(2)).rev().step_by(2)
+        {
+            // Retrieve the previous committee lookback.
+            let previous_committee_lookback = self
+                .get_committee_lookback_for_round(round)?
+                .ok_or_else(|| anyhow!("No committee lookback found for round {round}"))?;
+
+            // Compute the leader for the commit round.
+            let computed_leader = previous_committee_lookback
+                .get_leader(round)
+                .map_err(|e| anyhow!("Failed to compute leader for round {round}: {e}"))?;
+
+            // Retrieve the previous leader certificates.
+            let previous_certificate = match subdag.get(&round).and_then(|certificates| {
+                certificates.iter().find(|certificate| certificate.author() == computed_leader)
+            }) {
+                Some(cert) => cert,
+                None => continue,
+            };
+
+            // Determine if there is a path between the previous certificate and the subdag's leader certificate.
+            if is_linked(subdag, previous_certificate, subdag.leader_certificate())? {
+                bail!(
+                    "The previous certificate should not be linked to the current certificate in block {}",
+                    block.height()
+                );
             }
         }
 
