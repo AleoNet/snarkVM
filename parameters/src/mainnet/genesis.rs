@@ -27,6 +27,6 @@ mod tests {
     #[test]
     fn test_genesis_block() {
         let bytes = GenesisBytes::load_bytes();
-        assert_eq!(20083, bytes.len() as u64, "Update me if serialization has changed");
+        assert_eq!(31083, bytes.len() as u64, "Update me if serialization has changed");
     }
 }
