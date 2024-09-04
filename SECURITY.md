@@ -8,4 +8,4 @@ Our security procedures are designed to promote public disclosure and quick secu
 
 All software bugs should be reported by filing a Github issue.
 
-If you are unsure and would like to reach out to us directly, please email security \_at\_ aleo.org to elaborate on the issue.
+If you are unsure and would like to reach out to us directly, please email security@aleo.org to elaborate on the issue.
