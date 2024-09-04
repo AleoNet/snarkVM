@@ -150,7 +150,7 @@ impl Network for MainnetV0 {
     #[cfg(feature = "test")]
     const GENESIS_PROOF_TARGET: u64 = 1u64 << 3;
     /// The fixed timestamp of the genesis block.
-    const GENESIS_TIMESTAMP: i64 = 1696118400 /* 2023-10-01 00:00:00 UTC */;
+    const GENESIS_TIMESTAMP: i64 = 1725469200 /* 2024-09-04 13:00:00 UTC */;
     /// The network ID.
     const ID: u16 = 0;
     /// The function name for the inclusion circuit.
