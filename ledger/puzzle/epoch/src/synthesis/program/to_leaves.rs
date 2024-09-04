@@ -35,12 +35,12 @@ impl<N: Network> EpochProgram<N> {
             leaves.push(private_variable.value().to_bits_le());
         }
 
-        // Pad the leaves to the next power of two.
+        // Pad the leaves to the next power of ARITY.
         let Some(num_padded_leaves) = checked_next_power_of_n(leaves.len(), ARITY as usize) else {
             bail!("Integer overflow when computing the maximum number of leaves in the Merkle tree");
         };
 
-        // Pad the leaves up to the next power of two.
+        // Pad the leaves up to the next power of ARITY.
         if leaves.len() < num_padded_leaves {
             leaves.resize(num_padded_leaves, vec![false; 254]);
         }

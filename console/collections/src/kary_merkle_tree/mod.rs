@@ -94,11 +94,9 @@ impl<LH: LeafHash<Hash = PH::Hash>, PH: PathHash, const DEPTH: u8, const ARITY: 
         // The minimum tree size is either a single root node or the calculated number of nodes plus
         // the supplied leaves, and empty hashes that pad up to the tree's arity (making every node full).
         let arity = ARITY as usize;
-        let all_nodes_are_full = leaves.len() % arity == 0;
-        let minimum_tree_size = std::cmp::max(
-            1,
-            num_nodes + leaves.len() + if all_nodes_are_full { 0 } else { arity - leaves.len() % arity },
-        );
+        let all_nodes_are_full = leaves.len() == max_leaves;
+        let minimum_tree_size =
+            std::cmp::max(1, num_nodes + leaves.len() + if all_nodes_are_full { 0 } else { max_leaves - leaves.len() });
 
         // Initialize the Merkle tree.
         let mut tree = vec![empty_hash; minimum_tree_size];
