@@ -57,7 +57,7 @@ impl Environment for Circuit {
                 // Ensure that we do not surpass the variable limit for the circuit.
                 VARIABLE_LIMIT.with(|variable_limit| {
                     if let Some(limit) = variable_limit.get() {
-                        if Self::num_variables() > limit {
+                        if Self::num_variables() >= limit {
                             Self::halt(format!("Surpassed the variable limit ({limit})"))
                         }
                     }
