@@ -14,7 +14,7 @@
 
 use crate::{
     advance::split_candidate_solutions,
-    test_helpers::{CurrentLedger, CurrentNetwork},
+    test_helpers::{CurrentAleo, CurrentLedger, CurrentNetwork},
     Ledger,
     RecordsFilter,
 };
@@ -25,17 +25,153 @@ use console::{
     program::{Entry, Identifier, Literal, Plaintext, ProgramID, Value},
     types::U16,
 };
-use ledger_block::{ConfirmedTransaction, Execution, Ratify, Rejected, Transaction};
+use ledger_authority::Authority;
+use ledger_block::{Block, ConfirmedTransaction, Execution, Ratify, Rejected, Transaction};
 use ledger_committee::{Committee, MIN_VALIDATOR_STAKE};
+use ledger_narwhal::{BatchCertificate, BatchHeader, Data, Subdag, Transmission, TransmissionID};
 use ledger_store::{helpers::memory::ConsensusMemory, ConsensusStore};
+use snarkvm_utilities::try_vm_runtime;
 use synthesizer::{program::Program, vm::VM, Stack};
 
-use indexmap::IndexMap;
+use indexmap::{IndexMap, IndexSet};
 use rand::seq::SliceRandom;
+use std::collections::{BTreeMap, HashMap};
+use time::OffsetDateTime;
 
 /// Initializes a sample VM.
 fn sample_vm() -> VM<CurrentNetwork, ConsensusMemory<CurrentNetwork>> {
     VM::from(ConsensusStore::<CurrentNetwork, ConsensusMemory<CurrentNetwork>>::open(None).unwrap()).unwrap()
+}
+
+/// Extract the transmissions from a block.
+fn extract_transmissions(
+    block: &Block<CurrentNetwork>,
+) -> IndexMap<TransmissionID<CurrentNetwork>, Transmission<CurrentNetwork>> {
+    let mut transmissions = IndexMap::new();
+    for tx in block.transactions().iter() {
+        let checksum = Data::Object(tx.transaction().clone()).to_checksum::<CurrentNetwork>().unwrap();
+        transmissions.insert(TransmissionID::from((&tx.id(), &checksum)), tx.transaction().clone().into());
+    }
+    if let Some(coinbase_solution) = block.solutions().as_ref() {
+        for (_, solution) in coinbase_solution.iter() {
+            let checksum = Data::Object(*solution).to_checksum::<CurrentNetwork>().unwrap();
+            transmissions.insert(TransmissionID::from((solution.id(), checksum)), (*solution).into());
+        }
+    }
+    transmissions
+}
+
+/// Construct `num_blocks` quorum blocks given a set of validator private keys and the genesis block.
+fn construct_quorum_blocks(
+    private_keys: Vec<PrivateKey<CurrentNetwork>>,
+    genesis: Block<CurrentNetwork>,
+    num_blocks: u64,
+    rng: &mut TestRng,
+) -> Vec<Block<CurrentNetwork>> {
+    // Initialize the ledger with the genesis block.
+    let ledger =
+        Ledger::<CurrentNetwork, ConsensusMemory<CurrentNetwork>>::load(genesis.clone(), StorageMode::Production)
+            .unwrap();
+
+    // Initialize the round parameters.
+    assert!(num_blocks > 0);
+    assert!(num_blocks < 25);
+    let rounds_per_commit = 2;
+    let final_round = num_blocks.saturating_mul(rounds_per_commit);
+
+    // Sample rounds of batch certificates starting at the genesis round from a static set of 4 authors.
+    let (round_to_certificates_map, committee) = {
+        let committee = ledger.latest_committee().unwrap();
+        let mut round_to_certificates_map: HashMap<u64, IndexSet<BatchCertificate<CurrentNetwork>>> = HashMap::new();
+        let mut previous_certificates: IndexSet<BatchCertificate<CurrentNetwork>> = IndexSet::with_capacity(4);
+
+        // Create certificates for each round.
+        for round in 1..=final_round {
+            let mut current_certificates = IndexSet::new();
+            let previous_certificate_ids =
+                if round <= 1 { IndexSet::new() } else { previous_certificates.iter().map(|c| c.id()).collect() };
+
+            for (i, private_key_1) in private_keys.iter().enumerate() {
+                let batch_header = BatchHeader::new(
+                    private_key_1,
+                    round,
+                    OffsetDateTime::now_utc().unix_timestamp(),
+                    committee.id(),
+                    Default::default(),
+                    previous_certificate_ids.clone(),
+                    rng,
+                )
+                .unwrap();
+                // Add signatures for the batch headers. This creates a fully connected DAG.
+                let signatures = private_keys
+                    .iter()
+                    .enumerate()
+                    .filter(|&(j, _)| i != j)
+                    .map(|(_, private_key_2)| private_key_2.sign(&[batch_header.batch_id()], rng).unwrap())
+                    .collect();
+                current_certificates.insert(BatchCertificate::from(batch_header, signatures).unwrap());
+            }
+
+            round_to_certificates_map.insert(round, current_certificates.clone());
+            previous_certificates = current_certificates;
+        }
+        (round_to_certificates_map, committee)
+    };
+
+    // Helper function to create a quorum block.
+    fn create_next_quorum_block(
+        ledger: &Ledger<CurrentNetwork, ConsensusMemory<CurrentNetwork>>,
+        round: u64,
+        leader_certificate: &BatchCertificate<CurrentNetwork>,
+        previous_leader_certificate: Option<&BatchCertificate<CurrentNetwork>>,
+        round_to_certificates_map: &HashMap<u64, IndexSet<BatchCertificate<CurrentNetwork>>>,
+        rng: &mut TestRng,
+    ) -> Block<CurrentNetwork> {
+        // Construct the subdag for the block.
+        let mut subdag_map = BTreeMap::new();
+        // Add the leader certificate.
+        subdag_map.insert(round, [leader_certificate.clone()].into());
+        // Add the certificates of the previous round.
+        subdag_map.insert(round - 1, round_to_certificates_map.get(&(round - 1)).unwrap().clone());
+        // Add the certificates from the previous leader round, excluding the previous leader certificate.
+        // This assumes the number of rounds per commit is 2.
+        if let Some(prev_leader_cert) = previous_leader_certificate {
+            let mut previous_leader_round_certificates =
+                round_to_certificates_map.get(&(round - 2)).cloned().unwrap_or_default();
+            previous_leader_round_certificates.shift_remove(prev_leader_cert);
+            subdag_map.insert(round - 2, previous_leader_round_certificates);
+        }
+        // Construct the block.
+        let subdag = Subdag::from(subdag_map).unwrap();
+        let block = ledger.prepare_advance_to_next_quorum_block(subdag, Default::default(), rng).unwrap();
+        ledger.check_next_block(&block, rng).unwrap();
+        block
+    }
+
+    // Track the blocks that are created.
+    let mut blocks = Vec::new();
+    let mut previous_leader_certificate: Option<&BatchCertificate<CurrentNetwork>> = None;
+
+    // Construct the blocks.
+    for block_height in 1..=num_blocks {
+        let round = block_height.saturating_mul(rounds_per_commit);
+        let leader = committee.get_leader(round).unwrap();
+        let leader_certificate =
+            round_to_certificates_map.get(&round).unwrap().iter().find(|c| c.author() == leader).unwrap();
+        let block = create_next_quorum_block(
+            &ledger,
+            round,
+            leader_certificate,
+            previous_leader_certificate,
+            &round_to_certificates_map,
+            rng,
+        );
+        ledger.advance_to_next_block(&block).unwrap();
+        previous_leader_certificate = Some(leader_certificate);
+        blocks.push(block);
+    }
+
+    blocks
 }
 
 #[test]
@@ -2346,6 +2482,99 @@ finalize is_id:
     ledger.advance_to_next_block(&block_3).unwrap();
 }
 
+#[test]
+fn test_deployment_with_cast_from_field_to_scalar() {
+    // Initialize an RNG.
+    let rng = &mut TestRng::default();
+
+    const ITERATIONS: usize = 10;
+
+    // Construct a program that casts a field to a scalar.
+    let program = Program::<CurrentNetwork>::from_str(
+        r"
+program test_cast_field_to_scalar.aleo;
+function foo:
+    input r0 as field.public;
+    cast r0 into r1 as scalar;",
+    )
+    .unwrap();
+
+    // Constructs a program that has a struct with a field that is cast to a scalar.
+    let program_2 = Program::<CurrentNetwork>::from_str(
+        r"
+program test_cast_f_to_s_struct.aleo;
+
+struct message:
+    first as scalar;
+
+function foo:
+    input r0 as field.public;
+    cast r0 into r1 as scalar;
+    cast r1 into r2 as message;",
+    )
+    .unwrap();
+
+    // Constructs a program that has an array of scalars cast from fields.
+    let program_3 = Program::<CurrentNetwork>::from_str(
+        r"
+program test_cast_f_to_s_array.aleo;
+
+function foo:
+    input r0 as field.public;
+    cast r0 into r1 as scalar;
+    cast r1 r1 r1 r1 into r2 as [scalar; 4u32];",
+    )
+    .unwrap();
+
+    // Initialize the test environment.
+    let crate::test_helpers::TestEnv { ledger, private_key, .. } = crate::test_helpers::sample_test_env(rng);
+
+    // Create a helper method to deploy the programs.
+    let deploy_program = |program: &Program<CurrentNetwork>, rng: &mut TestRng| {
+        let mut attempts = 0;
+        loop {
+            if attempts >= ITERATIONS {
+                panic!("Failed to craft deployment after {ITERATIONS} attempts");
+            }
+            match try_vm_runtime!(|| ledger.vm().deploy(&private_key, program, None, 0, None, rng)) {
+                Ok(result) => break result.unwrap(),
+                Err(_) => attempts += 1,
+            }
+        }
+    };
+
+    // Deploy the programs. Keep attempting to create a deployment until it is successful.
+    let deployment_tx = deploy_program(&program, rng);
+    let deployment_tx_2 = deploy_program(&program_2, rng);
+    let deployment_tx_3 = deploy_program(&program_3, rng);
+
+    // Verify the deployment under different RNGs to ensure the deployment is valid.
+    for _ in 0..ITERATIONS {
+        let process = ledger.vm().process().clone();
+        // Create a helper method to verify the deployments.
+        let verify_deployment = |deployment_tx: &Transaction<CurrentNetwork>, rng: &mut TestRng| {
+            let expected_result = match try_vm_runtime!(|| ledger.vm().check_transaction(deployment_tx, None, rng)) {
+                Ok(result) => result.is_ok(),
+                Err(_) => false,
+            };
+            let deployment = deployment_tx.deployment().unwrap().clone();
+            for _ in 0..ITERATIONS {
+                let result =
+                    match try_vm_runtime!(|| process.read().verify_deployment::<CurrentAleo, _>(&deployment, rng)) {
+                        Ok(result) => result.is_ok(),
+                        Err(_) => false,
+                    };
+                assert_eq!(result, expected_result);
+            }
+        };
+
+        // Verify the deployments.
+        verify_deployment(&deployment_tx, rng);
+        verify_deployment(&deployment_tx_2, rng);
+        verify_deployment(&deployment_tx_3, rng);
+    }
+}
+
 // These tests require the proof targets to be low enough to be able to generate **valid** solutions.
 // This requires the 'test' feature to be enabled for the `console` dependency.
 #[cfg(feature = "test")]
@@ -2810,5 +3039,105 @@ mod valid_solutions {
         // Check that the aborted solution is correct.
         let block_aborted_solution_id = block.aborted_solution_ids().first().unwrap();
         assert_eq!(*block_aborted_solution_id, invalid_solution.id(), "Aborted solutions do not match");
+    }
+}
+
+#[test]
+fn test_forged_block_subdags() {
+    let rng = &mut TestRng::default();
+
+    // Sample the genesis private key.
+    let private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+    // Initialize the store.
+    let store = ConsensusStore::<_, ConsensusMemory<_>>::open(None).unwrap();
+    // Create a genesis block with a seeded RNG to reproduce the same genesis private keys.
+    let seed: u64 = rng.gen();
+    let genesis_rng = &mut TestRng::from_seed(seed);
+    let genesis = VM::from(store).unwrap().genesis_beacon(&private_key, genesis_rng).unwrap();
+
+    // Extract the private keys from the genesis committee by using the same RNG to sample private keys.
+    let genesis_rng = &mut TestRng::from_seed(seed);
+    let private_keys = [
+        private_key,
+        PrivateKey::new(genesis_rng).unwrap(),
+        PrivateKey::new(genesis_rng).unwrap(),
+        PrivateKey::new(genesis_rng).unwrap(),
+    ];
+
+    // Construct 3 quorum blocks.
+    let mut quorum_blocks = construct_quorum_blocks(private_keys.to_vec(), genesis.clone(), 3, rng);
+
+    // Extract the individual blocks.
+    let block_1 = quorum_blocks.remove(0);
+    let block_2 = quorum_blocks.remove(0);
+    let block_3 = quorum_blocks.remove(0);
+
+    // Construct the ledger.
+    let ledger =
+        Ledger::<CurrentNetwork, ConsensusMemory<CurrentNetwork>>::load(genesis, StorageMode::Production).unwrap();
+    ledger.advance_to_next_block(&block_1).unwrap();
+    ledger.check_next_block(&block_2, rng).unwrap();
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Attack 1: Forge block 2' with the subdag of block 3.
+    ////////////////////////////////////////////////////////////////////////////
+    {
+        let block_3_subdag =
+            if let Authority::Quorum(subdag) = block_3.authority() { subdag } else { unreachable!("") };
+
+        // Fetch the transmissions.
+        let transmissions = extract_transmissions(&block_3);
+
+        // Forge the block.
+        let forged_block_2 = ledger
+            .prepare_advance_to_next_quorum_block(block_3_subdag.clone(), transmissions, &mut rand::thread_rng())
+            .unwrap();
+
+        assert_ne!(forged_block_2, block_2);
+
+        // Attempt to verify the forged block.
+        assert!(ledger.check_next_block(&forged_block_2, &mut rand::thread_rng()).is_err());
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Attack 2: Forge block 2' with the combined subdag of block 2 and 3.
+    ////////////////////////////////////////////////////////////////////////////
+    {
+        // Fetch the subdags.
+        let block_2_subdag =
+            if let Authority::Quorum(subdag) = block_2.authority() { subdag } else { unreachable!("") };
+        let block_3_subdag =
+            if let Authority::Quorum(subdag) = block_3.authority() { subdag } else { unreachable!("") };
+
+        // Combined the subdags.
+        let mut combined_subdag = block_2_subdag.deref().clone();
+        for (round, certificates) in block_3_subdag.iter() {
+            combined_subdag
+                .entry(*round)
+                .and_modify(|c| c.extend(certificates.clone()))
+                .or_insert(certificates.clone());
+        }
+
+        // Fetch the transmissions.
+        let block_2_transmissions = extract_transmissions(&block_2);
+        let block_3_transmissions = extract_transmissions(&block_3);
+
+        // Combine the transmissions.
+        let mut combined_transmissions = block_2_transmissions;
+        combined_transmissions.extend(block_3_transmissions);
+
+        // Forge the block.
+        let forged_block_2_from_both_subdags = ledger
+            .prepare_advance_to_next_quorum_block(
+                Subdag::from(combined_subdag).unwrap(),
+                combined_transmissions,
+                &mut rand::thread_rng(),
+            )
+            .unwrap();
+
+        assert_ne!(forged_block_2_from_both_subdags, block_1);
+
+        // Attempt to verify the forged block.
+        assert!(ledger.check_next_block(&forged_block_2_from_both_subdags, &mut rand::thread_rng()).is_err());
     }
 }
