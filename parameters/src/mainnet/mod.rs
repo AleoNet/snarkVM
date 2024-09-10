@@ -172,6 +172,17 @@ mod tests {
     use wasm_bindgen_test::*;
     wasm_bindgen_test_configure!(run_in_browser);
 
+    #[ignore]
+    #[test]
+    fn test_load_bytes_mini() {
+        Degree16::load_bytes().expect("Failed to load degree 16");
+        BondPublicVerifier::load_bytes().expect("Failed to load bond_public verifier");
+        FeePublicProver::load_bytes().expect("Failed to load fee_public prover");
+        FeePublicVerifier::load_bytes().expect("Failed to load fee_public verifier");
+        InclusionProver::load_bytes().expect("Failed to load inclusion prover");
+        InclusionVerifier::load_bytes().expect("Failed to load inclusion verifier");
+    }
+
     #[wasm_bindgen_test]
     fn test_load_bytes() {
         Degree16::load_bytes().expect("Failed to load degree 16");
