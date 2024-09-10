@@ -250,6 +250,21 @@ impl<N: Network> Process<N> {
         Ok(process)
     }
 
+    /// Initializes a new process without creating the 'credits.aleo' program.
+    #[inline]
+    pub fn for_puzzle() -> Result<Self> {
+        // Initialize the process.
+        let process = Self {
+            universal_srs: Arc::new(UniversalSRS::load()?),
+            credits: None,
+            stacks: Arc::new(Mutex::new(LruCache::new(NonZeroUsize::new(MAX_STACKS).unwrap()))),
+            store: None,
+        };
+
+        // Return the process.
+        Ok(process)
+    }
+
     /// Initializes a new process without downloading the 'credits.aleo' circuit keys (for web contexts).
     #[inline]
     #[cfg(feature = "wasm")]
