@@ -347,6 +347,23 @@ pub(crate) mod tests {
     const ITERATIONS: u64 = 25;
 
     #[test]
+    fn test_longest_sequence() {
+        let instruction_set_weights = instruction_set::<CurrentNetwork>();
+        let mut longest_sequence: usize = 0;
+        for isw in instruction_set_weights {
+            if isw.0.len() > longest_sequence {
+                longest_sequence = isw.0.len();
+            }
+        }
+        assert!(
+            longest_sequence == NUM_SEQUENCE_INSTRUCTIONS,
+            "longest sequence length({}) not equal to NUM_SEQUENCE_INSTRUCTIONS({})",
+            longest_sequence,
+            NUM_SEQUENCE_INSTRUCTIONS
+        )
+    }
+
+    #[test]
     fn test_sample_instructions() {
         let mut rng = TestRng::default();
 
