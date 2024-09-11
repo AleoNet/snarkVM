@@ -433,8 +433,9 @@ impl<N: Network> StackExecute<N> for Stack<N> {
         if matches!(registers.call_stack(), CallStack::Synthesize(..))
             || matches!(registers.call_stack(), CallStack::Execute(..))
         {
-            // If the proving key does not exist, then synthesize it.
-            if !self.contains_proving_key(function.name()) {
+            // If the proving key does not exist, then synthesize it. This is not needed for `credits.aleo`.
+            if self.program_id() != &ProgramID::from_str("credits.aleo")? && !self.contains_proving_key(function.name())
+            {
                 // Add the circuit key to the mapping.
                 self.synthesize_from_assignment(function.name(), &assignment)?;
                 lap!(timer, "Synthesize the {} circuit key", function.name());
