@@ -4,7 +4,7 @@ version = "0.16.19"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "A process for a decentralized virtual machine"
 homepage = "https://aleo.org"
-repository = "https://github.com/AleoHQ/snarkVM"
+repository = "https://github.com/AleoNet/snarkVM"
 keywords = [
   "aleo",
   "cryptography",
@@ -112,6 +112,9 @@ version = "0.12"
 
 [dependencies.rand]
 version = "0.8"
+
+[dependencies.rand_chacha]
+version = "0.3"
 
 [dependencies.rayon]
 version = "1"
