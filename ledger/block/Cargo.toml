@@ -4,7 +4,7 @@ version = "0.16.19"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "A block for a decentralized virtual machine"
 homepage = "https://aleo.org"
-repository = "https://github.com/AleoHQ/snarkVM"
+repository = "https://github.com/AleoNet/snarkVM"
 keywords = [
   "aleo",
   "cryptography",
@@ -54,6 +54,11 @@ version = "=0.16.19"
 [dependencies.ledger-narwhal-batch-header]
 package = "snarkvm-ledger-narwhal-batch-header"
 path = "../narwhal/batch-header"
+version = "=0.16.19"
+
+[dependencies.ledger-narwhal-data]
+package = "snarkvm-ledger-narwhal-data"
+path = "../narwhal/data"
 version = "=0.16.19"
 
 [dependencies.ledger-narwhal-subdag]

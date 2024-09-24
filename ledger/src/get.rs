@@ -1,9 +1,10 @@
-// Copyright (C) 2019-2023 Aleo Systems Inc.
+// Copyright 2024 Aleo Network Foundation
 // This file is part of the snarkVM library.
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at:
+
 // http://www.apache.org/licenses/LICENSE-2.0
 
 // Unless required by applicable law or agreed to in writing, software
@@ -23,6 +24,22 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
     /// Returns the committee for the given `round`.
     pub fn get_committee_for_round(&self, round: u64) -> Result<Option<Committee<N>>> {
         self.vm.finalize_store().committee_store().get_committee_for_round(round)
+    }
+
+    /// Returns the committee lookback for the given round.
+    pub fn get_committee_lookback_for_round(&self, round: u64) -> Result<Option<Committee<N>>> {
+        // Get the round number for the previous committee. Note, we subtract 2 from odd rounds,
+        // because committees are updated in even rounds.
+        let previous_round = match round % 2 == 0 {
+            true => round.saturating_sub(1),
+            false => round.saturating_sub(2),
+        };
+
+        // Get the committee lookback round.
+        let committee_lookback_round = previous_round.saturating_sub(Committee::<N>::COMMITTEE_LOOKBACK_RANGE);
+
+        // Retrieve the committee for the committee lookback round.
+        self.get_committee_for_round(committee_lookback_round)
     }
 
     /// Returns the state root that contains the given `block height`.
