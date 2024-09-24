@@ -1,9 +1,10 @@
-// Copyright (C) 2019-2023 Aleo Systems Inc.
+// Copyright 2024 Aleo Network Foundation
 // This file is part of the snarkVM library.
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at:
+
 // http://www.apache.org/licenses/LICENSE-2.0
 
 // Unless required by applicable law or agreed to in writing, software
@@ -91,6 +92,7 @@ impl<N: Network> Process<N> {
 
             // Ensure each output is valid.
             let num_inputs = transition.inputs().len();
+            let num_outputs = transition.outputs().len();
             if transition
                 .outputs()
                 .iter()
@@ -105,6 +107,10 @@ impl<N: Network> Process<N> {
             let stack = self.get_stack(transition.program_id())?;
             // Retrieve the function from the stack.
             let function = stack.get_function(transition.function_name())?;
+
+            // Ensure the number of inputs and outputs match the expected number in the function.
+            ensure!(function.inputs().len() == num_inputs, "The number of transition inputs is incorrect");
+            ensure!(function.outputs().len() == num_outputs, "The number of transition outputs is incorrect");
 
             // Retrieve the parent program ID.
             // Note: The last transition in the execution does not have a parent, by definition.
