@@ -289,7 +289,7 @@ impl<N: Network> Process<N> {
     }
 }
 
-#[cfg(any(test, feature = "test"))]
+#[cfg(test)]
 pub mod test_helpers {
     use super::*;
     use console::{account::PrivateKey, network::MainnetV0, program::Identifier};

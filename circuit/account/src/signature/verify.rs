@@ -42,7 +42,7 @@ impl<A: Aleo> Signature<A> {
     }
 }
 
-#[cfg(all(test, console))]
+#[cfg(all(test, feature = "console"))]
 pub(crate) mod tests {
     use super::*;
     use crate::{Circuit, helpers::generate_account};
@@ -74,7 +74,7 @@ pub(crate) mod tests {
             let signature = Signature::<Circuit>::new(mode, signature);
             let address = Address::new(mode, address);
 
-            Circuit::scope(&format!("{mode} {i}"), || {
+            Circuit::scope(format!("{mode} {i}"), || {
                 let candidate = signature.verify(&address, &message);
                 assert!(candidate.eject_value());
                 // TODO (howardwu): Resolve skipping the cost count checks for the burn-in round.
@@ -114,7 +114,7 @@ pub(crate) mod tests {
             let signature = Signature::<Circuit>::new(mode, signature);
             let address = Address::new(mode, address);
 
-            Circuit::scope(&format!("{mode} {i}"), || {
+            Circuit::scope(format!("{mode} {i}"), || {
                 let candidate = signature.verify(&address, &message);
                 assert!(candidate.eject_value());
                 // TODO (howardwu): Resolve skipping the cost count checks for the burn-in round.

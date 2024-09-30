@@ -25,7 +25,7 @@ impl<E: Environment, const RATE: usize> Hash for Poseidon<E, RATE> {
     }
 }
 
-#[cfg(all(test, console))]
+#[cfg(all(test, feature = "console"))]
 mod tests {
     use super::*;
     use snarkvm_circuit_types::environment::Circuit;

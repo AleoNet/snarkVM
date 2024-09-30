@@ -114,7 +114,7 @@ mod tests {
             // Check the string representation.
             let candidate = format!("{expected}");
             assert_eq!(expected, Ciphertext::from_str(&candidate)?);
-            assert_eq!(CIPHERTEXT_PREFIX, candidate.to_string().split('1').next().unwrap());
+            assert_eq!(CIPHERTEXT_PREFIX, candidate.split('1').next().unwrap());
         }
         Ok(())
     }

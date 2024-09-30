@@ -34,7 +34,7 @@ pub struct ProgramID<A: Aleo> {
     network: Identifier<A>,
 }
 
-#[cfg(console)]
+#[cfg(feature = "console")]
 impl<A: Aleo> Inject for ProgramID<A> {
     type Primitive = console::ProgramID<A::Network>;
 
@@ -61,7 +61,7 @@ impl<A: Aleo> ProgramID<A> {
     }
 }
 
-#[cfg(console)]
+#[cfg(feature = "console")]
 impl<A: Aleo> Eject for ProgramID<A> {
     type Primitive = console::ProgramID<A::Network>;
 

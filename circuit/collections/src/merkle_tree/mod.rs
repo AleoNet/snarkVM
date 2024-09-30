@@ -18,7 +18,7 @@ use helpers::{LeafHash, PathHash};
 
 mod verify;
 
-#[cfg(all(test, console))]
+#[cfg(all(test, feature = "console"))]
 use snarkvm_circuit_types::environment::assert_scope;
 
 use snarkvm_circuit_types::{Boolean, Field, U64, environment::prelude::*};
@@ -30,7 +30,7 @@ pub struct MerklePath<E: Environment, const DEPTH: u8> {
     siblings: Vec<Field<E>>,
 }
 
-#[cfg(console)]
+#[cfg(feature = "console")]
 impl<E: Environment, const DEPTH: u8> Inject for MerklePath<E, DEPTH> {
     type Primitive = console::merkle_tree::MerklePath<E::Network, DEPTH>;
 
@@ -49,7 +49,7 @@ impl<E: Environment, const DEPTH: u8> Inject for MerklePath<E, DEPTH> {
     }
 }
 
-#[cfg(console)]
+#[cfg(feature = "console")]
 impl<E: Environment, const DEPTH: u8> Eject for MerklePath<E, DEPTH> {
     type Primitive = console::merkle_tree::MerklePath<E::Network, DEPTH>;
 
@@ -67,7 +67,7 @@ impl<E: Environment, const DEPTH: u8> Eject for MerklePath<E, DEPTH> {
     }
 }
 
-#[cfg(all(test, console))]
+#[cfg(all(test, feature = "console"))]
 mod tests {
     use super::*;
     use snarkvm_circuit_network::AleoV0 as Circuit;

@@ -117,7 +117,7 @@ mod tests {
             // Check the string representation.
             let candidate = format!("{expected}");
             assert_eq!(expected, Address::from_str(&candidate)?);
-            assert_eq!(ADDRESS_PREFIX, candidate.to_string().split('1').next().unwrap());
+            assert_eq!(ADDRESS_PREFIX, candidate.split('1').next().unwrap());
         }
         Ok(())
     }

@@ -74,7 +74,7 @@ impl<E: Environment, const TYPE: u8, const VARIANT: usize> LeafHash for Keccak<E
     }
 }
 
-#[cfg(all(test, console))]
+#[cfg(all(test, feature = "console"))]
 mod tests {
     use super::*;
     use snarkvm_circuit_algorithms::{BHP1024, Keccak256, Poseidon4, Sha3_256};

@@ -50,7 +50,7 @@ mod tests {
             let expected = Uniform::rand(&mut rng);
             let candidate = Group::<Circuit>::new(mode, expected).to_bits_le();
 
-            Circuit::scope(&format!("{mode} {i}"), || {
+            Circuit::scope(format!("{mode} {i}"), || {
                 let candidate = Group::<Circuit>::from_bits_le(&candidate);
                 assert_eq!(expected, candidate.eject_value());
                 assert_scope!(num_constants, num_public, num_private, num_constraints);
@@ -67,7 +67,7 @@ mod tests {
             let expected = Uniform::rand(&mut rng);
             let candidate = Group::<Circuit>::new(mode, expected).to_bits_be();
 
-            Circuit::scope(&format!("{mode} {i}"), || {
+            Circuit::scope(format!("{mode} {i}"), || {
                 let candidate = Group::<Circuit>::from_bits_be(&candidate);
                 assert_eq!(expected, candidate.eject_value());
                 assert_scope!(num_constants, num_public, num_private, num_constraints);

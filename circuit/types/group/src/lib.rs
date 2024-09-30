@@ -53,7 +53,7 @@ impl<E: Environment> Group<E> {
     }
 }
 
-#[cfg(console)]
+#[cfg(feature = "console")]
 impl<E: Environment> Inject for Group<E> {
     type Primitive = console::Group<E::Network>;
 
@@ -148,7 +148,7 @@ impl<E: Environment> Group<E> {
     }
 }
 
-#[cfg(console)]
+#[cfg(feature = "console")]
 impl<E: Environment> Eject for Group<E> {
     type Primitive = console::Group<E::Network>;
 
@@ -163,7 +163,7 @@ impl<E: Environment> Eject for Group<E> {
     }
 }
 
-#[cfg(console)]
+#[cfg(feature = "console")]
 impl<E: Environment> Parser for Group<E> {
     /// Parses a string into a group circuit.
     #[inline]
@@ -180,7 +180,7 @@ impl<E: Environment> Parser for Group<E> {
     }
 }
 
-#[cfg(console)]
+#[cfg(feature = "console")]
 impl<E: Environment> FromStr for Group<E> {
     type Err = Error;
 
@@ -199,7 +199,7 @@ impl<E: Environment> FromStr for Group<E> {
     }
 }
 
-#[cfg(console)]
+#[cfg(feature = "console")]
 impl<E: Environment> TypeName for Group<E> {
     /// Returns the type name of the circuit as a string.
     #[inline]
@@ -208,14 +208,14 @@ impl<E: Environment> TypeName for Group<E> {
     }
 }
 
-#[cfg(console)]
+#[cfg(feature = "console")]
 impl<E: Environment> Debug for Group<E> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         Display::fmt(self, f)
     }
 }
 
-#[cfg(console)]
+#[cfg(feature = "console")]
 impl<E: Environment> Display for Group<E> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}.{}", self.eject_value(), self.eject_mode())
@@ -259,7 +259,7 @@ mod tests {
             // Sample a random element.
             let point = Uniform::rand(&mut rng);
 
-            Circuit::scope(&format!("Constant {i}"), || {
+            Circuit::scope(format!("Constant {i}"), || {
                 let affine = Group::<Circuit>::new(Mode::Constant, point);
                 assert_eq!(point, affine.eject_value());
                 assert_scope!(10, 0, 0, 0);
@@ -271,7 +271,7 @@ mod tests {
             // Sample a random element.
             let point = Uniform::rand(&mut rng);
 
-            Circuit::scope(&format!("Public {i}"), || {
+            Circuit::scope(format!("Public {i}"), || {
                 let affine = Group::<Circuit>::new(Mode::Public, point);
                 assert_eq!(point, affine.eject_value());
                 assert_scope!(4, 2, 12, 13);
@@ -283,7 +283,7 @@ mod tests {
             // Sample a random element.
             let point = Uniform::rand(&mut rng);
 
-            Circuit::scope(&format!("Private {i}"), || {
+            Circuit::scope(format!("Private {i}"), || {
                 let affine = Group::<Circuit>::new(Mode::Private, point);
                 assert_eq!(point, affine.eject_value());
                 assert_scope!(4, 0, 14, 13);

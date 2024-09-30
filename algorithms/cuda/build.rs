@@ -18,9 +18,6 @@ use std::{env, path::PathBuf};
 fn main() {
     let curve = "FEATURE_BLS12_377";
 
-    // account for cross-compilation [by examining environment variable]
-    let target_arch = env::var("CARGO_CFG_TARGET_ARCH").unwrap();
-
     // Set CC environment variable to choose an alternative C compiler.
     // Optimization level depends on whether or not --release is passed
     // or implied.
@@ -30,28 +27,22 @@ fn main() {
     let files = vec![c_src_dir.join("lib.c")];
     let mut cc_opt = None;
 
-    match (cfg!(feature = "portable"), cfg!(feature = "force-adx")) {
-        (true, false) => {
+    match cfg!(feature = "portable") {
+        true => {
             println!("Compiling in portable mode without ISA extensions");
             cc_opt = Some("__BLST_PORTABLE__");
         }
-        (false, true) => {
-            if target_arch.eq("x86_64") {
-                println!("Enabling ADX support via `force-adx` feature");
-                cc_opt = Some("__ADX__");
-            } else {
-                println!("`force-adx` is ignored for non-x86_64 targets");
-            }
-        }
-        (false, false) =>
-        {
+        false => {
             #[cfg(target_arch = "x86_64")]
-            if target_arch.eq("x86_64") && std::is_x86_feature_detected!("adx") {
-                println!("Enabling ADX because it was detected on the host");
-                cc_opt = Some("__ADX__");
+            {
+                // account for cross-compilation [by examining environment variable]
+                let target_arch = env::var("CARGO_CFG_TARGET_ARCH").unwrap_or_default();
+                if target_arch.eq("x86_64") && std::is_x86_feature_detected!("adx") {
+                    println!("Enabling ADX because it was detected on the host");
+                    cc_opt = Some("__ADX__");
+                }
             }
         }
-        (true, true) => panic!("Cannot compile with both `portable` and `force-adx` features"),
     }
 
     cc.flag_if_supported("-mno-avx") // avoid costly transitions
@@ -86,8 +77,6 @@ fn main() {
         nvcc.flag("-Xcompiler").flag("-Wno-unused-function");
         nvcc.flag("-Xcompiler").flag("-Wno-subobject-linkage");
         nvcc.define("TAKE_RESPONSIBILITY_FOR_ERROR_MESSAGE", None);
-        #[cfg(feature = "cuda-mobile")]
-        nvcc.define("NTHREADS", "128");
         nvcc.define(curve, None);
         if let Some(def) = cc_opt {
             nvcc.define(def, None);

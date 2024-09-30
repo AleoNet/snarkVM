@@ -15,7 +15,7 @@
 
 use super::*;
 
-#[cfg(console)]
+#[cfg(feature = "console")]
 impl<A: Aleo> Literal<A> {
     /// Returns the type name of the literal.
     pub fn to_type(&self) -> console::LiteralType {

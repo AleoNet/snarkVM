@@ -48,7 +48,7 @@ impl<E: Environment, const NUM_BITS: u8> OutputMode<dyn Hash<Input = Boolean<E>,
     }
 }
 
-#[cfg(all(test, console))]
+#[cfg(all(test, feature = "console"))]
 mod tests {
     use super::*;
     use snarkvm_circuit_types::environment::Circuit;

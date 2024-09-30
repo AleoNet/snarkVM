@@ -29,9 +29,7 @@ use rand::Rng;
 use rand_core::CryptoRng;
 use std::collections::BTreeMap;
 
-use snarkvm_utilities::cfg_iter;
-#[cfg(not(feature = "std"))]
-use snarkvm_utilities::println;
+use snarkvm_utilities::{cfg_iter, println};
 
 #[cfg(not(feature = "serial"))]
 use rayon::prelude::*;

@@ -25,7 +25,7 @@ impl<A: Aleo> From<(Group<A>, Group<A>)> for ComputeKey<A> {
     }
 }
 
-#[cfg(all(test, console))]
+#[cfg(all(test, feature = "console"))]
 mod tests {
     use super::*;
     use crate::{Circuit, helpers::generate_account};
@@ -50,7 +50,7 @@ mod tests {
             let pk_sig = Group::new(mode, compute_key.pk_sig());
             let pr_sig = Group::new(mode, compute_key.pr_sig());
 
-            Circuit::scope(&format!("{mode} {i}"), || {
+            Circuit::scope(format!("{mode} {i}"), || {
                 let candidate = ComputeKey::<AleoV0>::from((pk_sig, pr_sig));
                 assert_eq!(compute_key, candidate.eject_value());
                 if i > 0 {

@@ -25,7 +25,7 @@ impl<A: Aleo> ViewKey<A> {
     }
 }
 
-#[cfg(all(test, console))]
+#[cfg(all(test, feature = "console"))]
 mod tests {
     use super::*;
     use crate::{Circuit, helpers::generate_account};
@@ -48,7 +48,7 @@ mod tests {
             // Initialize the private key.
             let private_key = PrivateKey::<Circuit>::new(mode, private_key);
 
-            Circuit::scope(&format!("{mode} {i}"), || {
+            Circuit::scope(format!("{mode} {i}"), || {
                 let candidate = ViewKey::from_private_key(&private_key);
                 assert_eq!(view_key, candidate.eject_value());
                 // TODO (howardwu): Resolve skipping the cost count checks for the burn-in round.

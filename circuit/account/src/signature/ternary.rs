@@ -59,7 +59,7 @@ impl<A: Aleo> OutputMode<dyn Ternary<Boolean = Boolean<A>, Output = Self>> for S
     }
 }
 
-#[cfg(all(test, console))]
+#[cfg(all(test, feature = "console"))]
 mod tests {
     use super::*;
     use crate::Circuit;

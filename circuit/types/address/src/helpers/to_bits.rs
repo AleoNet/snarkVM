@@ -43,7 +43,7 @@ impl<E: Environment> ToBits for &Address<E> {
     }
 }
 
-#[cfg(all(test, console))]
+#[cfg(all(test, feature = "console"))]
 mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
@@ -60,7 +60,7 @@ mod tests {
             let expected = Uniform::rand(&mut rng);
             let candidate = Address::<Circuit>::from_group(Group::new(mode, expected));
 
-            Circuit::scope(&format!("{mode} {i}"), || {
+            Circuit::scope(format!("{mode} {i}"), || {
                 let candidate = candidate.to_bits_le();
                 assert_eq!(expected_number_of_bits, candidate.len());
                 for (expected_bit, candidate_bit) in
@@ -83,7 +83,7 @@ mod tests {
             let expected = Uniform::rand(&mut rng);
             let candidate = Address::<Circuit>::from_group(Group::new(mode, expected));
 
-            Circuit::scope(&format!("{mode} {i}"), || {
+            Circuit::scope(format!("{mode} {i}"), || {
                 let candidate = candidate.to_bits_be();
                 assert_eq!(expected_number_of_bits, candidate.len());
                 for (expected_bit, candidate_bit) in

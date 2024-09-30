@@ -37,7 +37,7 @@ pub enum InputID<A: Aleo> {
     ExternalRecord(Field<A>),
 }
 
-#[cfg(console)]
+#[cfg(feature = "console")]
 impl<A: Aleo> Inject for InputID<A> {
     type Primitive = console::InputID<A::Network>;
 
@@ -63,7 +63,7 @@ impl<A: Aleo> Inject for InputID<A> {
     }
 }
 
-#[cfg(console)]
+#[cfg(feature = "console")]
 impl<A: Aleo> Eject for InputID<A> {
     type Primitive = console::InputID<A::Network>;
 
@@ -141,7 +141,7 @@ pub struct Request<A: Aleo> {
     scm: Field<A>,
 }
 
-#[cfg(console)]
+#[cfg(feature = "console")]
 impl<A: Aleo> Inject for Request<A> {
     type Primitive = console::Request<A::Network>;
 
@@ -286,7 +286,7 @@ impl<A: Aleo> Request<A> {
     }
 }
 
-#[cfg(console)]
+#[cfg(feature = "console")]
 impl<A: Aleo> Eject for Request<A> {
     type Primitive = console::Request<A::Network>;
 

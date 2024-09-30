@@ -68,6 +68,7 @@ impl<A: Aleo> Literal<A> {
     ///  - (`Address`, `Group`) <-> `Field` <-> `Scalar` <-> `Integer` <-> `Boolean`
     ///  - `Signature` (not supported)
     ///  - `String` (not supported)
+    ///
     /// Note that casting to left along the hierarchy always preserves information.
     pub fn cast_lossy(&self, to_type: LiteralType) -> Result<Self> {
         match self {

@@ -15,7 +15,7 @@
 
 use super::*;
 
-#[cfg(console)]
+#[cfg(feature = "console")]
 impl<A: Aleo> FromBits for Signature<A> {
     type Boolean = Boolean<A>;
 
@@ -72,7 +72,7 @@ impl<A: Aleo> FromBits for Signature<A> {
     }
 }
 
-#[cfg(all(test, console))]
+#[cfg(all(test, feature = "console"))]
 mod tests {
     use super::*;
     use crate::Circuit;
@@ -91,7 +91,7 @@ mod tests {
             let expected = crate::helpers::generate_signature(i, rng);
             let candidate = Signature::<CurrentAleo>::new(mode, expected).to_bits_le();
 
-            CurrentAleo::scope(&format!("{mode} {i}"), || {
+            CurrentAleo::scope(format!("{mode} {i}"), || {
                 let candidate = Signature::<CurrentAleo>::from_bits_le(&candidate);
                 assert_eq!(expected, candidate.eject_value());
                 assert_scope!(num_constants, num_public, num_private, num_constraints);
@@ -108,7 +108,7 @@ mod tests {
             let expected = crate::helpers::generate_signature(i, rng);
             let candidate = Signature::<CurrentAleo>::new(mode, expected).to_bits_be();
 
-            CurrentAleo::scope(&format!("{mode} {i}"), || {
+            CurrentAleo::scope(format!("{mode} {i}"), || {
                 let candidate = Signature::<CurrentAleo>::from_bits_be(&candidate);
                 assert_eq!(expected, candidate.eject_value());
                 assert_scope!(num_constants, num_public, num_private, num_constraints);

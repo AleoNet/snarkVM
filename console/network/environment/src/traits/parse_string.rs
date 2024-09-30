@@ -15,17 +15,16 @@
 
 /// From https://github.com/Geal/nom/blob/main/examples/string.rs
 pub mod string_parser {
-    //! This example shows an example of how to parse an escaped string. The
-    //! rules for the string are similar to JSON and rust. A string is:
-    //!
-    //! - Enclosed by double quotes
-    //! - Can contain any raw unescaped code point besides \ and "
-    //! - Matches the following escape sequences: \b, \f, \n, \r, \t, \", \\, \/
-    //! - Matches code points like Rust: \u{XXXX}, where XXXX can be up to 6
-    //!   hex characters
-    //! - an escape followed by whitespace consumes all whitespace between the
-    //!   escape and the next non-whitespace character
-
+    /// This example shows an example of how to parse an escaped string. The
+    /// rules for the string are similar to JSON and rust. A string is:
+    ///
+    /// - Enclosed by double quotes
+    /// - Can contain any raw unescaped code point besides \ and "
+    /// - Matches the following escape sequences: \b, \f, \n, \r, \t, \", \\, \/
+    /// - Matches code points like Rust: \u{XXXX}, where XXXX can be up to 6
+    ///   hex characters
+    /// - an escape followed by whitespace consumes all whitespace between the
+    ///   escape and the next non-whitespace character
     use nom::{
         Err::Error,
         IResult,

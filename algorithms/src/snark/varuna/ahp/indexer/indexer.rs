@@ -37,7 +37,6 @@ use std::collections::BTreeMap;
 
 #[cfg(not(feature = "serial"))]
 use rayon::prelude::*;
-#[cfg(not(feature = "std"))]
 use snarkvm_utilities::println;
 
 use super::Matrix;

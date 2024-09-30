@@ -266,7 +266,7 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Pro
 
     /// Returns the function with the given name.
     pub fn get_function(&self, name: &Identifier<N>) -> Result<FunctionCore<N, Instruction, Command>> {
-        self.get_function_ref(name).map(|function| function.clone())
+        self.get_function_ref(name).cloned()
     }
 
     /// Returns a reference to the function with the given name.

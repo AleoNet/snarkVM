@@ -28,7 +28,7 @@ use core::ops::Deref;
 /// The account view key is able to decrypt records and ciphertext.
 pub struct ViewKey<A: Aleo>(Scalar<A>, OnceCell<Address<A>>);
 
-#[cfg(console)]
+#[cfg(feature = "console")]
 impl<A: Aleo> Inject for ViewKey<A> {
     type Primitive = console::ViewKey<A::Network>;
 
@@ -38,7 +38,7 @@ impl<A: Aleo> Inject for ViewKey<A> {
     }
 }
 
-#[cfg(console)]
+#[cfg(feature = "console")]
 impl<A: Aleo> Eject for ViewKey<A> {
     type Primitive = console::ViewKey<A::Network>;
 
@@ -61,7 +61,7 @@ impl<A: Aleo> Deref for ViewKey<A> {
     }
 }
 
-#[cfg(all(test, console))]
+#[cfg(all(test, feature = "console"))]
 mod tests {
     use super::*;
     use crate::{Circuit, helpers::generate_account};

@@ -56,7 +56,7 @@ impl<E: Environment, const RATE: usize> PathHash<E> for Poseidon<E, RATE> {
     }
 }
 
-#[cfg(all(test, console))]
+#[cfg(all(test, feature = "console"))]
 mod tests {
     use super::*;
     use snarkvm_circuit_algorithms::{BHP512, Poseidon2};

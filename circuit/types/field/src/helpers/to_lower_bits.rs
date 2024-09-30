@@ -103,7 +103,7 @@ mod tests {
             // Construct the unsigned integer as a field element.
             let candidate = Field::<Circuit>::new(mode, console::Field::from_bits_le(&expected).unwrap());
 
-            Circuit::scope(&format!("{mode} {i}"), || {
+            Circuit::scope(format!("{mode} {i}"), || {
                 let candidate = candidate.to_lower_bits_le(I::BITS as usize);
                 assert_eq!(I::BITS, candidate.len() as u64);
                 for (i, (expected_bit, candidate_bit)) in expected.iter().zip_eq(candidate.iter()).enumerate() {

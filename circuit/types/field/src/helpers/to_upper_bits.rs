@@ -130,7 +130,7 @@ mod tests {
                 Field::<Circuit>::new(mode, console::Field::from_bits_be(&bits_be).unwrap())
             };
 
-            Circuit::scope(&format!("{mode} {i}"), || {
+            Circuit::scope(format!("{mode} {i}"), || {
                 let num_bits_with_capacity = I::BITS + 1;
                 let candidate = candidate.to_upper_bits_be(num_bits_with_capacity as usize);
                 assert_eq!(num_bits_with_capacity, candidate.len() as u64);

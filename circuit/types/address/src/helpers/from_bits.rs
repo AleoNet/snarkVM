@@ -29,7 +29,7 @@ impl<E: Environment> FromBits for Address<E> {
     }
 }
 
-#[cfg(all(test, console))]
+#[cfg(all(test, feature = "console"))]
 mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
@@ -44,7 +44,7 @@ mod tests {
             let expected: console::Group<<Circuit as Environment>::Network> = Uniform::rand(&mut rng);
             let candidate = Group::<Circuit>::new(mode, expected).to_bits_le();
 
-            Circuit::scope(&format!("{mode} {i}"), || {
+            Circuit::scope(format!("{mode} {i}"), || {
                 let candidate = Address::<Circuit>::from_bits_le(&candidate);
                 assert_eq!(expected, *candidate.eject_value());
                 assert_scope!(num_constants, num_public, num_private, num_constraints);
@@ -61,7 +61,7 @@ mod tests {
             let expected: console::Group<<Circuit as Environment>::Network> = Uniform::rand(&mut rng);
             let candidate = Group::<Circuit>::new(mode, expected).to_bits_be();
 
-            Circuit::scope(&format!("{mode} {i}"), || {
+            Circuit::scope(format!("{mode} {i}"), || {
                 let candidate = Address::<Circuit>::from_bits_be(&candidate);
                 assert_eq!(expected, *candidate.eject_value());
                 assert_scope!(num_constants, num_public, num_private, num_constraints);

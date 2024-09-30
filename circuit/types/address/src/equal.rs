@@ -29,7 +29,7 @@ impl<E: Environment> Equal<Self> for Address<E> {
     }
 }
 
-#[cfg(all(test, console))]
+#[cfg(all(test, feature = "console"))]
 mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
@@ -50,12 +50,12 @@ mod tests {
             let a = Address::<Circuit>::from_group(Group::new(mode_a, Uniform::rand(rng)));
             let b = Address::<Circuit>::from_group(Group::new(mode_b, Uniform::rand(rng)));
 
-            Circuit::scope(&format!("{mode_a} {mode_a} {i}"), || {
+            Circuit::scope(format!("{mode_a} {mode_a} {i}"), || {
                 let equals = a.is_equal(&a);
                 assert!(equals.eject_value());
             });
 
-            Circuit::scope(&format!("{mode_a} {mode_b} {i}"), || {
+            Circuit::scope(format!("{mode_a} {mode_b} {i}"), || {
                 let equals = a.is_equal(&b);
                 assert!(!equals.eject_value());
                 assert_scope!(num_constants, num_public, num_private, num_constraints);
@@ -77,12 +77,12 @@ mod tests {
             let a = Address::<Circuit>::from_group(Group::new(mode_a, Uniform::rand(rng)));
             let b = Address::<Circuit>::from_group(Group::new(mode_b, Uniform::rand(rng)));
 
-            Circuit::scope(&format!("{mode_a} {mode_a} {i}"), || {
+            Circuit::scope(format!("{mode_a} {mode_a} {i}"), || {
                 let equals = a.is_not_equal(&a);
                 assert!(!equals.eject_value());
             });
 
-            Circuit::scope(&format!("{mode_a} {mode_b} {i}"), || {
+            Circuit::scope(format!("{mode_a} {mode_b} {i}"), || {
                 let equals = a.is_not_equal(&b);
                 assert!(equals.eject_value());
                 assert_scope!(num_constants, num_public, num_private, num_constraints);

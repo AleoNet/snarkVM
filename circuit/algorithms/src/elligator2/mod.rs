@@ -15,7 +15,7 @@
 
 mod encode;
 
-#[cfg(all(test, console))]
+#[cfg(all(test, feature = "console"))]
 use snarkvm_circuit_types::environment::assert_scope;
 
 use snarkvm_circuit_types::prelude::*;

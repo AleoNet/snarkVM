@@ -15,7 +15,7 @@
 
 use super::*;
 
-#[cfg(console)]
+#[cfg(feature = "console")]
 impl<A: Aleo> ToFields for Signature<A> {
     type Field = Field<A>;
 
@@ -27,7 +27,7 @@ impl<A: Aleo> ToFields for Signature<A> {
     }
 }
 
-#[cfg(all(test, console))]
+#[cfg(all(test, feature = "console"))]
 mod tests {
     use super::*;
     use crate::Circuit;

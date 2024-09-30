@@ -65,8 +65,11 @@ impl<N: Network> EpochProgram<N> {
                 bail!("Failed to execute instruction ({instruction}): {error}");
             }
 
-            #[cfg(feature = "debug")]
+            #[cfg(debug_assertions)]
             {
+                use circuit::Eject;
+                use snarkvm_synthesizer_program::RegistersLoadCircuit;
+
                 use colored::Colorize;
 
                 let is_satisfied = A::is_satisfied();
@@ -76,7 +79,6 @@ impl<N: Network> EpochProgram<N> {
                 );
                 if !is_satisfied {
                     for operand in instruction.operands() {
-                        use synthesizer_program::RegistersLoadCircuit;
                         let value = registers.load_circuit(&self.stack, operand)?;
                         println!("    {operand} = {}", value.eject_value());
                     }

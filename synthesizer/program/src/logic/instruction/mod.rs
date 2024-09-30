@@ -469,6 +469,7 @@ mod tests {
     #[test]
     fn test_opcodes() {
         // Sanity check the number of instructions is unchanged.
+        // Note that the number of opcodes **MUST NOT** exceed u16::MAX.
         assert_eq!(
             68,
             Instruction::<CurrentNetwork>::OPCODES.len(),

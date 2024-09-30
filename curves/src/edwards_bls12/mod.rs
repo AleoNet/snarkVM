@@ -13,7 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#![cfg_attr(nightly, doc = include_str!("../../documentation/the_aleo_curves/01_edwards_bls12.md"))]
+#![doc = include_str!("../../documentation/the_aleo_curves/01_edwards_bls12.md")]
 
 pub mod fq;
 #[doc(inline)]

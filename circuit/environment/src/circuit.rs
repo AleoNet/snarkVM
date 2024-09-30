@@ -23,10 +23,10 @@ use core::{
 type Field = <console::MainnetV0 as console::Environment>::Field;
 
 thread_local! {
-    static VARIABLE_LIMIT: Cell<Option<u64>> = Cell::new(None);
-    static CONSTRAINT_LIMIT: Cell<Option<u64>> = Cell::new(None);
+    static VARIABLE_LIMIT: Cell<Option<u64>> = const { Cell::new(None) };
+    static CONSTRAINT_LIMIT: Cell<Option<u64>> = const { Cell::new(None) };
     pub(super) static CIRCUIT: RefCell<R1CS<Field>> = RefCell::new(R1CS::new());
-    static IN_WITNESS: Cell<bool> = Cell::new(false);
+    static IN_WITNESS: Cell<bool> = const { Cell::new(false) };
     static ZERO: LinearCombination<Field> = LinearCombination::zero();
     static ONE: LinearCombination<Field> = LinearCombination::one();
 }
