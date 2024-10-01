@@ -13,7 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::{crypto_hash::PoseidonSponge, AlgebraicSponge, DuplexSpongeMode};
+use crate::{AlgebraicSponge, DuplexSpongeMode, crypto_hash::PoseidonSponge};
 use snarkvm_curves::bls12_377::Fr;
 use snarkvm_fields::{PoseidonDefaultField, PoseidonGrainLFSR};
 

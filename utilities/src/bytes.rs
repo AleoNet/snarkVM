@@ -14,17 +14,17 @@
 // limitations under the License.
 
 use crate::{
+    Vec,
     error,
     fmt,
     io::{Read, Result as IoResult, Write},
     marker::PhantomData,
-    Vec,
 };
 use serde::{
-    de::{self, Error, SeqAccess, Visitor},
-    ser::{self, SerializeTuple},
     Deserializer,
     Serializer,
+    de::{self, Error, SeqAccess, Visitor},
+    ser::{self, SerializeTuple},
 };
 use smol_str::SmolStr;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};

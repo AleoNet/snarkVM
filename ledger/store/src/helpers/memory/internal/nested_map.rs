@@ -22,10 +22,10 @@ use core::hash::Hash;
 use parking_lot::{Mutex, RwLock};
 use std::{
     borrow::Cow,
-    collections::{btree_map, BTreeMap, BTreeSet},
+    collections::{BTreeMap, BTreeSet, btree_map},
     sync::{
-        atomic::{AtomicBool, Ordering},
         Arc,
+        atomic::{AtomicBool, Ordering},
     },
 };
 
@@ -591,7 +591,7 @@ fn to_map_key(m: &[u8], k: &[u8]) -> Vec<u8> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{atomic_batch_scope, atomic_finalize, FinalizeMode};
+    use crate::{FinalizeMode, atomic_batch_scope, atomic_finalize};
     use console::{account::Address, network::MainnetV0};
 
     type CurrentNetwork = MainnetV0;

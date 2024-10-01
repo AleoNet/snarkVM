@@ -16,14 +16,14 @@
 use super::{Affine, Projective};
 
 use snarkvm_utilities::{
-    io::Cursor,
-    rand::Uniform,
-    serialize::{CanonicalDeserialize, CanonicalSerialize},
-    to_bytes_le,
     Compress,
     TestRng,
     ToBytes,
     Validate,
+    io::Cursor,
+    rand::Uniform,
+    serialize::{CanonicalDeserialize, CanonicalSerialize},
+    to_bytes_le,
 };
 
 use crate::traits::{AffineCurve, MontgomeryParameters, ProjectiveCurve, TwistedEdwardsParameters};

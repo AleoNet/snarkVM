@@ -13,7 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::{rand::Uniform, FromBits, FromBytes, ToBits, ToBytes};
+use crate::{FromBits, FromBytes, ToBits, ToBytes, rand::Uniform};
 
 use num_bigint::BigUint;
 use std::fmt::{Debug, Display};

@@ -15,7 +15,7 @@
 
 use console::prelude::{Deserialize, Serialize};
 
-use aleo_std::{aleo_ledger_dir, StorageMode};
+use aleo_std::{StorageMode, aleo_ledger_dir};
 
 use anyhow::Result;
 use serde_json;

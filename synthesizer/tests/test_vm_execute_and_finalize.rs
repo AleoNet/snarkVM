@@ -18,7 +18,7 @@ mod utilities;
 use console::{
     account::{PrivateKey, ViewKey},
     network::prelude::*,
-    program::{Entry, Identifier, Literal, Plaintext, ProgramID, Record, Value, U64},
+    program::{Entry, Identifier, Literal, Plaintext, ProgramID, Record, U64, Value},
     types::{Boolean, Field},
 };
 use ledger_block::{
@@ -31,8 +31,8 @@ use ledger_block::{
     Transactions,
     Transition,
 };
-use ledger_store::{helpers::memory::ConsensusMemory, ConsensusStorage, ConsensusStore};
-use snarkvm_synthesizer::{program::FinalizeOperation, VM};
+use ledger_store::{ConsensusStorage, ConsensusStore, helpers::memory::ConsensusMemory};
+use snarkvm_synthesizer::{VM, program::FinalizeOperation};
 use synthesizer_program::FinalizeGlobalState;
 
 use anyhow::Result;

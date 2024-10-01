@@ -13,7 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::{helpers::memory::MemoryMap, InputStorage, InputStore, OutputStorage, OutputStore, TransitionStorage};
+use crate::{InputStorage, InputStore, OutputStorage, OutputStore, TransitionStorage, helpers::memory::MemoryMap};
 use console::{
     prelude::*,
     program::{Ciphertext, Future, Identifier, Plaintext, ProgramID, Record},

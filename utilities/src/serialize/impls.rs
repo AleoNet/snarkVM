@@ -14,12 +14,12 @@
 // limitations under the License.
 
 pub use crate::{
-    io::{Read, Write},
     FromBytes,
     ToBytes,
     Vec,
+    io::{Read, Write},
 };
-use crate::{serialize::traits::*, SerializationError};
+use crate::{SerializationError, serialize::traits::*};
 
 use bincode::Options;
 

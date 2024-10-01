@@ -13,10 +13,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::snark::varuna::{ahp::AHPForR1CS, SNARKMode};
+use crate::snark::varuna::{SNARKMode, ahp::AHPForR1CS};
 use anyhow::Result;
 use snarkvm_fields::PrimeField;
-use snarkvm_utilities::{serialize::*, ToBytes};
+use snarkvm_utilities::{ToBytes, serialize::*};
 
 /// Information about the circuit, including the field of definition, the number of
 /// variables, the number of constraints, and the maximum number of non-zero

@@ -13,7 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use snarkvm::cli::{Updater, CLI};
+use snarkvm::cli::{CLI, Updater};
 
 use clap::Parser;
 

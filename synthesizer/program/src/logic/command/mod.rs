@@ -41,6 +41,10 @@ mod set;
 pub use set::*;
 
 use crate::{
+    CastType,
+    FinalizeOperation,
+    FinalizeRegistersState,
+    Instruction,
     traits::{
         CommandTrait,
         FinalizeStoreTrait,
@@ -50,10 +54,6 @@ use crate::{
         StackMatches,
         StackProgram,
     },
-    CastType,
-    FinalizeOperation,
-    FinalizeRegistersState,
-    Instruction,
 };
 use console::{
     network::prelude::*,

@@ -20,7 +20,7 @@ use ledger_block::{Ratify, Transaction};
 use ledger_narwhal::{Transmission, TransmissionID};
 use ledger_puzzle::Solution;
 
-use anyhow::{bail, ensure, Result};
+use anyhow::{Result, bail, ensure};
 use std::collections::HashSet;
 
 /// Takes in an iterator of transmissions and returns a tuple of ratifications, solutions, and transactions.

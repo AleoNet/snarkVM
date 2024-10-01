@@ -17,20 +17,20 @@ use crate::{
     edwards_bls12::*,
     templates::twisted_edwards_extended::tests::{edwards_test, montgomery_conversion_test},
     traits::{
-        tests_field::{field_serialization_test, field_test, primefield_test},
-        tests_group::*,
-        tests_projective::curve_tests,
         AffineCurve,
         MontgomeryParameters,
         ProjectiveCurve,
         TwistedEdwardsParameters,
+        tests_field::{field_serialization_test, field_test, primefield_test},
+        tests_group::*,
+        tests_projective::curve_tests,
     },
 };
 use snarkvm_fields::{Field, LegendreSymbol, One, SquareRootField, Zero};
 use snarkvm_utilities::{
+    ToBytes,
     rand::{TestRng, Uniform},
     to_bytes_le,
-    ToBytes,
 };
 
 use rand::Rng;

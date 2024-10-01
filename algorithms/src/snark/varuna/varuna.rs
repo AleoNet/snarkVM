@@ -15,6 +15,9 @@
 
 use super::Certificate;
 use crate::{
+    AlgebraicSponge,
+    SNARK,
+    SNARKError,
     fft::EvaluationDomain,
     polycommit::sonic_pc::{
         Commitment,
@@ -27,27 +30,24 @@ use crate::{
     },
     r1cs::{ConstraintSynthesizer, SynthesisError},
     snark::varuna::{
-        ahp::{AHPError, AHPForR1CS, CircuitId, EvaluationsProvider},
-        proof,
-        prover,
-        witness_label,
         CircuitProvingKey,
         CircuitVerifyingKey,
         Proof,
         SNARKMode,
         UniversalSRS,
+        ahp::{AHPError, AHPForR1CS, CircuitId, EvaluationsProvider},
+        proof,
+        prover,
+        witness_label,
     },
     srs::UniversalVerifier,
-    AlgebraicSponge,
-    SNARKError,
-    SNARK,
 };
 use rand::RngCore;
 use snarkvm_curves::PairingEngine;
 use snarkvm_fields::{One, PrimeField, ToConstraintField, Zero};
-use snarkvm_utilities::{to_bytes_le, ToBytes};
+use snarkvm_utilities::{ToBytes, to_bytes_le};
 
-use anyhow::{anyhow, bail, ensure, Result};
+use anyhow::{Result, anyhow, bail, ensure};
 use core::marker::PhantomData;
 use itertools::Itertools;
 use rand::{CryptoRng, Rng};

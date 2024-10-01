@@ -17,7 +17,7 @@
 extern crate criterion;
 
 use criterion::Criterion;
-use snarkvm_console_network::{environment::prelude::*, MainnetV0};
+use snarkvm_console_network::{MainnetV0, environment::prelude::*};
 use snarkvm_console_types::{Field, Group};
 
 type CurrentNetwork = MainnetV0;

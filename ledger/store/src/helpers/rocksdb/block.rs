@@ -14,17 +14,17 @@
 // limitations under the License.
 
 use crate::{
-    helpers::rocksdb::{
-        internal::{self, DataMap, Database},
-        BlockMap,
-        MapID,
-        TransactionDB,
-        TransitionDB,
-    },
     BlockStorage,
     ConfirmedTxType,
     TransactionStore,
     TransitionStore,
+    helpers::rocksdb::{
+        BlockMap,
+        MapID,
+        TransactionDB,
+        TransitionDB,
+        internal::{self, DataMap, Database},
+    },
 };
 use console::{prelude::*, types::Field};
 use ledger_authority::Authority;

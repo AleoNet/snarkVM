@@ -13,7 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::{stack::Address, CallStack, Registers, RegistersCall, StackEvaluate, StackExecute};
+use crate::{CallStack, Registers, RegistersCall, StackEvaluate, StackExecute, stack::Address};
 use aleo_std::prelude::{finish, lap, timer};
 use console::{
     account::Field,

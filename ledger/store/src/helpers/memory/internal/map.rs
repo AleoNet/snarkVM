@@ -23,10 +23,10 @@ use core::{borrow::Borrow, hash::Hash};
 use parking_lot::{Mutex, RwLock};
 use std::{
     borrow::Cow,
-    collections::{btree_map, BTreeMap},
+    collections::{BTreeMap, btree_map},
     sync::{
-        atomic::{AtomicBool, Ordering},
         Arc,
+        atomic::{AtomicBool, Ordering},
     },
 };
 
@@ -384,7 +384,7 @@ impl<
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{atomic_batch_scope, atomic_finalize, FinalizeMode};
+    use crate::{FinalizeMode, atomic_batch_scope, atomic_finalize};
     use console::{account::Address, network::MainnetV0};
 
     type CurrentNetwork = MainnetV0;

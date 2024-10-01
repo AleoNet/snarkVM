@@ -14,7 +14,6 @@
 // limitations under the License.
 
 use crate::{
-    helpers::memory::{MemoryMap, TransitionMemory},
     DeploymentStorage,
     DeploymentStore,
     ExecutionStorage,
@@ -24,6 +23,7 @@ use crate::{
     TransactionStorage,
     TransactionType,
     TransitionStore,
+    helpers::memory::{MemoryMap, TransitionMemory},
 };
 use console::{
     prelude::*,

@@ -23,7 +23,7 @@ use circuit::Aleo;
 use console::network::Network;
 use snarkvm_ledger_puzzle::PuzzleTrait;
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use core::{marker::PhantomData, num::NonZeroUsize};
 use lru::LruCache;
 use parking_lot::RwLock;

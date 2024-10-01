@@ -23,8 +23,6 @@ use console::LiteralType;
 use snarkvm_circuit_algorithms::Elligator2;
 use snarkvm_circuit_network::Aleo;
 use snarkvm_circuit_types::prelude::{
-    bail,
-    integers::Integer,
     Address,
     Boolean,
     Environment,
@@ -35,6 +33,7 @@ use snarkvm_circuit_types::prelude::{
     Group,
     Inject,
     IntegerType,
+    MSB,
     One,
     Result,
     Scalar,
@@ -43,11 +42,12 @@ use snarkvm_circuit_types::prelude::{
     ToField,
     ToGroup,
     Zero,
-    MSB,
+    bail,
+    integers::Integer,
 };
 
 #[cfg(test)]
-use snarkvm_circuit_types::prelude::{I128, I16, I32, I64, I8, U128, U16, U32, U64, U8};
+use snarkvm_circuit_types::prelude::{I8, I16, I32, I64, I128, U8, U16, U32, U64, U128};
 
 /// Unary operator for casting values of one type to another, with lossy truncation.
 pub trait CastLossy<T: Sized = Self> {

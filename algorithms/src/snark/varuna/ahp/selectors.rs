@@ -15,10 +15,10 @@
 
 use super::verifier::QueryPoints;
 use crate::fft::{DensePolynomial, EvaluationDomain};
-use snarkvm_fields::{batch_inversion, PrimeField};
+use snarkvm_fields::{PrimeField, batch_inversion};
 use snarkvm_utilities::{cfg_into_iter, cfg_iter_mut, serialize::*};
 
-use anyhow::{ensure, Result};
+use anyhow::{Result, ensure};
 use itertools::Itertools;
 use std::collections::{BTreeMap, HashSet};
 

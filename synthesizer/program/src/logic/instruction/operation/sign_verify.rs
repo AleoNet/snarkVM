@@ -14,9 +14,9 @@
 // limitations under the License.
 
 use crate::{
-    traits::{RegistersLoad, RegistersLoadCircuit, RegistersStore, RegistersStoreCircuit, StackMatches, StackProgram},
     Opcode,
     Operand,
+    traits::{RegistersLoad, RegistersLoadCircuit, RegistersStore, RegistersStoreCircuit, StackMatches, StackProgram},
 };
 use circuit::prelude::ToFields as CircuitToFields;
 use console::{

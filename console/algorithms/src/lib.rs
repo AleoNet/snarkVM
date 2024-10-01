@@ -21,7 +21,7 @@
 pub use snarkvm_console_types::prelude::*;
 
 pub mod bhp;
-pub use bhp::{BHP, BHP1024, BHP256, BHP512, BHP768};
+pub use bhp::{BHP, BHP256, BHP512, BHP768, BHP1024};
 
 mod blake2xs;
 pub use blake2xs::Blake2Xs;
@@ -33,7 +33,7 @@ mod keccak;
 pub use keccak::*;
 
 mod pedersen;
-pub use pedersen::{Pedersen, Pedersen128, Pedersen64};
+pub use pedersen::{Pedersen, Pedersen64, Pedersen128};
 
 mod poseidon;
 pub use poseidon::{Poseidon, Poseidon2, Poseidon4, Poseidon8};

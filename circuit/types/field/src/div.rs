@@ -102,7 +102,7 @@ impl<E: Environment> OutputMode<dyn Div<Field<E>, Output = Field<E>>> for Field<
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_circuit_environment::{assert_count_fails, Circuit};
+    use snarkvm_circuit_environment::{Circuit, assert_count_fails};
 
     const ITERATIONS: u64 = 1000;
 

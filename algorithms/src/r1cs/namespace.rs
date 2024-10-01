@@ -13,7 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::r1cs::{errors::SynthesisError, ConstraintSystem, LinearCombination, Variable};
+use crate::r1cs::{ConstraintSystem, LinearCombination, Variable, errors::SynthesisError};
 use snarkvm_fields::Field;
 
 use std::marker::PhantomData;

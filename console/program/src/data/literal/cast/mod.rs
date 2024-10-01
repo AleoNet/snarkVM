@@ -20,7 +20,7 @@ mod scalar;
 
 use crate::{Literal, LiteralType};
 use snarkvm_console_network::Network;
-use snarkvm_console_types::{integers::Integer, prelude::*, Boolean};
+use snarkvm_console_types::{Boolean, integers::Integer, prelude::*};
 
 /// Unary operator for casting values of one type to another.
 pub trait Cast<T: Sized = Self> {

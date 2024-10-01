@@ -14,13 +14,13 @@
 // limitations under the License.
 
 use crate::{
-    traits::{RegistersLoad, StackMatches, StackProgram},
     Opcode,
     Operand,
     RegistersLoadCircuit,
     RegistersStore,
     RegistersStoreCircuit,
     Result,
+    traits::{RegistersLoad, StackMatches, StackProgram},
 };
 
 use circuit::{Inject, Mode};

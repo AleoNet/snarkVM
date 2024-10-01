@@ -14,12 +14,12 @@
 // limitations under the License.
 
 use snarkvm_fields::{
-    traits::{FftParameters, FieldParameters},
     FftField,
     Field,
     LegendreSymbol,
     PrimeField,
     SquareRootField,
+    traits::{FftParameters, FieldParameters},
 };
 use snarkvm_utilities::{
     io::Cursor,

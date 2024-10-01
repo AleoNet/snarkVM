@@ -24,13 +24,13 @@ use console::{
     program::{Identifier, Literal, LiteralType, Plaintext, Register, Value},
 };
 use snarkvm_synthesizer_program::{
-    CommitBHP1024,
     CommitBHP256,
     CommitBHP512,
     CommitBHP768,
+    CommitBHP1024,
     CommitInstruction,
-    CommitPED128,
     CommitPED64,
+    CommitPED128,
     Opcode,
     Operand,
     Program,

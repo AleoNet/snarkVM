@@ -28,7 +28,7 @@ mod to_fields;
 
 use crate::{Access, Ciphertext, Identifier, Literal, Visibility};
 use snarkvm_circuit_network::Aleo;
-use snarkvm_circuit_types::{environment::prelude::*, Address, Boolean, Field, Scalar, U16, U32, U8};
+use snarkvm_circuit_types::{Address, Boolean, Field, Scalar, U8, U16, U32, environment::prelude::*};
 
 #[derive(Clone)]
 pub enum Plaintext<A: Aleo> {

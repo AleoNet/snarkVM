@@ -14,8 +14,6 @@
 // limitations under the License.
 
 use crate::{
-    impl_add_sub_from_field_ref,
-    impl_mul_div_from_field_ref,
     FftField,
     Field,
     FieldError,
@@ -27,13 +25,15 @@ use crate::{
     PrimeField,
     SquareRootField,
     Zero,
+    impl_add_sub_from_field_ref,
+    impl_mul_div_from_field_ref,
 };
 use snarkvm_utilities::{
-    biginteger::{arithmetic as fa, BigInteger as _BigInteger, BigInteger256 as BigInteger},
-    serialize::CanonicalDeserialize,
     FromBytes,
     ToBits,
     ToBytes,
+    biginteger::{BigInteger as _BigInteger, BigInteger256 as BigInteger, arithmetic as fa},
+    serialize::CanonicalDeserialize,
 };
 
 use std::{

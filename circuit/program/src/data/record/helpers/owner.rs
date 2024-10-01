@@ -15,7 +15,7 @@
 
 use crate::{Ciphertext, Entry, Literal, Plaintext, Visibility};
 use snarkvm_circuit_network::Aleo;
-use snarkvm_circuit_types::{environment::prelude::*, Address, Boolean, Field};
+use snarkvm_circuit_types::{Address, Boolean, Field, environment::prelude::*};
 
 /// A value stored in program data.
 #[derive(Clone)]

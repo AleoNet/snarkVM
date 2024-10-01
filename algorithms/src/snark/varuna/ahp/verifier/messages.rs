@@ -13,7 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::snark::varuna::{witness_label, CircuitId, SNARKMode};
+use crate::snark::varuna::{CircuitId, SNARKMode, witness_label};
 use snarkvm_fields::PrimeField;
 
 use itertools::Itertools;

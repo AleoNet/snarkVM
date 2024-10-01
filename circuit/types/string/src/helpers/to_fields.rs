@@ -32,7 +32,7 @@ impl<E: Environment> ToFields for StringType<E> {
 mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
-    use snarkvm_utilities::{bytes_from_bits_le, FromBytes};
+    use snarkvm_utilities::{FromBytes, bytes_from_bits_le};
 
     fn native_string_to_fields(string: &str) -> Vec<console::Field<<Circuit as Environment>::Network>> {
         string

@@ -20,7 +20,7 @@ use snarkvm_curves::bls12_377::Fr as Bls12_377_Fr;
 use snarkvm_fields::PrimeField;
 use snarkvm_utilities::TestRng;
 
-use criterion::{criterion_group, criterion_main, Bencher, BenchmarkId, Criterion};
+use criterion::{Bencher, BenchmarkId, Criterion, criterion_group, criterion_main};
 use std::cmp::min;
 
 /// Degree bounds to benchmark on

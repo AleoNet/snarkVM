@@ -15,7 +15,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use snarkvm_fields::{field, Field, Fp2, Fp2Parameters};
+use snarkvm_fields::{Field, Fp2, Fp2Parameters, field};
 use snarkvm_utilities::biginteger::BigInteger384 as BigInteger;
 
 use crate::bls12_377::Fq;

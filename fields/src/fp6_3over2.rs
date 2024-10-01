@@ -15,16 +15,16 @@
 
 use crate::{Field, Fp2, Fp2Parameters, One, Zero};
 use snarkvm_utilities::{
-    rand::Uniform,
-    serialize::{SerializationError, *},
     FromBytes,
     ToBits,
     ToBytes,
+    rand::Uniform,
+    serialize::{SerializationError, *},
 };
 
 use rand::{
-    distributions::{Distribution, Standard},
     Rng,
+    distributions::{Distribution, Standard},
 };
 use serde::{Deserialize, Serialize};
 use std::{

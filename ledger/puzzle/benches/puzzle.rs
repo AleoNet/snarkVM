@@ -26,7 +26,7 @@ use snarkvm_ledger_puzzle::{Puzzle, PuzzleSolutions};
 use snarkvm_ledger_puzzle_epoch::MerklePuzzle;
 
 use criterion::Criterion;
-use rand::{self, thread_rng, CryptoRng, RngCore};
+use rand::{self, CryptoRng, RngCore, thread_rng};
 
 fn sample_address_and_counter(rng: &mut (impl CryptoRng + RngCore)) -> (Address<MainnetV0>, u64) {
     let private_key = PrivateKey::new(rng).unwrap();

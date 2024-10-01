@@ -231,7 +231,7 @@ pub mod test_helpers {
     use super::*;
     use console::{network::MainnetV0, prelude::TestRng};
 
-    use indexmap::{indexset, IndexSet};
+    use indexmap::{IndexSet, indexset};
 
     type CurrentNetwork = MainnetV0;
 

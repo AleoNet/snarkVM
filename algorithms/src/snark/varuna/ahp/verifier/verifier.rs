@@ -16,20 +16,20 @@
 use core::marker::PhantomData;
 
 use crate::{
+    AlgebraicSponge,
     fft::EvaluationDomain,
     snark::varuna::{
+        SNARKMode,
         ahp::{
-            indexer::{CircuitId, CircuitInfo},
-            verifier::{BatchCombiners, FirstMessage, FourthMessage, QuerySet, SecondMessage, State, ThirdMessage},
             AHPError,
             AHPForR1CS,
+            indexer::{CircuitId, CircuitInfo},
+            verifier::{BatchCombiners, FirstMessage, FourthMessage, QuerySet, SecondMessage, State, ThirdMessage},
         },
         verifier::CircuitSpecificState,
-        SNARKMode,
     },
-    AlgebraicSponge,
 };
-use anyhow::{ensure, Result};
+use anyhow::{Result, ensure};
 use smallvec::SmallVec;
 use snarkvm_fields::PrimeField;
 use std::collections::BTreeMap;

@@ -15,10 +15,10 @@
 
 use crate::prelude::*;
 use snarkvm_utilities::{
-    error,
-    io::{Read, Result as IoResult, Write},
     FromBytes,
     ToBytes,
+    error,
+    io::{Read, Result as IoResult, Write},
 };
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]

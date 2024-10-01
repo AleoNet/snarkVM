@@ -39,13 +39,6 @@ use crate::traits::{
 use console::{
     network::Network,
     prelude::{
-        alt,
-        bail,
-        ensure,
-        error,
-        fmt,
-        map,
-        tag,
         Debug,
         Display,
         Error,
@@ -60,6 +53,13 @@ use console::{
         Sanitizer,
         ToBytes,
         Write,
+        alt,
+        bail,
+        ensure,
+        error,
+        fmt,
+        map,
+        tag,
     },
     program::{Register, RegisterType},
 };

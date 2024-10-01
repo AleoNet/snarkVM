@@ -19,8 +19,8 @@ extern crate criterion;
 use snarkvm_console_algorithms::Sha3_256;
 use snarkvm_console_collections::kary_merkle_tree::KaryMerkleTree;
 use snarkvm_console_network::{
-    prelude::{TestRng, ToBits, Uniform},
     MainnetV0,
+    prelude::{TestRng, ToBits, Uniform},
 };
 use snarkvm_console_types::Field;
 

@@ -16,7 +16,7 @@
 #[macro_use]
 extern crate criterion;
 
-use snarkvm_algorithms::{crypto_hash::PoseidonSponge, AlgebraicSponge};
+use snarkvm_algorithms::{AlgebraicSponge, crypto_hash::PoseidonSponge};
 use snarkvm_curves::bls12_377::{Fq, FqParameters};
 use snarkvm_fields::Fp384;
 use snarkvm_utilities::{TestRng, Uniform};

@@ -24,8 +24,8 @@ use console::{
     program::{Plaintext, Record, Value},
 };
 use ledger_block::Transition;
-use ledger_store::{helpers::memory::ConsensusMemory, ConsensusStore};
-use synthesizer::{program::Program, VM};
+use ledger_store::{ConsensusStore, helpers::memory::ConsensusMemory};
+use synthesizer::{VM, program::Program};
 
 use criterion::Criterion;
 use indexmap::IndexMap;

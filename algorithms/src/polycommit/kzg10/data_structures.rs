@@ -14,19 +14,19 @@
 // limitations under the License.
 
 use crate::{
-    fft::{DensePolynomial, EvaluationDomain},
     AlgebraicSponge,
+    fft::{DensePolynomial, EvaluationDomain},
 };
 use snarkvm_curves::{AffineCurve, PairingCurve, PairingEngine, ProjectiveCurve};
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField, Zero};
 use snarkvm_parameters::mainnet::PowersOfG;
 use snarkvm_utilities::{
+    FromBytes,
+    ToBytes,
     borrow::Cow,
     error,
     io::{Read, Write},
     serialize::{CanonicalDeserialize, CanonicalSerialize, Compress, SerializationError, Valid, Validate},
-    FromBytes,
-    ToBytes,
 };
 
 use crate::srs::{UniversalProver, UniversalVerifier};
