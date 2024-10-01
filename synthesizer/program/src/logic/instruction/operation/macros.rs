@@ -777,7 +777,6 @@ mod tests {
                                 is_shift_operator |= true;
                                 let input_a_size_in_bits = u32::try_from($input_a::<CurrentNetwork>::size_in_bits()).expect("Input size in bits exceeded u32::MAX");
                                 shift_exceeds_bitwidth |= ((*b as u32) >= input_a_size_in_bits);
-                                shift_exceeds_bitwidth |= ((*b as u32) >= input_a_size_in_bits);
                             };
                             ("ensure divide by zero halts") => {
                                 should_succeed &= (*b) != *$input_b::<CurrentNetwork>::zero();
