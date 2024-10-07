@@ -186,16 +186,16 @@ impl<N: Network> Process<N> {
 
 impl<N: Network> Process<N> {
     /// Initializes a new process.
+    /// Assumption: this is only called in test code.
     #[inline]
-    pub fn load() -> Result<Self> {
-        // Assumption: this is only called in test code.
+    pub fn load_testing_only() -> Result<Self> {
         Process::load_from_storage(Some(aleo_std::StorageMode::Development(0)))
     }
 
     /// Initializes a new process.
     #[inline]
     pub fn load_from_storage(storage_mode: Option<StorageMode>) -> Result<Self> {
-        let timer = timer!("Process::load");
+        let timer = timer!("Process::load_testing_only");
 
         debug!("Opening storage");
         let storage_mode = storage_mode.as_ref().ok_or_else(|| anyhow!("Failed to get storage mode"))?.clone();
@@ -245,14 +245,14 @@ impl<N: Network> Process<N> {
         // Add the stack to the process.
         process.credits = Some(Arc::new(stack));
 
-        finish!(timer, "Process::load");
+        finish!(timer, "Process::load_testing_only");
         // Return the process.
         Ok(process)
     }
 
     /// Initializes a new process without creating the 'credits.aleo' program.
     #[inline]
-    pub fn for_puzzle() -> Result<Self> {
+    pub fn load_no_storage() -> Result<Self> {
         // Initialize the process.
         let process = Self {
             universal_srs: Arc::new(UniversalSRS::load()?),
@@ -627,7 +627,7 @@ function compute:
     /// Initializes a new process with the given program.
     pub(crate) fn sample_process(program: &Program<CurrentNetwork>) -> Process<CurrentNetwork> {
         // Construct a new process.
-        let mut process = Process::load().unwrap();
+        let mut process = Process::load_testing_only().unwrap();
         // Add the program to the process.
         process.add_program(program).unwrap();
         // Return the process.

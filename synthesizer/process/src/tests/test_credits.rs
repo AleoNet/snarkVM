@@ -2873,7 +2873,7 @@ mod sanity_checks {
         let caller = Address::try_from(&private_key).unwrap();
 
         // Construct a new process.
-        let process = Process::load().unwrap();
+        let process = Process::load_testing_only().unwrap();
         // Retrieve the stack.
         let stack = process.get_stack(ProgramID::from_str("credits.aleo").unwrap()).unwrap();
 
@@ -2906,7 +2906,7 @@ mod sanity_checks {
         let caller = Address::try_from(&private_key).unwrap();
 
         // Construct a new process.
-        let process = Process::load().unwrap();
+        let process = Process::load_testing_only().unwrap();
         // Retrieve the stack.
         let stack = process.get_stack(ProgramID::from_str("credits.aleo").unwrap()).unwrap();
 
@@ -2934,7 +2934,7 @@ mod sanity_checks {
         let signer = Address::try_from(&private_key).unwrap();
 
         // Construct a new process.
-        let process = Process::load().unwrap();
+        let process = Process::load_testing_only().unwrap();
         // Retrieve the stack.
         let stack = process.get_stack(ProgramID::from_str("credits.aleo").unwrap()).unwrap();
 
@@ -2962,7 +2962,7 @@ mod sanity_checks {
         let caller = Address::try_from(&private_key).unwrap();
 
         // Construct a new process.
-        let process = Process::load().unwrap();
+        let process = Process::load_testing_only().unwrap();
         // Retrieve the stack.
         let stack = process.get_stack(ProgramID::from_str("credits.aleo").unwrap()).unwrap();
 
@@ -2995,7 +2995,7 @@ mod sanity_checks {
         let private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
 
         // Construct a new process.
-        let process = Process::load().unwrap();
+        let process = Process::load_testing_only().unwrap();
         // Retrieve the stack.
         let stack = process.get_stack(ProgramID::from_str("credits.aleo").unwrap()).unwrap();
 

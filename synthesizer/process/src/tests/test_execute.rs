@@ -498,7 +498,7 @@ fn test_process_execute_transfer_public_to_private() {
     let r1 = Value::<CurrentNetwork>::from_str("99_000_000_000_000_u64").unwrap();
 
     // Construct the process.
-    let process = Process::load().unwrap();
+    let process = Process::load_testing_only().unwrap();
 
     // Authorize the function call.
     let authorization = process
@@ -1243,7 +1243,7 @@ finalize compute:
     process.synthesize_key::<CurrentAleo, _>(program.id(), &function_name, rng).unwrap();
 
     // Reset the process.
-    let process = Process::load().unwrap();
+    let process = Process::load_testing_only().unwrap();
 
     // Initialize a new block store.
     let block_store = BlockStore::<CurrentNetwork, BlockMemory<_>>::open(None).unwrap();
@@ -1356,7 +1356,7 @@ finalize compute:
     process.synthesize_key::<CurrentAleo, _>(program.id(), &function_name, rng).unwrap();
 
     // Reset the process.
-    let process = Process::load().unwrap();
+    let process = Process::load_testing_only().unwrap();
 
     // Initialize a new block store.
     let block_store = BlockStore::<CurrentNetwork, BlockMemory<_>>::open(None).unwrap();
@@ -1483,7 +1483,7 @@ finalize mint_public:
     process.synthesize_key::<CurrentAleo, _>(program.id(), &function_name, rng).unwrap();
 
     // Reset the process.
-    let process = Process::load().unwrap();
+    let process = Process::load_testing_only().unwrap();
 
     // Initialize a new block store.
     let block_store = BlockStore::<CurrentNetwork, BlockMemory<_>>::open(None).unwrap();
@@ -1612,7 +1612,7 @@ finalize mint_public:
     process.synthesize_key::<CurrentAleo, _>(program0.id(), &function_name, rng).unwrap();
 
     // Reset the process.
-    let process = Process::load().unwrap();
+    let process = Process::load_testing_only().unwrap();
 
     // Initialize a new block store.
     let block_store = BlockStore::<CurrentNetwork, BlockMemory<_>>::open(None).unwrap();
@@ -1770,7 +1770,7 @@ finalize compute:
     process.synthesize_key::<CurrentAleo, _>(program.id(), &function_name, rng).unwrap();
 
     // Reset the process.
-    let process = Process::load().unwrap();
+    let process = Process::load_testing_only().unwrap();
 
     // Initialize a new block store.
     let block_store = BlockStore::<CurrentNetwork, BlockMemory<_>>::open(None).unwrap();
@@ -2199,7 +2199,7 @@ finalize compute:
     process.synthesize_key::<CurrentAleo, _>(program.id(), &function_name, rng).unwrap();
 
     // Reset the process.
-    let process = Process::load().unwrap();
+    let process = Process::load_testing_only().unwrap();
 
     // Initialize a new block store.
     let block_store = BlockStore::<CurrentNetwork, BlockMemory<_>>::open(None).unwrap();
@@ -2376,7 +2376,7 @@ fn test_process_deploy_credits_program() {
     };
 
     // Construct the process.
-    let process = Process::load().unwrap();
+    let process = Process::load_testing_only().unwrap();
 
     // Fetch the credits program
     let program = Program::credits().unwrap();
@@ -2430,7 +2430,7 @@ function {function_name}:
     .unwrap();
 
     // Reset the process.
-    let process = Process::load().unwrap();
+    let process = Process::load_testing_only().unwrap();
 
     // Initialize a new block store.
     let block_store = BlockStore::<CurrentNetwork, BlockMemory<_>>::open(None).unwrap();

@@ -496,7 +496,7 @@ function compute:
         .unwrap();
 
         // Initialize a new process.
-        let process = Process::load().unwrap();
+        let process = Process::load_testing_only().unwrap();
         // Deploy the program.
         let deployment = process.deploy::<CurrentAleo, _>(&program, rng).unwrap();
 

@@ -27,7 +27,7 @@ type CurrentNetwork = MainnetV0;
 
 #[test]
 pub fn test_credits() {
-    let process = Process::load().unwrap();
+    let process = Process::load_testing_only().unwrap();
     let credits_id = ProgramID::<CurrentNetwork>::from_str("credits.aleo").unwrap();
     assert!(process.contains_program(&credits_id));
 }
