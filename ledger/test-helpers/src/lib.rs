@@ -35,7 +35,7 @@ use ledger_block::{
     Transition,
 };
 use ledger_query::Query;
-use ledger_store::{helpers::memory::BlockMemory, BlockStore};
+use ledger_store::{BlockStore, helpers::memory::BlockMemory};
 use synthesizer_process::Process;
 use synthesizer_program::Program;
 

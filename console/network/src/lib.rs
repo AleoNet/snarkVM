@@ -36,17 +36,17 @@ mod testnet_v0;
 pub use testnet_v0::*;
 
 pub mod prelude {
-    pub use crate::{environment::prelude::*, Network};
+    pub use crate::{Network, environment::prelude::*};
 }
 
 use crate::environment::prelude::*;
 use snarkvm_algorithms::{
+    AlgebraicSponge,
     crypto_hash::PoseidonSponge,
     snark::varuna::{CircuitProvingKey, CircuitVerifyingKey, VarunaHidingMode},
     srs::{UniversalProver, UniversalVerifier},
-    AlgebraicSponge,
 };
-use snarkvm_console_algorithms::{Poseidon2, Poseidon4, BHP1024, BHP512};
+use snarkvm_console_algorithms::{BHP512, BHP1024, Poseidon2, Poseidon4};
 use snarkvm_console_collections::merkle_tree::{MerklePath, MerkleTree};
 use snarkvm_console_types::{Field, Group, Scalar};
 use snarkvm_curves::PairingEngine;

@@ -17,7 +17,7 @@ use crate::cli::errors::UpdaterError;
 
 use anyhow::Result;
 use colored::Colorize;
-use self_update::{backends::github, version::bump_is_greater, Status};
+use self_update::{Status, backends::github, version::bump_is_greater};
 
 pub struct Updater;
 

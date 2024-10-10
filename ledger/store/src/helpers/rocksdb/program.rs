@@ -16,10 +16,10 @@
 #![allow(clippy::type_complexity)]
 
 use crate::{
-    helpers::rocksdb::{self, CommitteeMap, DataMap, Database, MapID, NestedDataMap, ProgramMap},
     CommitteeStorage,
     CommitteeStore,
     FinalizeStorage,
+    helpers::rocksdb::{self, CommitteeMap, DataMap, Database, MapID, NestedDataMap, ProgramMap},
 };
 use console::{
     prelude::*,

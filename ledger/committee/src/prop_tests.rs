@@ -19,8 +19,8 @@ use console::account::PrivateKey;
 
 use anyhow::Result;
 use proptest::{
-    collection::{hash_set, SizeRange},
-    prelude::{any, Arbitrary, BoxedStrategy, Just, Strategy},
+    collection::{SizeRange, hash_set},
+    prelude::{Arbitrary, BoxedStrategy, Just, Strategy, any},
     sample::size_range,
 };
 use rand::SeedableRng;

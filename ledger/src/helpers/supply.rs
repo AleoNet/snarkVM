@@ -16,7 +16,7 @@
 use console::network::Network;
 use ledger_block::Transactions;
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 
 /// Returns the next total supply in microcredits, given the starting total supply and newly-confirmed transactions.
 pub fn update_total_supply<N: Network>(

@@ -193,7 +193,7 @@ macro_rules! impl_primefield_serializer {
                 mut writer: W,
                 flags: F,
             ) -> Result<(), snarkvm_utilities::serialize::SerializationError> {
-                use snarkvm_utilities::serialize::{number_of_bits_and_bytes, SerializationError};
+                use snarkvm_utilities::serialize::{SerializationError, number_of_bits_and_bytes};
                 // All reasonable `Flags` should be less than 8 bits in size
                 // (256 values are enough for anyone!)
                 if F::BIT_SIZE > 8 {

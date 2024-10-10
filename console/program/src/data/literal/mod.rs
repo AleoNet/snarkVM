@@ -33,7 +33,7 @@ mod variant;
 use crate::{LiteralType, ProgramID};
 use snarkvm_console_account::{ComputeKey, PrivateKey, Signature};
 use snarkvm_console_network::Network;
-use snarkvm_console_types::{prelude::*, Boolean};
+use snarkvm_console_types::{Boolean, prelude::*};
 
 /// The literal enum represents all supported types in snarkVM.
 #[derive(Clone)]

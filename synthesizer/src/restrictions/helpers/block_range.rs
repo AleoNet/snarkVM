@@ -15,7 +15,7 @@
 
 use console::{
     network::Network,
-    prelude::{de, Deserialize, Deserializer, EnumAccess, One, Result, Serialize, Serializer, VariantAccess, Visitor},
+    prelude::{Deserialize, Deserializer, EnumAccess, One, Result, Serialize, Serializer, VariantAccess, Visitor, de},
     types::Field,
 };
 

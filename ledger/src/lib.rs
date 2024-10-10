@@ -64,8 +64,8 @@ use synthesizer::{
 };
 
 use aleo_std::{
-    prelude::{finish, lap, timer},
     StorageMode,
+    prelude::{finish, lap, timer},
 };
 use anyhow::Result;
 use core::ops::Range;

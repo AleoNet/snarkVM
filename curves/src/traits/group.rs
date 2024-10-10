@@ -13,9 +13,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::{templates::short_weierstrass_jacobian, PairingEngine};
+use crate::{PairingEngine, templates::short_weierstrass_jacobian};
 use snarkvm_fields::{Field, PrimeField, SquareRootField, Zero};
-use snarkvm_utilities::{rand::Uniform, serialize::*, FromBytes, ToBytes};
+use snarkvm_utilities::{FromBytes, ToBytes, rand::Uniform, serialize::*};
 
 use core::{
     fmt::{Debug, Display},
@@ -23,7 +23,7 @@ use core::{
     iter,
     ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign},
 };
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{Serialize, de::DeserializeOwned};
 
 /// Projective representation of an elliptic curve point guaranteed to be in the prime order subgroup.
 pub trait ProjectiveCurve:

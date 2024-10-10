@@ -17,8 +17,8 @@ use crate::{
     templates::short_weierstrass_jacobian::Affine,
     traits::{AffineCurve, ProjectiveCurve, ShortWeierstrassParameters as Parameters},
 };
-use snarkvm_fields::{impl_add_sub_from_field_ref, Field, One, Zero};
-use snarkvm_utilities::{cfg_iter_mut, rand::Uniform, serialize::*, FromBytes, ToBytes};
+use snarkvm_fields::{Field, One, Zero, impl_add_sub_from_field_ref};
+use snarkvm_utilities::{FromBytes, ToBytes, cfg_iter_mut, rand::Uniform, serialize::*};
 
 use core::{
     fmt::{Display, Formatter, Result as FmtResult},
@@ -26,8 +26,8 @@ use core::{
     ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign},
 };
 use rand::{
-    distributions::{Distribution, Standard},
     Rng,
+    distributions::{Distribution, Standard},
 };
 #[cfg(not(feature = "serial"))]
 use rayon::prelude::*;

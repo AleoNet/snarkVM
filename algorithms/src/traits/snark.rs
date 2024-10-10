@@ -13,7 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::{r1cs::ConstraintSynthesizer, AlgebraicSponge};
+use crate::{AlgebraicSponge, r1cs::ConstraintSynthesizer};
 use snarkvm_fields::PrimeField;
 use snarkvm_utilities::{CanonicalDeserialize, CanonicalSerialize, FromBytes, ToBytes};
 

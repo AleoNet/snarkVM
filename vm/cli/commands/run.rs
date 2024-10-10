@@ -101,7 +101,7 @@ impl Run {
 mod tests {
     use super::*;
     use crate::{
-        cli::{Command, CLI},
+        cli::{CLI, Command},
         prelude::{Identifier, Value},
     };
 

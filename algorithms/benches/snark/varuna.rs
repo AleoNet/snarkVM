@@ -17,10 +17,10 @@
 extern crate criterion;
 
 use snarkvm_algorithms::{
-    crypto_hash::PoseidonSponge,
-    snark::varuna::{ahp::AHPForR1CS, CircuitVerifyingKey, TestCircuit, VarunaHidingMode, VarunaSNARK},
     AlgebraicSponge,
     SNARK,
+    crypto_hash::PoseidonSponge,
+    snark::varuna::{CircuitVerifyingKey, TestCircuit, VarunaHidingMode, VarunaSNARK, ahp::AHPForR1CS},
 };
 use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};
 use snarkvm_utilities::{CanonicalDeserialize, CanonicalSerialize, TestRng};

@@ -14,21 +14,21 @@
 // limitations under the License.
 
 use crate::{
-    biginteger::BigInteger,
-    bititerator::{BitIteratorBE, BitIteratorLE},
-    io::{Read, Result as IoResult, Write},
     FromBits,
     FromBytes,
     ToBits,
     ToBytes,
+    biginteger::BigInteger,
+    bititerator::{BitIteratorBE, BitIteratorLE},
+    io::{Read, Result as IoResult, Write},
 };
 
 use anyhow::Result;
 use core::fmt::{Debug, Display};
 use num_bigint::BigUint;
 use rand::{
-    distributions::{Distribution, Standard},
     Rng,
+    distributions::{Distribution, Standard},
 };
 use zeroize::Zeroize;
 

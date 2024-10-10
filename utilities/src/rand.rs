@@ -14,10 +14,10 @@
 // limitations under the License.
 
 use rand::{
-    distributions::{Distribution, Standard},
-    rngs::StdRng,
     Rng,
     SeedableRng,
+    distributions::{Distribution, Standard},
+    rngs::StdRng,
 };
 use rand_xorshift::XorShiftRng;
 

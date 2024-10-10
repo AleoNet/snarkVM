@@ -14,7 +14,7 @@
 // limitations under the License.
 
 use super::*;
-use snarkvm_console_algorithms::{Keccak256, Poseidon, Sha3_256, BHP1024, BHP512};
+use snarkvm_console_algorithms::{BHP512, BHP1024, Keccak256, Poseidon, Sha3_256};
 use snarkvm_console_types::prelude::Console;
 
 type CurrentEnvironment = Console;

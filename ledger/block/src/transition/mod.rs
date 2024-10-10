@@ -27,7 +27,6 @@ mod string;
 use console::{
     network::prelude::*,
     program::{
-        compute_function_id,
         Ciphertext,
         Identifier,
         InputID,
@@ -37,12 +36,13 @@ use console::{
         Register,
         Request,
         Response,
+        TRANSITION_DEPTH,
         TransitionLeaf,
         TransitionPath,
         TransitionTree,
         Value,
         ValueType,
-        TRANSITION_DEPTH,
+        compute_function_id,
     },
     types::{Field, Group},
 };

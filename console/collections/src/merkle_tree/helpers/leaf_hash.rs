@@ -13,7 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use snarkvm_console_algorithms::{Poseidon, BHP};
+use snarkvm_console_algorithms::{BHP, Poseidon};
 use snarkvm_console_types::prelude::*;
 
 #[cfg(not(feature = "serial"))]

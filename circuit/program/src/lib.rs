@@ -39,7 +39,7 @@ mod state_path;
 pub use state_path::*;
 
 use snarkvm_circuit_network::Aleo;
-use snarkvm_circuit_types::{environment::prelude::*, Boolean};
+use snarkvm_circuit_types::{Boolean, environment::prelude::*};
 
 pub trait Visibility<A: Aleo>:
     Equal<Self, Output = <Self as ToBits>::Boolean> + ToBits<Boolean = Boolean<A>> + FromBits + ToFields + FromFields

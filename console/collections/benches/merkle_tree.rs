@@ -17,9 +17,9 @@
 extern crate criterion;
 
 use snarkvm_console_network::{
-    prelude::{TestRng, ToBits, Uniform},
     MainnetV0,
     Network,
+    prelude::{TestRng, ToBits, Uniform},
 };
 use snarkvm_console_types::Field;
 

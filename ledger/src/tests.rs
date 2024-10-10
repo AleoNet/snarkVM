@@ -14,15 +14,15 @@
 // limitations under the License.
 
 use crate::{
-    advance::split_candidate_solutions,
-    test_helpers::{CurrentAleo, CurrentLedger, CurrentNetwork},
     Ledger,
     RecordsFilter,
+    advance::split_candidate_solutions,
+    test_helpers::{CurrentAleo, CurrentLedger, CurrentNetwork},
 };
 use aleo_std::StorageMode;
 use console::{
     account::{Address, PrivateKey},
-    network::{prelude::*, MainnetV0},
+    network::{MainnetV0, prelude::*},
     program::{Entry, Identifier, Literal, Plaintext, ProgramID, Value},
     types::U16,
 };
@@ -30,9 +30,9 @@ use ledger_authority::Authority;
 use ledger_block::{Block, ConfirmedTransaction, Execution, Ratify, Rejected, Transaction};
 use ledger_committee::{Committee, MIN_VALIDATOR_STAKE};
 use ledger_narwhal::{BatchCertificate, BatchHeader, Data, Subdag, Transmission, TransmissionID};
-use ledger_store::{helpers::memory::ConsensusMemory, ConsensusStore};
+use ledger_store::{ConsensusStore, helpers::memory::ConsensusMemory};
 use snarkvm_utilities::try_vm_runtime;
-use synthesizer::{program::Program, vm::VM, Stack};
+use synthesizer::{Stack, program::Program, vm::VM};
 
 use indexmap::{IndexMap, IndexSet};
 use rand::seq::SliceRandom;

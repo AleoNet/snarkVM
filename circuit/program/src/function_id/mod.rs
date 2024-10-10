@@ -15,7 +15,7 @@
 
 use crate::{Identifier, ProgramID};
 use snarkvm_circuit_network::Aleo;
-use snarkvm_circuit_types::{environment::prelude::*, Field, U16};
+use snarkvm_circuit_types::{Field, U16, environment::prelude::*};
 
 /// Compute the function ID as `Hash(network_id, program_id.len(), program_id, function_name.len(), function_name)`.
 pub fn compute_function_id<A: Aleo>(

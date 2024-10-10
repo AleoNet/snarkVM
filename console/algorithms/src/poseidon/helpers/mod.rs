@@ -19,7 +19,7 @@ pub(super) use sponge::*;
 mod state;
 pub(super) use state::*;
 
-use snarkvm_console_types::{prelude::*, Field};
+use snarkvm_console_types::{Field, prelude::*};
 
 use smallvec::SmallVec;
 

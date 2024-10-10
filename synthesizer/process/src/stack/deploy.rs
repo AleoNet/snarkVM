@@ -15,7 +15,7 @@
 
 use super::*;
 
-use rand::{rngs::StdRng, SeedableRng};
+use rand::{SeedableRng, rngs::StdRng};
 
 impl<N: Network> Stack<N> {
     /// Deploys the given program ID, if it does not exist.

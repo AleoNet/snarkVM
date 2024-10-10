@@ -21,7 +21,7 @@ use snarkvm_circuit_types::environment::assert_scope;
 
 use crate::{ComputeKey, ViewKey};
 use snarkvm_circuit_network::Aleo;
-use snarkvm_circuit_types::{environment::prelude::*, Scalar};
+use snarkvm_circuit_types::{Scalar, environment::prelude::*};
 
 pub struct PrivateKey<A: Aleo> {
     /// The signature secret key.
@@ -70,7 +70,7 @@ impl<A: Aleo> Eject for PrivateKey<A> {
 #[cfg(all(test, console))]
 mod tests {
     use super::*;
-    use crate::{helpers::generate_account, Circuit};
+    use crate::{Circuit, helpers::generate_account};
 
     use anyhow::Result;
 

@@ -19,7 +19,7 @@ use crate::{
     synthesizer::Program,
 };
 
-use anyhow::{anyhow, bail, ensure, Result};
+use anyhow::{Result, anyhow, bail, ensure};
 use core::str::FromStr;
 use std::{
     fs::{self, File},

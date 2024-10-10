@@ -22,7 +22,7 @@ mod execute;
 mod finalize;
 mod verify;
 
-use crate::{cast_mut_ref, cast_ref, convert, process, Restrictions};
+use crate::{Restrictions, cast_mut_ref, cast_ref, convert, process};
 use console::{
     account::{Address, PrivateKey},
     network::prelude::*,
@@ -49,7 +49,6 @@ use ledger_narwhal_data::Data;
 use ledger_puzzle::Puzzle;
 use ledger_query::Query;
 use ledger_store::{
-    atomic_finalize,
     BlockStore,
     ConsensusStorage,
     ConsensusStore,
@@ -58,8 +57,9 @@ use ledger_store::{
     TransactionStorage,
     TransactionStore,
     TransitionStore,
+    atomic_finalize,
 };
-use synthesizer_process::{deployment_cost, execution_cost, Authorization, Process, Trace};
+use synthesizer_process::{Authorization, Process, Trace, deployment_cost, execution_cost};
 use synthesizer_program::{FinalizeGlobalState, FinalizeOperation, FinalizeStoreTrait, Program};
 use utilities::try_vm_runtime;
 
@@ -68,7 +68,7 @@ use indexmap::{IndexMap, IndexSet};
 use itertools::Either;
 use lru::LruCache;
 use parking_lot::{Mutex, RwLock};
-use rand::{rngs::StdRng, SeedableRng};
+use rand::{SeedableRng, rngs::StdRng};
 use std::{collections::HashSet, num::NonZeroUsize, sync::Arc};
 
 #[cfg(not(feature = "serial"))]

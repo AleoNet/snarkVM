@@ -17,14 +17,14 @@ pub mod confirmed_tx_type;
 pub use confirmed_tx_type::*;
 
 use crate::{
-    atomic_batch_scope,
-    cow_to_cloned,
-    cow_to_copied,
-    helpers::{Map, MapRead},
     TransactionStorage,
     TransactionStore,
     TransitionStorage,
     TransitionStore,
+    atomic_batch_scope,
+    cow_to_cloned,
+    cow_to_copied,
+    helpers::{Map, MapRead},
 };
 use console::{
     network::prelude::*,

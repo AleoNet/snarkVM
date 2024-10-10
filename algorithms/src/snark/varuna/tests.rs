@@ -17,13 +17,13 @@
 mod varuna {
     use crate::{
         snark::varuna::{
-            mode::SNARKMode,
-            test_circuit::TestCircuit,
             AHPForR1CS,
             CircuitVerifyingKey,
             VarunaHidingMode,
             VarunaNonHidingMode,
             VarunaSNARK,
+            mode::SNARKMode,
+            test_circuit::TestCircuit,
         },
         traits::{AlgebraicSponge, SNARK},
     };
@@ -32,8 +32,8 @@ mod varuna {
 
     use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};
     use snarkvm_utilities::{
-        rand::{TestRng, Uniform},
         ToBytes,
+        rand::{TestRng, Uniform},
     };
 
     type FS = crate::crypto_hash::PoseidonSponge<Fq, 2, 1>;
@@ -305,19 +305,19 @@ mod varuna_hiding {
     use crate::{
         crypto_hash::PoseidonSponge,
         snark::varuna::{
-            ahp::AHPForR1CS,
-            test_circuit::TestCircuit,
             CircuitVerifyingKey,
             VarunaHidingMode,
             VarunaSNARK,
+            ahp::AHPForR1CS,
+            test_circuit::TestCircuit,
         },
         traits::{AlgebraicSponge, SNARK},
     };
     use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};
     use snarkvm_utilities::{
-        rand::{TestRng, Uniform},
         FromBytes,
         ToBytes,
+        rand::{TestRng, Uniform},
     };
 
     use std::str::FromStr;
@@ -533,7 +533,7 @@ mod varuna_hiding {
 mod varuna_test_vectors {
     use crate::{
         fft::EvaluationDomain,
-        snark::varuna::{ahp::verifier, AHPForR1CS, TestCircuit, VarunaNonHidingMode, VarunaSNARK},
+        snark::varuna::{AHPForR1CS, TestCircuit, VarunaNonHidingMode, VarunaSNARK, ahp::verifier},
         traits::snark::SNARK,
     };
     use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};

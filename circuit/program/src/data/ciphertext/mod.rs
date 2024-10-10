@@ -24,7 +24,7 @@ mod to_fields;
 
 use crate::{Plaintext, Visibility};
 use snarkvm_circuit_network::Aleo;
-use snarkvm_circuit_types::{environment::prelude::*, Boolean, Field};
+use snarkvm_circuit_types::{Boolean, Field, environment::prelude::*};
 
 use core::ops::Deref;
 

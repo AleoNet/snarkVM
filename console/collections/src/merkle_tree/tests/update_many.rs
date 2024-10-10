@@ -14,7 +14,7 @@
 // limitations under the License.
 
 use super::*;
-use snarkvm_console_algorithms::{Poseidon, BHP1024, BHP512};
+use snarkvm_console_algorithms::{BHP512, BHP1024, Poseidon};
 use snarkvm_console_types::prelude::Console;
 
 use indexmap::IndexMap;

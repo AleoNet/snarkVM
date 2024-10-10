@@ -16,9 +16,9 @@
 #![allow(dead_code)]
 
 use crate::{FieldParameters, PrimeField};
-use snarkvm_utilities::{vec::Vec, FromBits};
+use snarkvm_utilities::{FromBits, vec::Vec};
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 
 pub struct PoseidonGrainLFSR {
     pub field_size_in_bits: u64,

@@ -18,7 +18,7 @@
 #![warn(clippy::cast_possible_truncation)]
 #![cfg_attr(not(feature = "aleo-cli"), allow(unused_variables))]
 
-use console::network::{prelude::*, FiatShamir};
+use console::network::{FiatShamir, prelude::*};
 use snarkvm_algorithms::{snark::varuna, traits::SNARK};
 
 use once_cell::sync::OnceCell;
@@ -166,7 +166,7 @@ mod test {
     fn test_varuna_verify_public_input_size() {
         /// Creates a simple circuit: a * b.
         fn create_assignment() -> circuit::Assignment<<CurrentNetwork as console::prelude::Environment>::Field> {
-            use circuit::{environment::Mode, types::Field, Inject};
+            use circuit::{Inject, environment::Mode, types::Field};
 
             // Ensure the circuit environment is clean.
             Circuit::reset();

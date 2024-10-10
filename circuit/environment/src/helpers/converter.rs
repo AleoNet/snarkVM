@@ -13,7 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::{CanaryCircuit, Circuit, LinearCombination, TestnetCircuit, Variable, R1CS};
+use crate::{CanaryCircuit, Circuit, LinearCombination, R1CS, TestnetCircuit, Variable};
 use snarkvm_curves::edwards_bls12::Fq;
 use snarkvm_fields::PrimeField;
 
@@ -201,7 +201,7 @@ impl<F: PrimeField> R1CS<F> {
 
 #[cfg(test)]
 mod tests {
-    use snarkvm_algorithms::{r1cs::ConstraintSynthesizer, AlgebraicSponge, SNARK};
+    use snarkvm_algorithms::{AlgebraicSponge, SNARK, r1cs::ConstraintSynthesizer};
     use snarkvm_circuit::prelude::*;
     use snarkvm_curves::bls12_377::Fr;
 
@@ -253,7 +253,7 @@ mod tests {
 
         use snarkvm_algorithms::{
             crypto_hash::PoseidonSponge,
-            snark::varuna::{ahp::AHPForR1CS, VarunaHidingMode, VarunaSNARK},
+            snark::varuna::{VarunaHidingMode, VarunaSNARK, ahp::AHPForR1CS},
         };
         use snarkvm_curves::bls12_377::{Bls12_377, Fq};
         use snarkvm_utilities::rand::TestRng;

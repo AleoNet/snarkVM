@@ -20,12 +20,12 @@ use crate::{
 };
 use snarkvm_fields::{Field, One, SquareRootField, Zero};
 use snarkvm_utilities::{
+    FromBytes,
+    ToBytes,
     bititerator::BitIteratorBE,
     io::{Error, ErrorKind, Read, Result as IoResult, Write},
     rand::Uniform,
     serialize::*,
-    FromBytes,
-    ToBytes,
 };
 
 use core::{
@@ -33,8 +33,8 @@ use core::{
     ops::{Mul, Neg},
 };
 use rand::{
-    distributions::{Distribution, Standard},
     Rng,
+    distributions::{Distribution, Standard},
 };
 use serde::{Deserialize, Serialize};
 

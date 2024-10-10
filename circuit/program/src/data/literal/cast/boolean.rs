@@ -68,7 +68,7 @@ mod tests {
     use super::*;
     use console::Cast as _;
     use console_root::{network::MainnetV0, prelude::TestRng};
-    use snarkvm_circuit_types::environment::{count_is, Circuit, Eject, Inject, Mode, UpdatableCount};
+    use snarkvm_circuit_types::environment::{Circuit, Eject, Inject, Mode, UpdatableCount, count_is};
 
     use std::fmt::Debug;
 

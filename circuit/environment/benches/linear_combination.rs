@@ -17,7 +17,7 @@
 extern crate criterion;
 
 use snarkvm_circuit::{
-    environment::{prelude::num_traits::One as _, Circuit, Eject, Environment, Inject, LinearCombination, Mode, One},
+    environment::{Circuit, Eject, Environment, Inject, LinearCombination, Mode, One, prelude::num_traits::One as _},
     types::Field,
 };
 

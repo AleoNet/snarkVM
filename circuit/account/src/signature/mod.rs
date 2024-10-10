@@ -23,7 +23,7 @@ use snarkvm_circuit_types::environment::{assert_count, assert_output_mode, asser
 
 use crate::ComputeKey;
 use snarkvm_circuit_network::Aleo;
-use snarkvm_circuit_types::{environment::prelude::*, Address, Boolean, Field, Scalar};
+use snarkvm_circuit_types::{Address, Boolean, Field, Scalar, environment::prelude::*};
 
 #[derive(Clone)]
 pub struct Signature<A: Aleo> {
@@ -143,7 +143,7 @@ impl<A: Aleo> Display for Signature<A> {
 #[cfg(all(test, console))]
 mod tests {
     use super::*;
-    use crate::{helpers::generate_account, Circuit};
+    use crate::{Circuit, helpers::generate_account};
     use snarkvm_utilities::{TestRng, Uniform};
 
     use anyhow::Result;

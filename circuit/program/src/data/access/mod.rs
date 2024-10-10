@@ -15,7 +15,7 @@
 
 use crate::Identifier;
 use snarkvm_circuit_network::Aleo;
-use snarkvm_circuit_types::{environment::prelude::*, U32};
+use snarkvm_circuit_types::{U32, environment::prelude::*};
 
 use std::{
     fmt,

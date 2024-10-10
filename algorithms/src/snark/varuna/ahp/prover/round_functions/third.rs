@@ -15,27 +15,27 @@
 
 use crate::{
     fft::{
-        domain::{FFTPrecomputation, IFFTPrecomputation},
-        polynomial::PolyMultiplier,
         DensePolynomial,
         EvaluationDomain,
         Evaluations,
+        domain::{FFTPrecomputation, IFFTPrecomputation},
+        polynomial::PolyMultiplier,
     },
     polycommit::sonic_pc::{LabeledPolynomial, PolynomialInfo, PolynomialLabel},
     snark::varuna::{
-        ahp::{indexer::CircuitId, verifier, AHPForR1CS},
-        matrices::transpose,
-        prover::{self, MatrixSums, ThirdMessage},
-        selectors::apply_randomized_selector,
         AHPError,
         Matrix,
         SNARKMode,
+        ahp::{AHPForR1CS, indexer::CircuitId, verifier},
+        matrices::transpose,
+        prover::{self, MatrixSums, ThirdMessage},
+        selectors::apply_randomized_selector,
     },
 };
 use snarkvm_fields::PrimeField;
-use snarkvm_utilities::{cfg_iter, ExecutionPool};
+use snarkvm_utilities::{ExecutionPool, cfg_iter};
 
-use anyhow::{ensure, Result};
+use anyhow::{Result, ensure};
 use itertools::Itertools;
 use rand_core::RngCore;
 use std::collections::BTreeMap;

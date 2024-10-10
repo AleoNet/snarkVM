@@ -15,11 +15,11 @@
 
 use snarkvm_algorithms::crypto_hash::sha256::sha256;
 use snarkvm_circuit::Aleo;
-use snarkvm_console::network::{prelude::ToBytes, CanaryV0, MainnetV0, Network, TestnetV0};
+use snarkvm_console::network::{CanaryV0, MainnetV0, Network, TestnetV0, prelude::ToBytes};
 use snarkvm_synthesizer::{Process, Program};
 
 use anyhow::Result;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::{
     fs,
     fs::File,

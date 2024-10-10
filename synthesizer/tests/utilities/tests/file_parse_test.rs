@@ -13,9 +13,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::{get_expectation_path, print_difference, ExpectedTest};
+use crate::{ExpectedTest, get_expectation_path, print_difference};
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use std::path::{Path, PathBuf};
 
 /// A test for a parser, where the entire file is the test input.

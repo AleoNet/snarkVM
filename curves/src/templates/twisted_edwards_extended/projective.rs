@@ -17,8 +17,8 @@ use crate::{
     templates::twisted_edwards_extended::Affine,
     traits::{AffineCurve, ProjectiveCurve, TwistedEdwardsParameters as Parameters},
 };
-use snarkvm_fields::{impl_add_sub_from_field_ref, Field, One, PrimeField, Zero};
-use snarkvm_utilities::{bititerator::BitIteratorBE, rand::Uniform, serialize::*, FromBytes, ToBytes};
+use snarkvm_fields::{Field, One, PrimeField, Zero, impl_add_sub_from_field_ref};
+use snarkvm_utilities::{FromBytes, ToBytes, bititerator::BitIteratorBE, rand::Uniform, serialize::*};
 
 use core::{
     fmt::{Display, Formatter, Result as FmtResult},
@@ -26,8 +26,8 @@ use core::{
     ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign},
 };
 use rand::{
-    distributions::{Distribution, Standard},
     Rng,
+    distributions::{Distribution, Standard},
 };
 use std::io::{Read, Result as IoResult, Write};
 

@@ -15,7 +15,7 @@
 
 use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 use snarkvm_fields::{One, PrimeField, Zero};
-use snarkvm_utilities::{cfg_into_iter, BigInteger};
+use snarkvm_utilities::{BigInteger, cfg_into_iter};
 
 #[cfg(not(feature = "serial"))]
 use rayon::prelude::*;

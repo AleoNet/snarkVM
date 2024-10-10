@@ -29,13 +29,13 @@ use console::{
     network::prelude::*,
     program::{
         Ciphertext,
-        ProgramOwner,
-        Record,
-        TransactionsPath,
-        TransactionsTree,
         FINALIZE_ID_DEPTH,
         FINALIZE_OPERATIONS_DEPTH,
+        ProgramOwner,
+        Record,
         TRANSACTIONS_DEPTH,
+        TransactionsPath,
+        TransactionsTree,
     },
     types::{Field, Group, U64},
 };

@@ -20,8 +20,8 @@ use snarkvm_curves::{
 };
 use snarkvm_fields::{PrimeField, Zero};
 use snarkvm_utilities::{
-    rand::{TestRng, Uniform},
     BitIteratorBE,
+    rand::{TestRng, Uniform},
 };
 
 fn naive_variable_base_msm<G: AffineCurve>(

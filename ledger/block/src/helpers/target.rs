@@ -13,7 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use console::prelude::{ensure, Network, Result};
+use console::prelude::{Network, Result, ensure};
 
 /// A safety bound (sanity-check) for the coinbase reward.
 pub const MAX_COINBASE_REWARD: u64 = 190_258_739; // Coinbase reward at block 1.
@@ -302,7 +302,7 @@ pub fn to_next_targets<N: Network>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use console::network::{prelude::*, MainnetV0};
+    use console::network::{MainnetV0, prelude::*};
 
     type CurrentNetwork = MainnetV0;
 

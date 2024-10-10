@@ -450,8 +450,8 @@ mod tests {
     use crate::tests::test_execute::{sample_fee, sample_finalize_state};
     use console::prelude::TestRng;
     use ledger_store::{
-        helpers::memory::{BlockMemory, FinalizeMemory},
         BlockStore,
+        helpers::memory::{BlockMemory, FinalizeMemory},
     };
 
     type CurrentNetwork = console::network::MainnetV0;

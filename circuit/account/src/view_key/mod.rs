@@ -21,7 +21,7 @@ use snarkvm_circuit_types::environment::assert_scope;
 
 use crate::PrivateKey;
 use snarkvm_circuit_network::Aleo;
-use snarkvm_circuit_types::{environment::prelude::*, Address, Scalar};
+use snarkvm_circuit_types::{Address, Scalar, environment::prelude::*};
 
 use core::ops::Deref;
 
@@ -64,7 +64,7 @@ impl<A: Aleo> Deref for ViewKey<A> {
 #[cfg(all(test, console))]
 mod tests {
     use super::*;
-    use crate::{helpers::generate_account, Circuit};
+    use crate::{Circuit, helpers::generate_account};
 
     use anyhow::Result;
 

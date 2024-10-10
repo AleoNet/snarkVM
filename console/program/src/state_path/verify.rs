@@ -134,7 +134,7 @@ impl<N: Network> StatePath<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_console_network::{prelude::TestRng, MainnetV0};
+    use snarkvm_console_network::{MainnetV0, prelude::TestRng};
 
     type CurrentNetwork = MainnetV0;
 

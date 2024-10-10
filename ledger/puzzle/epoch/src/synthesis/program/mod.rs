@@ -18,7 +18,7 @@ mod to_leaves;
 mod to_r1cs;
 
 use crate::synthesis::helpers::*;
-use circuit::{environment::R1CS, Mode};
+use circuit::{Mode, environment::R1CS};
 use console::{
     account::PrivateKey,
     network::Network,
@@ -29,7 +29,7 @@ use snarkvm_synthesizer_process::{CallStack, Process, Registers, Stack, StackPro
 use snarkvm_synthesizer_program::{Instruction, Program, RegistersStoreCircuit, StackProgram};
 
 use aleo_std::prelude::{finish, lap, timer};
-use anyhow::{anyhow, bail, ensure, Result};
+use anyhow::{Result, anyhow, bail, ensure};
 use rand::Rng;
 use rand_chacha::ChaChaRng;
 use std::{
