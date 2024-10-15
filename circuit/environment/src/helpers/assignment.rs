@@ -284,7 +284,7 @@ impl<F: PrimeField> snarkvm_algorithms::r1cs::ConstraintSynthesizer<F> for Assig
 
 #[cfg(test)]
 mod tests {
-    use snarkvm_algorithms::{r1cs::ConstraintSynthesizer, AlgebraicSponge, SNARK};
+    use snarkvm_algorithms::{AlgebraicSponge, SNARK, r1cs::ConstraintSynthesizer};
     use snarkvm_circuit::prelude::*;
     use snarkvm_curves::bls12_377::Fr;
 
@@ -345,7 +345,7 @@ mod tests {
 
         use snarkvm_algorithms::{
             crypto_hash::PoseidonSponge,
-            snark::varuna::{ahp::AHPForR1CS, VarunaHidingMode, VarunaSNARK},
+            snark::varuna::{VarunaHidingMode, VarunaSNARK, ahp::AHPForR1CS},
         };
         use snarkvm_curves::bls12_377::{Bls12_377, Fq};
         use snarkvm_utilities::rand::TestRng;

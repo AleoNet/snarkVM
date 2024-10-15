@@ -15,7 +15,7 @@
 
 use crate::Vec;
 
-use anyhow::{ensure, Result};
+use anyhow::{Result, ensure};
 
 /// Takes as input a sequence of objects, and converts them to a series of little-endian bits.
 /// All traits that implement `ToBits` can be automatically converted to bits in this manner.
@@ -319,7 +319,7 @@ mod tests {
     use crate::{TestRng, Uniform};
 
     use anyhow::Result;
-    use rand::{distributions::Alphanumeric, Rng};
+    use rand::{Rng, distributions::Alphanumeric};
 
     const ITERATIONS: u64 = 10000;
 

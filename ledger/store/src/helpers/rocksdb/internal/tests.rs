@@ -14,9 +14,9 @@
 // limitations under the License.
 
 use crate::helpers::{
-    rocksdb::{MapID, RocksDB, TestMap as TestMapID},
     Map,
     MapRead,
+    rocksdb::{MapID, RocksDB, TestMap as TestMapID},
 };
 use console::{
     network::{MainnetV0, Network},

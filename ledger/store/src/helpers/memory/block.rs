@@ -14,11 +14,11 @@
 // limitations under the License.
 
 use crate::{
-    helpers::memory::{MemoryMap, TransactionMemory, TransitionMemory},
     BlockStorage,
     ConfirmedTxType,
     TransactionStore,
     TransitionStore,
+    helpers::memory::{MemoryMap, TransactionMemory, TransitionMemory},
 };
 use console::{prelude::*, types::Field};
 use ledger_authority::Authority;

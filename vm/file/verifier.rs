@@ -15,10 +15,10 @@
 
 use crate::{
     prelude::{FromBytes, Identifier, IoResult, Network, Read, ToBytes},
-    synthesizer::{snark::VerifyingKey, Program},
+    synthesizer::{Program, snark::VerifyingKey},
 };
 
-use anyhow::{anyhow, bail, ensure, Result};
+use anyhow::{Result, anyhow, bail, ensure};
 use std::{
     fs::{self, File},
     io::Write,

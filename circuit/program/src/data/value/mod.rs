@@ -20,7 +20,7 @@ mod to_fields;
 
 use crate::{Access, Entry, Future, Plaintext, Record};
 use snarkvm_circuit_network::Aleo;
-use snarkvm_circuit_types::{environment::prelude::*, Boolean, Field};
+use snarkvm_circuit_types::{Boolean, Field, environment::prelude::*};
 
 #[derive(Clone)]
 pub enum Value<A: Aleo> {

@@ -16,11 +16,11 @@
 //! Work with sparse and dense polynomials.
 
 use crate::fft::{EvaluationDomain, Evaluations};
-use snarkvm_fields::{Field, PrimeField};
-use snarkvm_utilities::{cfg_iter_mut, serialize::*, SerializationError};
 use Polynomial::*;
+use snarkvm_fields::{Field, PrimeField};
+use snarkvm_utilities::{SerializationError, cfg_iter_mut, serialize::*};
 
-use anyhow::{ensure, Result};
+use anyhow::{Result, ensure};
 use std::{borrow::Cow, convert::TryInto};
 
 #[cfg(not(feature = "serial"))]

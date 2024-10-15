@@ -13,7 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use snarkvm_console_algorithms::{Keccak, Poseidon, BHP};
+use snarkvm_console_algorithms::{BHP, Keccak, Poseidon};
 use snarkvm_console_types::prelude::*;
 
 use crate::kary_merkle_tree::BooleanHash;

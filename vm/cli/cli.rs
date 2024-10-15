@@ -17,7 +17,7 @@ use crate::cli::commands::{Build, Clean, Execute, New, Run, Update};
 
 use anstyle::{AnsiColor, Color, Style};
 use anyhow::Result;
-use clap::{builder::Styles, Parser};
+use clap::{Parser, builder::Styles};
 
 const HEADER_COLOR: Option<Color> = Some(Color::Ansi(AnsiColor::Yellow));
 const LITERAL_COLOR: Option<Color> = Some(Color::Ansi(AnsiColor::Green));

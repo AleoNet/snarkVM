@@ -25,7 +25,7 @@ use snarkvm_circuit_types::environment::assert_scope;
 use snarkvm_utilities::{TestRng, Uniform};
 
 use crate::{Elligator2, Hash, HashMany, HashToGroup, HashToScalar, PRF};
-use snarkvm_circuit_types::{environment::prelude::*, Field, Group, Scalar};
+use snarkvm_circuit_types::{Field, Group, Scalar, environment::prelude::*};
 
 /// Poseidon2 is a cryptographic hash function of input rate 2.
 pub type Poseidon2<E> = Poseidon<E, 2>;

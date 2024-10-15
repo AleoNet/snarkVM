@@ -59,7 +59,7 @@ impl<E: Environment, const DEPTH: u8> MerklePath<E, DEPTH> {
 #[cfg(all(test, console))]
 mod tests {
     use super::*;
-    use snarkvm_circuit_algorithms::{Poseidon2, Poseidon4, BHP1024, BHP512};
+    use snarkvm_circuit_algorithms::{BHP512, BHP1024, Poseidon2, Poseidon4};
     use snarkvm_circuit_types::environment::Circuit;
     use snarkvm_utilities::{TestRng, Uniform};
 

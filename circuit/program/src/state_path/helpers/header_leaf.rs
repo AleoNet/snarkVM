@@ -14,7 +14,7 @@
 // limitations under the License.
 
 use snarkvm_circuit_network::Aleo;
-use snarkvm_circuit_types::{environment::prelude::*, Boolean, Field, U8};
+use snarkvm_circuit_types::{Boolean, Field, U8, environment::prelude::*};
 
 #[derive(Clone)]
 pub struct HeaderLeaf<A: Aleo> {

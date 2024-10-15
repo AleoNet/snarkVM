@@ -40,7 +40,7 @@ use snarkvm_synthesizer_program::Instruction;
 
 use anyhow::Result;
 use indexmap::IndexSet;
-use rand::{prelude::*, SeedableRng};
+use rand::{SeedableRng, prelude::*};
 use rand_chacha::ChaChaRng;
 use std::{collections::HashMap, str::FromStr};
 

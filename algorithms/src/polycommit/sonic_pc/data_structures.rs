@@ -17,7 +17,7 @@ use super::{LabeledPolynomial, PolynomialInfo};
 use crate::{crypto_hash::sha256::sha256, fft::EvaluationDomain, polycommit::kzg10};
 use snarkvm_curves::PairingEngine;
 use snarkvm_fields::{ConstraintFieldError, Field, PrimeField, ToConstraintField};
-use snarkvm_utilities::{error, serialize::*, FromBytes, ToBytes};
+use snarkvm_utilities::{FromBytes, ToBytes, error, serialize::*};
 
 use hashbrown::HashMap;
 use std::{

@@ -27,7 +27,7 @@ use synthesizer_program::{Program, StackProgram};
 use circuit::prelude::bail;
 use console::{network::Network, prelude::SizeInDataBits};
 use criterion::{BatchSize, Criterion};
-use rand::{distributions::Alphanumeric, Rng};
+use rand::{Rng, distributions::Alphanumeric};
 use std::str::FromStr;
 use utilities::TestRng;
 

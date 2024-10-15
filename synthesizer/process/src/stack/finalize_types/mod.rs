@@ -45,6 +45,7 @@ use synthesizer_program::{
     GetOrUse,
     Instruction,
     InstructionTrait,
+    MAX_ADDITIONAL_SEEDS,
     Opcode,
     Operand,
     Program,
@@ -53,7 +54,6 @@ use synthesizer_program::{
     Set,
     StackMatches,
     StackProgram,
-    MAX_ADDITIONAL_SEEDS,
 };
 
 use indexmap::IndexMap;

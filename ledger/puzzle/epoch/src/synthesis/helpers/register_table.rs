@@ -15,8 +15,8 @@
 
 use crate::synthesis::helpers::{LiteralType, PuzzleRegister};
 
-use anyhow::{anyhow, bail, Result};
-use indexmap::{indexmap, indexset, IndexMap, IndexSet};
+use anyhow::{Result, anyhow, bail};
+use indexmap::{IndexMap, IndexSet, indexmap, indexset};
 
 /// A register table is used to track the registers for each literal type.
 ///

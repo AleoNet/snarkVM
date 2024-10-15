@@ -15,20 +15,20 @@
 
 use crate::{
     fft::{
-        domain::{FFTPrecomputation, IFFTPrecomputation},
         EvaluationDomain,
+        domain::{FFTPrecomputation, IFFTPrecomputation},
     },
     polycommit::sonic_pc::{LCTerm, LabeledPolynomial, LinearCombination},
     r1cs::SynthesisError,
     snark::varuna::{
-        ahp::{verifier, AHPError, CircuitId, CircuitInfo},
+        SNARKMode,
+        ahp::{AHPError, CircuitId, CircuitInfo, verifier},
         prover,
         selectors::precompute_selectors,
         verifier::QueryPoints,
-        SNARKMode,
     },
 };
-use anyhow::{anyhow, ensure, Result};
+use anyhow::{Result, anyhow, ensure};
 use snarkvm_fields::{Field, PrimeField};
 
 use core::{borrow::Borrow, marker::PhantomData};

@@ -19,7 +19,7 @@ use crate::fft::domain::{FFTPrecomputation, IFFTPrecomputation};
 
 /// A struct that helps multiply a batch of polynomials
 use super::*;
-use snarkvm_utilities::{cfg_into_iter, cfg_iter, cfg_iter_mut, cfg_reduce_with, ExecutionPool};
+use snarkvm_utilities::{ExecutionPool, cfg_into_iter, cfg_iter, cfg_iter_mut, cfg_reduce_with};
 
 #[derive(Default)]
 pub struct PolyMultiplier<'a, F: PrimeField> {

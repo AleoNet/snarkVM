@@ -26,7 +26,7 @@ pub mod v0;
 pub use v0::*;
 
 use snarkvm_circuit_collections::merkle_tree::MerklePath;
-use snarkvm_circuit_types::{environment::Environment, Boolean, Field, Group, Scalar};
+use snarkvm_circuit_types::{Boolean, Field, Group, Scalar, environment::Environment};
 
 /// Attention: Do not use `Send + Sync` on this trait, as it is not thread-safe.
 pub trait Aleo: Environment {

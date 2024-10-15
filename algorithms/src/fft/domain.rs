@@ -32,7 +32,7 @@ use crate::{
     cfg_iter_mut,
     fft::{DomainCoeff, SparsePolynomial},
 };
-use snarkvm_fields::{batch_inversion, FftField, FftParameters, Field};
+use snarkvm_fields::{FftField, FftParameters, Field, batch_inversion};
 #[cfg(not(feature = "serial"))]
 use snarkvm_utilities::max_available_threads;
 use snarkvm_utilities::{execute_with_max_available_threads, serialize::*};
@@ -40,7 +40,7 @@ use snarkvm_utilities::{execute_with_max_available_threads, serialize::*};
 use rand::Rng;
 use std::{borrow::Cow, fmt};
 
-use anyhow::{ensure, Result};
+use anyhow::{Result, ensure};
 
 #[cfg(not(feature = "serial"))]
 use rayon::prelude::*;

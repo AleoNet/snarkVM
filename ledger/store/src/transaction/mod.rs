@@ -23,11 +23,11 @@ mod fee;
 pub use fee::*;
 
 use crate::{
+    TransitionStorage,
+    TransitionStore,
     atomic_batch_scope,
     cow_to_copied,
     helpers::{Map, MapRead},
-    TransitionStorage,
-    TransitionStore,
 };
 use console::{
     network::prelude::*,

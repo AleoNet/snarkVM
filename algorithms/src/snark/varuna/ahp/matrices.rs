@@ -20,14 +20,14 @@ use crate::{
     polycommit::sonic_pc::LabeledPolynomial,
     r1cs::{ConstraintSystem, Index as VarIndex},
     snark::varuna::{
-        ahp::{indexer::Matrix, AHPForR1CS, CircuitId},
         VarunaHidingMode,
+        ahp::{AHPForR1CS, CircuitId, indexer::Matrix},
     },
 };
 use snarkvm_fields::{Field, PrimeField};
 use snarkvm_utilities::{cfg_into_iter, cfg_iter, cfg_iter_mut, serialize::*};
 
-use anyhow::{anyhow, ensure, Result};
+use anyhow::{Result, anyhow, ensure};
 
 #[cfg(feature = "serial")]
 use itertools::Itertools;

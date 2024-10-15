@@ -53,7 +53,7 @@ macro_rules! cow_to_cloned {
     };
 }
 
-use console::prelude::{bail, Result};
+use console::prelude::{Result, bail};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum FinalizeMode {

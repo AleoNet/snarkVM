@@ -16,7 +16,7 @@
 #[macro_use]
 extern crate criterion;
 
-use snarkvm_console_algorithms::{BHP1024, BHP256, BHP512, BHP768};
+use snarkvm_console_algorithms::{BHP256, BHP512, BHP768, BHP1024};
 use snarkvm_console_types::prelude::*;
 use snarkvm_utilities::{TestRng, Uniform};
 

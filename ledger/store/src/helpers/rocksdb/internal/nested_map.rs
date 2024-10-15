@@ -17,7 +17,7 @@
 
 use super::*;
 use crate::helpers::{NestedMap, NestedMapRead};
-use console::prelude::{anyhow, cfg_into_iter, FromBytes};
+use console::prelude::{FromBytes, anyhow, cfg_into_iter};
 
 use core::{fmt, fmt::Debug, hash::Hash, mem};
 use std::{borrow::Cow, sync::atomic::Ordering};
@@ -758,13 +758,13 @@ impl<'a, V: 'a + Clone + PartialEq + Eq + Serialize + DeserializeOwned> Iterator
 mod tests {
     use super::*;
     use crate::{
+        FinalizeMode,
         atomic_batch_scope,
         atomic_finalize,
         helpers::{
-            rocksdb::{internal::tests::temp_dir, MapID, TestMap},
+            rocksdb::{MapID, TestMap, internal::tests::temp_dir},
             traits::Map,
         },
-        FinalizeMode,
     };
     use console::{
         account::{Address, FromStr},

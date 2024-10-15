@@ -14,20 +14,20 @@
 // limitations under the License.
 
 use crate::{
-    polycommit::sonic_pc,
-    snark::varuna::{ahp, CircuitId},
     SNARKError,
+    polycommit::sonic_pc,
+    snark::varuna::{CircuitId, ahp},
 };
 
 use ahp::prover::{FourthMessage, ThirdMessage};
 use snarkvm_curves::PairingEngine;
 use snarkvm_fields::PrimeField;
 use snarkvm_utilities::{
+    FromBytes,
+    ToBytes,
     error,
     io::{self, Read, Write},
     serialize::*,
-    FromBytes,
-    ToBytes,
 };
 
 use std::collections::BTreeMap;
@@ -393,8 +393,8 @@ mod test {
         snark::varuna::prover::MatrixSums,
     };
     use snarkvm_curves::{
-        bls12_377::{Bls12_377, Fr, G1Affine},
         AffineCurve,
+        bls12_377::{Bls12_377, Fr, G1Affine},
     };
     use snarkvm_utilities::{TestRng, Uniform};
 

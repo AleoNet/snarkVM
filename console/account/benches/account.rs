@@ -17,7 +17,7 @@
 extern crate criterion;
 
 use snarkvm_console_account::{Address, PrivateKey, ViewKey};
-use snarkvm_console_network::{environment::prelude::*, MainnetV0};
+use snarkvm_console_network::{MainnetV0, environment::prelude::*};
 
 use criterion::Criterion;
 

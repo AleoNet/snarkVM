@@ -14,10 +14,10 @@
 // limitations under the License.
 
 use crate::{
-    helpers::rocksdb::{BlockDB, FinalizeDB, TransactionDB, TransitionDB},
     BlockStore,
     ConsensusStorage,
     FinalizeStore,
+    helpers::rocksdb::{BlockDB, FinalizeDB, TransactionDB, TransitionDB},
 };
 use console::prelude::*;
 

@@ -22,12 +22,12 @@ use snarkvm_console::{
     program::{Plaintext, Record, StatePath},
     types::Field,
 };
-use snarkvm_ledger_store::{helpers::memory::ConsensusMemory, ConsensusStore};
-use snarkvm_synthesizer::{process::InclusionAssignment, snark::UniversalSRS, VM};
+use snarkvm_ledger_store::{ConsensusStore, helpers::memory::ConsensusMemory};
+use snarkvm_synthesizer::{VM, process::InclusionAssignment, snark::UniversalSRS};
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use rand::thread_rng;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::{
     fs::File,
     io::{BufWriter, Write},

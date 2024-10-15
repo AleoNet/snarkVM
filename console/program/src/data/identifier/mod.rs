@@ -24,7 +24,7 @@ mod to_bits;
 mod to_field;
 
 use snarkvm_console_network::Network;
-use snarkvm_console_types::{prelude::*, Field};
+use snarkvm_console_types::{Field, prelude::*};
 
 /// An identifier is an **immutable** UTF-8 string,
 /// represented as a **constant** field element in the CurrentNetwork.

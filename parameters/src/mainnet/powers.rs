@@ -28,7 +28,7 @@ use snarkvm_utilities::{
     Write,
 };
 
-use anyhow::{anyhow, bail, ensure, Result};
+use anyhow::{Result, anyhow, bail, ensure};
 use parking_lot::RwLock;
 use std::{collections::BTreeMap, ops::Range, sync::Arc};
 

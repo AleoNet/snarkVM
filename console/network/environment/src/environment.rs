@@ -15,13 +15,13 @@
 
 use crate::prelude::{Deserialize, DeserializeOwned, Serialize};
 use snarkvm_curves::{
-    bls12_377::Bls12_377,
-    edwards_bls12::{EdwardsAffine, EdwardsParameters},
     AffineCurve,
     MontgomeryParameters,
     PairingEngine,
     ProjectiveCurve,
     TwistedEdwardsParameters,
+    bls12_377::Bls12_377,
+    edwards_bls12::{EdwardsAffine, EdwardsParameters},
 };
 use snarkvm_fields::{PrimeField, SquareRootField};
 use snarkvm_utilities::BigInteger;

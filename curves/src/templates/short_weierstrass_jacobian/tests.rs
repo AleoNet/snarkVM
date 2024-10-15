@@ -17,12 +17,12 @@ use super::{Affine, Projective};
 use crate::{AffineCurve, ProjectiveCurve, ShortWeierstrassParameters};
 use snarkvm_fields::Zero;
 use snarkvm_utilities::{
-    io::Cursor,
-    rand::Uniform,
-    serialize::{CanonicalDeserialize, CanonicalSerialize},
     Compress,
     TestRng,
     Validate,
+    io::Cursor,
+    rand::Uniform,
+    serialize::{CanonicalDeserialize, CanonicalSerialize},
 };
 
 pub const ITERATIONS: usize = 10;

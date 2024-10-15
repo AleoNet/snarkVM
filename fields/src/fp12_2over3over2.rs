@@ -13,12 +13,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::{fp6_3over2::*, Field, Fp2, Fp2Parameters, One, Zero};
-use snarkvm_utilities::{bititerator::BitIteratorBE, rand::Uniform, serialize::*, FromBytes, ToBits, ToBytes};
+use crate::{Field, Fp2, Fp2Parameters, One, Zero, fp6_3over2::*};
+use snarkvm_utilities::{FromBytes, ToBits, ToBytes, bititerator::BitIteratorBE, rand::Uniform, serialize::*};
 
 use rand::{
-    distributions::{Distribution, Standard},
     Rng,
+    distributions::{Distribution, Standard},
 };
 use serde::{Deserialize, Serialize};
 use std::{

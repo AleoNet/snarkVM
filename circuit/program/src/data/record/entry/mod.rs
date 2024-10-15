@@ -20,7 +20,7 @@ mod to_bits;
 
 use crate::{Access, Ciphertext, Plaintext, Visibility};
 use snarkvm_circuit_network::Aleo;
-use snarkvm_circuit_types::{environment::prelude::*, Boolean};
+use snarkvm_circuit_types::{Boolean, environment::prelude::*};
 
 /// An entry stored in program data.
 #[derive(Clone)]

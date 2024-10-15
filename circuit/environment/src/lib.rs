@@ -44,6 +44,13 @@ pub use traits::*;
 
 pub mod prelude {
     pub use crate::{
+        CircuitType,
+        Count,
+        Environment,
+        LinearCombination,
+        Mode,
+        OutputMode,
+        Variable,
         count,
         count_is,
         count_less_than,
@@ -52,20 +59,12 @@ pub mod prelude {
         traits::*,
         witness,
         witness_mode,
-        CircuitType,
-        Count,
-        Environment,
-        LinearCombination,
-        Mode,
-        OutputMode,
-        Variable,
     };
     pub use console::{
+        Parser,
+        ParserResult,
+        TypeName,
         prelude::{
-            bail,
-            ensure,
-            fmt,
-            has_duplicates,
             Debug,
             Display,
             Error,
@@ -74,23 +73,24 @@ pub mod prelude {
             One as _,
             Result,
             Zero as _,
+            bail,
+            ensure,
+            fmt,
+            has_duplicates,
         },
         traits::{
-            string_parser,
-            types::{
-                integer_magnitude::Magnitude,
-                integer_type::{CheckedPow, IntegerProperties, IntegerType, WrappingDiv, WrappingPow, WrappingRem},
-            },
             Double as _,
             FromBits as _,
             Inverse as _,
             Square as _,
             SquareRoot as _,
             ToBits as _,
+            string_parser,
+            types::{
+                integer_magnitude::Magnitude,
+                integer_type::{CheckedPow, IntegerProperties, IntegerType, WrappingDiv, WrappingPow, WrappingRem},
+            },
         },
-        Parser,
-        ParserResult,
-        TypeName,
     };
     pub use snarkvm_fields::{self, Field as _, PrimeField, Zero as _};
 

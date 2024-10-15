@@ -15,9 +15,9 @@
 
 pub(crate) mod g1 {
     use snarkvm_curves::{
+        AffineCurve,
         bls12_377::{Fr, G1Affine, G1Projective as G1},
         traits::ProjectiveCurve,
-        AffineCurve,
     };
     use snarkvm_utilities::rand::{TestRng, Uniform};
 

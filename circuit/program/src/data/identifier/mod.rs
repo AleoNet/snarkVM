@@ -24,7 +24,7 @@ mod to_bits;
 mod to_field;
 
 use snarkvm_circuit_network::Aleo;
-use snarkvm_circuit_types::{environment::prelude::*, Boolean, Field, U8};
+use snarkvm_circuit_types::{Boolean, Field, U8, environment::prelude::*};
 use snarkvm_utilities::ToBits as TB;
 
 /// An identifier is an **immutable** UTF-8 string,
@@ -159,7 +159,7 @@ pub(crate) mod tests {
     use crate::Circuit;
     use console::{Rng, TestRng};
 
-    use anyhow::{bail, Result};
+    use anyhow::{Result, bail};
     use core::str::FromStr;
     use rand::distributions::Alphanumeric;
 

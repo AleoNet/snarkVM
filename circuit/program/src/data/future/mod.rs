@@ -23,7 +23,7 @@ mod to_fields;
 
 use crate::{Access, Identifier, Plaintext, ProgramID, Value};
 use snarkvm_circuit_network::Aleo;
-use snarkvm_circuit_types::{environment::prelude::*, Boolean, Field, U16};
+use snarkvm_circuit_types::{Boolean, Field, U16, environment::prelude::*};
 
 /// A future.
 #[derive(Clone)]

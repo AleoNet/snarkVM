@@ -14,9 +14,9 @@
 // limitations under the License.
 
 use snarkvm_fields::{
+    Fp2Parameters,
     field,
     fp6_3over2::{Fp6, Fp6Parameters},
-    Fp2Parameters,
 };
 use snarkvm_utilities::biginteger::BigInteger384;
 

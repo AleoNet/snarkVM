@@ -48,7 +48,7 @@ impl<A: Aleo> ToBits for &ProgramID<A> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{data::identifier::tests::sample_lowercase_console_identifier_as_string, Circuit};
+    use crate::{Circuit, data::identifier::tests::sample_lowercase_console_identifier_as_string};
 
     use anyhow::Result;
 

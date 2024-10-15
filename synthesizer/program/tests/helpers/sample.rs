@@ -20,8 +20,8 @@ use console::{
     program::{Identifier, Literal, Plaintext, Register, Value},
 };
 use snarkvm_synthesizer_program::{
-    traits::{RegistersStore, RegistersStoreCircuit},
     FinalizeGlobalState,
+    traits::{RegistersStore, RegistersStoreCircuit},
 };
 use synthesizer_process::{Authorization, CallStack, FinalizeRegisters, Registers, Stack, StackProgramTypes};
 

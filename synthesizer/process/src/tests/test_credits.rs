@@ -17,19 +17,19 @@ use crate::Process;
 use circuit::network::AleoV0;
 use console::{
     account::{Address, PrivateKey},
-    network::{prelude::*, MainnetV0},
+    network::{MainnetV0, prelude::*},
     program::{Identifier, Literal, Plaintext, ProgramID, Value},
     types::U64,
 };
 use ledger_committee::{MIN_DELEGATOR_STAKE, MIN_VALIDATOR_SELF_STAKE, MIN_VALIDATOR_STAKE};
 use ledger_query::Query;
 use ledger_store::{
-    atomic_finalize,
-    helpers::memory::{BlockMemory, FinalizeMemory},
     BlockStore,
     FinalizeMode,
     FinalizeStorage,
     FinalizeStore,
+    atomic_finalize,
+    helpers::memory::{BlockMemory, FinalizeMemory},
 };
 use synthesizer_program::{FinalizeGlobalState, FinalizeStoreTrait, Program};
 

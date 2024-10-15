@@ -21,7 +21,7 @@ use snarkvm_circuit_types::environment::assert_scope;
 use snarkvm_utilities::{TestRng, Uniform};
 
 use crate::Hash;
-use snarkvm_circuit_types::{environment::prelude::*, Boolean, U64};
+use snarkvm_circuit_types::{Boolean, U64, environment::prelude::*};
 
 /// The Keccak-224 hash function.
 pub type Keccak224<E> = Keccak<E, { KeccakType::Keccak as u8 }, 224>;

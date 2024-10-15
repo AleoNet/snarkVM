@@ -14,12 +14,12 @@
 // limitations under the License.
 
 use crate::{
+    FeeStorage,
+    FeeStore,
     atomic_batch_scope,
     cow_to_cloned,
     cow_to_copied,
     helpers::{Map, MapRead},
-    FeeStorage,
-    FeeStore,
 };
 use console::{
     network::prelude::*,
@@ -672,7 +672,7 @@ impl<N: Network, D: DeploymentStorage<N>> DeploymentStore<N, D> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{helpers::memory::DeploymentMemory, TransitionStore};
+    use crate::{TransitionStore, helpers::memory::DeploymentMemory};
 
     #[test]
     fn test_insert_get_remove() {
