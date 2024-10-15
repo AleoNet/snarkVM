@@ -293,3 +293,19 @@ macro_rules! cfg_sort_by_cached_key {
         $self.par_sort_by_cached_key($closure);
     }};
 }
+
+/// Returns a sorted, by-value iterator for the given IndexMap/IndexSet
+#[macro_export]
+macro_rules! cfg_sorted_by {
+    ($self: expr, $closure: expr) => {{
+        #[cfg(feature = "serial")]
+        {
+            $self.sorted_by($closure)
+        }
+
+        #[cfg(not(feature = "serial"))]
+        {
+            $self.par_sorted_by($closure)
+        }
+    }};
+}
