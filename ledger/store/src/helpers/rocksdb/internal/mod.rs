@@ -141,6 +141,7 @@ impl Database for RocksDB {
                     options.increase_parallelism(2);
                     options.set_max_background_jobs(4);
                     options.create_if_missing(true);
+                    options.set_max_open_files(8192);
 
                     Arc::new(rocksdb::DB::open(&options, primary)?)
                 };
