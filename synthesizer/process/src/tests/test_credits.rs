@@ -1693,7 +1693,7 @@ fn test_bond_validator_fails_if_unbonding_state() {
         );
         assert!(rebonding_result.is_err());
 
-        // Ensure the error wasn't due to insufficent balance
+        // Ensure the error wasn't due to insufficient balance
         let validator_balance = account_balance(&store, validator_address).unwrap();
         assert!(validator_balance > MIN_VALIDATOR_STAKE);
 
