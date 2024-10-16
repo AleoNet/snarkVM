@@ -24,10 +24,12 @@ impl<A: Aleo> ToBits for Plaintext<A> {
             Self::Literal(literal, bits_le) => {
                 // Compute the bits of the literal.
                 let bits = bits_le.get_or_init(|| {
-                    let mut bits_le = vec![Boolean::constant(false), Boolean::constant(false)]; // Variant bit.
+                    let mut bits_le = Vec::new();
+                    bits_le.extend([Boolean::constant(false), Boolean::constant(false)]); // Variant bit.
                     literal.variant().write_bits_le(&mut bits_le);
                     literal.size_in_bits().write_bits_le(&mut bits_le);
                     literal.write_bits_le(&mut bits_le);
+                    bits_le.shrink_to_fit();
                     bits_le
                 });
                 // Extend the vector with the bits of the literal.
@@ -36,15 +38,17 @@ impl<A: Aleo> ToBits for Plaintext<A> {
             Self::Struct(members, bits_le) => {
                 // Compute the bits of the struct.
                 let bits = bits_le.get_or_init(|| {
-                    let mut bits_le = vec![Boolean::constant(false), Boolean::constant(true)]; // Variant bit.
+                    let mut bits_le = Vec::new();
+                    bits_le.extend([Boolean::constant(false), Boolean::constant(true)]); // Variant bit.
                     U8::constant(console::U8::new(members.len() as u8)).write_bits_le(&mut bits_le);
                     for (identifier, value) in members {
                         let value_bits = value.to_bits_le();
                         identifier.size_in_bits().write_bits_le(&mut bits_le);
                         identifier.write_bits_le(&mut bits_le);
                         U16::constant(console::U16::new(value_bits.len() as u16)).write_bits_le(&mut bits_le);
-                        bits_le.extend_from_slice(&value_bits);
+                        bits_le.extend(value_bits);
                     }
+                    bits_le.shrink_to_fit();
                     bits_le
                 });
                 // Extend the vector with the bits of the struct.
@@ -53,13 +57,15 @@ impl<A: Aleo> ToBits for Plaintext<A> {
             Self::Array(elements, bits_le) => {
                 // Compute the bits of the array.
                 let bits = bits_le.get_or_init(|| {
-                    let mut bits_le = vec![Boolean::constant(true), Boolean::constant(false)]; // Variant bit.
+                    let mut bits_le = Vec::new();
+                    bits_le.extend([Boolean::constant(true), Boolean::constant(false)]); // Variant bit.
                     U32::constant(console::U32::new(elements.len() as u32)).write_bits_le(&mut bits_le);
                     for value in elements {
                         let value_bits = value.to_bits_le();
                         U16::constant(console::U16::new(value_bits.len() as u16)).write_bits_le(&mut bits_le);
                         bits_le.extend(value_bits);
                     }
+                    bits_le.shrink_to_fit();
                     bits_le
                 });
                 // Extend the vector with the bits of the array.
@@ -74,10 +80,12 @@ impl<A: Aleo> ToBits for Plaintext<A> {
             Self::Literal(literal, bits_be) => {
                 // Compute the bits of the literal.
                 let bits = bits_be.get_or_init(|| {
-                    let mut bits_be = vec![Boolean::constant(false), Boolean::constant(false)]; // Variant bit.
+                    let mut bits_be = Vec::new();
+                    bits_be.extend([Boolean::constant(false), Boolean::constant(false)]); // Variant bit.
                     literal.variant().write_bits_be(&mut bits_be);
                     literal.size_in_bits().write_bits_be(&mut bits_be);
                     literal.write_bits_be(&mut bits_be);
+                    bits_be.shrink_to_fit();
                     bits_be
                 });
                 // Extend the vector with the bits of the literal.
@@ -86,15 +94,17 @@ impl<A: Aleo> ToBits for Plaintext<A> {
             Self::Struct(members, bits_be) => {
                 // Compute the bits of the struct.
                 let bits = bits_be.get_or_init(|| {
-                    let mut bits_be = vec![Boolean::constant(false), Boolean::constant(true)]; // Variant bit.
+                    let mut bits_be = Vec::new();
+                    bits_be.extend([Boolean::constant(false), Boolean::constant(true)]); // Variant bit.
                     U8::constant(console::U8::new(members.len() as u8)).write_bits_be(&mut bits_be);
                     for (identifier, value) in members {
                         let value_bits = value.to_bits_be();
                         identifier.size_in_bits().write_bits_be(&mut bits_be);
                         identifier.write_bits_be(&mut bits_be);
                         U16::constant(console::U16::new(value_bits.len() as u16)).write_bits_be(&mut bits_be);
-                        bits_be.extend_from_slice(&value_bits);
+                        bits_be.extend(value_bits);
                     }
+                    bits_be.shrink_to_fit();
                     bits_be
                 });
                 // Extend the vector with the bits of the struct.
@@ -103,13 +113,15 @@ impl<A: Aleo> ToBits for Plaintext<A> {
             Self::Array(elements, bits_be) => {
                 // Compute the bits of the array.
                 let bits = bits_be.get_or_init(|| {
-                    let mut bits_be = vec![Boolean::constant(true), Boolean::constant(false)]; // Variant bit.
+                    let mut bits_be = Vec::new();
+                    bits_be.extend([Boolean::constant(true), Boolean::constant(false)]); // Variant bit.
                     U32::constant(console::U32::new(elements.len() as u32)).write_bits_be(&mut bits_be);
                     for value in elements {
                         let value_bits = value.to_bits_be();
                         U16::constant(console::U16::new(value_bits.len() as u16)).write_bits_be(&mut bits_be);
                         bits_be.extend(value_bits);
                     }
+                    bits_be.shrink_to_fit();
                     bits_be
                 });
                 // Extend the vector with the bits of the array.
