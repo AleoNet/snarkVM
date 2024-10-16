@@ -14,7 +14,7 @@
 // limitations under the License.
 
 use super::BooleanHash;
-use snarkvm_console_algorithms::{Keccak, Poseidon, BHP};
+use snarkvm_console_algorithms::{BHP, Keccak, Poseidon};
 use snarkvm_console_types::prelude::*;
 
 #[cfg(not(feature = "serial"))]

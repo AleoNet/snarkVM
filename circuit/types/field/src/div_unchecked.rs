@@ -82,7 +82,7 @@ impl<E: Environment> OutputMode<dyn DivUnchecked<Field<E>, Output = Field<E>>> f
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_circuit_environment::{assert_count_fails, Circuit};
+    use snarkvm_circuit_environment::{Circuit, assert_count_fails};
 
     const ITERATIONS: u64 = 1000;
 

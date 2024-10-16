@@ -28,7 +28,7 @@ impl<A: Aleo> ViewKey<A> {
 #[cfg(all(test, console))]
 mod tests {
     use super::*;
-    use crate::{helpers::generate_account, Circuit};
+    use crate::{Circuit, helpers::generate_account};
 
     use anyhow::Result;
 

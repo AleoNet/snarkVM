@@ -16,22 +16,22 @@
 use super::*;
 use crate::TRANSACTION_PREFIX;
 use snarkvm_console_algorithms::{
+    BHP256,
+    BHP512,
+    BHP768,
+    BHP1024,
     Blake2Xs,
     Keccak256,
     Keccak384,
     Keccak512,
-    Pedersen128,
     Pedersen64,
+    Pedersen128,
     Poseidon2,
     Poseidon4,
     Poseidon8,
     Sha3_256,
     Sha3_384,
     Sha3_512,
-    BHP1024,
-    BHP256,
-    BHP512,
-    BHP768,
 };
 
 lazy_static! {

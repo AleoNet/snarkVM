@@ -18,7 +18,7 @@
 #![warn(clippy::cast_possible_truncation)]
 #![cfg_attr(test, allow(clippy::assertions_on_result_states))]
 
-pub use snarkvm_console_types::{environment::prelude::*, Address, Field, Group, Scalar};
+pub use snarkvm_console_types::{Address, Field, Group, Scalar, environment::prelude::*};
 
 mod address;
 
@@ -50,7 +50,7 @@ pub use view_key::*;
 #[cfg(test)]
 mod tests {
     use crate::{Address, ComputeKey, PrivateKey, Signature, ViewKey};
-    use snarkvm_console_network::{prelude::*, MainnetV0};
+    use snarkvm_console_network::{MainnetV0, prelude::*};
 
     type CurrentNetwork = MainnetV0;
 

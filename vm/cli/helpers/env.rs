@@ -15,7 +15,7 @@
 
 use crate::{cli::CurrentNetwork, console::account::PrivateKey};
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 
 fn env_template() -> String {
     r#"

@@ -24,10 +24,6 @@ use console::{
     account::{Address, PrivateKey, Signature},
     network::Network,
     prelude::{
-        de,
-        error,
-        fmt,
-        ser,
         Debug,
         Deserialize,
         DeserializeExt,
@@ -46,6 +42,10 @@ use console::{
         ToBytes,
         ToBytesSerializer,
         Write,
+        de,
+        error,
+        fmt,
+        ser,
     },
     types::Field,
 };

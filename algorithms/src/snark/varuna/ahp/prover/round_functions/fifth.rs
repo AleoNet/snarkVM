@@ -19,9 +19,9 @@ use crate::{
     fft::DensePolynomial,
     polycommit::sonic_pc::{LabeledPolynomial, PolynomialInfo, PolynomialLabel},
     snark::varuna::{
-        ahp::{verifier, AHPError, AHPForR1CS},
-        prover,
         SNARKMode,
+        ahp::{AHPError, AHPForR1CS, verifier},
+        prover,
     },
 };
 use snarkvm_fields::PrimeField;

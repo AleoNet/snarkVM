@@ -13,7 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::r1cs::{errors::SynthesisError, ConstraintSystem, Index, LinearCombination, Variable};
+use crate::r1cs::{ConstraintSystem, Index, LinearCombination, Variable, errors::SynthesisError};
 use snarkvm_fields::Field;
 
 /// Constraint counter for testing purposes.

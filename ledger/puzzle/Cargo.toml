@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-ledger-puzzle"
-version = "0.16.19"
+version = "1.0.0"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Puzzle for a decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -32,25 +32,19 @@ required-features = [ "setup" ]
 [features]
 default = [ "indexmap/rayon", "rayon" ]
 cuda = [ "snarkvm-algorithms/cuda" ]
-serial = [
-  "console/serial",
-  "snarkvm-algorithms/serial",
-]
+serial = [ "console/serial", "snarkvm-algorithms/serial" ]
 setup = [ ]
 timer = [ "aleo-std/timer" ]
-wasm = [
-  "console/wasm",
-  "snarkvm-algorithms/wasm",
-]
+wasm = [ "console/wasm", "snarkvm-algorithms/wasm" ]
 
 [dependencies.console]
 package = "snarkvm-console"
 path = "../../console"
-version = "=0.16.19"
+version = "=1.0.0"
 
 [dependencies.snarkvm-algorithms]
 path = "../../algorithms"
-version = "=0.16.19"
+version = "=1.0.0"
 
 [dependencies.aleo-std]
 version = "0.1.24"
@@ -102,4 +96,3 @@ version = "0.8"
 
 [dev-dependencies.snarkvm-ledger-puzzle-epoch]
 path = "epoch"
-version = "=0.16.19"

@@ -13,7 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::{nonnative_params::*, AlgebraicSponge, DuplexSpongeMode};
+use crate::{AlgebraicSponge, DuplexSpongeMode, nonnative_params::*};
 use snarkvm_fields::{FieldParameters, PoseidonParameters, PrimeField, ToConstraintField};
 use snarkvm_utilities::{BigInteger, FromBits, ToBits};
 

@@ -17,7 +17,7 @@ mod bytes;
 mod serialize;
 mod string;
 
-use crate::{rejected::Rejected, Transaction};
+use crate::{Transaction, rejected::Rejected};
 use console::{network::prelude::*, program::FINALIZE_ID_DEPTH, types::Field};
 use synthesizer_program::FinalizeOperation;
 

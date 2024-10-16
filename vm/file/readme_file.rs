@@ -18,7 +18,7 @@ use crate::{
     synthesizer::Program,
 };
 
-use anyhow::{ensure, Result};
+use anyhow::{Result, ensure};
 use std::{
     fs::File,
     io::Write,

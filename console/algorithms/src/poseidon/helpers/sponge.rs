@@ -14,10 +14,10 @@
 // limitations under the License.
 
 use crate::poseidon::{
-    helpers::{AlgebraicSponge, DuplexSpongeMode},
     State,
+    helpers::{AlgebraicSponge, DuplexSpongeMode},
 };
-use snarkvm_console_types::{prelude::*, Field};
+use snarkvm_console_types::{Field, prelude::*};
 use snarkvm_fields::PoseidonParameters;
 
 use smallvec::SmallVec;

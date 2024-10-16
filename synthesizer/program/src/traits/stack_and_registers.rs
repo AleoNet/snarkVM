@@ -19,7 +19,7 @@ use crate::{FinalizeGlobalState, Function, Operand, Program};
 use console::{
     account::Group,
     network::Network,
-    prelude::{bail, Result},
+    prelude::{Result, bail},
     program::{
         Future,
         Identifier,

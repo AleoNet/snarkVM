@@ -106,7 +106,7 @@ impl<E: Environment, PH: PathHash<E>, const DEPTH: u8, const ARITY: u8> KaryMerk
 #[cfg(all(test, console))]
 mod tests {
     use super::*;
-    use snarkvm_circuit_algorithms::{Keccak256, Poseidon2, Poseidon4, Sha3_256, BHP1024, BHP512};
+    use snarkvm_circuit_algorithms::{BHP512, BHP1024, Keccak256, Poseidon2, Poseidon4, Sha3_256};
     use snarkvm_circuit_types::environment::Circuit;
     use snarkvm_utilities::{TestRng, Uniform};
 

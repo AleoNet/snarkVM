@@ -15,7 +15,7 @@
 
 use console::{
     network::Network,
-    prelude::{cfg_into_iter, FromBytes, ToBits as TBits, ToBytes, Uniform},
+    prelude::{FromBytes, ToBits as TBits, ToBytes, Uniform, cfg_into_iter},
     types::Field,
 };
 use snarkvm_ledger_puzzle::PuzzleTrait;

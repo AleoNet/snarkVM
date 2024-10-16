@@ -17,7 +17,7 @@ use crate::synthesis::helpers::{PuzzleDestination, PuzzleInstructionType, Puzzle
 use console::{
     prelude::Zero,
     program::{Field, Literal, LiteralType, Network},
-    types::{I128, I16, I32, I64, I8, U128, U16, U32, U64, U8},
+    types::{I8, I16, I32, I64, I128, U8, U16, U32, U64, U128},
 };
 
 type Instruction = PuzzleInstructionType;

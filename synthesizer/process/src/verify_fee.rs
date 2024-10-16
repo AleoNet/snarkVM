@@ -165,7 +165,7 @@ impl<N: Network> Process<N> {
         }
         lap!(timer, "Verify the inputs");
 
-        // Ensure there are is one output.
+        // Ensure there is one output.
         ensure!(
             fee.outputs().len() == 1,
             "The number of outputs in the fee transition should be 1, found {}",

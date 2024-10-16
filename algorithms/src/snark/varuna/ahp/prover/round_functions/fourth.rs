@@ -15,24 +15,24 @@
 
 use crate::{
     fft::{
-        domain::{FFTPrecomputation, IFFTPrecomputation},
-        polynomial::PolyMultiplier,
         DensePolynomial,
         EvaluationDomain,
         Evaluations as EvaluationsOnDomain,
+        domain::{FFTPrecomputation, IFFTPrecomputation},
+        polynomial::PolyMultiplier,
     },
     polycommit::sonic_pc::{LabeledPolynomial, PolynomialInfo, PolynomialLabel},
     snark::varuna::{
-        ahp::{indexer::CircuitInfo, verifier, AHPError, AHPForR1CS, CircuitId},
+        SNARKMode,
+        ahp::{AHPError, AHPForR1CS, CircuitId, indexer::CircuitInfo, verifier},
         matrices::MatrixEvals,
         prover,
         selectors::apply_randomized_selector,
         witness_label,
-        SNARKMode,
     },
 };
-use snarkvm_fields::{batch_inversion_and_mul, PrimeField};
-use snarkvm_utilities::{cfg_iter, cfg_iter_mut, ExecutionPool};
+use snarkvm_fields::{PrimeField, batch_inversion_and_mul};
+use snarkvm_utilities::{ExecutionPool, cfg_iter, cfg_iter_mut};
 
 use anyhow::Result;
 use core::convert::TryInto;

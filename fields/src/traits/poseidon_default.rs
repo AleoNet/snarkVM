@@ -13,11 +13,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::{serial_batch_inversion_and_mul, PoseidonGrainLFSR, PrimeField};
+use crate::{PoseidonGrainLFSR, PrimeField, serial_batch_inversion_and_mul};
 use aleo_std::{end_timer, start_timer};
 use itertools::Itertools;
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 
 /// Parameters and RNG used
 #[derive(Debug, Clone, PartialEq, Eq)]

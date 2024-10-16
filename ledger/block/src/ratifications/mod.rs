@@ -20,7 +20,7 @@ mod string;
 use crate::Ratify;
 use console::{
     network::prelude::*,
-    program::{RatificationsPath, RatificationsTree, RATIFICATIONS_DEPTH},
+    program::{RATIFICATIONS_DEPTH, RatificationsPath, RatificationsTree},
     types::Field,
 };
 

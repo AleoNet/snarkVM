@@ -26,18 +26,18 @@ pub use nested_map::*;
 mod tests;
 
 use aleo_std_storage::StorageMode;
-use anyhow::{bail, ensure, Result};
+use anyhow::{Result, bail, ensure};
 use once_cell::sync::OnceCell;
 use parking_lot::Mutex;
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{Serialize, de::DeserializeOwned};
 use std::{
     borrow::Borrow,
     marker::PhantomData,
     mem,
     ops::Deref,
     sync::{
-        atomic::{AtomicBool, AtomicUsize, Ordering},
         Arc,
+        atomic::{AtomicBool, AtomicUsize, Ordering},
     },
 };
 

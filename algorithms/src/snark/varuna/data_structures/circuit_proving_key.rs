@@ -15,14 +15,14 @@
 
 use crate::{
     polycommit::sonic_pc,
-    snark::varuna::{ahp::indexer::*, CircuitVerifyingKey, SNARKMode},
+    snark::varuna::{CircuitVerifyingKey, SNARKMode, ahp::indexer::*},
 };
 use snarkvm_curves::PairingEngine;
 use snarkvm_utilities::{
-    io::{self, Read, Write},
-    serialize::*,
     FromBytes,
     ToBytes,
+    io::{self, Read, Write},
+    serialize::*,
 };
 
 use std::{cmp::Ordering, sync::Arc};

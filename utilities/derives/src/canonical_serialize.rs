@@ -14,7 +14,7 @@
 // limitations under the License.
 
 use proc_macro2::TokenStream;
-use quote::{quote, ToTokens};
+use quote::{ToTokens, quote};
 use syn::{Data, Index, Type};
 
 pub(crate) enum IdentOrIndex {

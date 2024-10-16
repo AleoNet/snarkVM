@@ -13,7 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::fft::{domain::*, DensePolynomial};
+use crate::fft::{DensePolynomial, domain::*};
 use rand::Rng;
 use snarkvm_curves::bls12_377::{Fr, G1Projective};
 use snarkvm_fields::{FftField, Field, One, Zero};

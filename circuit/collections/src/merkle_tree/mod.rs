@@ -21,7 +21,7 @@ mod verify;
 #[cfg(all(test, console))]
 use snarkvm_circuit_types::environment::assert_scope;
 
-use snarkvm_circuit_types::{environment::prelude::*, Boolean, Field, U64};
+use snarkvm_circuit_types::{Boolean, Field, U64, environment::prelude::*};
 
 pub struct MerklePath<E: Environment, const DEPTH: u8> {
     /// The leaf index for the path.

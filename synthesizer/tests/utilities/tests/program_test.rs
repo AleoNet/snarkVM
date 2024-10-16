@@ -13,12 +13,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::{get_expectation_path, print_difference, CurrentNetwork, ExpectedTest};
+use crate::{CurrentNetwork, ExpectedTest, get_expectation_path, print_difference};
 
 use console::{account::PrivateKey, program::Identifier};
 use snarkvm_synthesizer::program::Program;
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use itertools::Itertools;
 use serde_yaml::{Mapping, Sequence, Value};
 use std::{

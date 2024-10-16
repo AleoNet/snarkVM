@@ -27,6 +27,8 @@ pub mod string_parser {
     //!   escape and the next non-whitespace character
 
     use nom::{
+        Err::Error,
+        IResult,
         branch::alt,
         bytes::streaming::{is_not, take_while_m_n},
         character::streaming::{char, multispace1},
@@ -34,8 +36,6 @@ pub mod string_parser {
         error::{ErrorKind, FromExternalError, ParseError},
         multi::fold_many0,
         sequence::{delimited, preceded},
-        Err::Error,
-        IResult,
     };
 
     /// Checks for supported code points.

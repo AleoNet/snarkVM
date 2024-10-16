@@ -19,10 +19,10 @@ use snarkvm_circuit_types::environment::assert_scope;
 mod to_tpk;
 mod verify;
 
-use crate::{compute_function_id, Identifier, Plaintext, ProgramID, Record, Value};
+use crate::{Identifier, Plaintext, ProgramID, Record, Value, compute_function_id};
 use snarkvm_circuit_account::Signature;
 use snarkvm_circuit_network::Aleo;
-use snarkvm_circuit_types::{environment::prelude::*, Address, Boolean, Field, Group, U16};
+use snarkvm_circuit_types::{Address, Boolean, Field, Group, U16, environment::prelude::*};
 
 pub enum InputID<A: Aleo> {
     /// The hash of the constant input.

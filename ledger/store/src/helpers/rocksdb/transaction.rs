@@ -14,6 +14,15 @@
 // limitations under the License.
 
 use crate::{
+    DeploymentStorage,
+    DeploymentStore,
+    ExecutionStorage,
+    ExecutionStore,
+    FeeStorage,
+    FeeStore,
+    TransactionStorage,
+    TransactionType,
+    TransitionStore,
     helpers::rocksdb::{
         self,
         DataMap,
@@ -25,15 +34,6 @@ use crate::{
         TransactionMap,
         TransitionDB,
     },
-    DeploymentStorage,
-    DeploymentStore,
-    ExecutionStorage,
-    ExecutionStore,
-    FeeStorage,
-    FeeStore,
-    TransactionStorage,
-    TransactionType,
-    TransitionStore,
 };
 use console::{
     prelude::*,

@@ -16,22 +16,22 @@
 use std::collections::BTreeMap;
 
 use crate::{
-    fft::{polynomial::PolyMultiplier, DensePolynomial, EvaluationDomain, Evaluations as EvaluationsOnDomain},
+    fft::{DensePolynomial, EvaluationDomain, Evaluations as EvaluationsOnDomain, polynomial::PolyMultiplier},
     polycommit::sonic_pc::{LabeledPolynomial, PolynomialInfo, PolynomialLabel},
     snark::varuna::{
-        ahp::{verifier, AHPForR1CS},
-        prover,
-        selectors::apply_randomized_selector,
-        witness_label,
         Circuit,
         CircuitId,
         SNARKMode,
+        ahp::{AHPForR1CS, verifier},
+        prover,
+        selectors::apply_randomized_selector,
+        witness_label,
     },
 };
 use anyhow::Result;
 use rand_core::RngCore;
 use snarkvm_fields::PrimeField;
-use snarkvm_utilities::{cfg_into_iter, cfg_iter_mut, cfg_reduce, ExecutionPool};
+use snarkvm_utilities::{ExecutionPool, cfg_into_iter, cfg_iter_mut, cfg_reduce};
 
 #[cfg(not(feature = "serial"))]
 use rayon::prelude::*;

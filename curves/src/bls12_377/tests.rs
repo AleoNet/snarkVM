@@ -16,15 +16,13 @@
 #![allow(unused_imports)]
 use crate::{
     bls12_377::{
-        g1::Bls12_377G1Parameters,
-        g2::Bls12_377G2Parameters,
         Bls12_377,
         Fq,
-        Fq12,
         Fq2,
         Fq2Parameters,
         Fq6,
         Fq6Parameters,
+        Fq12,
         FqParameters,
         Fr,
         FrParameters,
@@ -32,9 +30,15 @@ use crate::{
         G1Projective,
         G2Affine,
         G2Projective,
+        g1::Bls12_377G1Parameters,
+        g2::Bls12_377G2Parameters,
     },
     templates::{short_weierstrass_jacobian::tests::sw_tests, twisted_edwards_extended::tests::edwards_test},
     traits::{
+        AffineCurve,
+        PairingEngine,
+        ProjectiveCurve,
+        ShortWeierstrassParameters,
         tests_field::{
             bench_sqrt,
             field_serialization_test,
@@ -46,14 +50,9 @@ use crate::{
         },
         tests_group::*,
         tests_projective::curve_tests,
-        AffineCurve,
-        PairingEngine,
-        ProjectiveCurve,
-        ShortWeierstrassParameters,
     },
 };
 use snarkvm_fields::{
-    fp6_3over2::Fp6Parameters,
     FftField,
     FftParameters,
     Field,
@@ -64,11 +63,12 @@ use snarkvm_fields::{
     PrimeField,
     SquareRootField,
     Zero,
+    fp6_3over2::Fp6Parameters,
 };
 use snarkvm_utilities::{
+    BitIteratorBE,
     biginteger::{BigInteger, BigInteger256, BigInteger384},
     rand::{TestRng, Uniform},
-    BitIteratorBE,
 };
 
 use rand::Rng;

@@ -13,18 +13,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use snarkvm_fields::{field, Field, PrimeField, Zero};
+use snarkvm_fields::{Field, PrimeField, Zero, field};
 use snarkvm_utilities::{
-    biginteger::{BigInteger256, BigInteger384},
     BigInteger,
     BitIteratorBE,
+    biginteger::{BigInteger256, BigInteger384},
 };
 
 use crate::{
-    bls12_377::{g1::Bls12_377G1Parameters, Fq, Fq2, Fr},
-    traits::{ModelParameters, ShortWeierstrassParameters},
     AffineCurve,
     ProjectiveCurve,
+    bls12_377::{Fq, Fq2, Fr, g1::Bls12_377G1Parameters},
+    traits::{ModelParameters, ShortWeierstrassParameters},
 };
 
 use std::ops::Neg;

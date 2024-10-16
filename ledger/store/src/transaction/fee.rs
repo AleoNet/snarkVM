@@ -14,12 +14,12 @@
 // limitations under the License.
 
 use crate::{
+    TransitionStorage,
+    TransitionStore,
     atomic_batch_scope,
     cow_to_cloned,
     cow_to_copied,
     helpers::{Map, MapRead},
-    TransitionStorage,
-    TransitionStore,
 };
 use console::network::prelude::*;
 use ledger_block::Fee;

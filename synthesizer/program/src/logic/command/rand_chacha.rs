@@ -14,15 +14,15 @@
 // limitations under the License.
 
 use crate::{
-    traits::{RegistersLoad, RegistersStore, StackMatches, StackProgram},
     FinalizeRegistersState,
     Opcode,
     Operand,
+    traits::{RegistersLoad, RegistersStore, StackMatches, StackProgram},
 };
 use console::{
     network::prelude::*,
     program::{Literal, LiteralType, Plaintext, Register, Value},
-    types::{Address, Boolean, Field, Group, Scalar, I128, I16, I32, I64, I8, U128, U16, U32, U64, U8},
+    types::{Address, Boolean, Field, Group, I8, I16, I32, I64, I128, Scalar, U8, U16, U32, U64, U128},
 };
 
 use rand::SeedableRng;

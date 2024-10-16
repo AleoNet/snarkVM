@@ -16,10 +16,10 @@
 #![allow(clippy::type_complexity)]
 
 use crate::{
-    helpers::memory::{MemoryMap, NestedMemoryMap},
     CommitteeStorage,
     CommitteeStore,
     FinalizeStorage,
+    helpers::memory::{MemoryMap, NestedMemoryMap},
 };
 use console::{
     prelude::*,

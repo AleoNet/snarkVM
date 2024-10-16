@@ -27,7 +27,7 @@ impl<N: Network> FromBytes for PartialSolution<N> {
 }
 
 impl<N: Network> ToBytes for PartialSolution<N> {
-    /// Writes the parital solution to the buffer.
+    /// Writes the partial solution to the buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.epoch_hash.write_le(&mut writer)?;
         self.address.write_le(&mut writer)?;

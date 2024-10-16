@@ -13,7 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use snarkvm_console_types::{prelude::*, Field};
+use snarkvm_console_types::{Field, prelude::*};
 
 use core::ops::{Index, IndexMut, Range};
 

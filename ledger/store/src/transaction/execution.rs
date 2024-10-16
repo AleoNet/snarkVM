@@ -14,13 +14,13 @@
 // limitations under the License.
 
 use crate::{
+    FeeStorage,
+    FeeStore,
+    TransitionStore,
     atomic_batch_scope,
     cow_to_cloned,
     cow_to_copied,
     helpers::{Map, MapRead},
-    FeeStorage,
-    FeeStore,
-    TransitionStore,
 };
 use console::network::prelude::*;
 use ledger_block::{Execution, Transaction, Transition};
@@ -393,7 +393,7 @@ impl<N: Network, E: ExecutionStorage<N>> ExecutionStore<N, E> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{helpers::memory::ExecutionMemory, TransitionStore};
+    use crate::{TransitionStore, helpers::memory::ExecutionMemory};
 
     type CurrentNetwork = console::network::MainnetV0;
 

@@ -20,12 +20,12 @@ use console::{
     network::Network,
     prelude::{cfg_into_iter, cfg_iter, cfg_reduce},
     program::{Identifier, Literal, Plaintext, Value},
-    types::{Boolean, U64, U8},
+    types::{Boolean, U8, U64},
 };
 use ledger_committee::Committee;
 
-use anyhow::{bail, ensure, Result};
-use indexmap::{indexmap, IndexMap};
+use anyhow::{Result, bail, ensure};
+use indexmap::{IndexMap, indexmap};
 use std::str::FromStr;
 
 #[cfg(not(feature = "serial"))]

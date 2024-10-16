@@ -14,9 +14,9 @@
 // limitations under the License.
 
 use nom::{
-    error::{convert_error, VerboseError},
     Err as NomErr,
     IResult,
+    error::{VerboseError, convert_error},
 };
 
 /// The `nom`-compatible parser return type.

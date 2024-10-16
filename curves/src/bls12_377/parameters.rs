@@ -15,13 +15,13 @@
 
 use crate::{
     bls12_377::{
-        g1::Bls12_377G1Parameters,
-        g2::Bls12_377G2Parameters,
         Fq,
-        Fq12,
-        Fq12Parameters,
         Fq2Parameters,
         Fq6Parameters,
+        Fq12,
+        Fq12Parameters,
+        g1::Bls12_377G1Parameters,
+        g2::Bls12_377G2Parameters,
     },
     templates::bls12::{
         Bls12,

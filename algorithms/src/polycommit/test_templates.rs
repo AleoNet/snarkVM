@@ -25,13 +25,13 @@ use super::sonic_pc::{
     SonicKZG10,
 };
 use crate::{
+    AlgebraicSponge,
     fft::DensePolynomial,
     polycommit::{
-        sonic_pc::{LabeledPolynomial, LabeledPolynomialWithBasis, LinearCombination},
         PCError,
+        sonic_pc::{LabeledPolynomial, LabeledPolynomialWithBasis, LinearCombination},
     },
     srs::UniversalVerifier,
-    AlgebraicSponge,
 };
 use snarkvm_curves::PairingEngine;
 use snarkvm_fields::{One, Zero};
@@ -39,8 +39,8 @@ use snarkvm_utilities::rand::{TestRng, Uniform};
 
 use itertools::Itertools;
 use rand::{
-    distributions::{self, Distribution},
     Rng,
+    distributions::{self, Distribution},
 };
 use std::marker::PhantomData;
 

@@ -16,13 +16,13 @@
 #[macro_use]
 extern crate criterion;
 
-use circuit::{collections::kary_merkle_tree::*, AleoV0, Eject, Environment, Inject, Mode};
+use circuit::{AleoV0, Eject, Environment, Inject, Mode, collections::kary_merkle_tree::*};
 use console::{
     algorithms::Sha3_256,
     collections::kary_merkle_tree::KaryMerkleTree,
     network::{
-        prelude::{TestRng, ToBits, Uniform},
         MainnetV0,
+        prelude::{TestRng, ToBits, Uniform},
     },
     types::Field,
 };

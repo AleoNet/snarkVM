@@ -28,7 +28,7 @@ impl<A: Aleo> From<(Group<A>, Group<A>)> for ComputeKey<A> {
 #[cfg(all(test, console))]
 mod tests {
     use super::*;
-    use crate::{helpers::generate_account, Circuit};
+    use crate::{Circuit, helpers::generate_account};
 
     use anyhow::Result;
     use snarkvm_circuit_network::AleoV0;

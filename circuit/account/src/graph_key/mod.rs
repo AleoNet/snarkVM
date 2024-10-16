@@ -17,7 +17,7 @@
 use snarkvm_circuit_types::environment::assert_scope;
 
 use snarkvm_circuit_network::Aleo;
-use snarkvm_circuit_types::{environment::prelude::*, Field};
+use snarkvm_circuit_types::{Field, environment::prelude::*};
 
 pub struct GraphKey<A: Aleo> {
     /// The graph key `sk_tag` := Hash(view_key || ctr).
@@ -65,7 +65,7 @@ impl<A: Aleo> Eject for GraphKey<A> {
 #[cfg(all(test, console))]
 pub(crate) mod tests {
     use super::*;
-    use crate::{helpers::generate_account, Circuit};
+    use crate::{Circuit, helpers::generate_account};
 
     use anyhow::Result;
 

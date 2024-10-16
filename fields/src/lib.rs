@@ -50,10 +50,10 @@ pub mod traits;
 pub use traits::*;
 
 use snarkvm_utilities::{
-    biginteger::*,
-    serialize::{CanonicalDeserialize, CanonicalDeserializeWithFlags, CanonicalSerialize, CanonicalSerializeWithFlags},
     FromBytes,
     ToBytes,
+    biginteger::*,
+    serialize::{CanonicalDeserialize, CanonicalDeserializeWithFlags, CanonicalSerialize, CanonicalSerializeWithFlags},
 };
 
 impl_field_to_biginteger!(Fp256, BigInteger256, Fp256Parameters);

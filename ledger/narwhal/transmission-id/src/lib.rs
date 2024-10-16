@@ -21,7 +21,7 @@ mod serialize;
 mod string;
 
 use console::{network::TRANSACTION_PREFIX, prelude::*};
-use ledger_puzzle::{SolutionID, SOLUTION_ID_PREFIX};
+use ledger_puzzle::{SOLUTION_ID_PREFIX, SolutionID};
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub enum TransmissionID<N: Network> {

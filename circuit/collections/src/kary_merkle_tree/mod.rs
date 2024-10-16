@@ -21,7 +21,7 @@ mod verify;
 #[cfg(all(test, console))]
 use snarkvm_circuit_types::environment::assert_scope;
 
-use snarkvm_circuit_types::{environment::prelude::*, Boolean, Field, U16, U64};
+use snarkvm_circuit_types::{Boolean, Field, U16, U64, environment::prelude::*};
 
 pub struct KaryMerklePath<E: Environment, PH: PathHash<E>, const DEPTH: u8, const ARITY: u8> {
     /// The leaf index for the path.
@@ -82,7 +82,7 @@ impl<E: Environment, PH: PathHash<E>, const DEPTH: u8, const ARITY: u8> Eject fo
 mod tests {
     use super::*;
     use console::{
-        algorithms::{BHP1024 as NativeBHP1024, BHP512 as NativeBHP512},
+        algorithms::{BHP512 as NativeBHP512, BHP1024 as NativeBHP1024},
         kary_merkle_tree::KaryMerkleTree,
     };
     use snarkvm_circuit_algorithms::BHP512;

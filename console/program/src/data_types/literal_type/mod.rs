@@ -21,7 +21,7 @@ mod size_in_bytes;
 
 use snarkvm_console_account::Signature;
 use snarkvm_console_network::prelude::*;
-use snarkvm_console_types::{prelude::*, Boolean};
+use snarkvm_console_types::{Boolean, prelude::*};
 
 use core::fmt::{self, Debug, Display};
 use enum_iterator::Sequence;

@@ -14,12 +14,12 @@
 // limitations under the License.
 
 pub use crate::{
-    io::{self, Read, Write},
     FromBytes,
     ToBytes,
     Vec,
+    io::{self, Read, Write},
 };
-use crate::{serialize::traits::*, SerializationError};
+use crate::{SerializationError, serialize::traits::*};
 
 /// Serialize a Vector's elements without serializing the Vector's length
 /// If you want to serialize the full Vector, use `CanonicalSerialize for Vec<T>`

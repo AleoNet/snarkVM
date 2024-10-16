@@ -14,9 +14,9 @@
 // limitations under the License.
 
 use snarkvm_utilities::{
+    FromBytes,
     error,
     io::{Read, Result as IoResult},
-    FromBytes,
 };
 
 /// Returns the variable length integer of the given value.

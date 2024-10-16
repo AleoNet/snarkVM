@@ -14,27 +14,27 @@
 // limitations under the License.
 
 use crate::{
-    traits::{StackEvaluate, StackExecute},
     CallStack,
     Process,
     Stack,
     Trace,
+    traits::{StackEvaluate, StackExecute},
 };
-use circuit::{network::AleoV0, Aleo};
+use circuit::{Aleo, network::AleoV0};
 use console::{
     account::{Address, PrivateKey, ViewKey},
-    network::{prelude::*, MainnetV0},
+    network::{MainnetV0, prelude::*},
     program::{Identifier, Literal, Plaintext, ProgramID, Record, Value},
     types::{Field, U64},
 };
 use ledger_block::{Fee, Transaction};
 use ledger_query::Query;
 use ledger_store::{
-    helpers::memory::{BlockMemory, FinalizeMemory},
     BlockStorage,
     BlockStore,
     FinalizeStorage,
     FinalizeStore,
+    helpers::memory::{BlockMemory, FinalizeMemory},
 };
 use synthesizer_program::{FinalizeGlobalState, FinalizeStoreTrait, Program, StackProgram};
 use synthesizer_snark::UniversalSRS;

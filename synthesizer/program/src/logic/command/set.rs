@@ -14,10 +14,10 @@
 // limitations under the License.
 
 use crate::{
-    traits::{FinalizeStoreTrait, RegistersLoad, StackMatches, StackProgram},
     FinalizeOperation,
     Opcode,
     Operand,
+    traits::{FinalizeStoreTrait, RegistersLoad, StackMatches, StackProgram},
 };
 use console::{
     network::prelude::*,
