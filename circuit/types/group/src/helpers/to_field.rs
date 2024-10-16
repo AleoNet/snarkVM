@@ -41,7 +41,7 @@ mod tests {
             let expected = Uniform::rand(rng);
             let candidate = Group::<Circuit>::new(mode, expected);
 
-            Circuit::scope(&format!("{mode} {i}"), || {
+            Circuit::scope(format!("{mode} {i}"), || {
                 let candidate = candidate.to_field();
                 assert_eq!(expected.to_field().unwrap(), candidate.eject_value());
                 assert_scope!(0, 0, 0, 0);

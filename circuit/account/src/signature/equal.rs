@@ -15,7 +15,7 @@
 
 use super::*;
 
-#[cfg(console)]
+#[cfg(feature = "console")]
 impl<A: Aleo> Equal<Self> for Signature<A> {
     type Output = Boolean<A>;
 
@@ -67,7 +67,7 @@ impl<A: Aleo> OutputMode<dyn Equal<Signature<A>, Output = Boolean<A>>> for Signa
     }
 }
 
-#[cfg(all(test, console))]
+#[cfg(all(test, feature = "console"))]
 mod tests {
     use super::*;
     use crate::Circuit;
@@ -92,12 +92,12 @@ mod tests {
             let a = Signature::<CurrentAleo>::new(mode_a, crate::helpers::generate_signature(i, rng));
             let b = Signature::<CurrentAleo>::new(mode_b, crate::helpers::generate_signature(i, rng));
 
-            CurrentAleo::scope(&format!("{mode_a} {mode_a} {i}"), || {
+            CurrentAleo::scope(format!("{mode_a} {mode_a} {i}"), || {
                 let equals = a.is_equal(&a);
                 assert!(equals.eject_value());
             });
 
-            CurrentAleo::scope(&format!("{mode_a} {mode_b} {i}"), || {
+            CurrentAleo::scope(format!("{mode_a} {mode_b} {i}"), || {
                 let equals = a.is_equal(&b);
                 assert!(!equals.eject_value());
                 assert_scope!(num_constants, num_public, num_private, num_constraints);
@@ -119,12 +119,12 @@ mod tests {
             let a = Signature::<CurrentAleo>::new(mode_a, crate::helpers::generate_signature(i, rng));
             let b = Signature::<CurrentAleo>::new(mode_b, crate::helpers::generate_signature(i, rng));
 
-            CurrentAleo::scope(&format!("{mode_a} {mode_a} {i}"), || {
+            CurrentAleo::scope(format!("{mode_a} {mode_a} {i}"), || {
                 let equals = a.is_not_equal(&a);
                 assert!(!equals.eject_value());
             });
 
-            CurrentAleo::scope(&format!("{mode_a} {mode_b} {i}"), || {
+            CurrentAleo::scope(format!("{mode_a} {mode_b} {i}"), || {
                 let equals = a.is_not_equal(&b);
                 assert!(equals.eject_value());
                 assert_scope!(num_constants, num_public, num_private, num_constraints);

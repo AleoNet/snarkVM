@@ -55,7 +55,7 @@ impl<E: Environment, const RATE: usize> LeafHash<E> for Poseidon<E, RATE> {
     }
 }
 
-#[cfg(all(test, console))]
+#[cfg(all(test, feature = "console"))]
 mod tests {
     use super::*;
     use snarkvm_circuit_algorithms::{BHP1024, Poseidon4};

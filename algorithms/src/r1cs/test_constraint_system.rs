@@ -24,6 +24,7 @@ use itertools::Itertools;
 /// This field is the scalar field (Fr) of BLS12-377.
 pub type Fr = snarkvm_curves::bls12_377::Fr;
 
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 enum NamedObject {
     Constraint(usize),

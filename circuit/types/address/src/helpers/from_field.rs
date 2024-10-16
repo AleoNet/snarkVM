@@ -38,7 +38,7 @@ impl<E: Environment> FromField for Address<E> {
     }
 }
 
-#[cfg(all(test, console))]
+#[cfg(all(test, feature = "console"))]
 mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
@@ -53,7 +53,7 @@ mod tests {
             let expected: console::Group<<Circuit as Environment>::Network> = Uniform::rand(&mut rng);
             let candidate = Group::<Circuit>::new(mode, expected).to_x_coordinate();
 
-            Circuit::scope(&format!("{mode} {i}"), || {
+            Circuit::scope(format!("{mode} {i}"), || {
                 let candidate = Address::from_field(candidate);
                 assert_eq!(expected.to_x_coordinate(), candidate.eject_value().to_x_coordinate());
                 assert_scope!(num_constants, num_public, num_private, num_constraints);

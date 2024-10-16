@@ -65,6 +65,8 @@ impl<N: Network> ToBytes for Instruction<N> {
                         let index = Instruction::<N>::OPCODES.iter().position(|&opcode| $variant::<N>::opcode() == opcode).unwrap();
 
                         // Serialize the instruction.
+                        // Note that this cast is safe as the number of instructions is less than `u16::MAX`.
+                        #[allow(clippy::cast_possible_truncation)]
                         u16::write_le(&(index as u16),&mut $writer)?;
                         instruction.write_le(&mut $writer)?;
                     }),+

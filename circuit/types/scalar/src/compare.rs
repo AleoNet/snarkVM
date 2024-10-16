@@ -84,7 +84,7 @@ mod tests {
             let candidate_b = Scalar::<Circuit>::new(mode_b, expected_b);
 
             // Perform the less than comparison.
-            Circuit::scope(&format!("{mode_a} {mode_b} {i}"), || {
+            Circuit::scope(format!("{mode_a} {mode_b} {i}"), || {
                 let candidate = candidate_a.is_less_than(&candidate_b);
                 assert_eq!(expected_a < expected_b, candidate.eject_value());
                 assert_scope!(<=num_constants, <=num_public, <=num_private, <=num_constraints);

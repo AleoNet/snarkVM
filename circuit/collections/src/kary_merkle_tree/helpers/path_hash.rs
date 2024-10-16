@@ -91,7 +91,7 @@ impl<E: Environment, const TYPE: u8, const VARIANT: usize> PathHash<E> for Kecca
     }
 }
 
-#[cfg(all(test, console))]
+#[cfg(all(test, feature = "console"))]
 mod tests {
     use super::*;
     use snarkvm_circuit_algorithms::{BHP512, Keccak256, Poseidon2, Sha3_256};

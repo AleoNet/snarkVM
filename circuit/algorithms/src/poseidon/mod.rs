@@ -19,7 +19,7 @@ mod hash_to_group;
 mod hash_to_scalar;
 mod prf;
 
-#[cfg(all(test, console))]
+#[cfg(all(test, feature = "console"))]
 use snarkvm_circuit_types::environment::assert_scope;
 #[cfg(test)]
 use snarkvm_utilities::{TestRng, Uniform};
@@ -68,7 +68,7 @@ pub struct Poseidon<E: Environment, const RATE: usize> {
     mds: Vec<Vec<Field<E>>>,
 }
 
-#[cfg(console)]
+#[cfg(feature = "console")]
 impl<E: Environment, const RATE: usize> Inject for Poseidon<E, RATE> {
     type Primitive = console::Poseidon<E::Network, RATE>;
 

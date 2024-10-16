@@ -59,7 +59,7 @@ fn run_test(process: Process<CurrentNetwork>, test: &ProgramTest) -> serde_yaml:
     for program in test.programs() {
         if let Err(err) = process.add_program(program) {
             output
-                .get_mut(&serde_yaml::Value::String("errors".to_string()))
+                .get_mut(serde_yaml::Value::String("errors".to_string()))
                 .unwrap()
                 .as_sequence_mut()
                 .unwrap()

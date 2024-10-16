@@ -54,7 +54,6 @@ use rand::{CryptoRng, Rng};
 use std::{borrow::Borrow, collections::BTreeMap, ops::Deref, sync::Arc};
 
 use crate::srs::UniversalProver;
-#[cfg(not(feature = "std"))]
 use snarkvm_utilities::println;
 
 /// The Varuna proof system.

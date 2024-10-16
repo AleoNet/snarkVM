@@ -61,7 +61,7 @@ mod tests {
 
             let candidate = StringType::<Circuit>::new(mode, console::StringType::new(&expected));
 
-            Circuit::scope(&format!("{mode} {i}"), || {
+            Circuit::scope(format!("{mode} {i}"), || {
                 let candidate = candidate.to_bits_le();
                 assert_eq!(expected_num_bytes * 8, candidate.len());
 
@@ -86,7 +86,7 @@ mod tests {
 
             let candidate = StringType::<Circuit>::new(mode, console::StringType::new(&expected));
 
-            Circuit::scope(&format!("{mode} {i}"), || {
+            Circuit::scope(format!("{mode} {i}"), || {
                 let candidate = candidate.to_bits_be();
                 assert_eq!(expected_num_bytes * 8, candidate.len());
 

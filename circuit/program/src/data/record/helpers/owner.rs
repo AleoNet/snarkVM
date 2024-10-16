@@ -26,7 +26,7 @@ pub enum Owner<A: Aleo, Private: Visibility<A>> {
     Private(Private),
 }
 
-#[cfg(console)]
+#[cfg(feature = "console")]
 impl<A: Aleo> Inject for Owner<A, Plaintext<A>> {
     type Primitive = console::Owner<A::Network, console::Plaintext<A::Network>>;
 
@@ -45,7 +45,7 @@ impl<A: Aleo> Inject for Owner<A, Plaintext<A>> {
     }
 }
 
-#[cfg(console)]
+#[cfg(feature = "console")]
 impl<A: Aleo> Inject for Owner<A, Ciphertext<A>> {
     type Primitive = console::Owner<A::Network, console::Ciphertext<A::Network>>;
 

@@ -114,7 +114,7 @@ mod tests {
             // Check the string representation.
             let candidate = format!("{expected}");
             assert_eq!(expected, StatePath::from_str(&candidate).unwrap());
-            assert_eq!(STATE_PATH_PREFIX, candidate.to_string().split('1').next().unwrap());
+            assert_eq!(STATE_PATH_PREFIX, candidate.split('1').next().unwrap());
         }
     }
 

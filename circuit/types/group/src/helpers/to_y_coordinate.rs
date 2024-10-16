@@ -37,7 +37,7 @@ mod tests {
             let expected = Uniform::rand(&mut rng);
             let candidate = Group::<Circuit>::new(mode, expected);
 
-            Circuit::scope(&format!("{mode} {i}"), || {
+            Circuit::scope(format!("{mode} {i}"), || {
                 let candidate = candidate.to_y_coordinate();
                 assert_eq!(expected.to_y_coordinate(), candidate.eject_value());
                 assert_scope!(0, 0, 0, 0);

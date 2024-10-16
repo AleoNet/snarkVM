@@ -129,7 +129,7 @@ mod tests {
             // Add excess zero bits.
             let candidate = [given_bits, vec![Boolean::new(mode, false); i as usize]].concat();
 
-            Circuit::scope(&format!("Excess {mode} {i}"), || {
+            Circuit::scope(format!("Excess {mode} {i}"), || {
                 let candidate = Field::<Circuit>::from_bits_le(&candidate);
                 assert_eq!(expected, candidate.eject_value());
                 assert_eq!(expected_size_in_bits, candidate.bits_le.get().expect("Caching failed").len());
@@ -174,7 +174,7 @@ mod tests {
             // Add excess zero bits.
             let candidate = [vec![Boolean::new(mode, false); i as usize], given_bits].concat();
 
-            Circuit::scope(&format!("Excess {mode} {i}"), || {
+            Circuit::scope(format!("Excess {mode} {i}"), || {
                 let candidate = Field::<Circuit>::from_bits_be(&candidate);
                 assert_eq!(expected, candidate.eject_value());
                 assert_eq!(expected_size_in_bits, candidate.bits_le.get().expect("Caching failed").len());

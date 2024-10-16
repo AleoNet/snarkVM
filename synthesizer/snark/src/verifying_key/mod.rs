@@ -50,6 +50,7 @@ impl<N: Network> VerifyingKey<N> {
         let fiat_shamir = N::varuna_fs_parameters();
 
         // Verify the proof.
+        #[allow(clippy::manual_unwrap_or_default)]
         match Varuna::<N>::verify(universal_verifier, fiat_shamir, self, inputs, proof) {
             Ok(is_valid) => {
                 #[cfg(feature = "aleo-cli")]

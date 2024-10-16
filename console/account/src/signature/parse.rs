@@ -113,7 +113,7 @@ mod tests {
             // Check the string representation.
             let candidate = format!("{expected}");
             assert_eq!(expected, Signature::from_str(&candidate)?);
-            assert_eq!(SIGNATURE_PREFIX, candidate.to_string().split('1').next().unwrap());
+            assert_eq!(SIGNATURE_PREFIX, candidate.split('1').next().unwrap());
         }
         Ok(())
     }

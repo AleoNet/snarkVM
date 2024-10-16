@@ -39,7 +39,7 @@ impl<E: Environment> FromGroup for Address<E> {
     }
 }
 
-#[cfg(all(test, console))]
+#[cfg(all(test, feature = "console"))]
 mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;

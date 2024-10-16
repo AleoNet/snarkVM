@@ -162,7 +162,7 @@ impl<'de> Deserialize<'de> for BlockRange {
                         Ok(BlockRange::RangeInclusive(RangeInclusive::new(start, end)))
                     }
                     Field::FullRange => {
-                        variant.newtype_variant()?;
+                        variant.unit_variant()?;
                         Ok(BlockRange::FullRange)
                     }
                 }

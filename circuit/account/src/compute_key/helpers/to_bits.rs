@@ -15,7 +15,7 @@
 
 use super::*;
 
-#[cfg(console)]
+#[cfg(feature = "console")]
 impl<A: Aleo> ToBits for ComputeKey<A> {
     type Boolean = Boolean<A>;
 
@@ -30,7 +30,7 @@ impl<A: Aleo> ToBits for ComputeKey<A> {
     }
 }
 
-#[cfg(console)]
+#[cfg(feature = "console")]
 impl<A: Aleo> ToBits for &ComputeKey<A> {
     type Boolean = Boolean<A>;
 
@@ -51,7 +51,7 @@ impl<A: Aleo> ToBits for &ComputeKey<A> {
     }
 }
 
-#[cfg(all(test, console))]
+#[cfg(all(test, feature = "console"))]
 mod tests {
     use super::*;
     use crate::Circuit;
@@ -72,7 +72,7 @@ mod tests {
             let expected = console::ComputeKey::try_from(console::PrivateKey::new(rng).unwrap()).unwrap();
             let candidate = ComputeKey::<CurrentAleo>::new(mode, expected);
 
-            CurrentAleo::scope(&format!("{mode} {i}"), || {
+            CurrentAleo::scope(format!("{mode} {i}"), || {
                 let candidate = candidate.to_bits_le();
                 assert_eq!(expected_number_of_bits, candidate.len());
 
@@ -99,7 +99,7 @@ mod tests {
             let expected = console::ComputeKey::try_from(console::PrivateKey::new(rng).unwrap()).unwrap();
             let candidate = ComputeKey::<CurrentAleo>::new(mode, expected);
 
-            CurrentAleo::scope(&format!("{mode} {i}"), || {
+            CurrentAleo::scope(format!("{mode} {i}"), || {
                 let candidate = candidate.to_bits_be();
                 assert_eq!(expected_number_of_bits, candidate.len());
 

@@ -68,6 +68,7 @@ impl<N: Network> Certificate<N> {
         let fiat_shamir = N::varuna_fs_parameters();
 
         // Verify the certificate.
+        #[allow(clippy::manual_unwrap_or_default)]
         match Varuna::<N>::verify_vk(universal_verifier, fiat_shamir, assignment, verifying_key, self) {
             Ok(is_valid) => {
                 #[cfg(feature = "aleo-cli")]

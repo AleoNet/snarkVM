@@ -48,7 +48,7 @@ pub struct Record<A: Aleo, Private: Visibility<A>> {
     nonce: Group<A>,
 }
 
-#[cfg(console)]
+#[cfg(feature = "console")]
 impl<A: Aleo> Inject for Record<A, Plaintext<A>> {
     type Primitive = console::Record<A::Network, console::Plaintext<A::Network>>;
 
@@ -62,7 +62,7 @@ impl<A: Aleo> Inject for Record<A, Plaintext<A>> {
     }
 }
 
-#[cfg(console)]
+#[cfg(feature = "console")]
 impl<A: Aleo> Inject for Record<A, Ciphertext<A>> {
     type Primitive = console::Record<A::Network, console::Ciphertext<A::Network>>;
 
@@ -76,7 +76,7 @@ impl<A: Aleo> Inject for Record<A, Ciphertext<A>> {
     }
 }
 
-#[cfg(console)]
+#[cfg(feature = "console")]
 impl<A: Aleo, Private: Visibility<A>> Record<A, Private> {
     /// Initializes a new record plaintext.
     pub fn from_plaintext(
@@ -132,7 +132,7 @@ impl<A: Aleo, Private: Visibility<A>> Record<A, Private> {
     }
 }
 
-#[cfg(console)]
+#[cfg(feature = "console")]
 impl<A: Aleo> Eject for Record<A, Plaintext<A>> {
     type Primitive = console::Record<A::Network, console::Plaintext<A::Network>>;
 
@@ -173,7 +173,7 @@ impl<A: Aleo> Eject for Record<A, Plaintext<A>> {
     }
 }
 
-#[cfg(console)]
+#[cfg(feature = "console")]
 impl<A: Aleo> Eject for Record<A, Ciphertext<A>> {
     type Primitive = console::Record<A::Network, console::Ciphertext<A::Network>>;
 
@@ -214,7 +214,7 @@ impl<A: Aleo> Eject for Record<A, Ciphertext<A>> {
     }
 }
 
-#[cfg(console)]
+#[cfg(feature = "console")]
 impl<A: Aleo, Private: Visibility<A>> TypeName for Record<A, Private> {
     fn type_name() -> &'static str {
         "record"

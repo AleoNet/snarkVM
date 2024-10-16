@@ -24,7 +24,7 @@ impl<A: Aleo> ToFields for ComputeKey<A> {
     }
 }
 
-#[cfg(all(test, console))]
+#[cfg(all(test, feature = "console"))]
 mod tests {
     use super::*;
     use crate::Circuit;
@@ -45,7 +45,7 @@ mod tests {
             let expected = console::ComputeKey::try_from(console::PrivateKey::new(rng).unwrap()).unwrap();
             let candidate = ComputeKey::<CurrentAleo>::new(mode, expected);
 
-            CurrentAleo::scope(&format!("{mode} {i}"), || {
+            CurrentAleo::scope(format!("{mode} {i}"), || {
                 let candidate = candidate.to_fields();
                 assert_eq!(candidate.len(), 2);
 

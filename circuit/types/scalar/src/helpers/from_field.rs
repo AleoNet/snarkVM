@@ -23,8 +23,8 @@ impl<E: Environment> FromField for Scalar<E> {
     /// This method guarantees the following:
     ///   1. If the field element is larger than the scalar field modulus, then the operation will fail.
     ///   2. If the field element is smaller than the scalar field modulus, then the operation will succeed.
-    ///     - This is particularly useful for the case where a user called, `Scalar::from_field(scalar.to_field())`,
-    ///       and the scalar bit representation is between `size_in_data_bits < bits.len() < size_in_bits`.
+    ///         - This is particularly useful for the case where a user called, `Scalar::from_field(scalar.to_field())`,
+    ///           and the scalar bit representation is between `size_in_data_bits < bits.len() < size_in_bits`.
     fn from_field(field: Self::Field) -> Self {
         // Note: We are reconstituting the integer from the base field.
         // This is safe as the number of bits in the integer is less than the base field modulus,

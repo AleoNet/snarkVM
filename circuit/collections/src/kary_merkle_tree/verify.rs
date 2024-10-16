@@ -103,7 +103,7 @@ impl<E: Environment, PH: PathHash<E>, const DEPTH: u8, const ARITY: u8> KaryMerk
     }
 }
 
-#[cfg(all(test, console))]
+#[cfg(all(test, feature = "console"))]
 mod tests {
     use super::*;
     use snarkvm_circuit_algorithms::{BHP512, BHP1024, Keccak256, Poseidon2, Poseidon4, Sha3_256};

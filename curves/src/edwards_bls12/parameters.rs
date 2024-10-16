@@ -104,7 +104,7 @@ impl FromStr for EdwardsAffine {
             return Err(GroupError::InvalidString);
         }
         let mut point = Vec::new();
-        for substr in s.split(|c| c == '(' || c == ')' || c == ',' || c == ' ') {
+        for substr in s.split(['(', ')', ',', ' ']) {
             if !substr.is_empty() {
                 point.push(Fq::from_str(substr)?);
             }

@@ -175,7 +175,7 @@ impl<A: Aleo> Response<A> {
     }
 }
 
-#[cfg(all(test, console))]
+#[cfg(all(test, feature = "console"))]
 mod tests {
     use super::*;
     use crate::Circuit;
