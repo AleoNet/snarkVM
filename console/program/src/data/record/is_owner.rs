@@ -16,6 +16,7 @@
 use super::*;
 
 impl<N: Network> Record<N, Ciphertext<N>> {
+    /// Returns `true` if the given view key corresponds to the owner of the record.
     /// Decrypts `self` into plaintext using the given view key.
     pub fn is_owner(&self, view_key: &ViewKey<N>) -> bool {
         // Compute the address.
@@ -24,6 +25,7 @@ impl<N: Network> Record<N, Ciphertext<N>> {
         self.is_owner_with_address_x_coordinate(view_key, &address.to_x_coordinate())
     }
 
+    /// Returns `true` if the given view key and address x-coordinate corresponds to the owner of the record.
     /// Decrypts `self` into plaintext using the x-coordinate of the address corresponding to the given view key.
     pub fn is_owner_with_address_x_coordinate(&self, view_key: &ViewKey<N>, address_x_coordinate: &Field<N>) -> bool {
         // In debug mode, check that the address corresponds to the given view key.
