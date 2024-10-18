@@ -170,6 +170,13 @@ where
         }
     }
 
+    // The `aborted_candidate_solutions` can contain both verified and unverified solutions.
+    // When `check_solution_mut` is used as `verification_fn`, these aborted solutions
+    // may include both mutated and un-mutated variants. This occurs because the verification
+    // check is skipped once the `max_solutions` limit is reached.
+    //
+    // This approach is SAFE because currently, only the `solutionID` of aborted solutions is stored.
+    // However, if full aborted solutions need to be stored in the future, this logic will need to be revisited.
     (valid_candidate_solutions, aborted_candidate_solutions)
 }
 

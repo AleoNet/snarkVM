@@ -42,3 +42,11 @@ features = [ "preserve_order" ]
 optional = true
 version = "1"
 features = [ "rt" ]
+
+[dev-dependencies.ledger-block]
+package = "snarkvm-ledger-block"
+path = "../../../ledger/block"
+
+[dev-dependencies.ledger-test-helpers]
+package = "snarkvm-ledger-test-helpers"
+path = "../../../ledger/test-helpers"

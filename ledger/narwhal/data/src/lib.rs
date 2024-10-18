@@ -238,3 +238,39 @@ impl<'de, T: FromBytes + ToBytes + DeserializeOwned + Send + 'static> Deserializ
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use console::network::MainnetV0;
+    use ledger_block::Transaction;
+
+    #[test]
+    fn test_to_checksum() {
+        let rng = &mut TestRng::default();
+
+        // Sample transactions
+        let transactions = [
+            ledger_test_helpers::sample_deployment_transaction(true, rng),
+            ledger_test_helpers::sample_deployment_transaction(false, rng),
+            ledger_test_helpers::sample_execution_transaction_with_fee(true, rng),
+            ledger_test_helpers::sample_execution_transaction_with_fee(false, rng),
+            ledger_test_helpers::sample_fee_private_transaction(rng),
+            ledger_test_helpers::sample_fee_public_transaction(rng),
+        ];
+
+        for transaction in transactions.into_iter() {
+            // Convert the transaction to a Data buffer.
+            let data_bytes: Data<Transaction<MainnetV0>> = Data::Buffer(transaction.to_bytes_le().unwrap().into());
+            // Convert the transaction to a data object.
+            let data = Data::Object(transaction);
+
+            // Compute the checksums.
+            let checksum_1 = data_bytes.to_checksum::<MainnetV0>().unwrap();
+            let checksum_2 = data.to_checksum::<MainnetV0>().unwrap();
+
+            // Ensure the checksums are equal.
+            assert_eq!(checksum_1, checksum_2);
+        }
+    }
+}

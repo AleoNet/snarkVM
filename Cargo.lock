@@ -3214,6 +3214,8 @@ dependencies = [
  "bytes",
  "serde_json",
  "snarkvm-console",
+ "snarkvm-ledger-block",
+ "snarkvm-ledger-test-helpers",
  "tokio",
 ]
 

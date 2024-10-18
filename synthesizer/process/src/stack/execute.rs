@@ -430,9 +430,7 @@ impl<N: Network> StackExecute<N> for Stack<N> {
         let assignment = A::eject_assignment_and_reset();
 
         // If the circuit is in `Synthesize` or `Execute` mode, synthesize the circuit key, if it does not exist.
-        if matches!(registers.call_stack(), CallStack::Synthesize(..))
-            || matches!(registers.call_stack(), CallStack::Execute(..))
-        {
+        if matches!(registers.call_stack(), CallStack::Synthesize(..) | CallStack::Execute(..)) {
             // If the proving key does not exist, then synthesize it.
             if !self.contains_proving_key(function.name()) {
                 // Add the circuit key to the mapping.

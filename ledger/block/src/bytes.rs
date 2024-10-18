@@ -33,7 +33,7 @@ impl<N: Network> FromBytes for Block<N> {
         // Read the header.
         let header = FromBytes::read_le(&mut reader)?;
 
-        // Write the authority.
+        // Read the authority.
         let authority = FromBytes::read_le(&mut reader)?;
 
         // Read the number of ratifications.
