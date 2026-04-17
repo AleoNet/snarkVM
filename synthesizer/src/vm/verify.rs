@@ -353,6 +353,9 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                         !deployment.program().contains_v15_syntax(),
                         "Invalid deployment transaction '{id}' - program uses syntax that is not allowed before `ConsensusVersion::V15`"
                     );
+                    let stack = Stack::new(&self.process, deployment.program())?;
+                    check_no_non_literal_ternary(deployment.program(), &stack)
+                        .map_err(|e| anyhow!("Invalid deployment transaction '{id}' - {e}"))?;
                 }
 
                 // Checks required for current and future consensus versions (>= V9).

@@ -30,6 +30,9 @@ mod queries;
 // Tests for restricted keywords at V15.
 mod restricted_keywords;
 
+// Tests on `ternary` instruction accepting array and struct operands from V15 onward.
+mod ternary_plaintext;
+
 use super::*;
 
 use crate::vm::test_helpers::{sample_vm_at_height, *};
